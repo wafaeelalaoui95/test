@@ -46,7 +46,7 @@ export default function VoyagerPage() {
 
   const canNext = () => {
     if (step === 0) return from && to && date;
-    if (step === 1) return space && minComp >= 0 && acceptedCategories.length > 0;
+    if (step === 1) return acceptedCategories.length > 0 && minComp >= 0;
     if (step === 2) return true;
     if (step === 3) return terms;
     return false;
