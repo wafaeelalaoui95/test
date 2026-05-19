@@ -31,7 +31,7 @@ export default function VoyagerPage() {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
 
-  const [space, setSpace] = useState<AvailableSpace | null>(null);
+  const [space] = useState<AvailableSpace | null>(null);
   const [minComp, setMinComp] = useState(20);
   const [acceptedCategories, setAcceptedCategories] = useState<string[]>([]);
 
@@ -79,7 +79,7 @@ export default function VoyagerPage() {
       });
       setSubmitted(true);
     } catch (err: any) {
-      setSubmitError(err.message ?? t.auth_error_generic);
+      setSubmitError(err.message ?? 'Une erreur est survenue');
     } finally {
       setSubmitting(false);
     }
@@ -101,11 +101,11 @@ export default function VoyagerPage() {
           </h1>
           <p className="text-[16px] text-ink-400 mb-9 leading-relaxed">{t.trip_success_text}</p>
           <div className="flex flex-col gap-2.5">
-           <Link href="/me">
+            <Link href="/me">
               <Button variant="secondary" fullWidth>Voir mon espace</Button>
             </Link>
             <Link href="/">
-              <Button variant="ghost" fullWidth>Retour à l'accueil</Button>
+              <Button variant="ghost" fullWidth>Retour à l&apos;accueil</Button>
             </Link>
           </div>
         </motion.div>
@@ -143,22 +143,22 @@ export default function VoyagerPage() {
                 <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em]">{t.trip_route_title}</h2>
 
                 <LocationSelector
-                  label={t.trip_label_from}
+                  label="Départ"
                   value={from}
                   onChange={setFrom}
-                  placeholder={t.trip_placeholder_from}
+                  placeholder="Ville de départ"
                 />
 
                 <LocationSelector
-                  label={t.trip_label_to}
+                  label="Arrivée"
                   value={to}
                   onChange={setTo}
-                  placeholder={t.trip_placeholder_to}
+                  placeholder="Ville d'arrivée"
                 />
 
                 <div className="grid grid-cols-2 gap-3">
                   <Input
-                    label={t.trip_label_date}
+                    label="Date"
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -239,15 +239,15 @@ export default function VoyagerPage() {
             {step === 2 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em]">{t.trip_identity_title}</h2>
-                <p className="text-[15px] text-ink-400 leading-relaxed">{t.trip_identity_text}</p>
+                <p className="text-[15px] text-ink-400 leading-relaxed">{t.trip_identity_subtitle}</p>
 
                 <label className="block">
                   <div className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-colors ${idFile ? 'border-mint-500 bg-mint-50' : 'border-ink-100 hover:border-ink-300'}`}>
                     <Upload className="w-6 h-6 mx-auto mb-3 text-ink-400" strokeWidth={1.5} />
                     <div className="text-[14px] font-medium text-ink-500 mb-1">
-                      {idFile ? idFile.name : t.trip_identity_upload}
+                      {idFile ? idFile.name : t.trip_upload_id}
                     </div>
-                    <div className="text-[12px] text-ink-400">{t.trip_identity_formats}</div>
+                    <div className="text-[12px] text-ink-400">PDF, JPG ou PNG</div>
                   </div>
                   <input
                     type="file"
@@ -256,25 +256,12 @@ export default function VoyagerPage() {
                     onChange={(e) => setIdFile(e.target.files?.[0] ?? null)}
                   />
                 </label>
-
-                <p className="text-[13px] text-ink-400 leading-relaxed">
-                  <strong className="text-ink-500">{t.trip_identity_optional_label}</strong> {t.trip_identity_optional_text}
-                </p>
               </div>
             )}
 
             {step === 3 && (
               <div className="space-y-6">
-                <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em]">{t.trip_commit_title}</h2>
-
-                <div className="space-y-3 mb-4">
-                  {[t.trip_commit_1, t.trip_commit_2, t.trip_commit_3, t.trip_commit_4].map((line) => (
-                    <div key={line} className="flex items-start gap-3 text-[15px] text-ink-500">
-                      <Check className="w-4 h-4 mt-1 text-mint-500 flex-shrink-0" strokeWidth={2.5} />
-                      <span className="leading-relaxed">{line}</span>
-                    </div>
-                  ))}
-                </div>
+                <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em]">{t.trip_validation_title}</h2>
 
                 <label className="flex items-start gap-3 cursor-pointer pt-2">
                   <input
@@ -283,7 +270,7 @@ export default function VoyagerPage() {
                     onChange={(e) => setTerms(e.target.checked)}
                     className="mt-1 rounded accent-ink-500"
                   />
-                  <span className="text-[14px] text-ink-500 leading-relaxed">{t.trip_commit_terms}</span>
+                  <span className="text-[14px] text-ink-500 leading-relaxed">{t.trip_engagement_terms}</span>
                 </label>
 
                 {submitError && (
@@ -306,7 +293,7 @@ export default function VoyagerPage() {
             ) : (
               <Button disabled={!canNext() || submitting || authLoading} onClick={handleSubmit}>
                 {submitting ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Plane className="w-4 h-4 mr-1.5" />}
-                {t.trip_publish_btn}
+                {t.trip_publish}
               </Button>
             )}
           </div>
