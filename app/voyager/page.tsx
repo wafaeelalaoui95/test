@@ -101,11 +101,11 @@ export default function VoyagerPage() {
           </h1>
           <p className="text-[16px] text-ink-400 mb-9 leading-relaxed">{t.trip_success_text}</p>
           <div className="flex flex-col gap-2.5">
-            <Link href="/me">
-              <Button variant="secondary" fullWidth>{t.trip_success_see_dashboard}</Button>
+           <Link href="/me">
+              <Button variant="secondary" fullWidth>Voir mon espace</Button>
             </Link>
             <Link href="/">
-              <Button variant="ghost" fullWidth>{t.trip_success_back_home}</Button>
+              <Button variant="ghost" fullWidth>Retour à l'accueil</Button>
             </Link>
           </div>
         </motion.div>
