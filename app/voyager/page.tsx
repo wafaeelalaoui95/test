@@ -57,7 +57,7 @@ export default function VoyagerPage() {
       router.push('/login?next=/voyager');
       return;
     }
-    if (!from || !to || !space) return;
+   if (!from || !to) return;
     setSubmitError(null);
     setSubmitting(true);
     try {
