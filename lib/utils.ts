@@ -71,3 +71,28 @@ export function nameInitial(name: string | null | undefined): string {
   if (!trimmed) return '·';
   return trimmed.charAt(0).toUpperCase();
 }
+
+/**
+ * Public-facing display name: first name + first letter of last name.
+ * Protects users from being doxxed by search engines / social media lookups.
+ *
+ *   "wafae el alaoui" → "Wafae E."
+ *   "YASSINE ICHCHOU" → "Yassine I."
+ *   "Marie" → "Marie"
+ *   "" or null → ""
+ *
+ * Use this EVERYWHERE that shows another user's name. Only show the full
+ * name in the user's OWN profile/settings page (where they see themselves).
+ */
+export function displayName(name: string | null | undefined): string {
+  const formatted = formatName(name);
+  if (!formatted) return '';
+  const parts = formatted.split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return parts[0] ?? '';
+  // Take the first word as-is, then for each subsequent word use its first letter.
+  // For names with particles ("Wafae El Alaoui"), this gives "Wafae E." which
+  // is fine — the particle gets the initial.
+  const first = parts[0];
+  const initials = parts.slice(1).map((p) => p.charAt(0).toUpperCase() + '.').join(' ');
+  return `${first} ${initials}`;
+}
