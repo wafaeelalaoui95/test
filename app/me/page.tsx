@@ -47,6 +47,23 @@ type MatchWithRefs = MatchRow & {
   shipping_request?: ShippingRequestRow | null;
 };
 
+// Booking intents that target one of MY open trips — what I (as a traveler)
+// see when senders express interest in my route.
+type IncomingIntent = {
+  id: string;
+  sender_id: string;
+  traveler_trip_id: string;
+  item_category: string;
+  item_description: string | null;
+  proposed_price: number;
+  pickup_city: string;
+  destination_city: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  created_at: string;
+  sender_profile: { id: string; full_name: string | null; avatar_url: string | null; rating: number; trips_completed: number; verification_level: string } | null;
+  traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
+};
+
 export default function MyPage() {
   const { t } = useI18n();
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
@@ -55,6 +72,7 @@ export default function MyPage() {
   const [requests, setRequests] = useState<ShippingRequestRow[]>([]);
   const [trips, setTrips] = useState<TravelerTripRow[]>([]);
   const [matches, setMatches] = useState<MatchWithRefs[]>([]);
+  const [incomingIntents, setIncomingIntents] = useState<IncomingIntent[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,12 +103,14 @@ export default function MyPage() {
       withTimeout(browser.listMyRequests(user.id), [] as ShippingRequestRow[]),
       withTimeout(browser.listMyTrips(user.id), [] as TravelerTripRow[]),
       withTimeout(browser.listMyMatches(user.id), [] as MatchRow[]),
+      withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[]),
     ])
-      .then(([rRes, trRes, mRes]) => {
+      .then(([rRes, trRes, mRes, iRes]) => {
         if (cancelled) return;
         if (rRes.status === 'fulfilled') setRequests(rRes.value);
         if (trRes.status === 'fulfilled') setTrips(trRes.value);
         if (mRes.status === 'fulfilled') setMatches(mRes.value as MatchWithRefs[]);
+        if (iRes.status === 'fulfilled') setIncomingIntents(iRes.value as IncomingIntent[]);
       })
       .finally(() => {
         if (cancelled) return;
@@ -128,7 +148,7 @@ export default function MyPage() {
   const stats = {
     active: requests.filter((r) => r.status === 'pending' || r.status === 'matched').length
           + trips.filter((trip) => trip.status === 'open' || trip.status === 'matched').length,
-    pending: matches.filter((m) => m.status === 'proposed').length,
+    pending: incomingIntents.filter((i) => i.status === 'pending').length,
     earned: matches
       .filter((m) => m.status === 'completed' && m.agreed_compensation)
       .reduce((sum, m) => sum + (m.agreed_compensation ?? 0), 0),
@@ -171,6 +191,9 @@ export default function MyPage() {
           <div className="inline-flex border-b border-ink-100">
             {TABS.map((tabItem) => {
               const active = tab === tabItem.id;
+              const showBadge =
+                tabItem.id === 'matches' && incomingIntents.filter((i) => i.status === 'pending').length > 0;
+              const pendingCount = incomingIntents.filter((i) => i.status === 'pending').length;
               return (
                 <button
                   key={tabItem.id}
@@ -184,6 +207,11 @@ export default function MyPage() {
                 >
                   <tabItem.icon className="w-4 h-4" strokeWidth={2} />
                   <span>{tabItem.label}</span>
+                  {showBadge && (
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-blush-500 text-cream-50 text-[10px] font-bold">
+                      {pendingCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -212,7 +240,18 @@ export default function MyPage() {
               )}
               {tab === 'requests' && <RequestsTab requests={requests} t={t} />}
               {tab === 'trips' && <TripsTab trips={trips} t={t} />}
-              {tab === 'matches' && <MatchesTab matches={matches} t={t} />}
+              {tab === 'matches' && (
+                <MatchesTab
+                  intents={incomingIntents}
+                  onUpdate={async (id, status) => {
+                    await browser.updateBookingIntentStatus(id, status);
+                    setIncomingIntents((prev) =>
+                      prev.map((it) => (it.id === id ? { ...it, status } : it))
+                    );
+                  }}
+                  t={t}
+                />
+              )}
               {tab === 'profile' && (
                 <ProfileTab
                   profile={profile}
@@ -421,20 +460,126 @@ function TripCard({ trip, t }: { trip: TravelerTripRow; t: Translations }) {
 }
 
 // === MATCHES ===
-function MatchesTab({ matches, t }: { matches: MatchWithRefs[]; t: Translations }) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-ink-600 mb-8 tracking-[-0.02em]">
-        {t.me_section_pending_matches}
-      </h2>
+function MatchesTab({
+  intents,
+  onUpdate,
+  t,
+}: {
+  intents: IncomingIntent[];
+  onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
+  t: Translations;
+}) {
+  const pending = intents.filter((i) => i.status === 'pending');
+  const decided = intents.filter((i) => i.status !== 'pending');
 
-      {matches.length === 0 ? (
-        <EmptyState message={t.me_empty_matches} />
-      ) : (
-        <div className="space-y-3">
-          {matches.map((m) => (
-            <MatchCard key={m.id} match={m} t={t} expanded />
-          ))}
+  return (
+    <div className="space-y-10">
+      <div>
+        <h2 className="text-2xl font-bold text-ink-600 mb-2 tracking-[-0.02em]">
+          Demandes reçues
+        </h2>
+        <p className="text-[14px] text-ink-400 mb-7">
+          Des expéditeurs aimeraient confier un objet à un de vos trajets.
+        </p>
+        {pending.length === 0 ? (
+          <EmptyState message="Aucune demande en attente pour le moment." />
+        ) : (
+          <div className="space-y-3">
+            {pending.map((intent) => (
+              <IntentCard key={intent.id} intent={intent} onUpdate={onUpdate} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {decided.length > 0 && (
+        <div>
+          <h3 className="text-[12px] font-semibold text-ink-300 tracking-[0.12em] uppercase mb-4">
+            Historique
+          </h3>
+          <div className="space-y-3 opacity-70">
+            {decided.map((intent) => (
+              <IntentCard key={intent.id} intent={intent} onUpdate={onUpdate} historic />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IntentCard({
+  intent,
+  onUpdate,
+  historic = false,
+}: {
+  intent: IncomingIntent;
+  onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
+  historic?: boolean;
+}) {
+  const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
+  const senderName = intent.sender_profile?.full_name ?? 'Quelqu\'un';
+  const senderInitial = senderName.charAt(0).toUpperCase();
+
+  async function handle(action: 'confirmed' | 'cancelled') {
+    setBusy(action === 'confirmed' ? 'confirm' : 'cancel');
+    try {
+      await onUpdate(intent.id, action);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-ink-50">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[14px] text-lavender-700">
+          {senderInitial}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-ink-600 text-[15px]">
+            {senderName}
+          </div>
+          <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap mt-0.5">
+            <span>{intent.pickup_city} → {intent.destination_city}</span>
+            <span>·</span>
+            <span className="capitalize">{intent.item_category.replace('_', ' ')}</span>
+            <span>·</span>
+            <span className="font-semibold text-ink-600">{intent.proposed_price}€</span>
+          </div>
+          {intent.item_description && (
+            <p className="text-[14px] text-ink-500 mt-2 leading-relaxed line-clamp-2">
+              « {intent.item_description} »
+            </p>
+          )}
+          {historic && (
+            <div className="mt-2 text-[12px] font-medium">
+              {intent.status === 'confirmed' ? (
+                <span className="text-mint-500">✓ Acceptée</span>
+              ) : (
+                <span className="text-ink-300">✕ Refusée</span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!historic && (
+        <div className="flex flex-col sm:flex-row gap-2 mt-5">
+          <button
+            onClick={() => handle('cancelled')}
+            disabled={!!busy}
+            className="flex-1 px-4 py-2.5 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
+          >
+            {busy === 'cancel' ? '...' : 'Refuser'}
+          </button>
+          <button
+            onClick={() => handle('confirmed')}
+            disabled={!!busy}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
+          >
+            {busy === 'confirm' ? '...' : 'Accepter'}
+          </button>
         </div>
       )}
     </div>
