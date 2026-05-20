@@ -1,19 +1,42 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X, User, LogOut } from 'lucide-react';
+import { Menu, X, User, LogOut, Wallet } from 'lucide-react';
 import { Logo } from '@/components/illustrations/Logo';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
-import { nameInitial, formatName } from '@/lib/utils';
+import { nameInitial, formatName, formatEuros } from '@/lib/utils';
+import { browser } from '@/lib/supabase/queries';
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const { t } = useI18n();
   const { user, profile, loading, signOut } = useAuth();
+
+  // Fetch wallet balance when the user logs in. Re-runs whenever the
+  // user changes (login / logout). The Navbar re-mounts on hard refresh,
+  // so this stays fresh enough for the MVP. A future improvement would
+  // be a Supabase realtime subscription.
+  useEffect(() => {
+    if (!user) {
+      setWalletBalance(null);
+      return;
+    }
+    let cancelled = false;
+    browser
+      .getWalletBalance(user.id)
+      .then((v) => {
+        if (!cancelled) setWalletBalance(v);
+      })
+      .catch(() => {
+        if (!cancelled) setWalletBalance(0);
+      });
+    return () => { cancelled = true; };
+  }, [user]);
 
   const navLinks = [
     { href: '/envoyer', label: t.nav_send },
@@ -69,9 +92,23 @@ export function Navbar() {
               </>
             ) : user ? (
               <>
+                {/* Wallet pill — Vinted style. Shows balance when > 0,
+                    just the icon otherwise. Click goes to /me where the
+                    Wallet card lives. */}
+                <Link
+                  href="/me?tab=profile"
+                  className="ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 transition-colors"
+                  title="Mon portefeuille"
+                >
+                  <Wallet className="w-3.5 h-3.5" />
+                  <span className="text-[13px] font-bold num-display">
+                    {walletBalance !== null ? formatEuros(walletBalance) : '—'}
+                  </span>
+                </Link>
+
                 <Link
                   href="/me"
-                  className="ml-1 flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-ink-50 transition-colors"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-ink-50 transition-colors"
                   title={t.nav_my_space}
                 >
                   <div className="w-7 h-7 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[12px] text-lavender-700">
