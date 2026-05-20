@@ -23,6 +23,7 @@ import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
+import { StripePaymentForm } from '@/components/StripePaymentForm';
 import type { Profile, TravelerTripRow } from '@/lib/supabase/types';
 
 type PublicProfile = Pick<
@@ -42,11 +43,11 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
 
   // Booking intent modal state
   const [bookingTrip, setBookingTrip] = useState<TravelerTripRow | null>(null);
+  const [bookingStep, setBookingStep] = useState<'details' | 'payment' | 'success'>('details');
   const [intentCategory, setIntentCategory] = useState<string>('');
   const [intentDescription, setIntentDescription] = useState('');
   const [intentPrice, setIntentPrice] = useState(20);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -75,19 +76,28 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
 
   function openBooking(trip: TravelerTripRow) {
     setBookingTrip(trip);
+    setBookingStep('details');
     setIntentCategory('');
     setIntentDescription('');
     setIntentPrice(Math.max(trip.compensation_min, 20));
-    setSubmitted(false);
     setSubmitErr(null);
   }
 
-  async function handleSubmitBooking() {
-    if (!bookingTrip || !user) return;
+  // Step 1 → Step 2: validate form, move to payment
+  function handleProceedToPayment() {
     if (!intentCategory) {
       setSubmitErr('Choisissez une catégorie d\'objet');
       return;
     }
+    setSubmitErr(null);
+    setBookingStep('payment');
+  }
+
+  // Step 2 → Step 3: payment authorised, now create the booking_intent row
+  // with the paymentIntentId attached so the traveler can later trigger
+  // capture from their /me page.
+  async function handlePaymentAuthorized(paymentIntentId: string) {
+    if (!bookingTrip || !user) return;
     setSubmitErr(null);
     setSubmitting(true);
     try {
@@ -99,8 +109,11 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
         proposed_price: intentPrice,
         pickup_city: bookingTrip.departure_city,
         destination_city: bookingTrip.arrival_city,
+        payment_intent_id: paymentIntentId,
+        payment_status: 'authorized',
+        payment_amount: intentPrice * 100,
       });
-      setSubmitted(true);
+      setBookingStep('success');
     } catch (e: any) {
       setSubmitErr(e.message ?? 'Une erreur est survenue');
     } finally {
@@ -136,7 +149,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
           <p className="text-[14px] text-ink-400 mb-6">
             Ce voyageur n&apos;existe plus ou son profil a été supprimé.
           </p>
-          <Link href="/matches">
+          <Link href="/">
             <Button variant="outline">Retour aux voyageurs</Button>
           </Link>
         </div>
@@ -152,7 +165,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       <div className="mx-auto max-w-5xl px-5 sm:px-8">
         {/* Back link */}
         <Link
-          href="/matches"
+          href="/"
           className="inline-flex items-center gap-1.5 text-[14px] text-ink-400 hover:text-ink-600 mb-8 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -298,12 +311,12 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
               onClick={(e) => e.stopPropagation()}
               className="bg-cream-50 rounded-3xl p-7 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto"
             >
-              {!submitted ? (
+              {bookingStep === 'details' && (
                 <>
                   <div className="flex items-start justify-between mb-5">
                     <div>
                       <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-                        Réservation
+                        Réservation · Étape 1/2
                       </div>
                       <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
                         {bookingTrip.departure_city} → {bookingTrip.arrival_city}
@@ -316,7 +329,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                     <button
                       onClick={() => setBookingTrip(null)}
                       className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400"
-                      disabled={submitting}
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -399,44 +411,91 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                     </div>
                   )}
 
-                  {/* Soft disclosure: no real payment yet */}
+                  {/* Soft disclosure about Stripe's hold mechanism */}
                   <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 mb-5 text-[13px] text-ink-500 flex gap-2.5">
                     <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-ink-600">Aucun débit pour l&apos;instant.</strong>{' '}
-                      Le paiement sécurisé arrive bientôt. On vous prévient dès que vous pouvez finaliser.
+                      <strong className="text-ink-600">Pas de débit immédiat.</strong>{' '}
+                      Votre carte sera autorisée mais le paiement ne sera prélevé qu&apos;une fois le voyageur d&apos;accord.
                     </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2.5">
                     <button
                       onClick={() => setBookingTrip(null)}
-                      disabled={submitting}
                       className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
                     >
                       Annuler
                     </button>
                     <button
-                      onClick={handleSubmitBooking}
-                      disabled={submitting || !intentCategory}
+                      onClick={handleProceedToPayment}
+                      disabled={!intentCategory}
                       className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 disabled:bg-ink-200 disabled:cursor-not-allowed rounded-full transition-colors"
                     >
-                      {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                      Confirmer la réservation
+                      <ShieldCheck className="w-4 h-4" />
+                      Continuer vers le paiement
                     </button>
                   </div>
                 </>
-              ) : (
+              )}
+
+              {bookingStep === 'payment' && (
+                <>
+                  <div className="flex items-start justify-between mb-5">
+                    <div>
+                      <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
+                        Paiement · Étape 2/2
+                      </div>
+                      <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
+                        {intentPrice}€
+                      </h2>
+                      <div className="text-[13px] text-ink-400 mt-1.5">
+                        {bookingTrip.departure_city} → {bookingTrip.arrival_city} · {formatShortDate(bookingTrip.departure_date)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setBookingStep('details')}
+                      className="text-[13px] font-medium text-ink-400 hover:text-ink-600"
+                    >
+                      ← Modifier
+                    </button>
+                  </div>
+
+                  {submitErr && (
+                    <div className="rounded-xl bg-blush-50 px-4 py-3 text-[13px] text-blush-500 mb-4">
+                      {submitErr}
+                    </div>
+                  )}
+
+                  <StripePaymentForm
+                    amountEuros={intentPrice}
+                    description={`Jibly · ${bookingTrip.departure_city} → ${bookingTrip.arrival_city}`}
+                    onAuthorized={handlePaymentAuthorized}
+                    onCancel={() => setBookingStep('details')}
+                  />
+
+                  {submitting && (
+                    <div className="mt-4 text-center text-[13px] text-ink-400">
+                      <Loader2 className="w-4 h-4 animate-spin inline mr-1.5" />
+                      Enregistrement de votre réservation…
+                    </div>
+                  )}
+                </>
+              )}
+
+              {bookingStep === 'success' && (
                 /* Success state */
                 <div className="text-center py-4">
                   <div className="w-14 h-14 rounded-full bg-mint-500 mx-auto flex items-center justify-center mb-5">
                     <CheckCircle2 className="w-7 h-7 text-white" strokeWidth={2.5} />
                   </div>
                   <h3 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
-                    Réservation enregistrée
+                    Paiement autorisé
                   </h3>
                   <p className="text-[15px] text-ink-400 mb-7 leading-relaxed">
-                    On vous prévient dès que le paiement est disponible. Vous pourrez finaliser à ce moment-là.
+                    Votre carte a été autorisée pour <strong className="text-ink-600 num-display">{intentPrice}€</strong>.
+                    Le voyageur sera notifié et vous recevrez sa décision rapidement.
+                    Aucun débit n&apos;a encore été effectué.
                   </p>
                   <div className="flex flex-col gap-2.5">
                     <Link href="/me">
