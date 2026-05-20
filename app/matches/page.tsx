@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { VerificationBadge } from '@/components/ui/Badge';
-import { formatShortDate, formatName, nameInitial } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial, displayName } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { browser } from '@/lib/supabase/queries';
@@ -378,7 +378,7 @@ export default function MatchesPage() {
 }
 
 function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t: any }) {
-  const fullName = formatName(trip.profile?.full_name);
+  const fullName = displayName(trip.profile?.full_name);
   const initial = nameInitial(trip.profile?.full_name);
 
   // Parse accepted categories from notes JSON
