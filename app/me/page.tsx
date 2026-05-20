@@ -234,8 +234,7 @@ export default function MyPage() {
               //   Mes envois  : count of pending traveler proposals on my requests
               const tripsTodoCount =
                 incomingIntents.filter((i) => i.status === 'pending').length +
-                incomingIntents.filter((i) => i.status === 'confirmed' && !i.delivery_proof_url).length +
-                myProposals.filter((p) => p.status === 'confirmed' && !p.delivery_proof_url).length;
+                incomingIntents.filter((i) => i.status === 'confirmed' && !i.delivery_proof_url).length;
               const sendsTodoCount = myBookings.filter(
                 (b) => b.status === 'pending' && b.initiated_by === 'traveler'
               ).length;
@@ -1946,13 +1945,15 @@ function TripsView({
   const todoDeliver = incomingIntents.filter(
     (i) => i.status === 'confirmed' && !i.delivery_proof_url
   );
-  const todoProposalsAccepted = myProposals.filter(
-    (p) => p.status === 'confirmed' && !p.delivery_proof_url
-  );
 
-  // ⏳ En cours: active trips + pending proposals
+  // ⏳ En cours: active trips + pending proposals + accepted proposals
+  // waiting for delivery (no action button visible on ProposalCard, so they
+  // belong here, not in "À traiter").
   const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
   const pendingProposals = myProposals.filter((p) => p.status === 'pending');
+  const inProgressProposalsAccepted = myProposals.filter(
+    (p) => p.status === 'confirmed' && !p.delivery_proof_url
+  );
 
   // 📜 Historique (côté voyageur): incoming livré/refusé, propositions
   // livrées/refusées, trajets annulés. Tout ce qui touche au rôle de voyageur.
@@ -1964,9 +1965,10 @@ function TripsView({
   );
   const cancelledTrips = trips.filter((tr) => tr.status === 'cancelled');
 
-  const totalTodos = todoRequests.length + todoDeliver.length + todoProposalsAccepted.length;
+  const totalTodos = todoRequests.length + todoDeliver.length;
+  const totalInProgress = activeTrips.length + pendingProposals.length + inProgressProposalsAccepted.length;
   const totalHistory = historyIncoming.length + historyProposals.length + cancelledTrips.length;
-  const hasContent = activeTrips.length > 0 || pendingProposals.length > 0 || totalTodos > 0 || totalHistory > 0;
+  const hasContent = totalTodos > 0 || totalInProgress > 0 || totalHistory > 0;
 
   if (!hasContent) {
     return (
@@ -2050,19 +2052,19 @@ function TripsView({
                 showDeliverButton
               />
             ))}
-            {todoProposalsAccepted.map((p) => (
-              <ProposalCard key={p.id} proposal={p} accepted />
-            ))}
           </div>
         </section>
       )}
 
-      {(activeTrips.length > 0 || pendingProposals.length > 0) && (
+      {totalInProgress > 0 && (
         <section>
-          <GroupHeader icon="⏳" label="En cours" count={activeTrips.length + pendingProposals.length} />
+          <GroupHeader icon="⏳" label="En cours" count={totalInProgress} />
           <div className="space-y-3">
             {activeTrips.map((trip) => (
               <TripCard key={trip.id} trip={trip} onCancel={onCancelTrip} t={t} />
+            ))}
+            {inProgressProposalsAccepted.map((p) => (
+              <ProposalCard key={p.id} proposal={p} accepted />
             ))}
             {pendingProposals.map((p) => (
               <ProposalCard key={p.id} proposal={p} />
