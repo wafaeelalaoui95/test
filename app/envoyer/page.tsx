@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/Button';
 import { Textarea, Checkbox, Input } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { LocationSelector, type LocationValue } from '@/components/ui/LocationSelector';
-import { ITEM_CATEGORIES, URGENCY_LEVELS, FORBIDDEN_CATEGORIES } from '@/lib/constants';
+import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
-import type { ItemCategory, Urgency } from '@/lib/types';
+import type { ItemCategory } from '@/lib/types';
 
 export default function EnvoyerPage() {
   const { t } = useI18n();
@@ -34,7 +34,6 @@ export default function EnvoyerPage() {
   const [description, setDescription] = useState('');
   const [prescription, setPrescription] = useState<File | null>(null);
 
-  const [urgency, setUrgency] = useState<Urgency>('standard');
   const [budget, setBudget] = useState(30);
   const [terms, setTerms] = useState(false);
 
@@ -45,7 +44,7 @@ export default function EnvoyerPage() {
       if (category === 'medicaments' && !prescription) return false;
       return true;
     }
-    if (step === 2) return urgency && budget > 0;
+    if (step === 2) return budget > 0;
     if (step === 3) return terms;
     return false;
   };
@@ -71,7 +70,9 @@ export default function EnvoyerPage() {
         desired_delivery_date: date,
         budget,
         weight_kg: null,
-        urgency_level: urgency,
+        // urgency is no longer collected from the user. The DB column has
+        // a default of 'standard', so we let it fill in.
+        urgency_level: 'standard',
         prescription_url: null,
         status: 'pending',
       });
@@ -99,7 +100,7 @@ export default function EnvoyerPage() {
           </h1>
           <p className="text-[16px] text-ink-400 mb-9 leading-relaxed">{t.send_success_text}</p>
           <div className="flex flex-col gap-2.5">
-            <Link href="/matches">
+            <Link href="/">
               <Button variant="secondary" fullWidth>{t.send_success_see_travelers}</Button>
             </Link>
             <Link href="/">
@@ -220,27 +221,6 @@ export default function EnvoyerPage() {
                   <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em]">{t.send_details_title}</h2>
 
                   <div>
-                    <label className="block text-[14px] font-semibold text-ink-500 mb-3">{t.send_label_urgency}</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {URGENCY_LEVELS.map((u) => (
-                        <button
-                          key={u.value}
-                          type="button"
-                          onClick={() => setUrgency(u.value)}
-                          className={`p-3 rounded-2xl border text-center transition-all ${
-                            urgency === u.value
-                              ? 'border-ink-500 bg-cream-100'
-                              : 'border-ink-100 bg-white hover:border-ink-300'
-                          }`}
-                        >
-                          <div className="font-semibold text-[14px] text-ink-600">{t[u.labelKey]}</div>
-                          <div className="text-[12px] text-ink-400 mt-0.5">{t[u.hintKey]}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
                     <div className="flex items-baseline justify-between mb-3">
                       <label className="block text-[14px] font-semibold text-ink-500">{t.send_label_budget}</label>
                       <span className="text-2xl font-bold text-ink-600 num-display tracking-[-0.02em]">
@@ -271,7 +251,6 @@ export default function EnvoyerPage() {
                     <Row label={t.send_recap_route} value={`${from?.flag} ${from?.city} → ${to?.flag} ${to?.city}`} />
                     <Row label={t.send_recap_date} value={date} />
                     <Row label={t.send_recap_item} value={category ? t[ITEM_CATEGORIES.find(c => c.value === category)!.labelKey] : '—'} />
-                    <Row label={t.send_recap_urgency} value={t[URGENCY_LEVELS.find(u => u.value === urgency)!.labelKey]} />
                     <Row label={t.send_recap_budget} value={`${budget}${t.common_eur}`} />
                   </div>
 
