@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Form';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
-import { formatShortDate, formatName, nameInitial, displayName } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial, displayName, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
@@ -708,7 +708,8 @@ function BookingCard({ booking, t }: { booking: MyBooking; t: Translations }) {
             Avec <span className="font-medium text-ink-500">{travelerName}</span> ·{' '}
             {cat ? t[cat.labelKey] : ''} ·{' '}
             {trip && formatShortDate(trip.departure_date)} ·{' '}
-            {booking.proposed_price}€
+            <span className="font-semibold text-ink-600">{formatEuros(booking.proposed_price)}</span>
+            <span className="text-[11px] text-ink-300 ms-1">(tout compris)</span>
           </div>
           {booking.status === 'pending' && (
             <p className="text-[13px] text-ink-400 mt-2 leading-relaxed">
@@ -1034,7 +1035,9 @@ function IntentCard({
             <span>·</span>
             <span className="capitalize">{intent.item_category.replace('_', ' ')}</span>
             <span>·</span>
-            <span className="font-semibold text-ink-600">{intent.proposed_price}€</span>
+            <span className="font-semibold text-mint-600">
+              Vous recevez {formatEuros(intent.proposed_price / 1.15)}
+            </span>
           </div>
           {intent.item_description && (
             <p className="text-[14px] text-ink-500 mt-2 leading-relaxed line-clamp-2">
