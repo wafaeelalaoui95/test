@@ -93,10 +93,10 @@ export function Navbar() {
             ) : user ? (
               <>
                 {/* Wallet pill — Vinted style. Shows balance when > 0,
-                    just the icon otherwise. Click goes to /me where the
-                    Wallet card lives. */}
+                    just the icon otherwise. Click goes to /wallet for the
+                    full transactions view. */}
                 <Link
-                  href="/me?tab=profile"
+                  href="/wallet"
                   className="ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 transition-colors"
                   title="Mon portefeuille"
                 >
