@@ -41,6 +41,7 @@ import type {
   Profile,
   ItemCategory,
   AvailableSpace,
+  VerificationLevel,
 } from '@/lib/supabase/types';
 
 type TabId = 'overview' | 'requests' | 'trips' | 'matches' | 'profile';
@@ -70,7 +71,7 @@ type IncomingIntent = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
-  sender_profile: { id: string; full_name: string | null; avatar_url: string | null; rating: number; trips_completed: number; verification_level: string } | null;
+  sender_profile: { id: string; full_name: string | null; avatar_url: string | null; rating: number; trips_completed: number; verification_level: VerificationLevel } | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
 
@@ -552,7 +553,7 @@ type MyBooking = {
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string; user_id: string } | null;
-  traveler_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: string; rating: number; trips_completed: number } | null;
+  traveler_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: VerificationLevel; rating: number; trips_completed: number } | null;
 };
 
 function RequestsTab({
