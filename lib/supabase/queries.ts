@@ -279,7 +279,86 @@ export async function createReport(
 // ============================================================================
 // Browser convenience wrappers
 // ============================================================================
+// ============================================================================
+// Public profile + booking intents
+// ============================================================================
 
+export async function getPublicProfile(
+  supabase: SB,
+  userId: string
+): Promise<Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed' | 'city' | 'country'> | null> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, verification_level, rating, trips_completed, city, country')
+        .eq('id', userId)
+        .maybeSingle()
+    ),
+    8000,
+    'Public profile'
+  );
+  if (error) throw error;
+  return data as any;
+}
+
+export async function listTripsByUser(
+  supabase: SB,
+  userId: string
+): Promise<TravelerTripRow[]> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('traveler_trips')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'open')
+        .order('departure_date', { ascending: true })
+    ),
+    8000,
+    'Trips by user'
+  );
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type BookingIntentInput = {
+  sender_id: string;
+  traveler_trip_id: string;
+  item_category: string;
+  item_description?: string | null;
+  proposed_price: number;
+  pickup_city: string;
+  destination_city: string;
+};
+
+export async function createBookingIntent(
+  supabase: SB,
+  input: BookingIntentInput
+) {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .insert({
+          sender_id: input.sender_id,
+          traveler_trip_id: input.traveler_trip_id,
+          item_category: input.item_category,
+          item_description: input.item_description ?? null,
+          proposed_price: input.proposed_price,
+          pickup_city: input.pickup_city,
+          destination_city: input.destination_city,
+          status: 'pending',
+        })
+        .select('*')
+        .maybeSingle()
+    ),
+    8000,
+    'Create booking intent'
+  );
+  if (error) throw error;
+  return data ?? input;
+}
 export const browser = {
   getProfile: (userId: string) => getProfile(getBrowserClient(), userId),
   updateProfile: (userId: string, patch: Partial<Profile>) => updateProfile(getBrowserClient(), userId, patch),
@@ -296,4 +375,7 @@ export const browser = {
   sendMessage: (input: Parameters<typeof sendMessage>[1]) => sendMessage(getBrowserClient(), input),
   listReviewsForUser: (userId: string) => listReviewsForUser(getBrowserClient(), userId),
   createReport: (input: Parameters<typeof createReport>[1]) => createReport(getBrowserClient(), input),
+  getPublicProfile: (userId: string) => getPublicProfile(getBrowserClient(), userId),
+  listTripsByUser: (userId: string) => listTripsByUser(getBrowserClient(), userId),
+  createBookingIntent: (input: BookingIntentInput) => createBookingIntent(getBrowserClient(), input),
 };
