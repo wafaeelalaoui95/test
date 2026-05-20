@@ -208,7 +208,7 @@ export default function MyPage() {
 
   return (
     <div className="min-h-screen py-12 lg:py-20">
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-4xl px-5 sm:px-8 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -841,75 +841,53 @@ function BookingCard({
   const isTravelerProposal = booking.initiated_by === 'traveler' && booking.status === 'pending';
 
   return (
-    <div className={`bg-white rounded-2xl p-5 border ${isTravelerProposal ? 'border-lavender-300 ring-1 ring-lavender-200/40' : 'border-ink-50'}`}>
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center text-xl">
+    <div className={`bg-white rounded-xl px-3 py-2.5 border ${isTravelerProposal ? 'border-lavender-300' : 'border-ink-50'}`}>
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
           {cat?.icon}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-1.5">
-            <div className="font-semibold text-ink-600 flex items-center gap-2 flex-wrap text-[15px]">
-              <span>{booking.pickup_city}</span>
-              <ArrowRight className="w-3.5 h-3.5 text-ink-300" />
-              <span>{booking.destination_city}</span>
-            </div>
-            {booking.status === 'pending' ? (
-              isTravelerProposal ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-lavender-100 text-lavender-700 text-[11px] font-semibold uppercase tracking-[0.06em]">
-                  ✨ Nouvelle proposition
-                </span>
-              ) : (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold uppercase tracking-[0.06em]">
-                  En attente
-                </span>
-              )
-            ) : (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-ink-50 text-ink-400 text-[11px] font-semibold uppercase tracking-[0.06em]">
-                Refusée
-              </span>
-            )}
-          </div>
-          <div className="text-[13px] text-ink-400">
-            {isTravelerProposal ? (
-              <><span className="font-medium text-ink-500">{travelerName}</span> propose son aide · </>
-            ) : (
-              <>Avec <span className="font-medium text-ink-500">{travelerName}</span> · </>
-            )}
-            {cat ? t[cat.labelKey] : ''} ·{' '}
-            {trip && <>{formatShortDate(trip.departure_date)} · </>}
-            <span className="font-semibold text-ink-600">{formatEuros(booking.proposed_price)}</span>
-            <span className="text-[11px] text-ink-300 ms-1">(tout compris)</span>
-          </div>
-
-          {/* Traveler's optional message */}
-          {isTravelerProposal && booking.traveler_message && (
-            <div className="mt-3 rounded-xl bg-lavender-50 border border-lavender-100/60 px-3.5 py-2.5 text-[13px] text-ink-500 leading-relaxed">
-              <span className="text-[10px] font-semibold text-lavender-600 tracking-[0.08em] uppercase block mb-1">
-                Message
-              </span>
-              « {booking.traveler_message} »
-            </div>
+        <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+          <span className="font-semibold text-ink-600">{travelerName}</span>
+          <span className="text-ink-300">·</span>
+          <span className="text-ink-500 truncate">{booking.pickup_city} → {booking.destination_city}</span>
+          <span className="text-ink-300">·</span>
+          <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
+          {isTravelerProposal && (
+            <span className="text-[11px] text-lavender-600 ml-1">✨ nouveau</span>
           )}
-
-          {/* Action buttons */}
-          {isTravelerProposal && onAcceptProposal && onDeclineProposal && (
-            <div className="mt-4 flex flex-row gap-2">
-              <button
-                onClick={() => onDeclineProposal(booking.id)}
-                className="flex-1 px-4 py-2 text-[13px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
-              >
-                Refuser
-              </button>
-              <button
-                onClick={() => onAcceptProposal(booking)}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
-              >
-                Accepter · {formatEuros(booking.proposed_price)}
-              </button>
-            </div>
+          {booking.status === 'pending' && !isTravelerProposal && (
+            <span className="text-[11px] text-ink-300 ml-1">⏳ en attente</span>
+          )}
+          {booking.status === 'cancelled' && (
+            <span className="text-[11px] text-ink-300 ml-1">✕ refusée</span>
           )}
         </div>
+
+        {/* Actions inline */}
+        {isTravelerProposal && onAcceptProposal && onDeclineProposal && (
+          <div className="flex-shrink-0 flex items-center gap-1.5">
+            <button
+              onClick={() => onDeclineProposal(booking.id)}
+              className="px-3 py-1.5 text-[12px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
+            >
+              Refuser
+            </button>
+            <button
+              onClick={() => onAcceptProposal(booking)}
+              className="px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
+            >
+              Payer {formatEuros(booking.proposed_price)}
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Traveler's message — only when there's one and it's a proposal */}
+      {isTravelerProposal && booking.traveler_message && (
+        <p className="mt-2 ml-11 text-[12px] text-ink-400 leading-snug line-clamp-2">
+          « {booking.traveler_message} »
+        </p>
+      )}
     </div>
   );
 }
@@ -1025,28 +1003,22 @@ function TripCard({
 
   return (
     <>
-      <div className="bg-white rounded-2xl p-5 border border-ink-50 hover:border-ink-100 transition-colors">
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center text-xl">
+      <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
             {space?.icon}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-3 mb-1.5">
-              <div className="font-semibold text-ink-600 flex items-center gap-2 flex-wrap text-[15px]">
-                <span>{trip.departure_city}</span>
-                <Plane className="w-3.5 h-3.5 text-ink-300" />
-                <span>{trip.arrival_city}</span>
-              </div>
-              <StatusBadge status={trip.status} t={t} />
-            </div>
-            <div className="text-[13px] text-ink-400">
-              {formatShortDate(trip.departure_date)} · {space ? t[space.labelKey] : ''} · {t.matches_min} {trip.compensation_min}{t.common_eur}
-            </div>
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+            <span className="font-semibold text-ink-600">{trip.departure_city} → {trip.arrival_city}</span>
+            <span className="text-ink-300">·</span>
+            <span className="text-ink-500 num-display">{formatShortDate(trip.departure_date)}</span>
+            <span className="text-ink-300">·</span>
+            <span className="text-ink-500">à partir de {trip.compensation_min}€</span>
           </div>
           <button
             type="button"
             onClick={openCancelModal}
-            className="flex-shrink-0 p-2 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
+            className="flex-shrink-0 p-1.5 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
             aria-label="Annuler ce trajet"
             title="Annuler ce trajet"
           >
@@ -1289,86 +1261,65 @@ function IntentCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-ink-50">
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[14px] text-lavender-700">
+    <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
+      {/* Single horizontal row: avatar | info | actions */}
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[12px] text-lavender-700">
           {senderInitial}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold text-ink-600 text-[15px]">
-            {senderName}
-          </div>
-          <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap mt-0.5">
-            <span>{intent.pickup_city} → {intent.destination_city}</span>
-            <span>·</span>
-            <span className="capitalize">{intent.item_category.replace('_', ' ')}</span>
-            <span>·</span>
-            <span className="font-semibold text-mint-600">
-              Vous recevez {formatEuros(intent.proposed_price / 1.15)}
-            </span>
-          </div>
-          {/* Status pills — condensed: just emoji + short label */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-2">
-            {intent.payment_status === 'authorized' && !historic && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
-                💳 Paiement réservé
-              </span>
-            )}
-            {intent.payment_status === 'captured' && historic && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
-                ✓ Encaissé
-              </span>
-            )}
-            {historic && intent.delivery_proof_url && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
-                📸 Livré
-              </span>
-            )}
-            {historic && !intent.delivery_proof_url && (
-              <span className="text-[11px] font-medium">
-                {intent.status === 'confirmed' ? (
-                  <span className="text-mint-500">✓ Acceptée</span>
-                ) : (
-                  <span className="text-ink-300">✕ Refusée</span>
-                )}
-              </span>
-            )}
-          </div>
+        <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+          <span className="font-semibold text-ink-600">{senderName}</span>
+          <span className="text-ink-300">·</span>
+          <span className="text-ink-500 truncate">{intent.pickup_city} → {intent.destination_city}</span>
+          <span className="text-ink-300">·</span>
+          <span className="font-semibold text-mint-600 num-display">{formatEuros(intent.proposed_price / 1.15)}</span>
+          {intent.payment_status === 'authorized' && !historic && (
+            <span className="text-[11px] text-mint-600 ml-1">💳</span>
+          )}
+          {intent.payment_status === 'captured' && historic && (
+            <span className="text-[11px] text-mint-600 ml-1">✓ encaissé</span>
+          )}
+          {historic && intent.delivery_proof_url && (
+            <span className="text-[11px] text-mint-600 ml-1">📸 livré</span>
+          )}
+          {historic && !intent.delivery_proof_url && intent.status === 'confirmed' && (
+            <span className="text-[11px] text-mint-500 ml-1">✓ acceptée</span>
+          )}
+          {historic && !intent.delivery_proof_url && intent.status === 'cancelled' && (
+            <span className="text-[11px] text-ink-300 ml-1">✕ refusée</span>
+          )}
         </div>
-      </div>
 
-      {/* Pending: Accept / Decline */}
-      {!historic && !showDeliverButton && (
-        <div className="flex flex-row gap-2 mt-4">
-          <button
-            onClick={() => handle('cancelled')}
-            disabled={!!busy}
-            className="flex-1 px-4 py-2 text-[13px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
-          >
-            {busy === 'cancel' ? '...' : 'Refuser'}
-          </button>
-          <button
-            onClick={() => handle('confirmed')}
-            disabled={!!busy}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
-          >
-            {busy === 'confirm' ? '...' : 'Accepter'}
-          </button>
-        </div>
-      )}
+        {/* Actions inline on the right */}
+        {!historic && !showDeliverButton && (
+          <div className="flex-shrink-0 flex items-center gap-1.5">
+            <button
+              onClick={() => handle('cancelled')}
+              disabled={!!busy}
+              className="px-3 py-1.5 text-[12px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
+            >
+              {busy === 'cancel' ? '...' : 'Refuser'}
+            </button>
+            <button
+              onClick={() => handle('confirmed')}
+              disabled={!!busy}
+              className="px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
+            >
+              {busy === 'confirm' ? '...' : 'Accepter'}
+            </button>
+          </div>
+        )}
 
-      {/* Confirmed but not yet delivered: "I delivered" button */}
-      {!historic && showDeliverButton && (
-        <div className="mt-4">
+        {!historic && showDeliverButton && (
           <button
             onClick={() => setShowProofModal(true)}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
           >
-            <Camera className="w-3.5 h-3.5" />
-            J&apos;ai livré le colis
+            <Camera className="w-3 h-3" />
+            J&apos;ai livré
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Proof upload modal */}
       <AnimatePresence>
@@ -1869,47 +1820,35 @@ function ProposalCard({
   const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
 
   return (
-    <div className={`bg-white rounded-2xl p-4 border ${accepted ? 'border-mint-200' : 'border-ink-50'}`}>
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[13px] text-ink-500">
+    <div className={`bg-white rounded-xl px-3 py-2.5 border ${accepted ? 'border-mint-200' : 'border-ink-50'}`}>
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[12px] text-ink-500">
           {initial}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <div className="font-semibold text-ink-600 text-[14px]">
-              {senderName}
-            </div>
-            {accepted ? (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
-                ✓ Acceptée
-              </span>
-            ) : (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold">
-                ⏳ En attente
-              </span>
-            )}
-          </div>
-          <div className="text-[13px] text-ink-400">
-            {proposal.pickup_city} → {proposal.destination_city} ·{' '}
-            <span className="font-semibold text-mint-600">{formatEuros(netTraveler)}</span>
-          </div>
-
-          {accepted && proposal.sender_profile?.phone && (
-            <div className="mt-2.5 rounded-xl bg-mint-50 border border-mint-200/60 px-3 py-2 flex items-center gap-2 flex-wrap">
-              <span className="text-[13px] text-ink-600 font-medium num-display">
-                {proposal.sender_profile.phone}
-              </span>
-              <a
-                href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
-              >
-                WhatsApp
-              </a>
-            </div>
+        <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+          <span className="font-semibold text-ink-600">{senderName}</span>
+          <span className="text-ink-300">·</span>
+          <span className="text-ink-500 truncate">{proposal.pickup_city} → {proposal.destination_city}</span>
+          <span className="text-ink-300">·</span>
+          <span className="font-semibold text-mint-600 num-display">{formatEuros(netTraveler)}</span>
+          {accepted ? (
+            <span className="text-[11px] text-mint-600 ml-1">✓ acceptée</span>
+          ) : (
+            <span className="text-[11px] text-ink-300 ml-1">⏳ en attente</span>
           )}
         </div>
+
+        {/* WhatsApp shortcut inline */}
+        {accepted && proposal.sender_profile?.phone && (
+          <a
+            href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
+          >
+            WhatsApp
+          </a>
+        )}
       </div>
     </div>
   );
@@ -2066,17 +2005,13 @@ function TripsView({
   });
   cancelledTrips.forEach((trip) => {
     historyItems.push(
-      <div key={`ct-${trip.id}`} className="bg-white rounded-2xl p-4 border border-ink-50 opacity-70">
-        <div className="flex items-center gap-3">
-          <Plane className="w-4 h-4 text-ink-300" />
-          <div className="flex-1">
-            <div className="text-[14px] text-ink-500">
-              {trip.departure_city} → {trip.arrival_city}
-            </div>
-            <div className="text-[12px] text-ink-400">
-              {formatShortDate(trip.departure_date)} · Trajet annulé
-            </div>
-          </div>
+      <div key={`ct-${trip.id}`} className="bg-white rounded-xl px-3 py-2.5 border border-ink-50 opacity-70">
+        <div className="flex items-center gap-3 text-[13px]">
+          <Plane className="w-3.5 h-3.5 text-ink-300 flex-shrink-0" />
+          <span className="text-ink-500">{trip.departure_city} → {trip.arrival_city}</span>
+          <span className="text-ink-300">·</span>
+          <span className="text-ink-400 num-display">{formatShortDate(trip.departure_date)}</span>
+          <span className="text-[11px] text-ink-300 ml-auto">✕ annulé</span>
         </div>
       </div>
     );
@@ -2266,30 +2201,16 @@ function SendsView({
 function RequestCardSimple({ request, t }: { request: ShippingRequestRow; t: Translations }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
   return (
-    <div className="bg-white rounded-2xl p-5 border border-ink-50">
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center text-xl">
+    <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
           {cat?.icon}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-1.5">
-            <div className="font-semibold text-ink-600 flex items-center gap-2 flex-wrap text-[15px]">
-              <span>{request.pickup_city}</span>
-              <ArrowRight className="w-3.5 h-3.5 text-ink-300" />
-              <span>{request.destination_city}</span>
-            </div>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold uppercase tracking-[0.06em]">
-              Publiée
-            </span>
-          </div>
-          <div className="text-[13px] text-ink-400">
-            Avant le {formatShortDate(request.desired_delivery_date)} ·{' '}
-            <span className="font-semibold text-ink-600">{formatEuros(request.budget)}</span>{' '}
-            <span className="text-[11px] text-ink-300">budget</span>
-          </div>
-          <p className="text-[13px] text-ink-400 mt-2 leading-relaxed">
-            En attente de propositions de voyageurs.
-          </p>
+        <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+          <span className="font-semibold text-ink-600">{request.pickup_city} → {request.destination_city}</span>
+          <span className="text-ink-300">·</span>
+          <span className="text-ink-500 num-display">{formatEuros(request.budget)}</span>
+          <span className="text-[11px] text-ink-300 ml-1">⏳ en attente de propositions</span>
         </div>
       </div>
     </div>
