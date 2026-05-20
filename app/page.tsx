@@ -101,7 +101,7 @@ export default function HomePage() {
       if (activeFrom && !tv.departure_city.toLowerCase().includes(activeFrom.toLowerCase())) return false;
       if (activeTo && !tv.arrival_city.toLowerCase().includes(activeTo.toLowerCase())) return false;
       if (activeDate && tv.departure_date > activeDate) return false;
-      if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
+     if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
       if (verifiedOnly && tv.profile?.verification_level !== 'id_verified' && tv.profile?.verification_level !== 'trusted') return false;
       return true;
     });
