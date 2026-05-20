@@ -8,6 +8,7 @@ import { Logo } from '@/components/illustrations/Logo';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
+import { nameInitial, formatName } from '@/lib/utils';
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
@@ -21,10 +22,9 @@ export function Navbar() {
     { href: '/trust', label: t.nav_trust },
   ];
 
-  const initial =
-    profile?.full_name?.trim().charAt(0).toUpperCase() ||
-    user?.email?.charAt(0).toUpperCase() ||
-    '·';
+  const initial = profile?.full_name
+    ? nameInitial(profile.full_name)
+    : (user?.email?.charAt(0).toUpperCase() ?? '·');
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-cream-50/85 border-b border-ink-50">
