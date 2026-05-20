@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { LocationSelector, type LocationValue } from '@/components/ui/LocationSelector';
 import { VerificationBadge } from '@/components/ui/Badge';
-import { formatShortDate } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { browser } from '@/lib/supabase/queries';
 import type { TravelerTripRow, Profile } from '@/lib/supabase/types';
@@ -173,11 +173,11 @@ export default function HomePage() {
                 >
                   <div className="flex items-center gap-3 mb-5">
                     <div className="w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[15px] text-lavender-700">
-                      {(tv.profile?.full_name ?? '·').charAt(0).toUpperCase()}
+                      {nameInitial(tv.profile?.full_name)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-ink-600 truncate text-[15px]">
-                        {tv.profile?.full_name ?? '—'}
+                        {formatName(tv.profile?.full_name) || '—'}
                       </div>
                       <div className="flex items-center gap-1 text-[13px] text-ink-400">
                         <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
