@@ -3,15 +3,13 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail, Lock, ArrowRight, Loader2, Check, RefreshCw } from 'lucide-react';
+import { Lock, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { purgeStaleSession } from '@/lib/supabase/auth-provider';
 import { withTimeout } from '@/lib/supabase/timeout';
 import { useI18n } from '@/lib/i18n/context';
-
-type Mode = 'password' | 'magic';
 
 function LoginInner() {
   const router = useRouter();
@@ -20,14 +18,12 @@ function LoginInner() {
   const recovered = searchParams.get('recovered') === '1';
   const { t } = useI18n();
 
-  const [mode, setMode] = useState<Mode>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [magicSent, setMagicSent] = useState(false);
 
-  async function handlePasswordSignIn(e: React.FormEvent) {
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -46,49 +42,6 @@ function LoginInner() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const supabase = getBrowserClient();
-      const { error } = await withTimeout(
-        supabase.auth.signInWithOtp({
-          email,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-          },
-        }),
-        10000,
-        'Send magic link'
-      );
-      if (error) throw error;
-      setMagicSent(true);
-    } catch (err: any) {
-      setError(err.message ?? t.auth_error_generic);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (magicSent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-5 py-16">
-        <div className="max-w-md w-full text-center">
-          <div className="w-14 h-14 rounded-full bg-mint-500 mx-auto flex items-center justify-center mb-7">
-            <Check className="w-7 h-7 text-white" strokeWidth={2.5} />
-          </div>
-          <h1 className="text-3xl font-extrabold text-ink-600 mb-3 tracking-[-0.025em]">
-            {t.auth_magic_sent_title}
-          </h1>
-          <p className="text-[16px] text-ink-400 leading-relaxed">
-            {t.auth_magic_sent_text} <span className="font-semibold text-ink-600">{email}</span>
-          </p>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -111,26 +64,7 @@ function LoginInner() {
           </div>
         )}
 
-        <div className="flex gap-1 mb-6 border-b border-ink-100">
-          <button
-            onClick={() => setMode('password')}
-            className={`px-4 py-3 text-[14px] font-medium -mb-px transition-colors ${
-              mode === 'password' ? 'text-ink-600 border-b-2 border-ink-500' : 'text-ink-300 hover:text-ink-500'
-            }`}
-          >
-            {t.auth_tab_password}
-          </button>
-          <button
-            onClick={() => setMode('magic')}
-            className={`px-4 py-3 text-[14px] font-medium -mb-px transition-colors ${
-              mode === 'magic' ? 'text-ink-600 border-b-2 border-ink-500' : 'text-ink-300 hover:text-ink-500'
-            }`}
-          >
-            {t.auth_tab_magic}
-          </button>
-        </div>
-
-        <form onSubmit={mode === 'password' ? handlePasswordSignIn : handleMagicLink} className="space-y-4">
+        <form onSubmit={handleSignIn} className="space-y-4">
           <Input
             type="email"
             label={t.auth_email}
@@ -140,17 +74,15 @@ function LoginInner() {
             required
           />
 
-          {mode === 'password' && (
-            <Input
-              type="password"
-              label={t.auth_password}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          )}
+          <Input
+            type="password"
+            label={t.auth_password}
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+          />
 
           {error && (
             <div className="rounded-xl bg-blush-50 px-4 py-3 text-[14px] text-blush-500">
@@ -158,9 +90,9 @@ function LoginInner() {
             </div>
           )}
 
-          <Button type="submit" fullWidth disabled={loading || !email || (mode === 'password' && !password)}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : mode === 'password' ? <Lock className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
-            {mode === 'password' ? t.auth_login_btn : t.auth_send_magic}
+          <Button type="submit" fullWidth disabled={loading || !email || !password}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+            Se connecter
           </Button>
         </form>
 
