@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X, User, LogOut, Wallet } from 'lucide-react';
+import { Menu, X, User, LogOut, Wallet, Inbox } from 'lucide-react';
 import { Logo } from '@/components/illustrations/Logo';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { nameInitial, formatName, formatEuros } from '@/lib/utils';
@@ -14,27 +13,27 @@ import { browser } from '@/lib/supabase/queries';
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [hasUnread, setHasUnread] = useState(false);
   const { t } = useI18n();
   const { user, profile, loading, signOut } = useAuth();
 
-  // Fetch wallet balance when the user logs in. Re-runs whenever the
-  // user changes (login / logout). The Navbar re-mounts on hard refresh,
-  // so this stays fresh enough for the MVP. A future improvement would
-  // be a Supabase realtime subscription.
+  // Fetch wallet balance + unread status when the user logs in. Both are
+  // best-effort: failures fall back to 0/false silently.
   useEffect(() => {
     if (!user) {
       setWalletBalance(null);
+      setHasUnread(false);
       return;
     }
     let cancelled = false;
     browser
       .getWalletBalance(user.id)
-      .then((v) => {
-        if (!cancelled) setWalletBalance(v);
-      })
-      .catch(() => {
-        if (!cancelled) setWalletBalance(0);
-      });
+      .then((v) => { if (!cancelled) setWalletBalance(v); })
+      .catch(() => { if (!cancelled) setWalletBalance(0); });
+    browser
+      .hasUnreadMessages(user.id)
+      .then((v) => { if (!cancelled) setHasUnread(v); })
+      .catch(() => { if (!cancelled) setHasUnread(false); });
     return () => { cancelled = true; };
   }, [user]);
 
@@ -69,7 +68,19 @@ export function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-2">
-            <LanguageSwitcher />
+            {user && (
+              <Link
+                href="/messages"
+                className="relative p-2 rounded-full hover:bg-ink-50 text-ink-400 hover:text-ink-600 transition-colors"
+                aria-label="Messages"
+                title="Messages"
+              >
+                <Inbox className="w-[18px] h-[18px]" />
+                {hasUnread && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blush-500 border border-cream-50" />
+                )}
+              </Link>
+            )}
 
             {loading ? (
               <>
@@ -145,7 +156,18 @@ export function Navbar() {
           </div>
 
           <div className="flex md:hidden items-center gap-1">
-            <LanguageSwitcher compact />
+            {user && (
+              <Link
+                href="/messages"
+                className="relative p-2 text-ink-500"
+                aria-label="Messages"
+              >
+                <Inbox className="h-5 w-5" />
+                {hasUnread && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blush-500 border border-cream-50" />
+                )}
+              </Link>
+            )}
             <button
               className="p-2 text-ink-500"
               onClick={() => setOpen(!open)}
