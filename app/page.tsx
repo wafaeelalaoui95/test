@@ -8,7 +8,6 @@ import {
   Plane,
   Star,
   Calendar,
-  MapPin,
   Search,
   Loader2,
   SlidersHorizontal,
@@ -19,6 +18,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
+import { CityCombobox } from '@/components/ui/CityCombobox';
 import { formatShortDate, nameInitial, displayName } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
@@ -146,17 +146,11 @@ export default function HomePage() {
                       <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                         Départ
                       </label>
-                      <div className="relative">
-                        <MapPin className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />
-                        <input
-                          type="text"
-                          value={searchFrom}
-                          onChange={(e) => setSearchFrom(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                          placeholder="Paris, Casablanca…"
-                          className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none"
-                        />
-                      </div>
+                      <CityCombobox
+                        value={searchFrom}
+                        onChange={setSearchFrom}
+                        placeholder="Paris, Casablanca…"
+                      />
                     </div>
 
                     <div className="hidden md:block w-px bg-ink-50 my-3 flex-shrink-0" />
@@ -165,17 +159,11 @@ export default function HomePage() {
                       <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                         Arrivée
                       </label>
-                      <div className="relative">
-                        <MapPin className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />
-                        <input
-                          type="text"
-                          value={searchTo}
-                          onChange={(e) => setSearchTo(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                          placeholder="Londres, Marrakech…"
-                          className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none"
-                        />
-                      </div>
+                      <CityCombobox
+                        value={searchTo}
+                        onChange={setSearchTo}
+                        placeholder="Londres, Marrakech…"
+                      />
                     </div>
 
                     <div className="hidden md:block w-px bg-ink-50 my-3 flex-shrink-0" />
