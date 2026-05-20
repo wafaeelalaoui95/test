@@ -372,40 +372,9 @@ export default function HomePage() {
 
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
             <div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-1">
-                {mode === 'travelers' ? (
-                  hasActiveSearch ? (
-                    <>
-                      <span className="num-display">{filteredTrips.length}</span> voyageur{filteredTrips.length > 1 ? 's' : ''} trouvé{filteredTrips.length > 1 ? 's' : ''}
-                    </>
-                  ) : (
-                    <>Voyageurs disponibles</>
-                  )
-                ) : (
-                  hasActiveSearch ? (
-                    <>
-                      <span className="num-display">{filteredRequests.length}</span> demande{filteredRequests.length > 1 ? 's' : ''} trouvée{filteredRequests.length > 1 ? 's' : ''}
-                    </>
-                  ) : (
-                    <>Demandes de transport</>
-                  )
-                )}
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-ink-600 tracking-[-0.025em]">
+                {mode === 'travelers' ? 'Voyageurs disponibles' : 'Demandes de transport'}
               </h2>
-              <p className="text-[14px] text-ink-400">
-                {mode === 'travelers' ? (
-                  hasActiveSearch ? (
-                    <>Sur <span className="num-display font-medium text-ink-500">{trips.length}</span> annonces actives</>
-                  ) : (
-                    <><span className="num-display font-medium text-ink-500">{trips.length}</span> personnes prêtes à aider</>
-                  )
-                ) : (
-                  hasActiveSearch ? (
-                    <>Sur <span className="num-display font-medium text-ink-500">{requests.length}</span> demandes actives</>
-                  ) : (
-                    <><span className="num-display font-medium text-ink-500">{requests.length}</span> personnes qui cherchent un voyageur</>
-                  )
-                )}
-              </p>
             </div>
             <Link href={user ? (mode === 'travelers' ? '/envoyer' : '/voyager') : '/login'}>
               <Button size="sm">
