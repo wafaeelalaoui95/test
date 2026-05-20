@@ -489,6 +489,79 @@ export async function updateBookingIntentStatus(
   if (error) throw error;
 }
 
+/**
+ * List booking intents created by `senderId` (the user's outgoing
+ * reservations), enriched with the traveler's public info so the sender
+ * can contact them once accepted.
+ *
+ * We do 3 queries instead of 1 with joins, for the same reason as everywhere
+ * else: nested-RLS evaluation stalls. Plain selects + client-side merge are
+ * boring but reliable.
+ */
+export async function listMyBookings(
+  supabase: SB,
+  senderId: string
+): Promise<
+  Array<
+    BookingIntentRow & {
+      traveler_trip: Pick<TravelerTripRow, 'id' | 'departure_city' | 'arrival_city' | 'departure_date' | 'user_id'> | null;
+      traveler_profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'phone' | 'verification_level' | 'rating' | 'trips_completed'> | null;
+    }
+  >
+> {
+  // 1) my booking intents
+  const { data: intents, error: intentsErr } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .select('*')
+        .eq('sender_id', senderId)
+        .order('created_at', { ascending: false })
+    ),
+    8000,
+    'My bookings'
+  );
+  if (intentsErr) throw intentsErr;
+  if (!intents || intents.length === 0) return [];
+
+  // 2) the trips referenced
+  const tripIds = Array.from(new Set(intents.map((i: any) => i.traveler_trip_id)));
+  const { data: trips } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('traveler_trips')
+        .select('id, departure_city, arrival_city, departure_date, user_id')
+        .in('id', tripIds)
+    ),
+    8000,
+    'Bookings trips'
+  );
+  const tripById = new Map((trips ?? []).map((t: any) => [t.id, t]));
+
+  // 3) the traveler profiles (only the owners of those trips)
+  const travelerIds = Array.from(new Set((trips ?? []).map((t: any) => t.user_id)));
+  const { data: profiles } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, phone, verification_level, rating, trips_completed')
+        .in('id', travelerIds)
+    ),
+    8000,
+    'Traveler profiles'
+  );
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  return intents.map((i: any) => {
+    const trip = tripById.get(i.traveler_trip_id) as any;
+    return {
+      ...i,
+      traveler_trip: trip ?? null,
+      traveler_profile: (trip ? profileById.get(trip.user_id) : null) as any,
+    };
+  });
+}
+
 // ============================================================================
 // Browser convenience wrappers
 // ============================================================================
@@ -515,4 +588,5 @@ export const browser = {
   listIncomingBookingIntents: (travelerId: string) => listIncomingBookingIntents(getBrowserClient(), travelerId),
   updateBookingIntentStatus: (intentId: string, status: 'confirmed' | 'cancelled') =>
     updateBookingIntentStatus(getBrowserClient(), intentId, status),
+  listMyBookings: (senderId: string) => listMyBookings(getBrowserClient(), senderId),
 };
