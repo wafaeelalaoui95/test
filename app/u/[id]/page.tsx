@@ -30,8 +30,8 @@ type PublicProfile = Pick<
   'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed' | 'city' | 'country'
 >;
 
-export default function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: travelerId } = use(params);
+export default function PublicProfilePage({ params }: { params: { id: string } }) {
+  const travelerId = params.id;
   const { t } = useI18n();
   const { user } = useAuth();
 
