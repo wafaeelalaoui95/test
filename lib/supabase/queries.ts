@@ -17,7 +17,6 @@ import type {
   TravelerTripRow,
   ShippingRequestRow,
   MatchRow,
-  MessageRow,
   ReviewRow,
 } from './types';
 
@@ -271,38 +270,6 @@ export async function createMatch(
       shipping_request_id: shippingRequestId,
       status: 'proposed',
       agreed_compensation: agreedCompensation ?? null,
-    })
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-// ============================================================================
-// MESSAGES
-// ============================================================================
-
-export async function listMessagesForMatch(supabase: SB, matchId: string): Promise<MessageRow[]> {
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('match_id', matchId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function sendMessage(
-  supabase: SB,
-  input: { senderId: string; receiverId: string; matchId?: string; message: string }
-): Promise<MessageRow> {
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({
-      sender_id: input.senderId,
-      receiver_id: input.receiverId,
-      match_id: input.matchId ?? null,
-      message: input.message,
     })
     .select('*')
     .single();
@@ -1105,8 +1072,6 @@ export const browser = {
   listMyMatches: (userId: string) => listMyMatches(getBrowserClient(), userId),
   createMatch: (travelerTripId: string, shippingRequestId: string, agreedCompensation?: number) =>
     createMatch(getBrowserClient(), travelerTripId, shippingRequestId, agreedCompensation),
-  listMessagesForMatch: (matchId: string) => listMessagesForMatch(getBrowserClient(), matchId),
-  sendMessage: (input: Parameters<typeof sendMessage>[1]) => sendMessage(getBrowserClient(), input),
   listReviewsForUser: (userId: string) => listReviewsForUser(getBrowserClient(), userId),
   createReport: (input: Parameters<typeof createReport>[1]) => createReport(getBrowserClient(), input),
   getPublicProfile: (userId: string) => getPublicProfile(getBrowserClient(), userId),
