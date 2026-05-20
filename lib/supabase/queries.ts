@@ -157,6 +157,59 @@ export async function listOpenRequests(supabase: SB): Promise<ShippingRequestRow
   return data ?? [];
 }
 
+/**
+ * Same as listOpenRequests but each row is enriched with its sender profile,
+ * so the home page can render the sender's name, avatar, and verification.
+ * Two-query approach (instead of join) to dodge nested RLS stalls.
+ */
+export type ShippingRequestWithProfile = ShippingRequestRow & {
+  profile: Pick<
+    Profile,
+    'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'
+  > | null;
+};
+
+export async function listOpenRequestsWithProfile(
+  supabase: SB
+): Promise<ShippingRequestWithProfile[]> {
+  // 1. Get the requests
+  const { data: requests, error: reqErr } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('shipping_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(50)
+    ),
+    8000,
+    'List open requests'
+  );
+  if (reqErr) throw reqErr;
+  if (!requests || requests.length === 0) return [];
+
+  // 2. Batch-load all the unique senders' profiles
+  const senderIds = Array.from(new Set(requests.map((r: ShippingRequestRow) => r.user_id)));
+  const { data: profiles } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, verification_level, rating, trips_completed')
+        .in('id', senderIds)
+    ),
+    8000,
+    'List sender profiles'
+  );
+
+  const profileMap = new Map<string, Profile>();
+  (profiles ?? []).forEach((p: any) => profileMap.set(p.id, p));
+
+  return requests.map((r: ShippingRequestRow) => ({
+    ...r,
+    profile: (profileMap.get(r.user_id) as any) ?? null,
+  }));
+}
+
 export async function listMyRequests(supabase: SB, userId: string): Promise<ShippingRequestRow[]> {
   const { data, error } = await supabase
     .from('shipping_requests')
@@ -354,7 +407,7 @@ export async function listTripsByUser(
 
 export type BookingIntentInput = {
   sender_id: string;
-  traveler_trip_id: string;
+  traveler_trip_id: string | null;
   item_category: string;
   item_description?: string | null;
   proposed_price: number;
@@ -363,6 +416,11 @@ export type BookingIntentInput = {
   payment_intent_id?: string | null;
   payment_status?: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed';
   payment_amount?: number | null;
+  // New for traveler→sender flow:
+  shipping_request_id?: string | null;
+  traveler_message?: string | null;
+  initiated_by?: 'sender' | 'traveler';
+  traveler_user_id?: string | null;
 };
 
 export async function createBookingIntent(
@@ -385,6 +443,10 @@ export async function createBookingIntent(
           payment_intent_id: input.payment_intent_id ?? null,
           payment_status: input.payment_status ?? 'unpaid',
           payment_amount: input.payment_amount ?? null,
+          shipping_request_id: input.shipping_request_id ?? null,
+          traveler_message: input.traveler_message ?? null,
+          initiated_by: input.initiated_by ?? 'sender',
+          traveler_user_id: input.traveler_user_id ?? null,
         })
         .select('*')
         .maybeSingle()
@@ -399,7 +461,7 @@ export async function createBookingIntent(
 export type BookingIntentRow = {
   id: string;
   sender_id: string;
-  traveler_trip_id: string;
+  traveler_trip_id: string | null;
   item_category: string;
   item_description: string | null;
   proposed_price: number;
@@ -410,6 +472,14 @@ export type BookingIntentRow = {
   payment_intent_id: string | null;
   payment_status: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed';
   payment_amount: number | null;
+  delivery_proof_url: string | null;
+  delivery_proof_uploaded_at: string | null;
+  delivery_proof_receiver_name: string | null;
+  delivery_proof_notes: string | null;
+  shipping_request_id: string | null;
+  traveler_message: string | null;
+  initiated_by: 'sender' | 'traveler';
+  traveler_user_id: string | null;
 };
 
 /**
@@ -542,43 +612,113 @@ export async function listMyBookings(
   if (intentsErr) throw intentsErr;
   if (!intents || intents.length === 0) return [];
 
-  // 2) the trips referenced
-  const tripIds = Array.from(new Set(intents.map((i: any) => i.traveler_trip_id)));
-  const { data: trips } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('traveler_trips')
-        .select('id, departure_city, arrival_city, departure_date, user_id')
-        .in('id', tripIds)
-    ),
-    8000,
-    'Bookings trips'
+  // 2) the trips referenced (only those with trips set)
+  const tripIds = Array.from(
+    new Set(intents.map((i: any) => i.traveler_trip_id).filter(Boolean))
   );
+  const { data: trips } = tripIds.length > 0
+    ? await withTimeout(
+        Promise.resolve(
+          supabase
+            .from('traveler_trips')
+            .select('id, departure_city, arrival_city, departure_date, user_id')
+            .in('id', tripIds)
+        ),
+        8000,
+        'Bookings trips'
+      )
+    : { data: [] as any[] };
   const tripById = new Map((trips ?? []).map((t: any) => [t.id, t]));
 
-  // 3) the traveler profiles (only the owners of those trips)
-  const travelerIds = Array.from(new Set((trips ?? []).map((t: any) => t.user_id)));
+  // 3) the traveler profiles. Two sources to merge:
+  //    - owners of the referenced trips (sender→traveler flow)
+  //    - traveler_user_id directly when set (traveler→sender flow,
+  //      where there's no trip yet)
+  const travelerIds = Array.from(
+    new Set([
+      ...(trips ?? []).map((t: any) => t.user_id),
+      ...intents.map((i: any) => i.traveler_user_id).filter(Boolean),
+    ])
+  );
+  const { data: profiles } = travelerIds.length > 0
+    ? await withTimeout(
+        Promise.resolve(
+          supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url, phone, verification_level, rating, trips_completed')
+            .in('id', travelerIds)
+        ),
+        8000,
+        'Traveler profiles'
+      )
+    : { data: [] as any[] };
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  return intents.map((i: any) => {
+    const trip = i.traveler_trip_id ? (tripById.get(i.traveler_trip_id) as any) : null;
+    // Prefer trip owner's profile (sender→traveler) but fall back to
+    // traveler_user_id directly (traveler→sender flow)
+    const travelerProfileId = trip?.user_id ?? i.traveler_user_id;
+    return {
+      ...i,
+      traveler_trip: trip ?? null,
+      traveler_profile: (travelerProfileId ? profileById.get(travelerProfileId) : null) as any,
+    };
+  });
+}
+
+/**
+ * List the proposals a traveler has made on public shipping requests.
+ * These are booking_intents where initiated_by='traveler' and the
+ * traveler_user_id matches.
+ *
+ * Returns each row enriched with the SENDER's profile so the traveler
+ * can see who they offered to help.
+ */
+export async function listMyTravelerProposals(
+  supabase: SB,
+  travelerId: string
+): Promise<
+  Array<
+    BookingIntentRow & {
+      sender_profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'phone' | 'verification_level' | 'rating' | 'trips_completed'> | null;
+    }
+  >
+> {
+  const { data: intents, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .select('*')
+        .eq('traveler_user_id', travelerId)
+        .eq('initiated_by', 'traveler')
+        .order('created_at', { ascending: false })
+    ),
+    8000,
+    'My traveler proposals'
+  );
+  if (error) throw error;
+  if (!intents || intents.length === 0) return [];
+
+  const senderIds = Array.from(new Set(intents.map((i: any) => i.sender_id)));
   const { data: profiles } = await withTimeout(
     Promise.resolve(
       supabase
         .from('profiles')
         .select('id, full_name, avatar_url, phone, verification_level, rating, trips_completed')
-        .in('id', travelerIds)
+        .in('id', senderIds)
     ),
     8000,
-    'Traveler profiles'
+    'Sender profiles for proposals'
   );
   const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
 
-  return intents.map((i: any) => {
-    const trip = tripById.get(i.traveler_trip_id) as any;
-    return {
-      ...i,
-      traveler_trip: trip ?? null,
-      traveler_profile: (trip ? profileById.get(trip.user_id) : null) as any,
-    };
-  });
+  return intents.map((i: any) => ({
+    ...i,
+    sender_profile: (profileById.get(i.sender_id) as any) ?? null,
+  }));
 }
+
 /**
  * Count the active booking intents on a trip — used to show a warning
  * before canceling. "Active" = pending or confirmed/authorized, i.e. not
@@ -608,10 +748,17 @@ export async function countActiveBookingsForTrip(
  * Cancel a trip. Marks the trip as `cancelled` so it disappears from the
  * search results, and triggers a cancel/refund on any pending or
  * authorized booking_intents pointing at it.
+ *
+ * Stripe payments still in `authorized` state are released (no funds moved).
+ * Captured payments are NOT touched here — those would need a refund
+ * operation, which has different rules (window, fees, etc.). For now we
+ * just mark them and the operator handles them out-of-band.
  */
 export async function cancelTrip(supabase: SB, tripId: string): Promise<void> {
+  // 1. Find all non-cancelled booking intents on this trip
   const { intents } = await countActiveBookingsForTrip(supabase, tripId);
 
+  // 2. Mark the trip itself as cancelled
   const { error: tripErr } = await withTimeout(
     Promise.resolve(
       supabase
@@ -624,13 +771,21 @@ export async function cancelTrip(supabase: SB, tripId: string): Promise<void> {
   );
   if (tripErr) throw tripErr;
 
+  // 3. For each booking intent, mark it cancelled and try to release its
+  //    Stripe authorization. We do these in parallel with allSettled so
+  //    one failing call doesn't block the rest — the trip is already
+  //    cancelled in DB, that's the important bit.
   await Promise.allSettled(
     intents.map(async (intent) => {
+      // Update DB row
       await supabase
         .from('booking_intents')
         .update({ status: 'cancelled' })
         .eq('id', intent.id);
 
+      // If there's a Stripe authorization still standing, cancel it.
+      // Captured payments need a different operation (refund) we don't
+      // handle automatically — flag them for manual reconciliation.
       if (intent.payment_intent_id && intent.payment_status === 'authorized') {
         try {
           await fetch('/api/stripe/cancel', {
@@ -642,12 +797,13 @@ export async function cancelTrip(supabase: SB, tripId: string): Promise<void> {
             }),
           });
         } catch {
-          // Best-effort
+          // Best-effort; the booking is already cancelled in DB.
         }
       }
     })
   );
 }
+
 // ============================================================================
 // Browser convenience wrappers
 // ============================================================================
@@ -677,4 +833,6 @@ export const browser = {
   listMyBookings: (senderId: string) => listMyBookings(getBrowserClient(), senderId),
   countActiveBookingsForTrip: (tripId: string) => countActiveBookingsForTrip(getBrowserClient(), tripId),
   cancelTrip: (tripId: string) => cancelTrip(getBrowserClient(), tripId),
+  listOpenRequestsWithProfile: () => listOpenRequestsWithProfile(getBrowserClient()),
+  listMyTravelerProposals: (travelerId: string) => listMyTravelerProposals(getBrowserClient(), travelerId),
 };
