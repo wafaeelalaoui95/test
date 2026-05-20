@@ -73,10 +73,17 @@ export async function listOpenTrips(
 ): Promise<(TravelerTripRow & { profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'> | null })[]> {
   // Step 1: load trips (no join — joins trigger nested RLS evaluation that
   // can stall the request indefinitely on Supabase free tier).
+  // Hide trips whose departure date has already passed (server-side).
+  // We compute "today" as an ISO date in UTC; small mismatch with local
+  // timezones is acceptable — at worst a same-day trip stays visible a
+  // few extra hours after departure, which is fine for a discovery feed.
+  const today = new Date().toISOString().slice(0, 10);
+
   let q = supabase
     .from('traveler_trips')
     .select('*')
     .eq('status', 'open')
+    .gte('departure_date', today)
     .order('departure_date', { ascending: true })
     .limit(filters?.limit ?? 30);
 
@@ -323,6 +330,7 @@ export async function listTripsByUser(
   supabase: SB,
   userId: string
 ): Promise<TravelerTripRow[]> {
+  const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await withTimeout(
     Promise.resolve(
       supabase
@@ -330,6 +338,7 @@ export async function listTripsByUser(
         .select('*')
         .eq('user_id', userId)
         .eq('status', 'open')
+        .gte('departure_date', today)
         .order('departure_date', { ascending: true })
     ),
     8000,
