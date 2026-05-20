@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Form';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
-import { formatShortDate } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial, displayName } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
@@ -167,9 +167,9 @@ export default function MyPage() {
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
 
-  const initial = profile?.full_name?.trim().charAt(0).toUpperCase()
-                ?? user.email?.charAt(0).toUpperCase()
-                ?? '·';
+  const initial = profile?.full_name
+    ? nameInitial(profile.full_name)
+    : (user.email?.charAt(0).toUpperCase() ?? '·');
 
   return (
     <div className="min-h-screen py-12 lg:py-20">
@@ -184,7 +184,7 @@ export default function MyPage() {
           </div>
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.03em]">
-              {profile?.full_name || t.me_title}
+              {formatName(profile?.full_name) || t.me_title}
             </h1>
             <p className="text-[14px] text-ink-400 mt-1">{user.email}</p>
           </div>
@@ -439,8 +439,8 @@ function BookingCard({ booking, t }: { booking: MyBooking; t: Translations }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
   const trip = booking.traveler_trip;
   const traveler = booking.traveler_profile;
-  const travelerName = traveler?.full_name ?? 'Voyageur';
-  const initial = travelerName.charAt(0).toUpperCase();
+  const travelerName = displayName(traveler?.full_name) || 'Voyageur';
+  const initial = nameInitial(traveler?.full_name);
 
   // Use Supabase auth.users email — we don't have it on the public profile
   // (RLS hides emails). For the contact info to be visible the simplest
@@ -709,8 +709,8 @@ function IntentCard({
   historic?: boolean;
 }) {
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
-  const senderName = intent.sender_profile?.full_name ?? 'Quelqu\'un';
-  const senderInitial = senderName.charAt(0).toUpperCase();
+  const senderName = displayName(intent.sender_profile?.full_name) || 'Quelqu\'un';
+  const senderInitial = nameInitial(intent.sender_profile?.full_name);
 
   async function handle(action: 'confirmed' | 'cancelled') {
     setBusy(action === 'confirmed' ? 'confirm' : 'cancel');
@@ -896,11 +896,11 @@ function ProfileTab({
       <form onSubmit={handleSave} className="lg:col-span-2 bg-white rounded-2xl p-7 border border-ink-50">
         <div className="flex items-center gap-4 mb-7 pb-7 border-b border-ink-50">
           <div className="w-14 h-14 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-xl text-lavender-700">
-            {(fullName || email).charAt(0).toUpperCase()}
+            {fullName ? nameInitial(fullName) : (email.charAt(0).toUpperCase())}
           </div>
           <div className="flex-1">
             <div className="text-xl font-bold text-ink-600 tracking-[-0.015em]">
-              {fullName || email}
+              {formatName(fullName) || email}
             </div>
             {profile && (
               <div className="mt-1.5">
