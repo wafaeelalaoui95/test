@@ -89,10 +89,12 @@ export function displayName(name: string | null | undefined): string {
   if (!formatted) return '';
   const parts = formatted.split(/\s+/).filter(Boolean);
   if (parts.length <= 1) return parts[0] ?? '';
-  // Take the first word as-is, then for each subsequent word use its first letter.
-  // For names with particles ("Wafae El Alaoui"), this gives "Wafae E." which
-  // is fine — the particle gets the initial.
+  // First name as-is, then ONE single initial from whatever follows.
+  // For names with particles ("Wafae El Alaoui"), the initial comes from the
+  // first non-first-name word — typically the family-name particle "E." which
+  // is short and readable. We deliberately don't show every initial ("E. A.")
+  // because that gives away too much identity for online searches.
   const first = parts[0];
-  const initials = parts.slice(1).map((p) => p.charAt(0).toUpperCase() + '.').join(' ');
-  return `${first} ${initials}`;
+  const initial = parts[1].charAt(0).toUpperCase();
+  return `${first} ${initial}.`;
 }
