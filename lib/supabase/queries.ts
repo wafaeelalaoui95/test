@@ -753,6 +753,93 @@ export async function getWalletBalance(supabase: SB, travelerId: string): Promis
 }
 
 /**
+ * List all wallet transactions for a traveler — bookings where I'm the
+ * traveler, with their full payment lifecycle info. We don't filter by
+ * payment_status so the wallet page can show all states (captured,
+ * authorized, canceled, failed).
+ *
+ * Each row is enriched with the SENDER's profile (to display who paid).
+ *
+ * "Available now" = captured (real money for the traveler)
+ * "Pending"        = authorized (held by Stripe, not yet released)
+ * "Cancelled"      = canceled or failed
+ */
+export type WalletTransaction = BookingIntentRow & {
+  sender_profile: Pick<
+    Profile,
+    'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating'
+  > | null;
+};
+
+export async function listWalletTransactions(
+  supabase: SB,
+  travelerId: string
+): Promise<WalletTransaction[]> {
+  // 1) Find every booking where I'm the traveler — either set directly,
+  //    or inferred from the trip I own.
+  //
+  //    To keep things simple we do TWO queries and merge: one by
+  //    traveler_user_id, one via trip owner. We dedupe by booking id.
+  const [byUser, byTrip] = await Promise.all([
+    withTimeout(
+      Promise.resolve(
+        supabase
+          .from('booking_intents')
+          .select('*')
+          .eq('traveler_user_id', travelerId)
+      ),
+      8000,
+      'Wallet by user'
+    ),
+    withTimeout(
+      (async () => {
+        // First get my trip IDs, then fetch bookings on them
+        const { data: trips } = await supabase
+          .from('traveler_trips')
+          .select('id')
+          .eq('user_id', travelerId);
+        const tripIds = (trips ?? []).map((t: any) => t.id);
+        if (tripIds.length === 0) return { data: [] as any[], error: null };
+        return supabase
+          .from('booking_intents')
+          .select('*')
+          .in('traveler_trip_id', tripIds);
+      })(),
+      8000,
+      'Wallet by trip'
+    ),
+  ]);
+
+  const all = new Map<string, BookingIntentRow>();
+  (byUser.data ?? []).forEach((b: BookingIntentRow) => all.set(b.id, b));
+  (byTrip.data ?? []).forEach((b: BookingIntentRow) => all.set(b.id, b));
+
+  const bookings = Array.from(all.values()).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  if (bookings.length === 0) return [];
+
+  // 2) Hydrate with sender profiles
+  const senderIds = Array.from(new Set(bookings.map((b) => b.sender_id)));
+  const { data: profiles } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, verification_level, rating')
+        .in('id', senderIds)
+    ),
+    8000,
+    'Wallet sender profiles'
+  );
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  return bookings.map((b) => ({
+    ...b,
+    sender_profile: (profileById.get(b.sender_id) as any) ?? null,
+  }));
+}
+
+/**
  * Count the active booking intents on a trip — used to show a warning
  * before canceling. "Active" = pending or confirmed/authorized, i.e. not
  * already cancelled.
@@ -869,4 +956,5 @@ export const browser = {
   listOpenRequestsWithProfile: () => listOpenRequestsWithProfile(getBrowserClient()),
   listMyTravelerProposals: (travelerId: string) => listMyTravelerProposals(getBrowserClient(), travelerId),
   getWalletBalance: (travelerId: string) => getWalletBalance(getBrowserClient(), travelerId),
+  listWalletTransactions: (travelerId: string) => listWalletTransactions(getBrowserClient(), travelerId),
 };
