@@ -97,22 +97,16 @@ export default function HomePage() {
   const filteredTrips = useMemo(() => {
     return trips.filter((tv) => {
       // Hide the user's own trips — they're not going to book themselves.
+      // Anonymous users see everything (user is null).
       if (user && tv.user_id === user.id) return false;
       if (activeFrom && !tv.departure_city.toLowerCase().includes(activeFrom.toLowerCase())) return false;
-      if (activeTo && !tv.arrival_city.toLowerCase().includes(activeTo.toLowerCase())) return false;
-      if (activeDate && tv.departure_date > activeDate) return false;
-     if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
-      if (verifiedOnly && tv.profile?.verification_level !== 'id_verified' && tv.profile?.verification_level !== 'trusted') return false;
-      return true;
-    });
-  }, [trips, user, activeFrom, activeTo, activeDate, maxBudget, verifiedOnly]);
       if (activeTo && !tv.arrival_city.toLowerCase().includes(activeTo.toLowerCase())) return false;
       if (activeDate && tv.departure_date > activeDate) return false;
       if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
       if (verifiedOnly && tv.profile?.verification_level !== 'id_verified' && tv.profile?.verification_level !== 'trusted') return false;
       return true;
     });
-  }, [trips, activeFrom, activeTo, activeDate, maxBudget, verifiedOnly]);
+  }, [trips, user, activeFrom, activeTo, activeDate, maxBudget, verifiedOnly]);
 
   const hasActiveSearch = !!(activeFrom || activeTo || activeDate || maxBudget !== '' || verifiedOnly);
 
