@@ -41,20 +41,16 @@ export function formatName(name: string | null | undefined): string {
   const trimmed = name.trim();
   if (!trimmed) return '';
 
-  // Split on whitespace AND keep hyphens internal to each word
+  // Title Case every word, including particles (El, Le, De…).
+  // Hyphens inside a word are preserved: "marie-claire" → "Marie-Claire".
   return trimmed
     .split(/\s+/)
-    .map((word, wordIdx) =>
+    .map((word) =>
       word
         .split('-')
-        .map((part, partIdx) => {
+        .map((part) => {
           if (!part) return part;
           const lower = part.toLowerCase();
-          // Particles in the middle of a name stay lowercase
-          // (but the first word of the whole name is always capitalised)
-          if (wordIdx > 0 && partIdx === 0 && PARTICLES.has(lower)) {
-            return lower;
-          }
           return lower.charAt(0).toUpperCase() + lower.slice(1);
         })
         .join('-')
