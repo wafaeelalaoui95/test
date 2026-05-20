@@ -255,7 +255,7 @@ export default function MyPage() {
               transition={{ duration: 0.2 }}
             >
               {tab === 'overview' && (
-                <OverviewTab stats={stats} matches={matches} t={t} />
+                <OverviewTab stats={stats} matches={matches} walletEuros={walletEuros} t={t} />
               )}
               {tab === 'requests' && <RequestsTab requests={requests} bookings={myBookings} t={t} />}
               {tab === 'trips' && <TripsTab trips={trips} t={t} />}
@@ -321,13 +321,17 @@ export default function MyPage() {
 function OverviewTab({
   stats,
   matches,
+  walletEuros,
   t,
 }: {
   stats: { active: number; pending: number; earned: number; completed: number };
   matches: MatchWithRefs[];
+  walletEuros: number;
   t: Translations;
 }) {
   const pendingMatches = matches.filter((m) => m.status === 'proposed');
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
   return (
     <div className="space-y-12">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-8 lg:gap-x-12">
@@ -338,6 +342,44 @@ function OverviewTab({
       </div>
 
       <div className="h-px bg-ink-50" />
+
+      {/* WALLET — total received from Stripe-captured payments */}
+      <div className="bg-gradient-to-br from-ink-500 to-ink-600 rounded-3xl p-7 lg:p-9 text-cream-50 relative overflow-hidden">
+        <div className="pointer-events-none absolute -top-12 -right-12 w-48 h-48 rounded-full bg-lavender-500/20 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-butter-500/15 blur-2xl" />
+
+        <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+          <div>
+            <div className="text-[11px] font-semibold text-cream-200/80 tracking-[0.12em] uppercase mb-3">
+              Mon portefeuille
+            </div>
+            <div className="flex items-baseline gap-3">
+              <span className="text-5xl lg:text-6xl font-extrabold tracking-[-0.025em] num-display">
+                {walletEuros.toFixed(2)}
+              </span>
+              <span className="text-2xl font-medium text-cream-200/90">€</span>
+            </div>
+            <p className="text-[14px] text-cream-200/70 mt-3 max-w-md leading-relaxed">
+              {walletEuros > 0
+                ? 'Total des paiements reçus pour les colis acheminés.'
+                : 'Vos gains s\'afficheront ici dès que vous accepterez votre première demande.'}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-start lg:items-end gap-2">
+            <button
+              onClick={() => setShowWithdrawModal(true)}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-cream-50 hover:bg-cream-100 text-ink-600 font-semibold text-[14px] transition-colors"
+            >
+              <Wallet className="w-4 h-4" />
+              Retirer mes gains
+            </button>
+            <span className="text-[11px] text-cream-200/60 italic">
+              🔧 Bientôt disponible
+            </span>
+          </div>
+        </div>
+      </div>
 
       <div className="grid sm:grid-cols-2 gap-3">
         <Link
