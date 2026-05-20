@@ -928,6 +928,171 @@ export async function cancelTrip(supabase: SB, tripId: string): Promise<void> {
 // Browser convenience wrappers
 // ============================================================================
 
+// =============================================================================
+// CHAT (conversations + messages)
+// =============================================================================
+
+export type ConversationRow = {
+  id: string;
+  booking_intent_id: string;
+  sender_id: string;
+  traveler_id: string;
+  last_email_to_sender_at: string | null;
+  last_email_to_traveler_at: string | null;
+  created_at: string;
+};
+
+export type MessageRowChat = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+};
+
+/**
+ * Get or create the conversation for a given booking. The conversation
+ * is auto-created the first time anyone opens the chat after the booking
+ * is confirmed. Returns the conversation row.
+ *
+ * Note: relies on the unique(booking_intent_id) constraint to handle
+ * concurrent creation gracefully — if two clients race, one wins and
+ * the other receives an error which we recover from by re-selecting.
+ */
+export async function getOrCreateConversation(
+  supabase: SB,
+  bookingIntentId: string,
+  senderId: string,
+  travelerId: string
+): Promise<ConversationRow> {
+  // Try select first — most calls after the first are read-only.
+  const { data: existing } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('conversations')
+        .select('*')
+        .eq('booking_intent_id', bookingIntentId)
+        .maybeSingle()
+    ),
+    6000,
+    'Get conversation'
+  );
+  if (existing) return existing as ConversationRow;
+
+  // Doesn't exist yet — create. The unique constraint protects against
+  // races; if INSERT fails because someone else created it just now, we
+  // re-select.
+  const { data: created, error } = await supabase
+    .from('conversations')
+    .insert({
+      booking_intent_id: bookingIntentId,
+      sender_id: senderId,
+      traveler_id: travelerId,
+    })
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    // Likely race — re-select. If it's another error, throw.
+    const { data: retry } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('booking_intent_id', bookingIntentId)
+      .maybeSingle();
+    if (retry) return retry as ConversationRow;
+    throw error;
+  }
+  return created as ConversationRow;
+}
+
+/**
+ * List messages in a conversation, oldest first (chat-style).
+ */
+export async function listMessages(
+  supabase: SB,
+  conversationId: string
+): Promise<MessageRowChat[]> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
+        .limit(200)
+    ),
+    8000,
+    'List messages'
+  );
+  if (error) throw error;
+  return (data ?? []) as MessageRowChat[];
+}
+
+/**
+ * Mark all messages from the OTHER user as read in this conversation.
+ * Called when the user opens the modal — we set read_at = now() on every
+ * message they didn't write themselves and which is still unread.
+ */
+export async function markMessagesRead(
+  supabase: SB,
+  conversationId: string,
+  userId: string
+): Promise<void> {
+  await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('conversation_id', conversationId)
+    .neq('sender_id', userId)
+    .is('read_at', null);
+}
+
+/**
+ * Count unread messages across all conversations the user is part of.
+ * Returns a map of conversation_id → unread count, used to show badges
+ * on each booking card and a global badge in the navbar.
+ */
+export async function listUnreadCountsByConversation(
+  supabase: SB,
+  userId: string
+): Promise<Record<string, number>> {
+  // 1. Get all conversations I'm in
+  const { data: convs } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('conversations')
+        .select('id')
+        .or(`sender_id.eq.${userId},traveler_id.eq.${userId}`)
+    ),
+    6000,
+    'My conversations'
+  );
+  const ids = (convs ?? []).map((c: any) => c.id);
+  if (ids.length === 0) return {};
+
+  // 2. Count unread messages from the OTHER user per conversation. We
+  //    fetch the messages (just id + conversation_id) and tally locally
+  //    — keeps RLS simple, no aggregate function needed.
+  const { data: unread } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('messages')
+        .select('id, conversation_id')
+        .in('conversation_id', ids)
+        .neq('sender_id', userId)
+        .is('read_at', null)
+    ),
+    6000,
+    'Unread messages'
+  );
+
+  const map: Record<string, number> = {};
+  (unread ?? []).forEach((m: any) => {
+    map[m.conversation_id] = (map[m.conversation_id] ?? 0) + 1;
+  });
+  return map;
+}
+
 export const browser = {
   getProfile: (userId: string) => getProfile(getBrowserClient(), userId),
   updateProfile: (userId: string, patch: Partial<Profile>) => updateProfile(getBrowserClient(), userId, patch),
@@ -957,4 +1122,12 @@ export const browser = {
   listMyTravelerProposals: (travelerId: string) => listMyTravelerProposals(getBrowserClient(), travelerId),
   getWalletBalance: (travelerId: string) => getWalletBalance(getBrowserClient(), travelerId),
   listWalletTransactions: (travelerId: string) => listWalletTransactions(getBrowserClient(), travelerId),
+  // Chat
+  getOrCreateConversation: (bookingIntentId: string, senderId: string, travelerId: string) =>
+    getOrCreateConversation(getBrowserClient(), bookingIntentId, senderId, travelerId),
+  listMessages: (conversationId: string) => listMessages(getBrowserClient(), conversationId),
+  markMessagesRead: (conversationId: string, userId: string) =>
+    markMessagesRead(getBrowserClient(), conversationId, userId),
+  listUnreadCountsByConversation: (userId: string) =>
+    listUnreadCountsByConversation(getBrowserClient(), userId),
 };
