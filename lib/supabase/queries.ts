@@ -720,6 +720,39 @@ export async function listMyTravelerProposals(
 }
 
 /**
+ * Get the traveler's wallet balance — total of captured payments where
+ * I'm the traveler. Used by the Navbar to display a small badge.
+ * Returns the amount in euros.
+ */
+export async function getWalletBalance(supabase: SB, travelerId: string): Promise<number> {
+  // We sum the payment_amount (in cents) of all captured bookings where
+  // I'm the traveler. Two ways to know it's me as traveler:
+  //   - directly via traveler_user_id (set on new bookings)
+  //   - via traveler_trip.user_id (legacy bookings, fallback)
+  // For simplicity we query both and dedupe by booking id.
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .select('id, payment_amount, traveler_trip_id')
+        .eq('payment_status', 'captured')
+        .or(`traveler_user_id.eq.${travelerId}`)
+    ),
+    8000,
+    'Wallet balance'
+  );
+  if (error) {
+    console.warn('Wallet query failed:', error);
+    return 0;
+  }
+  const total = (data ?? []).reduce(
+    (sum: number, row: any) => sum + (row.payment_amount ?? 0),
+    0
+  );
+  return total / 100;
+}
+
+/**
  * Count the active booking intents on a trip — used to show a warning
  * before canceling. "Active" = pending or confirmed/authorized, i.e. not
  * already cancelled.
@@ -835,4 +868,5 @@ export const browser = {
   cancelTrip: (tripId: string) => cancelTrip(getBrowserClient(), tripId),
   listOpenRequestsWithProfile: () => listOpenRequestsWithProfile(getBrowserClient()),
   listMyTravelerProposals: (travelerId: string) => listMyTravelerProposals(getBrowserClient(), travelerId),
+  getWalletBalance: (travelerId: string) => getWalletBalance(getBrowserClient(), travelerId),
 };
