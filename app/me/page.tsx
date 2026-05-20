@@ -46,7 +46,7 @@ import type {
   VerificationLevel,
 } from '@/lib/supabase/types';
 
-type TabId = 'trips' | 'sends' | 'history' | 'profile';
+type TabId = 'trips' | 'sends' | 'profile';
 
 type MatchWithRefs = MatchRow & {
   traveler_trip?: TravelerTripRow | null;
@@ -199,7 +199,6 @@ export default function MyPage() {
   const TABS: { id: TabId; label: string; icon: typeof Plane }[] = [
     { id: 'trips', label: 'Mes voyages', icon: Plane },
     { id: 'sends', label: 'Mes envois', icon: Package },
-    { id: 'history', label: 'Historique', icon: LayoutGrid },
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
 
@@ -346,16 +345,6 @@ export default function MyPage() {
                       prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' } : b))
                     );
                   }}
-                  t={t}
-                />
-              )}
-
-              {tab === 'history' && (
-                <HistoryView
-                  incomingIntents={incomingIntents}
-                  myBookings={myBookings}
-                  myProposals={myProposals}
-                  trips={trips}
                   t={t}
                 />
               )}
@@ -904,26 +893,20 @@ function BookingCard({
 
           {/* Action buttons */}
           {isTravelerProposal && onAcceptProposal && onDeclineProposal && (
-            <div className="mt-4 flex flex-col sm:flex-row gap-2">
+            <div className="mt-4 flex flex-row gap-2">
               <button
                 onClick={() => onDeclineProposal(booking.id)}
-                className="flex-1 px-4 py-2.5 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
+                className="flex-1 px-4 py-2 text-[13px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
               >
                 Refuser
               </button>
               <button
                 onClick={() => onAcceptProposal(booking)}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
               >
-                Accepter et payer {formatEuros(booking.proposed_price)}
+                Accepter · {formatEuros(booking.proposed_price)}
               </button>
             </div>
-          )}
-
-          {booking.status === 'pending' && !isTravelerProposal && (
-            <p className="text-[13px] text-ink-400 mt-2 leading-relaxed">
-              {travelerName.split(' ')[0]} n&apos;a pas encore répondu. On vous prévient dès qu&apos;il accepte.
-            </p>
           )}
         </div>
       </div>
@@ -1324,57 +1307,50 @@ function IntentCard({
               Vous recevez {formatEuros(intent.proposed_price / 1.15)}
             </span>
           </div>
-          {intent.item_description && (
-            <p className="text-[14px] text-ink-500 mt-2 leading-relaxed line-clamp-2">
-              « {intent.item_description} »
-            </p>
-          )}
-          {/* Reassurance: payment is already secured */}
-          {intent.payment_status === 'authorized' && !historic && (
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[12px] font-semibold">
-              <span>💳</span>
-              <span>Paiement réservé · sécurisé par Stripe</span>
-            </div>
-          )}
-          {intent.payment_status === 'captured' && historic && (
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[12px] font-semibold">
-              <span>✓</span>
-              <span>Paiement encaissé</span>
-            </div>
-          )}
-          {/* Delivered badge in history */}
-          {historic && intent.delivery_proof_url && (
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[12px] font-semibold">
-              <span>📸</span>
-              <span>Livré · preuve téléversée</span>
-            </div>
-          )}
-          {historic && !intent.delivery_proof_url && (
-            <div className="mt-2 text-[12px] font-medium">
-              {intent.status === 'confirmed' ? (
-                <span className="text-mint-500">✓ Acceptée</span>
-              ) : (
-                <span className="text-ink-300">✕ Refusée</span>
-              )}
-            </div>
-          )}
+          {/* Status pills — condensed: just emoji + short label */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {intent.payment_status === 'authorized' && !historic && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+                💳 Paiement réservé
+              </span>
+            )}
+            {intent.payment_status === 'captured' && historic && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+                ✓ Encaissé
+              </span>
+            )}
+            {historic && intent.delivery_proof_url && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+                📸 Livré
+              </span>
+            )}
+            {historic && !intent.delivery_proof_url && (
+              <span className="text-[11px] font-medium">
+                {intent.status === 'confirmed' ? (
+                  <span className="text-mint-500">✓ Acceptée</span>
+                ) : (
+                  <span className="text-ink-300">✕ Refusée</span>
+                )}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Pending: Accept / Decline */}
       {!historic && !showDeliverButton && (
-        <div className="flex flex-col sm:flex-row gap-2 mt-5">
+        <div className="flex flex-row gap-2 mt-4">
           <button
             onClick={() => handle('cancelled')}
             disabled={!!busy}
-            className="flex-1 px-4 py-2.5 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2 text-[13px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
           >
             {busy === 'cancel' ? '...' : 'Refuser'}
           </button>
           <button
             onClick={() => handle('confirmed')}
             disabled={!!busy}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
           >
             {busy === 'confirm' ? '...' : 'Accepter'}
           </button>
@@ -1383,17 +1359,14 @@ function IntentCard({
 
       {/* Confirmed but not yet delivered: "I delivered" button */}
       {!historic && showDeliverButton && (
-        <div className="mt-5">
+        <div className="mt-4">
           <button
             onClick={() => setShowProofModal(true)}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
           >
-            <Camera className="w-4 h-4" />
+            <Camera className="w-3.5 h-3.5" />
             J&apos;ai livré le colis
           </button>
-          <p className="text-[11px] text-ink-300 text-center mt-2">
-            Téléversez une photo de la remise pour valider la livraison.
-          </p>
         </div>
       )}
 
@@ -1896,59 +1869,45 @@ function ProposalCard({
   const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
 
   return (
-    <div className={`bg-white rounded-2xl p-5 border ${accepted ? 'border-mint-200' : 'border-ink-50'}`}>
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[14px] text-ink-500">
+    <div className={`bg-white rounded-2xl p-4 border ${accepted ? 'border-mint-200' : 'border-ink-50'}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[13px] text-ink-500">
           {initial}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-1.5">
-            <div className="font-semibold text-ink-600 text-[15px]">
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <div className="font-semibold text-ink-600 text-[14px]">
               {senderName}
             </div>
             {accepted ? (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold uppercase tracking-[0.06em]">
-                Acceptée
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+                ✓ Acceptée
               </span>
             ) : (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold uppercase tracking-[0.06em]">
-                En attente
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold">
+                ⏳ En attente
               </span>
             )}
           </div>
-          <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap">
-            <span>{proposal.pickup_city} → {proposal.destination_city}</span>
-            <span>·</span>
-            <span className="font-semibold text-mint-600">
-              Vous recevrez {formatEuros(netTraveler)}
-            </span>
+          <div className="text-[13px] text-ink-400">
+            {proposal.pickup_city} → {proposal.destination_city} ·{' '}
+            <span className="font-semibold text-mint-600">{formatEuros(netTraveler)}</span>
           </div>
 
           {accepted && proposal.sender_profile?.phone && (
-            <div className="mt-3 rounded-xl bg-mint-50 border border-mint-200/60 px-3.5 py-2.5">
-              <div className="text-[11px] font-semibold text-mint-700 tracking-[0.06em] uppercase mb-1">
-                Contactez {senderName.split(' ')[0]}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[14px] text-ink-600 font-medium num-display">
-                  {proposal.sender_profile.phone}
-                </span>
-                <a
-                  href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
-                >
-                  WhatsApp
-                </a>
-              </div>
+            <div className="mt-2.5 rounded-xl bg-mint-50 border border-mint-200/60 px-3 py-2 flex items-center gap-2 flex-wrap">
+              <span className="text-[13px] text-ink-600 font-medium num-display">
+                {proposal.sender_profile.phone}
+              </span>
+              <a
+                href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
+              >
+                WhatsApp
+              </a>
             </div>
-          )}
-
-          {!accepted && (
-            <p className="text-[13px] text-ink-400 mt-2 leading-relaxed">
-              {senderName.split(' ')[0]} doit accepter et payer pour confirmer la mission.
-            </p>
           )}
         </div>
       </div>
@@ -1986,6 +1945,41 @@ function GroupHeader({ icon, label, count }: { icon: string; label: string; coun
   );
 }
 
+// Renders a list of items with a "Voir tout" toggle. Shows the first `limit`
+// items by default (default 3); click reveals the rest. Used for the
+// History section inside Voyages and Envois so it doesn't dominate the page.
+function CollapsibleList({
+  items,
+  limit = 3,
+  showAllLabel = 'Voir tout',
+  showLessLabel = 'Réduire',
+}: {
+  items: React.ReactNode[];
+  limit?: number;
+  showAllLabel?: string;
+  showLessLabel?: string;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  if (items.length === 0) return null;
+  const visible = showAll ? items : items.slice(0, limit);
+  const hidden = items.length - limit;
+  return (
+    <div className="space-y-3">
+      {visible.map((item, i) => (
+        <div key={i}>{item}</div>
+      ))}
+      {hidden > 0 && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className="text-[13px] font-medium text-ink-400 hover:text-ink-600 transition-colors"
+        >
+          {showAll ? showLessLabel : `${showAllLabel} (${hidden} de plus)`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // TripsView — "Mes voyages" tab
 // ---------------------------------------------------------------------------
@@ -2013,22 +2007,27 @@ function TripsView({
   const todoDeliver = incomingIntents.filter(
     (i) => i.status === 'confirmed' && !i.delivery_proof_url
   );
-  // Also: proposals I made that were accepted by the sender — these are
-  // now confirmed bookings I need to deliver. They appear in myProposals
-  // (not incomingIntents) because they were initiated by me. We surface
-  // them as "to deliver" too via the ProposalCard's accepted state.
   const todoProposalsAccepted = myProposals.filter(
     (p) => p.status === 'confirmed' && !p.delivery_proof_url
   );
 
-  // ⏳ En cours:
-  //   - my active trips
-  //   - proposals I made on public requests, still pending sender response
+  // ⏳ En cours: active trips + pending proposals
   const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
   const pendingProposals = myProposals.filter((p) => p.status === 'pending');
 
+  // 📜 Historique (côté voyageur): incoming livré/refusé, propositions
+  // livrées/refusées, trajets annulés. Tout ce qui touche au rôle de voyageur.
+  const historyIncoming = incomingIntents.filter(
+    (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
+  );
+  const historyProposals = myProposals.filter(
+    (p) => p.status === 'cancelled' || (p.status === 'confirmed' && p.delivery_proof_url)
+  );
+  const cancelledTrips = trips.filter((tr) => tr.status === 'cancelled');
+
   const totalTodos = todoRequests.length + todoDeliver.length + todoProposalsAccepted.length;
-  const hasContent = activeTrips.length > 0 || pendingProposals.length > 0 || totalTodos > 0;
+  const totalHistory = historyIncoming.length + historyProposals.length + cancelledTrips.length;
+  const hasContent = activeTrips.length > 0 || pendingProposals.length > 0 || totalTodos > 0 || totalHistory > 0;
 
   if (!hasContent) {
     return (
@@ -2047,6 +2046,42 @@ function TripsView({
     );
   }
 
+  // Build history items (mixed, sorted by date desc)
+  const historyItems: React.ReactNode[] = [];
+  historyIncoming.forEach((intent) => {
+    historyItems.push(
+      <IntentCard
+        key={`hi-${intent.id}`}
+        intent={intent}
+        onUpdate={async () => {}}
+        onProofUploaded={() => {}}
+        historic
+      />
+    );
+  });
+  historyProposals.forEach((p) => {
+    historyItems.push(
+      <ProposalCard key={`hp-${p.id}`} proposal={p} accepted={p.status === 'confirmed'} />
+    );
+  });
+  cancelledTrips.forEach((trip) => {
+    historyItems.push(
+      <div key={`ct-${trip.id}`} className="bg-white rounded-2xl p-4 border border-ink-50 opacity-70">
+        <div className="flex items-center gap-3">
+          <Plane className="w-4 h-4 text-ink-300" />
+          <div className="flex-1">
+            <div className="text-[14px] text-ink-500">
+              {trip.departure_city} → {trip.arrival_city}
+            </div>
+            <div className="text-[12px] text-ink-400">
+              {formatShortDate(trip.departure_date)} · Trajet annulé
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  });
+
   return (
     <div className="space-y-10">
       <div className="flex items-center justify-between">
@@ -2059,7 +2094,6 @@ function TripsView({
         </Link>
       </div>
 
-      {/* À traiter */}
       {totalTodos > 0 && (
         <section>
           <GroupHeader icon="🔥" label="À traiter" count={totalTodos} />
@@ -2088,7 +2122,6 @@ function TripsView({
         </section>
       )}
 
-      {/* En cours: trips + pending proposals */}
       {(activeTrips.length > 0 || pendingProposals.length > 0) && (
         <section>
           <GroupHeader icon="⏳" label="En cours" count={activeTrips.length + pendingProposals.length} />
@@ -2100,6 +2133,13 @@ function TripsView({
               <ProposalCard key={p.id} proposal={p} />
             ))}
           </div>
+        </section>
+      )}
+
+      {totalHistory > 0 && (
+        <section>
+          <GroupHeader icon="📜" label="Historique" count={totalHistory} />
+          <CollapsibleList items={historyItems} limit={3} />
         </section>
       )}
     </div>
@@ -2122,15 +2162,12 @@ function SendsView({
   onDeclineProposal: (id: string) => void;
   t: Translations;
 }) {
-  // 🔥 À traiter: traveler proposals on my requests (need to accept and pay)
+  // 🔥 À traiter: traveler proposals on my requests (accept and pay)
   const todoProposals = bookings.filter(
     (b) => b.status === 'pending' && b.initiated_by === 'traveler'
   );
 
-  // ⏳ En cours:
-  //   - confirmed (paid) bookings still awaiting delivery
-  //   - bookings I made directly on a traveler, awaiting their accept
-  //   - public requests I posted that haven't received a proposal yet
+  // ⏳ En cours
   const inProgressBookings = bookings.filter(
     (b) =>
       (b.status === 'confirmed' && !b.delivery_proof_url) ||
@@ -2138,8 +2175,17 @@ function SendsView({
   );
   const activeRequests = requests.filter((r) => r.status === 'pending');
 
+  // 📜 Historique côté sender: bookings cancelled/delivered
+  const historyBookings = bookings.filter(
+    (b) => b.status === 'cancelled' || (b.status === 'confirmed' && b.delivery_proof_url)
+  );
+
   const totalTodos = todoProposals.length;
-  const hasContent = inProgressBookings.length > 0 || activeRequests.length > 0 || totalTodos > 0;
+  const hasContent =
+    inProgressBookings.length > 0 ||
+    activeRequests.length > 0 ||
+    totalTodos > 0 ||
+    historyBookings.length > 0;
 
   if (!hasContent) {
     return (
@@ -2158,6 +2204,10 @@ function SendsView({
     );
   }
 
+  const historyItems: React.ReactNode[] = historyBookings.map((b) => (
+    <BookingCard key={b.id} booking={b} t={t} />
+  ));
+
   return (
     <div className="space-y-10">
       <div className="flex items-center justify-between">
@@ -2170,7 +2220,6 @@ function SendsView({
         </Link>
       </div>
 
-      {/* À traiter */}
       {totalTodos > 0 && (
         <section>
           <GroupHeader icon="🔥" label="À traiter" count={totalTodos} />
@@ -2188,7 +2237,6 @@ function SendsView({
         </section>
       )}
 
-      {/* En cours */}
       {(inProgressBookings.length > 0 || activeRequests.length > 0) && (
         <section>
           <GroupHeader icon="⏳" label="En cours" count={inProgressBookings.length + activeRequests.length} />
@@ -2200,6 +2248,13 @@ function SendsView({
               <RequestCardSimple key={req.id} request={req} t={t} />
             ))}
           </div>
+        </section>
+      )}
+
+      {historyBookings.length > 0 && (
+        <section>
+          <GroupHeader icon="📜" label="Historique" count={historyBookings.length} />
+          <CollapsibleList items={historyItems} limit={3} />
         </section>
       )}
     </div>
