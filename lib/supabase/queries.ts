@@ -579,7 +579,75 @@ export async function listMyBookings(
     };
   });
 }
+/**
+ * Count the active booking intents on a trip — used to show a warning
+ * before canceling. "Active" = pending or confirmed/authorized, i.e. not
+ * already cancelled.
+ */
+export async function countActiveBookingsForTrip(
+  supabase: SB,
+  tripId: string
+): Promise<{ count: number; intents: BookingIntentRow[] }> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .select('*')
+        .eq('traveler_trip_id', tripId)
+        .neq('status', 'cancelled')
+    ),
+    8000,
+    'Count active bookings'
+  );
+  if (error) throw error;
+  const intents = (data ?? []) as BookingIntentRow[];
+  return { count: intents.length, intents };
+}
 
+/**
+ * Cancel a trip. Marks the trip as `cancelled` so it disappears from the
+ * search results, and triggers a cancel/refund on any pending or
+ * authorized booking_intents pointing at it.
+ */
+export async function cancelTrip(supabase: SB, tripId: string): Promise<void> {
+  const { intents } = await countActiveBookingsForTrip(supabase, tripId);
+
+  const { error: tripErr } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('traveler_trips')
+        .update({ status: 'cancelled' })
+        .eq('id', tripId)
+    ),
+    8000,
+    'Cancel trip'
+  );
+  if (tripErr) throw tripErr;
+
+  await Promise.allSettled(
+    intents.map(async (intent) => {
+      await supabase
+        .from('booking_intents')
+        .update({ status: 'cancelled' })
+        .eq('id', intent.id);
+
+      if (intent.payment_intent_id && intent.payment_status === 'authorized') {
+        try {
+          await fetch('/api/stripe/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paymentIntentId: intent.payment_intent_id,
+              bookingIntentId: intent.id,
+            }),
+          });
+        } catch {
+          // Best-effort
+        }
+      }
+    })
+  );
+}
 // ============================================================================
 // Browser convenience wrappers
 // ============================================================================
@@ -607,4 +675,6 @@ export const browser = {
   updateBookingIntentStatus: (intentId: string, status: 'confirmed' | 'cancelled') =>
     updateBookingIntentStatus(getBrowserClient(), intentId, status),
   listMyBookings: (senderId: string) => listMyBookings(getBrowserClient(), senderId),
+  countActiveBookingsForTrip: (tripId: string) => countActiveBookingsForTrip(getBrowserClient(), tripId),
+  cancelTrip: (tripId: string) => cancelTrip(getBrowserClient(), tripId),
 };
