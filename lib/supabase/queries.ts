@@ -71,12 +71,11 @@ export async function listOpenTrips(
     limit?: number;
   }
 ): Promise<(TravelerTripRow & { profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'> | null })[]> {
+  // Step 1: load trips (no join — joins trigger nested RLS evaluation that
+  // can stall the request indefinitely on Supabase free tier).
   let q = supabase
     .from('traveler_trips')
-    .select(`
-      *,
-      profile:profiles!traveler_trips_user_id_fkey ( id, full_name, avatar_url, verification_level, rating, trips_completed )
-    `)
+    .select('*')
     .eq('status', 'open')
     .order('departure_date', { ascending: true })
     .limit(filters?.limit ?? 30);
@@ -86,9 +85,30 @@ export async function listOpenTrips(
   if (filters?.maxDate) q = q.lte('departure_date', filters.maxDate);
   if (filters?.maxBudget != null) q = q.lte('compensation_min', filters.maxBudget);
 
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data as any) ?? [];
+  const { data: trips, error: tripsError } = await withTimeout(Promise.resolve(q), 8000, 'List trips');
+  if (tripsError) throw tripsError;
+  if (!trips || trips.length === 0) return [];
+
+  // Step 2: load the profiles for these trips in one batch query.
+  const userIds = Array.from(new Set(trips.map((t) => t.user_id)));
+  const { data: profiles, error: profilesError } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, verification_level, rating, trips_completed')
+        .in('id', userIds)
+    ),
+    8000,
+    'List trip profiles'
+  );
+  if (profilesError) throw profilesError;
+
+  // Step 3: stitch together. Trips without a matching profile just get null.
+  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+  return trips.map((t) => ({
+    ...t,
+    profile: (profileById.get(t.user_id) as any) ?? null,
+  }));
 }
 
 export async function listMyTrips(supabase: SB, userId: string): Promise<TravelerTripRow[]> {
@@ -277,10 +297,7 @@ export async function createReport(
 }
 
 // ============================================================================
-// Browser convenience wrappers
-// ============================================================================
-// ============================================================================
-// Public profile + booking intents
+// Public profile (lightweight, for /u/[id] pages)
 // ============================================================================
 
 export async function getPublicProfile(
@@ -322,6 +339,10 @@ export async function listTripsByUser(
   return data ?? [];
 }
 
+// ============================================================================
+// Booking intents — sender expresses interest in a trip
+// ============================================================================
+
 export type BookingIntentInput = {
   sender_id: string;
   traveler_trip_id: string;
@@ -359,6 +380,119 @@ export async function createBookingIntent(
   if (error) throw error;
   return data ?? input;
 }
+
+export type BookingIntentRow = {
+  id: string;
+  sender_id: string;
+  traveler_trip_id: string;
+  item_category: string;
+  item_description: string | null;
+  proposed_price: number;
+  pickup_city: string;
+  destination_city: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  created_at: string;
+};
+
+/**
+ * List booking intents that target trips owned by `travelerId`.
+ * RLS already enforces this; we still filter client-side defensively.
+ *
+ * We do TWO queries instead of one with a join, to avoid the nested-RLS
+ * stalls that bit us before:
+ *   1) get the traveler's trip IDs
+ *   2) get all intents pointing at those IDs
+ *   3) optionally fetch sender profiles in a single batch
+ */
+export async function listIncomingBookingIntents(
+  supabase: SB,
+  travelerId: string
+): Promise<
+  Array<
+    BookingIntentRow & {
+      sender_profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'rating' | 'trips_completed' | 'verification_level'> | null;
+      traveler_trip: Pick<TravelerTripRow, 'id' | 'departure_city' | 'arrival_city' | 'departure_date'> | null;
+    }
+  >
+> {
+  // 1) Trip IDs owned by this traveler
+  const { data: trips, error: tripsErr } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('traveler_trips')
+        .select('id, departure_city, arrival_city, departure_date')
+        .eq('user_id', travelerId)
+    ),
+    8000,
+    'Traveler trips'
+  );
+  if (tripsErr) throw tripsErr;
+  if (!trips || trips.length === 0) return [];
+
+  const tripIds = trips.map((t) => t.id);
+  const tripById = new Map(trips.map((t) => [t.id, t]));
+
+  // 2) Intents pointing at those trip IDs
+  const { data: intents, error: intentsErr } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .select('*')
+        .in('traveler_trip_id', tripIds)
+        .order('created_at', { ascending: false })
+    ),
+    8000,
+    'Incoming intents'
+  );
+  if (intentsErr) throw intentsErr;
+  if (!intents || intents.length === 0) return [];
+
+  // 3) Sender profiles in one batch
+  const senderIds = Array.from(new Set(intents.map((i: any) => i.sender_id)));
+  const { data: senders } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, rating, trips_completed, verification_level')
+        .in('id', senderIds)
+    ),
+    8000,
+    'Sender profiles'
+  );
+  const senderById = new Map((senders ?? []).map((s: any) => [s.id, s]));
+
+  return intents.map((i: any) => ({
+    ...i,
+    sender_profile: (senderById.get(i.sender_id) as any) ?? null,
+    traveler_trip: (tripById.get(i.traveler_trip_id) as any) ?? null,
+  }));
+}
+
+/**
+ * Update a booking intent's status. Used by the traveler to accept or decline.
+ */
+export async function updateBookingIntentStatus(
+  supabase: SB,
+  intentId: string,
+  status: 'confirmed' | 'cancelled'
+): Promise<void> {
+  const { error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .update({ status })
+        .eq('id', intentId)
+    ),
+    8000,
+    'Update intent status'
+  );
+  if (error) throw error;
+}
+
+// ============================================================================
+// Browser convenience wrappers
+// ============================================================================
+
 export const browser = {
   getProfile: (userId: string) => getProfile(getBrowserClient(), userId),
   updateProfile: (userId: string, patch: Partial<Profile>) => updateProfile(getBrowserClient(), userId, patch),
@@ -378,4 +512,7 @@ export const browser = {
   getPublicProfile: (userId: string) => getPublicProfile(getBrowserClient(), userId),
   listTripsByUser: (userId: string) => listTripsByUser(getBrowserClient(), userId),
   createBookingIntent: (input: BookingIntentInput) => createBookingIntent(getBrowserClient(), input),
+  listIncomingBookingIntents: (travelerId: string) => listIncomingBookingIntents(getBrowserClient(), travelerId),
+  updateBookingIntentStatus: (intentId: string, status: 'confirmed' | 'cancelled') =>
+    updateBookingIntentStatus(getBrowserClient(), intentId, status),
 };
