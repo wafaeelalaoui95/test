@@ -34,9 +34,13 @@ function LoginInner() {
         10000,
         'Sign in'
       );
-      if (error) throw error;
-      router.push(next);
-      router.refresh();
+     if (error) throw error;
+      // Force a hard navigation. router.push() + router.refresh() leaves
+      // the AuthProvider state stale for a beat — the new page mounts before
+      // the session propagates, sees user=null, and bounces us back here.
+      // A full window.location swap remounts everything cleanly with the
+      // fresh session cookie in hand.
+      window.location.href = next;
     } catch (err: any) {
       setError(err.message ?? t.auth_error_generic);
     } finally {
