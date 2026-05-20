@@ -24,7 +24,7 @@ export function Footer() {
             <ul className="space-y-3 text-[14px] text-ink-400">
               <li><Link href="/envoyer" className="hover:text-ink-600 transition-colors">{t.nav_send}</Link></li>
               <li><Link href="/voyager" className="hover:text-ink-600 transition-colors">{t.nav_travel}</Link></li>
-              <li><Link href="/matches" className="hover:text-ink-600 transition-colors">{t.nav_discover}</Link></li>
+              <li><Link href="/" className="hover:text-ink-600 transition-colors">{t.nav_discover}</Link></li>
               <li><Link href="/me" className="hover:text-ink-600 transition-colors">{t.nav_my_space}</Link></li>
             </ul>
           </div>
