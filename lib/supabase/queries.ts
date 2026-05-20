@@ -692,31 +692,57 @@ export async function listMyTravelerProposals(
  * Returns the amount in euros.
  */
 export async function getWalletBalance(supabase: SB, travelerId: string): Promise<number> {
-  // We sum the payment_amount (in cents) of all captured bookings where
-  // I'm the traveler. Two ways to know it's me as traveler:
-  //   - directly via traveler_user_id (set on new bookings)
-  //   - via traveler_trip.user_id (legacy bookings, fallback)
-  // For simplicity we query both and dedupe by booking id.
-  const { data, error } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('booking_intents')
-        .select('id, payment_amount, traveler_trip_id')
-        .eq('payment_status', 'captured')
-        .or(`traveler_user_id.eq.${travelerId}`)
+  // Sum the NET amount (after Jibly's 15% fee) of all captured bookings
+  // where I'm the traveler. payment_amount is the TTC the sender paid,
+  // in cents — we divide by 1.15 to get the traveler's net.
+  //
+  // The traveler can be identified two ways depending on flow:
+  //   1) traveler_user_id set directly (proposal-flow bookings)
+  //   2) the booking's trip belongs to me (sender→traveler flow)
+  // We run both queries and dedupe by id to avoid double-counting.
+  const [byUser, trips] = await Promise.all([
+    withTimeout(
+      Promise.resolve(
+        supabase
+          .from('booking_intents')
+          .select('id, payment_amount')
+          .eq('payment_status', 'captured')
+          .eq('traveler_user_id', travelerId)
+      ),
+      8000,
+      'Wallet by user'
     ),
-    8000,
-    'Wallet balance'
-  );
-  if (error) {
-    console.warn('Wallet query failed:', error);
-    return 0;
+    withTimeout(
+      Promise.resolve(
+        supabase.from('traveler_trips').select('id').eq('user_id', travelerId)
+      ),
+      6000,
+      'Trips for wallet'
+    ),
+  ]);
+
+  const collected = new Map<string, number>();
+  (byUser.data ?? []).forEach((r: any) => collected.set(r.id, r.payment_amount ?? 0));
+
+  const tripIds = (trips.data ?? []).map((t: any) => t.id);
+  if (tripIds.length > 0) {
+    const { data: byTrip } = await withTimeout(
+      Promise.resolve(
+        supabase
+          .from('booking_intents')
+          .select('id, payment_amount')
+          .eq('payment_status', 'captured')
+          .in('traveler_trip_id', tripIds)
+      ),
+      8000,
+      'Wallet by trip'
+    );
+    (byTrip ?? []).forEach((r: any) => collected.set(r.id, r.payment_amount ?? 0));
   }
-  const total = (data ?? []).reduce(
-    (sum: number, row: any) => sum + (row.payment_amount ?? 0),
-    0
-  );
-  return total / 100;
+
+  // Sum the TTC cents and convert to NET euros (post-fee)
+  const totalCents = Array.from(collected.values()).reduce((s, v) => s + v, 0);
+  return totalCents / 100 / 1.15;
 }
 
 /**
