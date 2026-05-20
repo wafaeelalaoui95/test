@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const stripe = getStripe();
   try {
     const intent = await stripe.paymentIntents.create({
-      amount: body.amountEuros * 100, // Stripe expects the smallest currency unit
+    amount: body.amountCents,
       currency: 'eur',
       capture_method: 'manual', // authorise now, capture later
       automatic_payment_methods: { enabled: true },
