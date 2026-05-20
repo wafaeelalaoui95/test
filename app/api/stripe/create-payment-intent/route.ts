@@ -14,8 +14,11 @@ import { getServerClient } from '@/lib/supabase/server';
  *
  * Returns the client_secret needed by Stripe Elements on the frontend.
  */
+// Validation: amount is in CENTS (Stripe's native unit). The frontend
+// converts euros to cents before sending. This avoids decimal-number
+// validation headaches.
 const schema = z.object({
-  amountEuros: z.number().int().positive().max(10000),
+  amountCents: z.number().int().positive().max(1000000),
   bookingIntentId: z.string().uuid().optional(),
   description: z.string().max(500).optional(),
 });
