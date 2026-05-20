@@ -46,7 +46,7 @@ import type {
   VerificationLevel,
 } from '@/lib/supabase/types';
 
-type TabId = 'overview' | 'requests' | 'trips' | 'matches' | 'profile';
+type TabId = 'trips' | 'sends' | 'history' | 'profile';
 
 type MatchWithRefs = MatchRow & {
   traveler_trip?: TravelerTripRow | null;
@@ -83,7 +83,7 @@ type IncomingIntent = {
 export default function MyPage() {
   const { t } = useI18n();
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
-  const [tab, setTab] = useState<TabId>('overview');
+  const [tab, setTab] = useState<TabId>('trips');
 
   const [requests, setRequests] = useState<ShippingRequestRow[]>([]);
   const [trips, setTrips] = useState<TravelerTripRow[]>([]);
@@ -196,11 +196,10 @@ export default function MyPage() {
              + trips.filter((trip) => trip.status === 'completed').length,
   };
 
-  const TABS: { id: TabId; label: string; icon: typeof LayoutGrid }[] = [
-    { id: 'overview', label: t.me_tab_overview, icon: LayoutGrid },
-    { id: 'requests', label: t.me_tab_requests, icon: Package },
-    { id: 'trips', label: t.me_tab_trips, icon: Plane },
-    { id: 'matches', label: t.me_tab_matches, icon: Bell },
+  const TABS: { id: TabId; label: string; icon: typeof Plane }[] = [
+    { id: 'trips', label: 'Mes voyages', icon: Plane },
+    { id: 'sends', label: 'Mes envois', icon: Package },
+    { id: 'history', label: 'Historique', icon: LayoutGrid },
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
 
@@ -231,12 +230,19 @@ export default function MyPage() {
           <div className="inline-flex border-b border-ink-100">
             {TABS.map((tabItem) => {
               const active = tab === tabItem.id;
-              const pendingCount = incomingIntents.filter((i) => i.status === 'pending').length;
-              const confirmedBookings = myBookings.filter((b) => b.status === 'confirmed').length;
-              const showMatchesBadge = tabItem.id === 'matches' && pendingCount > 0;
-              const showRequestsBadge = tabItem.id === 'requests' && confirmedBookings > 0;
-              const badgeCount = showMatchesBadge ? pendingCount : showRequestsBadge ? confirmedBookings : 0;
-              const badgeColor = showRequestsBadge ? 'bg-mint-500' : 'bg-blush-500';
+              // Badge logic for the new tabs:
+              //   Mes voyages : count of pending incoming requests + bookings to deliver
+              //   Mes envois  : count of pending traveler proposals on my requests
+              const tripsTodoCount =
+                incomingIntents.filter((i) => i.status === 'pending').length +
+                incomingIntents.filter((i) => i.status === 'confirmed' && !i.delivery_proof_url).length +
+                myProposals.filter((p) => p.status === 'confirmed' && !p.delivery_proof_url).length;
+              const sendsTodoCount = myBookings.filter(
+                (b) => b.status === 'pending' && b.initiated_by === 'traveler'
+              ).length;
+              const showTripsBadge = tabItem.id === 'trips' && tripsTodoCount > 0;
+              const showSendsBadge = tabItem.id === 'sends' && sendsTodoCount > 0;
+              const badgeCount = showTripsBadge ? tripsTodoCount : showSendsBadge ? sendsTodoCount : 0;
               return (
                 <button
                   key={tabItem.id}
@@ -250,11 +256,8 @@ export default function MyPage() {
                 >
                   <tabItem.icon className="w-4 h-4" strokeWidth={2} />
                   <span>{tabItem.label}</span>
-                  {(showMatchesBadge || showRequestsBadge) && (
-                    <span className={cn(
-                      'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-cream-50 text-[10px] font-bold',
-                      badgeColor
-                    )}>
+                  {(showTripsBadge || showSendsBadge) && (
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-cream-50 text-[10px] font-bold bg-blush-500">
                       {badgeCount}
                     </span>
                   )}
@@ -281,60 +284,18 @@ export default function MyPage() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              {tab === 'overview' && (
-                <OverviewTab stats={stats} matches={matches} walletEuros={walletEuros} t={t} />
-              )}
-              {tab === 'requests' && (
-                <RequestsTab
-                  requests={requests}
-                  bookings={myBookings}
-                  onAcceptProposal={(b) => setProposalToPay(b)}
-                  onDeclineProposal={async (id) => {
-                    // Mark cancelled in DB and locally — no Stripe call
-                    // because there's no PaymentIntent yet (the sender
-                    // hadn't paid). Just close the proposal.
-                    await browser.updateBookingIntentStatus(id, 'cancelled');
-                    setMyBookings((prev) =>
-                      prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' } : b))
-                    );
-                  }}
-                  t={t}
-                />
-              )}
               {tab === 'trips' && (
-                <TripsTab
+                <TripsView
                   trips={trips}
-                  onCancel={async (tripId) => {
-                    await browser.cancelTrip(tripId);
-                    // Update local state: mark the trip as cancelled (it will
-                    // be filtered out by TripsTab on next render).
-                    setTrips((prev) =>
-                      prev.map((tr) => (tr.id === tripId ? { ...tr, status: 'cancelled' } : tr))
-                    );
-                  }}
-                  t={t}
-                />
-              )}
-              {tab === 'matches' && (
-                <MatchesTab
-                  intents={incomingIntents}
+                  incomingIntents={incomingIntents}
                   myProposals={myProposals}
-                  onUpdate={async (id, status) => {
-                    // 1. Update the booking_intent status in our DB first
+                  onUpdateIntent={async (id, status) => {
                     await browser.updateBookingIntentStatus(id, status);
-
-                    // 2. If there's a Stripe payment attached, capture (on
-                    //    accept) or cancel (on refuse). We don't await this
-                    //    in a way that would block the UI — failures are
-                    //    logged but don't roll back the status update,
-                    //    which would create a worse UX. A real-world
-                    //    deployment would use webhooks + reconciliation
-                    //    for that, but this is fine for the MVP.
                     const intent = incomingIntents.find((i) => i.id === id);
                     if (intent?.payment_intent_id) {
                       const endpoint = status === 'confirmed' ? 'capture' : 'cancel';
                       try {
-                        const res = await fetch(`/api/stripe/${endpoint}`, {
+                        await fetch(`/api/stripe/${endpoint}`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
@@ -342,22 +303,15 @@ export default function MyPage() {
                             bookingIntentId: id,
                           }),
                         });
-                        if (!res.ok) {
-                          const data = await res.json().catch(() => ({}));
-                          console.warn(`Stripe ${endpoint} failed:`, data);
-                        }
                       } catch (e) {
                         console.warn(`Stripe ${endpoint} error:`, e);
                       }
                     }
-
                     setIncomingIntents((prev) =>
                       prev.map((it) => (it.id === id ? { ...it, status } : it))
                     );
                   }}
                   onProofUploaded={(id, url, receiverName) => {
-                    // The proof was uploaded successfully — reflect it in local
-                    // state so the card moves from "À livrer" to history.
                     setIncomingIntents((prev) =>
                       prev.map((it) =>
                         it.id === id
@@ -371,9 +325,41 @@ export default function MyPage() {
                       )
                     );
                   }}
+                  onCancelTrip={async (tripId) => {
+                    await browser.cancelTrip(tripId);
+                    setTrips((prev) =>
+                      prev.map((tr) => (tr.id === tripId ? { ...tr, status: 'cancelled' } : tr))
+                    );
+                  }}
                   t={t}
                 />
               )}
+
+              {tab === 'sends' && (
+                <SendsView
+                  bookings={myBookings}
+                  requests={requests}
+                  onAcceptProposal={(b) => setProposalToPay(b)}
+                  onDeclineProposal={async (id) => {
+                    await browser.updateBookingIntentStatus(id, 'cancelled');
+                    setMyBookings((prev) =>
+                      prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' } : b))
+                    );
+                  }}
+                  t={t}
+                />
+              )}
+
+              {tab === 'history' && (
+                <HistoryView
+                  incomingIntents={incomingIntents}
+                  myBookings={myBookings}
+                  myProposals={myProposals}
+                  trips={trips}
+                  t={t}
+                />
+              )}
+
               {tab === 'profile' && (
                 <ProfileTab
                   profile={profile}
@@ -1966,6 +1952,405 @@ function ProposalCard({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ===========================================================================
+// New simplified views — replace the old Overview/Requests/Matches tangle.
+// ===========================================================================
+//
+// The user's mental model now has three buckets per tab:
+//   🔥 À traiter   — items that demand an action right now
+//   ⏳ En cours    — items that are progressing, no action needed
+//   📜 Historique  — completed or cancelled (collapsible, not shown here —
+//                     it's its own top-level tab now)
+//
+// Each tab focuses on ONE side of the marketplace:
+//   - Mes voyages → what I do as a traveler
+//   - Mes envois  → what I do as a sender
+//   - Historique  → everything finished, mixed together
+// ===========================================================================
+
+function GroupHeader({ icon, label, count }: { icon: string; label: string; count: number }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <span className="text-lg">{icon}</span>
+      <h3 className="text-[15px] font-bold text-ink-600 tracking-[-0.01em]">{label}</h3>
+      {count > 0 && (
+        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-ink-500 text-cream-50 text-[11px] font-bold">
+          {count}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TripsView — "Mes voyages" tab
+// ---------------------------------------------------------------------------
+function TripsView({
+  trips,
+  incomingIntents,
+  myProposals,
+  onUpdateIntent,
+  onProofUploaded,
+  onCancelTrip,
+  t,
+}: {
+  trips: TravelerTripRow[];
+  incomingIntents: IncomingIntent[];
+  myProposals: TravelerProposal[];
+  onUpdateIntent: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
+  onProofUploaded: (id: string, url: string, receiverName: string) => void;
+  onCancelTrip: (tripId: string) => Promise<void>;
+  t: Translations;
+}) {
+  // 🔥 À traiter:
+  //   - pending incoming requests (need to accept/decline)
+  //   - confirmed bookings without delivery proof (need to upload "I delivered")
+  const todoRequests = incomingIntents.filter((i) => i.status === 'pending');
+  const todoDeliver = incomingIntents.filter(
+    (i) => i.status === 'confirmed' && !i.delivery_proof_url
+  );
+  // Also: proposals I made that were accepted by the sender — these are
+  // now confirmed bookings I need to deliver. They appear in myProposals
+  // (not incomingIntents) because they were initiated by me. We surface
+  // them as "to deliver" too via the ProposalCard's accepted state.
+  const todoProposalsAccepted = myProposals.filter(
+    (p) => p.status === 'confirmed' && !p.delivery_proof_url
+  );
+
+  // ⏳ En cours:
+  //   - my active trips
+  //   - proposals I made on public requests, still pending sender response
+  const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
+  const pendingProposals = myProposals.filter((p) => p.status === 'pending');
+
+  const totalTodos = todoRequests.length + todoDeliver.length + todoProposalsAccepted.length;
+  const hasContent = activeTrips.length > 0 || pendingProposals.length > 0 || totalTodos > 0;
+
+  if (!hasContent) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
+          <Link href="/voyager">
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              Publier un trajet
+            </Button>
+          </Link>
+        </div>
+        <EmptyState message="Aucun trajet pour le moment. Publiez votre premier voyage." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-10">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
+        <Link href="/voyager">
+          <Button size="sm">
+            <Plus className="w-4 h-4" />
+            Publier un trajet
+          </Button>
+        </Link>
+      </div>
+
+      {/* À traiter */}
+      {totalTodos > 0 && (
+        <section>
+          <GroupHeader icon="🔥" label="À traiter" count={totalTodos} />
+          <div className="space-y-3">
+            {todoRequests.map((intent) => (
+              <IntentCard
+                key={intent.id}
+                intent={intent}
+                onUpdate={onUpdateIntent}
+                onProofUploaded={onProofUploaded}
+              />
+            ))}
+            {todoDeliver.map((intent) => (
+              <IntentCard
+                key={intent.id}
+                intent={intent}
+                onUpdate={onUpdateIntent}
+                onProofUploaded={onProofUploaded}
+                showDeliverButton
+              />
+            ))}
+            {todoProposalsAccepted.map((p) => (
+              <ProposalCard key={p.id} proposal={p} accepted />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* En cours: trips + pending proposals */}
+      {(activeTrips.length > 0 || pendingProposals.length > 0) && (
+        <section>
+          <GroupHeader icon="⏳" label="En cours" count={activeTrips.length + pendingProposals.length} />
+          <div className="space-y-3">
+            {activeTrips.map((trip) => (
+              <TripCard key={trip.id} trip={trip} onCancel={onCancelTrip} t={t} />
+            ))}
+            {pendingProposals.map((p) => (
+              <ProposalCard key={p.id} proposal={p} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SendsView — "Mes envois" tab
+// ---------------------------------------------------------------------------
+function SendsView({
+  bookings,
+  requests,
+  onAcceptProposal,
+  onDeclineProposal,
+  t,
+}: {
+  bookings: MyBooking[];
+  requests: ShippingRequestRow[];
+  onAcceptProposal: (b: MyBooking) => void;
+  onDeclineProposal: (id: string) => void;
+  t: Translations;
+}) {
+  // 🔥 À traiter: traveler proposals on my requests (need to accept and pay)
+  const todoProposals = bookings.filter(
+    (b) => b.status === 'pending' && b.initiated_by === 'traveler'
+  );
+
+  // ⏳ En cours:
+  //   - confirmed (paid) bookings still awaiting delivery
+  //   - bookings I made directly on a traveler, awaiting their accept
+  //   - public requests I posted that haven't received a proposal yet
+  const inProgressBookings = bookings.filter(
+    (b) =>
+      (b.status === 'confirmed' && !b.delivery_proof_url) ||
+      (b.status === 'pending' && b.initiated_by === 'sender')
+  );
+  const activeRequests = requests.filter((r) => r.status === 'pending');
+
+  const totalTodos = todoProposals.length;
+  const hasContent = inProgressBookings.length > 0 || activeRequests.length > 0 || totalTodos > 0;
+
+  if (!hasContent) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
+          <Link href="/envoyer">
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              Publier une demande
+            </Button>
+          </Link>
+        </div>
+        <EmptyState message="Aucun envoi pour le moment. Publiez votre première demande." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-10">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
+        <Link href="/envoyer">
+          <Button size="sm">
+            <Plus className="w-4 h-4" />
+            Publier une demande
+          </Button>
+        </Link>
+      </div>
+
+      {/* À traiter */}
+      {totalTodos > 0 && (
+        <section>
+          <GroupHeader icon="🔥" label="À traiter" count={totalTodos} />
+          <div className="space-y-3">
+            {todoProposals.map((b) => (
+              <BookingCard
+                key={b.id}
+                booking={b}
+                onAcceptProposal={onAcceptProposal}
+                onDeclineProposal={onDeclineProposal}
+                t={t}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* En cours */}
+      {(inProgressBookings.length > 0 || activeRequests.length > 0) && (
+        <section>
+          <GroupHeader icon="⏳" label="En cours" count={inProgressBookings.length + activeRequests.length} />
+          <div className="space-y-3">
+            {inProgressBookings.map((b) => (
+              <BookingCard key={b.id} booking={b} t={t} />
+            ))}
+            {activeRequests.map((req) => (
+              <RequestCardSimple key={req.id} request={req} t={t} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+// Simple read-only card for an active public request I posted but
+// nobody has responded to yet. Just the route + budget + status.
+function RequestCardSimple({ request, t }: { request: ShippingRequestRow; t: Translations }) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-ink-50">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center text-xl">
+          {cat?.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3 mb-1.5">
+            <div className="font-semibold text-ink-600 flex items-center gap-2 flex-wrap text-[15px]">
+              <span>{request.pickup_city}</span>
+              <ArrowRight className="w-3.5 h-3.5 text-ink-300" />
+              <span>{request.destination_city}</span>
+            </div>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold uppercase tracking-[0.06em]">
+              Publiée
+            </span>
+          </div>
+          <div className="text-[13px] text-ink-400">
+            Avant le {formatShortDate(request.desired_delivery_date)} ·{' '}
+            <span className="font-semibold text-ink-600">{formatEuros(request.budget)}</span>{' '}
+            <span className="text-[11px] text-ink-300">budget</span>
+          </div>
+          <p className="text-[13px] text-ink-400 mt-2 leading-relaxed">
+            En attente de propositions de voyageurs.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// HistoryView — combines both sides, completed or cancelled items
+// ---------------------------------------------------------------------------
+function HistoryView({
+  incomingIntents,
+  myBookings,
+  myProposals,
+  trips,
+  t,
+}: {
+  incomingIntents: IncomingIntent[];
+  myBookings: MyBooking[];
+  myProposals: TravelerProposal[];
+  trips: TravelerTripRow[];
+  t: Translations;
+}) {
+  // Incoming as traveler — delivered or cancelled
+  const incomingHistory = incomingIntents.filter(
+    (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
+  );
+  // My sends as sender — delivered or cancelled
+  const sendsHistory = myBookings.filter(
+    (b) => b.status === 'cancelled' || (b.status === 'confirmed' && b.delivery_proof_url)
+  );
+  // My proposals on public requests — declined or fully delivered
+  const proposalsHistory = myProposals.filter(
+    (p) => p.status === 'cancelled' || (p.status === 'confirmed' && p.delivery_proof_url)
+  );
+  // Cancelled trips
+  const cancelledTrips = trips.filter((tr) => tr.status === 'cancelled');
+
+  const totalCount =
+    incomingHistory.length + sendsHistory.length + proposalsHistory.length + cancelledTrips.length;
+
+  if (totalCount === 0) {
+    return (
+      <div>
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em] mb-6">Historique</h2>
+        <EmptyState message="Votre historique est vide. Acceptez votre première mission pour commencer." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-10">
+      <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">
+        Historique <span className="text-ink-300 font-normal text-[15px]">· {totalCount}</span>
+      </h2>
+
+      {incomingHistory.length > 0 && (
+        <section>
+          <GroupHeader icon="✈️" label="Missions livrées ou refusées" count={incomingHistory.length} />
+          <div className="space-y-3 opacity-80">
+            {incomingHistory.map((intent) => (
+              <IntentCard
+                key={intent.id}
+                intent={intent}
+                onUpdate={async () => {}}
+                onProofUploaded={() => {}}
+                historic
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {sendsHistory.length > 0 && (
+        <section>
+          <GroupHeader icon="📦" label="Envois terminés" count={sendsHistory.length} />
+          <div className="space-y-3 opacity-80">
+            {sendsHistory.map((b) => (
+              <BookingCard key={b.id} booking={b} t={t} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {proposalsHistory.length > 0 && (
+        <section>
+          <GroupHeader icon="💌" label="Propositions terminées" count={proposalsHistory.length} />
+          <div className="space-y-3 opacity-80">
+            {proposalsHistory.map((p) => (
+              <ProposalCard key={p.id} proposal={p} accepted={p.status === 'confirmed'} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {cancelledTrips.length > 0 && (
+        <section>
+          <GroupHeader icon="🚫" label="Trajets annulés" count={cancelledTrips.length} />
+          <div className="space-y-3 opacity-60">
+            {cancelledTrips.map((trip) => (
+              <div key={trip.id} className="bg-white rounded-2xl p-5 border border-ink-50">
+                <div className="flex items-center gap-4">
+                  <Plane className="w-4 h-4 text-ink-300" />
+                  <div className="flex-1">
+                    <div className="text-[14px] text-ink-500">
+                      {trip.departure_city} → {trip.arrival_city}
+                    </div>
+                    <div className="text-[12px] text-ink-400">
+                      {formatShortDate(trip.departure_date)} · Annulé
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
