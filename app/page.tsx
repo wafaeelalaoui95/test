@@ -8,6 +8,7 @@ import {
   Plane,
   Star,
   Calendar,
+  MapPin,
   Search,
   Loader2,
   SlidersHorizontal,
@@ -19,7 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { CityCombobox } from '@/components/ui/CityCombobox';
-import { formatShortDate, nameInitial, displayName } from '@/lib/utils';
+import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { browser } from '@/lib/supabase/queries';
@@ -578,8 +579,9 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
           <div className="text-end">
             <div className="text-[11px] text-ink-300 tracking-[0.04em] uppercase">À partir de</div>
             <div className="font-bold text-ink-600 text-[18px] num-display tracking-[-0.015em]">
-              {trip.compensation_min}€
+              {formatEuros(priceBreakdown(trip.compensation_min).total)}
             </div>
+            <div className="text-[10px] text-ink-300 mt-0.5">protection Jibly incluse</div>
           </div>
         </div>
       </motion.article>
