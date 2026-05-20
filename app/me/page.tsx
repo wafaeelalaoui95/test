@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Loader2,
   AlertTriangle,
+  Wallet,
   Trash2,
   X,
 } from 'lucide-react';
