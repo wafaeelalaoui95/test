@@ -687,65 +687,6 @@ export async function listMyTravelerProposals(
 }
 
 /**
- * Get the traveler's wallet balance — total of captured payments where
- * I'm the traveler. Used by the Navbar to display a small badge.
- * Returns the amount in euros.
- */
-export async function getWalletBalance(supabase: SB, travelerId: string): Promise<number> {
-  // Sum the NET amount (after Jibly's 15% fee) of all captured bookings
-  // where I'm the traveler. payment_amount is the TTC the sender paid,
-  // in cents — we divide by 1.15 to get the traveler's net.
-  //
-  // The traveler can be identified two ways depending on flow:
-  //   1) traveler_user_id set directly (proposal-flow bookings)
-  //   2) the booking's trip belongs to me (sender→traveler flow)
-  // We run both queries and dedupe by id to avoid double-counting.
-  const [byUser, trips] = await Promise.all([
-    withTimeout(
-      Promise.resolve(
-        supabase
-          .from('booking_intents')
-          .select('id, payment_amount')
-          .eq('payment_status', 'captured')
-          .eq('traveler_user_id', travelerId)
-      ),
-      8000,
-      'Wallet by user'
-    ),
-    withTimeout(
-      Promise.resolve(
-        supabase.from('traveler_trips').select('id').eq('user_id', travelerId)
-      ),
-      6000,
-      'Trips for wallet'
-    ),
-  ]);
-
-  const collected = new Map<string, number>();
-  (byUser.data ?? []).forEach((r: any) => collected.set(r.id, r.payment_amount ?? 0));
-
-  const tripIds = (trips.data ?? []).map((t: any) => t.id);
-  if (tripIds.length > 0) {
-    const { data: byTrip } = await withTimeout(
-      Promise.resolve(
-        supabase
-          .from('booking_intents')
-          .select('id, payment_amount')
-          .eq('payment_status', 'captured')
-          .in('traveler_trip_id', tripIds)
-      ),
-      8000,
-      'Wallet by trip'
-    );
-    (byTrip ?? []).forEach((r: any) => collected.set(r.id, r.payment_amount ?? 0));
-  }
-
-  // Sum the TTC cents and convert to NET euros (post-fee)
-  const totalCents = Array.from(collected.values()).reduce((s, v) => s + v, 0);
-  return totalCents / 100 / 1.15;
-}
-
-/**
  * List all wallet transactions for a traveler — bookings where I'm the
  * traveler, with their full payment lifecycle info. We don't filter by
  * payment_status so the wallet page can show all states (captured,
@@ -830,6 +771,23 @@ export async function listWalletTransactions(
     ...b,
     sender_profile: (profileById.get(b.sender_id) as any) ?? null,
   }));
+}
+
+/**
+ * Get the traveler's wallet balance — net amount of captured payments
+ * where I'm the traveler RECIPIENT (not the sender). Used by the Navbar
+ * to display the wallet pill. Returns the amount in euros, net of fees.
+ *
+ * Uses the same data source as the /wallet page so both numbers match.
+ */
+export async function getWalletBalance(supabase: SB, travelerId: string): Promise<number> {
+  const txs = await listWalletTransactions(supabase, travelerId);
+  // Exclude bookings where I'm the SENDER (= I paid out, I didn't earn).
+  const incoming = txs.filter((t) => t.sender_id !== travelerId);
+  // Only count captured bookings (money actually moved).
+  const captured = incoming.filter((t) => t.payment_status === 'captured');
+  const totalCents = captured.reduce((sum, t) => sum + (t.payment_amount ?? 0), 0);
+  return totalCents / 100 / 1.15;
 }
 
 /**
