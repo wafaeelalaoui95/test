@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { VerificationBadge } from '@/components/ui/Badge';
-import { formatShortDate, formatName, nameInitial, displayName } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { browser } from '@/lib/supabase/queries';
@@ -46,7 +46,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   const [bookingStep, setBookingStep] = useState<'details' | 'payment' | 'success'>('details');
   const [intentCategory, setIntentCategory] = useState<string>('');
   const [intentDescription, setIntentDescription] = useState('');
-  const [intentPrice, setIntentPrice] = useState(20);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
 
@@ -79,7 +78,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     setBookingStep('details');
     setIntentCategory('');
     setIntentDescription('');
-    setIntentPrice(Math.max(trip.compensation_min, 20));
     setSubmitErr(null);
   }
 
@@ -98,6 +96,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   // capture from their /me page.
   async function handlePaymentAuthorized(paymentIntentId: string) {
     if (!bookingTrip || !user) return;
+    const breakdown = priceBreakdown(bookingTrip.compensation_min);
     setSubmitErr(null);
     setSubmitting(true);
     try {
@@ -106,12 +105,12 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
         traveler_trip_id: bookingTrip.id,
         item_category: intentCategory,
         item_description: intentDescription || null,
-        proposed_price: intentPrice,
+        proposed_price: breakdown.total, // store the total paid by the sender
         pickup_city: bookingTrip.departure_city,
         destination_city: bookingTrip.arrival_city,
         payment_intent_id: paymentIntentId,
         payment_status: 'authorized',
-        payment_amount: intentPrice * 100,
+        payment_amount: Math.round(breakdown.total * 100), // cents for Stripe
       });
       setBookingStep('success');
     } catch (e: any) {
@@ -270,10 +269,13 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between mb-5 mt-auto">
-                    <div className="text-[13px] text-ink-400">À partir de</div>
+                  <div className="flex items-end justify-between mb-5 mt-auto">
+                    <div>
+                      <div className="text-[13px] text-ink-400">À partir de</div>
+                      <div className="text-[10px] text-ink-300 mt-0.5">protection Jibly incluse</div>
+                    </div>
                     <div className="font-bold text-ink-600 text-[20px] num-display tracking-[-0.015em]">
-                      {tr.compensation_min}€
+                      {formatEuros(priceBreakdown(tr.compensation_min).total)}
                     </div>
                   </div>
 
@@ -380,28 +382,32 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                     />
                   </div>
 
-                  {/* Price */}
+                  {/* Price breakdown — fixed to the traveler's minimum.
+                      No slider: the traveler set the price, sender accepts. */}
                   <div className="mb-6">
-                    <div className="flex items-baseline justify-between mb-2.5">
-                      <label className="block text-[13px] font-semibold text-ink-500">
-                        Compensation proposée
-                      </label>
-                      <span className="text-2xl font-bold text-ink-600 num-display tracking-[-0.02em]">
-                        {intentPrice}€
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={bookingTrip.compensation_min}
-                      max={100}
-                      step={5}
-                      value={intentPrice}
-                      onChange={(e) => setIntentPrice(Number(e.target.value))}
-                      className="w-full h-1.5 bg-ink-100 rounded-full appearance-none accent-lavender-500"
-                    />
-                    <div className="flex justify-between text-[11px] text-ink-300 mt-1.5">
-                      <span>Min {bookingTrip.compensation_min}€</span>
-                      <span>100€</span>
+                    <label className="block text-[13px] font-semibold text-ink-500 mb-3">
+                      Détail du paiement
+                    </label>
+                    <div className="rounded-xl bg-white border border-ink-100 px-4 py-3 space-y-2">
+                      <div className="flex items-center justify-between text-[14px] text-ink-500">
+                        <span>Compensation voyageur</span>
+                        <span className="num-display font-medium text-ink-600">
+                          {formatEuros(priceBreakdown(bookingTrip.compensation_min).traveler)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[14px] text-ink-500">
+                        <span>Protection Jibly (15%)</span>
+                        <span className="num-display font-medium text-ink-600">
+                          {formatEuros(priceBreakdown(bookingTrip.compensation_min).fees)}
+                        </span>
+                      </div>
+                      <div className="h-px bg-ink-50 my-2" />
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-[15px] font-semibold text-ink-600">Total</span>
+                        <span className="text-2xl font-bold text-ink-600 num-display tracking-[-0.02em]">
+                          {formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -447,7 +453,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                         Paiement · Étape 2/2
                       </div>
                       <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
-                        {intentPrice}€
+                        {formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}
                       </h2>
                       <div className="text-[13px] text-ink-400 mt-1.5">
                         {bookingTrip.departure_city} → {bookingTrip.arrival_city} · {formatShortDate(bookingTrip.departure_date)}
@@ -468,7 +474,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   )}
 
                   <StripePaymentForm
-                    amountEuros={intentPrice}
+                    amountEuros={priceBreakdown(bookingTrip.compensation_min).total}
                     description={`Jibly · ${bookingTrip.departure_city} → ${bookingTrip.arrival_city}`}
                     onAuthorized={handlePaymentAuthorized}
                     onCancel={() => setBookingStep('details')}
@@ -493,7 +499,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                     Paiement autorisé
                   </h3>
                   <p className="text-[15px] text-ink-400 mb-7 leading-relaxed">
-                    Votre carte a été autorisée pour <strong className="text-ink-600 num-display">{intentPrice}€</strong>.
+                    Votre carte a été autorisée pour <strong className="text-ink-600 num-display">{formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}</strong>.
                     Le voyageur sera notifié et vous recevrez sa décision rapidement.
                     Aucun débit n&apos;a encore été effectué.
                   </p>
