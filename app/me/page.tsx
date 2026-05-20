@@ -258,7 +258,18 @@ export default function MyPage() {
                 <OverviewTab stats={stats} matches={matches} walletEuros={walletEuros} t={t} />
               )}
               {tab === 'requests' && <RequestsTab requests={requests} bookings={myBookings} t={t} />}
-              {tab === 'trips' && <TripsTab trips={trips} t={t} />}
+           {tab === 'trips' && (
+                <TripsTab
+                  trips={trips}
+                  onCancel={async (tripId) => {
+                    await browser.cancelTrip(tripId);
+                    setTrips((prev) =>
+                      prev.map((tr) => (tr.id === tripId ? { ...tr, status: 'cancelled' } : tr))
+                    );
+                  }}
+                  t={t}
+                />
+              )}
               {tab === 'matches' && (
                 <MatchesTab
                   intents={incomingIntents}
@@ -732,7 +743,17 @@ function RequestCard({ request, t }: { request: ShippingRequestRow; t: Translati
 }
 
 // === TRIPS ===
-function TripsTab({ trips, t }: { trips: TravelerTripRow[]; t: Translations }) {
+function TripsTab({
+  trips,
+  onCancel,
+  t,
+}: {
+  trips: TravelerTripRow[];
+  onCancel: (tripId: string) => Promise<void>;
+  t: Translations;
+}) {
+  const visibleTrips = trips.filter((t) => t.status !== 'cancelled');
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -745,16 +766,175 @@ function TripsTab({ trips, t }: { trips: TravelerTripRow[]; t: Translations }) {
         </Link>
       </div>
 
-      {trips.length === 0 ? (
+      {visibleTrips.length === 0 ? (
         <EmptyState message={t.empty_my_trips} />
       ) : (
         <div className="space-y-3">
-          {trips.map((trip) => (
-            <TripCard key={trip.id} trip={trip} t={t} />
+          {visibleTrips.map((trip) => (
+            <TripCard key={trip.id} trip={trip} onCancel={onCancel} t={t} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function TripCard({
+  trip,
+  onCancel,
+  t,
+}: {
+  trip: TravelerTripRow;
+  onCancel: (tripId: string) => Promise<void>;
+  t: Translations;
+}) {
+  const space = SPACE_OPTIONS.find((s) => s.value === (trip.available_space as AvailableSpace));
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [activeBookings, setActiveBookings] = useState<number | null>(null);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function openCancelModal() {
+    setShowCancelModal(true);
+    setErr(null);
+    setLoadingBookings(true);
+    try {
+      const { count } = await browser.countActiveBookingsForTrip(trip.id);
+      setActiveBookings(count);
+    } catch {
+      setActiveBookings(null);
+    } finally {
+      setLoadingBookings(false);
+    }
+  }
+
+  async function confirmCancel() {
+    setCancelling(true);
+    setErr(null);
+    try {
+      await onCancel(trip.id);
+      setShowCancelModal(false);
+    } catch (e: any) {
+      setErr(e?.message ?? 'Échec de l\'annulation. Réessayez.');
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="bg-white rounded-2xl p-5 border border-ink-50 hover:border-ink-100 transition-colors">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center text-xl">
+            {space?.icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3 mb-1.5">
+              <div className="font-semibold text-ink-600 flex items-center gap-2 flex-wrap text-[15px]">
+                <span>{trip.departure_city}</span>
+                <Plane className="w-3.5 h-3.5 text-ink-300" />
+                <span>{trip.arrival_city}</span>
+              </div>
+              <StatusBadge status={trip.status} t={t} />
+            </div>
+            <div className="text-[13px] text-ink-400">
+              {formatShortDate(trip.departure_date)} · {space ? t[space.labelKey] : ''} · {t.matches_min} {trip.compensation_min}{t.common_eur}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={openCancelModal}
+            className="flex-shrink-0 p-2 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
+            aria-label="Annuler ce trajet"
+            title="Annuler ce trajet"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showCancelModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+            onClick={() => !cancelling && setShowCancelModal(false)}
+          >
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 20, opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-cream-50 rounded-3xl p-7 max-w-md w-full shadow-xl"
+            >
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-12 h-12 rounded-full bg-blush-50 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-blush-500" strokeWidth={2} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
+                    Annuler ce trajet ?
+                  </h3>
+                  <p className="text-[14px] text-ink-500 leading-relaxed">
+                    {trip.departure_city} → {trip.arrival_city} · {formatShortDate(trip.departure_date)}
+                  </p>
+                </div>
+              </div>
+
+              {loadingBookings ? (
+                <div className="rounded-xl bg-cream-100 px-4 py-3 mb-5 text-[13px] text-ink-400 flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Vérification des réservations…
+                </div>
+              ) : activeBookings && activeBookings > 0 ? (
+                <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 mb-5 text-[13px] text-ink-500 leading-relaxed">
+                  <strong className="text-ink-600">
+                    {activeBookings === 1
+                      ? '1 réservation est en cours sur ce trajet.'
+                      : `${activeBookings} réservations sont en cours sur ce trajet.`}
+                  </strong>
+                  <br />
+                  Elles seront <strong>automatiquement annulées</strong> et les paiements autorisés seront libérés. Aucun débit ne sera effectué.
+                </div>
+              ) : (
+                <p className="text-[14px] text-ink-400 mb-5 leading-relaxed">
+                  Cette action est définitive. Le trajet ne sera plus visible par les expéditeurs.
+                </p>
+              )}
+
+              {err && (
+                <div className="rounded-xl bg-blush-50 px-4 py-3 text-[13px] text-blush-500 mb-5">
+                  {err}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  disabled={cancelling}
+                  className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
+                >
+                  Garder le trajet
+                </button>
+                <button
+                  onClick={confirmCancel}
+                  disabled={cancelling}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-blush-500 hover:bg-blush-600 disabled:opacity-50 rounded-full transition-colors"
+                >
+                  {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  {cancelling ? 'Annulation…' : 'Confirmer l\'annulation'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
