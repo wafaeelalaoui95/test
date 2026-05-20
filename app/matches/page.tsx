@@ -145,9 +145,9 @@ export default function MatchesPage() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(24,20,16,0.12)] border border-ink-50/60 p-2 max-w-3xl mx-auto"
           >
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-1">
+            <div className="flex flex-col md:flex-row md:items-stretch">
               {/* From */}
-              <div className="relative px-5 py-4 rounded-2xl hover:bg-cream-50/60 transition-colors text-start">
+              <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                   Départ
                 </label>
@@ -164,11 +164,11 @@ export default function MatchesPage() {
                 </div>
               </div>
 
-              {/* Separator */}
-              <div className="hidden md:block w-px bg-ink-50 mx-0 my-3" />
+              {/* Divider — only on desktop */}
+              <div className="hidden md:block w-px bg-ink-50 my-3 flex-shrink-0" />
 
-              {/* To — but the separator above messes the grid. So we use a divider line baked into the cell */}
-              <div className="relative px-5 py-4 rounded-2xl hover:bg-cream-50/60 transition-colors text-start md:border-l md:border-ink-50">
+              {/* To */}
+              <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                   Arrivée
                 </label>
@@ -185,8 +185,11 @@ export default function MatchesPage() {
                 </div>
               </div>
 
+              {/* Divider */}
+              <div className="hidden md:block w-px bg-ink-50 my-3 flex-shrink-0" />
+
               {/* Date */}
-              <div className="relative px-5 py-4 rounded-2xl hover:bg-cream-50/60 transition-colors text-start md:border-l md:border-ink-50">
+              <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                   Avant le
                 </label>
@@ -202,14 +205,17 @@ export default function MatchesPage() {
                 </div>
               </div>
 
-              {/* Search button */}
-              <button
-                onClick={handleSearch}
-                className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-ink-500 hover:bg-ink-600 text-cream-50 font-semibold text-[15px] transition-colors min-h-[64px]"
-              >
-                <Search className="w-4 h-4" strokeWidth={2.5} />
-                <span className="md:hidden lg:inline">Rechercher</span>
-              </button>
+              {/* Search button — compact circular, on the right */}
+              <div className="flex items-center justify-center md:justify-end px-2 pt-2 md:pt-0 md:ps-1">
+                <button
+                  onClick={handleSearch}
+                  aria-label="Rechercher"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 md:py-2.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 font-semibold text-[14px] transition-colors w-full md:w-auto"
+                >
+                  <Search className="w-4 h-4" strokeWidth={2.5} />
+                  <span>Rechercher</span>
+                </button>
+              </div>
             </div>
           </motion.div>
 
