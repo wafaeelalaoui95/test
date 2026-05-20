@@ -360,6 +360,9 @@ export type BookingIntentInput = {
   proposed_price: number;
   pickup_city: string;
   destination_city: string;
+  payment_intent_id?: string | null;
+  payment_status?: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed';
+  payment_amount?: number | null;
 };
 
 export async function createBookingIntent(
@@ -379,6 +382,9 @@ export async function createBookingIntent(
           pickup_city: input.pickup_city,
           destination_city: input.destination_city,
           status: 'pending',
+          payment_intent_id: input.payment_intent_id ?? null,
+          payment_status: input.payment_status ?? 'unpaid',
+          payment_amount: input.payment_amount ?? null,
         })
         .select('*')
         .maybeSingle()
@@ -401,6 +407,9 @@ export type BookingIntentRow = {
   destination_city: string;
   status: 'pending' | 'confirmed' | 'cancelled';
   created_at: string;
+  payment_intent_id: string | null;
+  payment_status: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed';
+  payment_amount: number | null;
 };
 
 /**
