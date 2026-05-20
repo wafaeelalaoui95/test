@@ -152,13 +152,19 @@ export default function MyPage() {
     );
   }
 
+ // Wallet balance: sum of all captured Stripe payments where I'm the
+  // traveler. payment_amount is in cents → divide by 100 to get euros.
+  // We only count `captured` (not `authorized`) because authorized funds
+  // can still be canceled if I decline.
+  const walletEuros = incomingIntents
+    .filter((i) => i.payment_status === 'captured' && i.payment_amount)
+    .reduce((sum, i) => sum + (i.payment_amount ?? 0), 0) / 100;
+
   const stats = {
     active: requests.filter((r) => r.status === 'pending' || r.status === 'matched').length
           + trips.filter((trip) => trip.status === 'open' || trip.status === 'matched').length,
     pending: incomingIntents.filter((i) => i.status === 'pending').length,
-    earned: matches
-      .filter((m) => m.status === 'completed' && m.agreed_compensation)
-      .reduce((sum, m) => sum + (m.agreed_compensation ?? 0), 0),
+    earned: walletEuros,
     completed: requests.filter((r) => r.status === 'delivered').length
              + trips.filter((trip) => trip.status === 'completed').length,
   };
