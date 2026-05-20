@@ -78,16 +78,6 @@ export interface MatchRow {
   created_at: string;
 }
 
-export interface MessageRow {
-  id: string;
-  sender_id: string;
-  receiver_id: string;
-  match_id: string | null;
-  message: string;
-  read_at: string | null;
-  created_at: string;
-}
-
 export interface ReviewRow {
   id: string;
   reviewer_id: string;
