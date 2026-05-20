@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
 import { DeliveryProofModal } from '@/components/DeliveryProofModal';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
+import { ChatModal } from '@/components/ChatModal';
 import { Input } from '@/components/ui/Form';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
 import { formatShortDate, formatName, nameInitial, displayName, formatEuros } from '@/lib/utils';
@@ -97,6 +98,70 @@ export default function MyPage() {
   // When the sender accepts a traveler's proposal, we open a Stripe payment
   // modal. The proposal booking is held here while paying.
   const [proposalToPay, setProposalToPay] = useState<MyBooking | null>(null);
+
+  // Chat modal — pick a booking to open. We stash everything the modal
+  // needs so it doesn't have to re-query.
+  const [chatTarget, setChatTarget] = useState<{
+    bookingIntentId: string;
+    senderId: string;
+    travelerId: string;
+    otherName: string;
+    otherInitial: string;
+    contextLine?: string;
+  } | null>(null);
+
+  // Deep-link from notification emails: if the URL contains ?chat={id},
+  // open the chat modal once data is loaded. Run on every relevant data
+  // refresh in case the user lands while loading.
+  useEffect(() => {
+    if (dataLoading || !user) return;
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const chatBookingId = params.get('chat');
+    if (!chatBookingId || chatTarget) return;
+
+    // Find the booking in one of our lists. It could live in incomingIntents
+    // (we're the traveler) OR myBookings (we're the sender) OR myProposals
+    // (we're the proposer waiting for sender).
+    const incoming = incomingIntents.find((i) => i.id === chatBookingId);
+    if (incoming) {
+      const otherName = displayName(incoming.sender_profile?.full_name) || 'Expéditeur';
+      setChatTarget({
+        bookingIntentId: incoming.id,
+        senderId: incoming.sender_id,
+        travelerId: user.id,
+        otherName,
+        otherInitial: nameInitial(incoming.sender_profile?.full_name),
+        contextLine: `${incoming.pickup_city} → ${incoming.destination_city}`,
+      });
+      return;
+    }
+    const booking = myBookings.find((b) => b.id === chatBookingId);
+    if (booking && booking.traveler_profile) {
+      const otherName = displayName(booking.traveler_profile.full_name) || 'Voyageur';
+      setChatTarget({
+        bookingIntentId: booking.id,
+        senderId: user.id,
+        travelerId: booking.traveler_profile.id,
+        otherName,
+        otherInitial: nameInitial(booking.traveler_profile.full_name),
+        contextLine: `${booking.pickup_city} → ${booking.destination_city}`,
+      });
+      return;
+    }
+    const proposal = myProposals.find((p) => p.id === chatBookingId);
+    if (proposal && proposal.sender_profile) {
+      const otherName = displayName(proposal.sender_profile.full_name) || 'Expéditeur';
+      setChatTarget({
+        bookingIntentId: proposal.id,
+        senderId: proposal.sender_id,
+        travelerId: user.id,
+        otherName,
+        otherInitial: nameInitial(proposal.sender_profile.full_name),
+        contextLine: `${proposal.pickup_city} → ${proposal.destination_city}`,
+      });
+    }
+  }, [dataLoading, user, incomingIntents, myBookings, myProposals, chatTarget]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -329,6 +394,19 @@ export default function MyPage() {
                       prev.map((tr) => (tr.id === tripId ? { ...tr, status: 'cancelled' } : tr))
                     );
                   }}
+                  onOpenChat={(intent) => {
+                    // Traveler side: opens chat with the sender of this incoming
+                    // booking. The senderId is the booking's sender_id; the
+                    // travelerId is me (the current user).
+                    setChatTarget({
+                      bookingIntentId: intent.id,
+                      senderId: intent.sender_id,
+                      travelerId: user.id,
+                      otherName: displayName(intent.sender_profile?.full_name) || 'Expéditeur',
+                      otherInitial: nameInitial(intent.sender_profile?.full_name),
+                      contextLine: `${intent.pickup_city} → ${intent.destination_city}`,
+                    });
+                  }}
                   t={t}
                 />
               )}
@@ -343,6 +421,20 @@ export default function MyPage() {
                     setMyBookings((prev) =>
                       prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' } : b))
                     );
+                  }}
+                  onOpenChat={(booking) => {
+                    // Sender side: opens chat with the traveler. travelerId
+                    // comes from traveler_profile (which can be the traveler
+                    // who proposed, or the owner of the trip booked).
+                    if (!booking.traveler_profile) return;
+                    setChatTarget({
+                      bookingIntentId: booking.id,
+                      senderId: user.id,
+                      travelerId: booking.traveler_profile.id,
+                      otherName: displayName(booking.traveler_profile.full_name) || 'Voyageur',
+                      otherInitial: nameInitial(booking.traveler_profile.full_name),
+                      contextLine: `${booking.pickup_city} → ${booking.destination_city}`,
+                    });
                   }}
                   t={t}
                 />
@@ -382,6 +474,33 @@ export default function MyPage() {
                 )
               );
               setProposalToPay(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Chat modal — opens over the dashboard for confirmed bookings */}
+      <AnimatePresence>
+        {chatTarget && user && (
+          <ChatModal
+            bookingIntentId={chatTarget.bookingIntentId}
+            senderId={chatTarget.senderId}
+            travelerId={chatTarget.travelerId}
+            currentUserId={user.id}
+            otherName={chatTarget.otherName}
+            otherInitial={chatTarget.otherInitial}
+            contextLine={chatTarget.contextLine}
+            onClose={() => {
+              setChatTarget(null);
+              // Clean up the ?chat= query param so closing then reopening
+              // /me later doesn't auto-open the chat again.
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href);
+                if (url.searchParams.has('chat')) {
+                  url.searchParams.delete('chat');
+                  window.history.replaceState({}, '', url.toString());
+                }
+              }
             }}
           />
         )}
@@ -696,11 +815,13 @@ function BookingCard({
   booking,
   onAcceptProposal,
   onDeclineProposal,
+  onOpenChat,
   t,
 }: {
   booking: MyBooking;
   onAcceptProposal?: (b: MyBooking) => void;
   onDeclineProposal?: (id: string) => void;
+  onOpenChat?: (b: MyBooking) => void;
   t: Translations;
 }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
@@ -831,35 +952,39 @@ function BookingCard({
             <div className="text-[11px] font-semibold text-ink-300 tracking-[0.12em] uppercase">
               Comment le contacter
             </div>
-            {traveler?.phone ? (
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-[15px] font-medium text-ink-600 num-display">
-                  {traveler.phone}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* In-app messaging — primary, always available */}
+              {onOpenChat && (
+                <button
+                  onClick={() => onOpenChat(booking)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[13px] font-semibold transition-colors"
+                >
+                  💬 Message
+                </button>
+              )}
+              {traveler?.phone ? (
+                <>
+                  <a
+                    href={`https://wa.me/${traveler.phone.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[13px] font-semibold transition-colors"
+                  >
+                    WhatsApp
+                  </a>
+                  <a
+                    href={`tel:${traveler.phone}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
+                  >
+                    Appeler
+                  </a>
+                </>
+              ) : (
+                <span className="text-[12px] text-ink-400">
+                  WhatsApp non renseigné
                 </span>
-                <a
-                  href={`https://wa.me/${traveler.phone.replace(/[^0-9]/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[13px] font-semibold transition-colors"
-                >
-                  WhatsApp
-                </a>
-                <a
-                  href={`tel:${traveler.phone}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
-                >
-                  Appeler
-                </a>
-              </div>
-            ) : (
-              <p className="text-[13px] text-ink-400 leading-relaxed">
-                Le voyageur n&apos;a pas encore renseigné de numéro. Une messagerie in-app arrive bientôt — en attendant, vous pouvez{' '}
-                <Link href={`/u/${traveler?.id}`} className="underline font-medium text-ink-500">
-                  voir son profil
-                </Link>
-                .
-              </p>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1271,12 +1396,14 @@ function IntentCard({
   intent,
   onUpdate,
   onProofUploaded,
+  onOpenChat,
   historic = false,
   showDeliverButton = false,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
+  onOpenChat?: (intent: IncomingIntent) => void;
   historic?: boolean;
   showDeliverButton?: boolean;
 }) {
@@ -1345,13 +1472,25 @@ function IntentCard({
         )}
 
         {!historic && showDeliverButton && (
-          <button
-            onClick={() => setShowProofModal(true)}
-            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
-          >
-            <Camera className="w-3 h-3" />
-            J&apos;ai livré
-          </button>
+          <>
+            {onOpenChat && (
+              <button
+                onClick={() => onOpenChat(intent)}
+                className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
+                aria-label="Ouvrir la conversation"
+                title="Messages"
+              >
+                💬
+              </button>
+            )}
+            <button
+              onClick={() => setShowProofModal(true)}
+              className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
+            >
+              <Camera className="w-3 h-3" />
+              J&apos;ai livré
+            </button>
+          </>
         )}
       </div>
 
@@ -1963,6 +2102,7 @@ function TripsView({
   onUpdateIntent,
   onProofUploaded,
   onCancelTrip,
+  onOpenChat,
   t,
 }: {
   trips: TravelerTripRow[];
@@ -1971,6 +2111,7 @@ function TripsView({
   onUpdateIntent: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onCancelTrip: (tripId: string) => Promise<void>;
+  onOpenChat: (intent: IncomingIntent) => void;
   t: Translations;
 }) {
   // 🔥 À traiter:
@@ -2084,6 +2225,7 @@ function TripsView({
                 intent={intent}
                 onUpdate={onUpdateIntent}
                 onProofUploaded={onProofUploaded}
+                onOpenChat={onOpenChat}
                 showDeliverButton
               />
             ))}
@@ -2126,12 +2268,14 @@ function SendsView({
   requests,
   onAcceptProposal,
   onDeclineProposal,
+  onOpenChat,
   t,
 }: {
   bookings: MyBooking[];
   requests: ShippingRequestRow[];
   onAcceptProposal: (b: MyBooking) => void;
   onDeclineProposal: (id: string) => void;
+  onOpenChat: (b: MyBooking) => void;
   t: Translations;
 }) {
   // 🔥 À traiter: traveler proposals on my requests (accept and pay)
@@ -2214,7 +2358,7 @@ function SendsView({
           <GroupHeader icon="⏳" label="En cours" count={inProgressBookings.length + activeRequests.length} />
           <div className="space-y-3">
             {inProgressBookings.map((b) => (
-              <BookingCard key={b.id} booking={b} t={t} />
+              <BookingCard key={b.id} booking={b} onOpenChat={onOpenChat} t={t} />
             ))}
             {activeRequests.map((req) => (
               <RequestCardSimple key={req.id} request={req} t={t} />
