@@ -779,35 +779,7 @@ function TripsTab({
   );
 }
 
-function TripCard({
-  trip,
-  onCancel,
-  t,
-}: {
-  trip: TravelerTripRow;
-  onCancel: (tripId: string) => Promise<void>;
-  t: Translations;
-}) {
-  const space = SPACE_OPTIONS.find((s) => s.value === (trip.available_space as AvailableSpace));
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [activeBookings, setActiveBookings] = useState<number | null>(null);
-  const [loadingBookings, setLoadingBookings] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
-  async function openCancelModal() {
-    setShowCancelModal(true);
-    setErr(null);
-    setLoadingBookings(true);
-    try {
-      const { count } = await browser.countActiveBookingsForTrip(trip.id);
-      setActiveBookings(count);
-    } catch {
-      setActiveBookings(null);
-    } finally {
-      setLoadingBookings(false);
-    }
-  }
 
   async function confirmCancel() {
     setCancelling(true);
