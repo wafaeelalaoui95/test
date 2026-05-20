@@ -370,10 +370,10 @@ export type Translations = {
 
 export const translations: Record<Locale, Translations> = {
   fr: {
-    nav_send: 'Envoyer',
-    nav_travel: 'Voyager',
+    nav_send: 'J\'envoie quelque chose',
+    nav_travel: 'Je transporte quelque chose',
     nav_discover: 'Découvrir',
-    nav_trust: 'Confiance',
+    nav_trust: 'Comment ça marche',
     nav_my_space: 'Mon espace',
     nav_start: 'Commencer',
 
@@ -666,8 +666,8 @@ export const translations: Record<Locale, Translations> = {
     admin_activity_report: 'Signalement #4821',
     admin_activity_id_verified: 'Karim T. — ID vérifié',
 
-    auth_login_title: 'Bon retour.',
-    auth_login_subtitle: 'Connectez-vous pour gérer vos trajets et envois.',
+   auth_login_title: 'Connexion',
+    auth_login_subtitle: 'Accédez à vos trajets et envois.',
     auth_signup_title: 'Créez votre compte.',
     auth_signup_subtitle: 'Quelques secondes, et vous y êtes.',
     auth_email: 'Email',
@@ -707,10 +707,10 @@ export const translations: Record<Locale, Translations> = {
   },
 
   en: {
-    nav_send: 'Send',
-    nav_travel: 'Travel',
+ nav_send: 'I\'m sending something',
+    nav_travel: 'I\'m carrying something',
     nav_discover: 'Discover',
-    nav_trust: 'Trust',
+  nav_trust: 'How it works',
     nav_my_space: 'My Space',
     nav_start: 'Get Started',
 
@@ -1003,8 +1003,8 @@ export const translations: Record<Locale, Translations> = {
     admin_activity_report: 'Report #4821',
     admin_activity_id_verified: 'Karim T. — ID verified',
 
-    auth_login_title: 'Welcome back.',
-    auth_login_subtitle: 'Sign in to manage your trips and shipments.',
+    auth_login_title: 'Sign in',
+    auth_login_subtitle: 'Access your trips and shipments.',
     auth_signup_title: 'Create your account.',
     auth_signup_subtitle: 'A few seconds and you\'re in.',
     auth_email: 'Email',
