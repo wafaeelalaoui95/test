@@ -262,7 +262,7 @@ export default function MyPage() {
   };
 
   const TABS: { id: TabId; label: string; icon: typeof Plane }[] = [
-    { id: 'trips', label: 'Mes voyages', icon: Plane },
+    { id: 'trips', label: 'Mes transports', icon: Plane },
     { id: 'sends', label: 'Mes envois', icon: Package },
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
@@ -2150,7 +2150,7 @@ function TripsView({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes transports</h2>
           <Link href="/voyager">
             <Button size="sm">
               <Plus className="w-4 h-4" />
@@ -2198,7 +2198,7 @@ function TripsView({
   return (
     <div className="space-y-10">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes transports</h2>
         <Link href="/voyager">
           <Button size="sm">
             <Plus className="w-4 h-4" />
