@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
-import { Plane, Star, Clock, Loader2, SlidersHorizontal, X } from 'lucide-react';
+import { Plane, Star, Clock, MessageCircle, Loader2, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { formatShortDate } from '@/lib/utils';
@@ -24,6 +24,7 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Filters
   const [showFilters, setShowFilters] = useState(false);
   const [fromFilter, setFromFilter] = useState('');
   const [toFilter, setToFilter] = useState('');
@@ -42,15 +43,16 @@ export default function MatchesPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err.message ?? 'Erreur de chargement');
+        setError(err.message ?? t.auth_error_generic);
       })
       .finally(() => {
         if (cancelled) return;
         setLoading(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [t.auth_error_generic]);
 
+  // Client-side filtering — keeps UX snappy.
   const filteredTrips = useMemo(() => {
     return trips.filter((tv) => {
       if (fromFilter && !tv.departure_city.toLowerCase().includes(fromFilter.toLowerCase())) return false;
@@ -79,18 +81,18 @@ export default function MatchesPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="flex flex-col sm:flex-row sm:items-end justify-between gap-5 mb-10"
+          className="mb-12 lg:mb-16 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6"
         >
           <div className="max-w-2xl">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-ink-600 leading-[1.05] tracking-[-0.03em] text-balance mb-3">
-              Voyageurs disponibles
+              {t.matches_title}
             </h1>
             <p className="text-lg text-ink-400">
               <span className="font-semibold text-ink-600 num-display">{filteredTrips.length}</span>{' '}
-              personnes prêtes à aider.
+              {t.matches_subtitle}
               {hasActiveFilters && (
                 <span className="text-[14px] text-ink-300">
-                  {' '}· <span className="num-display">{trips.length}</span> au total
+                  {' '}· <span className="num-display">{trips.length}</span> {t.matches_total}
                 </span>
               )}
             </p>
@@ -105,7 +107,7 @@ export default function MatchesPage() {
               }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
-              Filtres
+              {t.matches_filters}
               {hasActiveFilters && (
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-lavender-500 text-cream-50 text-[10px] font-bold ml-0.5">
                   {[fromFilter, toFilter, maxDate, maxBudget !== '' ? '1' : '', verifiedOnly ? '1' : ''].filter(Boolean).length}
@@ -113,11 +115,12 @@ export default function MatchesPage() {
               )}
             </button>
             <Link href={user ? '/envoyer' : '/login?next=/envoyer'}>
-              <Button size="sm">Publier ma demande</Button>
+              <Button size="sm">{t.matches_publish_btn}</Button>
             </Link>
           </div>
         </motion.div>
 
+        {/* Filter bar */}
         {showFilters && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
@@ -126,7 +129,7 @@ export default function MatchesPage() {
           >
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
               <div>
-                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">Départ</label>
+                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">{t.matches_filter_from}</label>
                 <input
                   type="text"
                   value={fromFilter}
@@ -136,7 +139,7 @@ export default function MatchesPage() {
                 />
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">Arrivée</label>
+                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">{t.matches_filter_to}</label>
                 <input
                   type="text"
                   value={toFilter}
@@ -146,7 +149,7 @@ export default function MatchesPage() {
                 />
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">Avant le</label>
+                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">{t.matches_filter_before}</label>
                 <input
                   type="date"
                   value={maxDate}
@@ -155,7 +158,7 @@ export default function MatchesPage() {
                 />
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">Budget max</label>
+                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">{t.matches_filter_max_price}</label>
                 <input
                   type="number"
                   min={0}
@@ -174,7 +177,7 @@ export default function MatchesPage() {
                     onChange={(e) => setVerifiedOnly(e.target.checked)}
                     className="rounded accent-lavender-500"
                   />
-                  <span className="text-[13px] text-ink-500 font-medium">Identité vérifiée</span>
+                  <span className="text-[13px] text-ink-500 font-medium">{t.matches_filter_verified}</span>
                 </label>
               </div>
             </div>
@@ -185,7 +188,7 @@ export default function MatchesPage() {
                   className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600"
                 >
                   <X className="w-3 h-3" />
-                  Effacer les filtres
+                  {t.matches_filter_clear}
                 </button>
               </div>
             )}
@@ -202,17 +205,17 @@ export default function MatchesPage() {
           </div>
         ) : filteredTrips.length === 0 ? (
           <div className="bg-white rounded-2xl p-16 text-center border border-dashed border-ink-100 max-w-2xl mx-auto">
-            <h2 className="text-xl font-bold text-ink-600 mb-3 tracking-[-0.015em]">Aucun voyageur pour le moment</h2>
+            <h2 className="text-xl font-bold text-ink-600 mb-3 tracking-[-0.015em]">{t.matches_empty_title}</h2>
             <p className="text-[15px] text-ink-400 mb-8">
-              {hasActiveFilters ? 'Aucun voyageur ne correspond à ces filtres. Essayez d\'élargir.' : 'Publiez votre demande, on vous prévient dès qu\'un voyageur passe.'}
+              {hasActiveFilters ? t.matches_empty_filtered : t.matches_empty_text}
             </p>
             {hasActiveFilters ? (
               <Button onClick={resetFilters} variant="outline">
-                Effacer les filtres
+                {t.matches_filter_clear}
               </Button>
             ) : (
               <Link href={user ? '/envoyer' : '/login?next=/envoyer'}>
-                <Button>Publier ma demande</Button>
+                <Button>{t.matches_publish_btn}</Button>
               </Link>
             )}
           </div>
@@ -238,14 +241,16 @@ export default function MatchesPage() {
                     <div className="flex items-center gap-1 text-[13px] text-ink-400">
                       <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
                       <span className="font-medium text-ink-500">{tv.profile?.rating?.toFixed(1) ?? '—'}</span>
-                      <span>· {tv.profile?.trips_completed ?? 0} trajets</span>
+                      <span>· {tv.profile?.trips_completed ?? 0} {t.travelers_trips}</span>
                     </div>
                   </div>
                 </Link>
 
                 <div className="mb-4">
-                  <div className="text-[16px] font-bold text-ink-600 mb-1.5 tracking-[-0.01em]">
-                    {tv.departure_city} <Plane className="inline w-4 h-4 mx-1.5 text-ink-400" /> {tv.arrival_city}
+                  <div className="flex items-center gap-2 text-[15px] font-medium text-ink-600 mb-1.5">
+                    <span>{tv.departure_city}</span>
+                    <Plane className="w-3.5 h-3.5 text-ink-300 mx-0.5" />
+                    <span>{tv.arrival_city}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
                     <Clock className="w-3 h-3" />
@@ -255,6 +260,8 @@ export default function MatchesPage() {
                 </div>
 
                 {(() => {
+                  // notes is JSON-encoded { accepted_categories: string[] }
+                  // We parse it to render nice chips with icon + label.
                   let categories: string[] = [];
                   if (tv.notes) {
                     try {
@@ -263,6 +270,7 @@ export default function MatchesPage() {
                         categories = parsed.accepted_categories;
                       }
                     } catch {
+                      // Old free-text note — keep showing it as before.
                       return (
                         <p className="text-[14px] text-ink-400 mb-5 line-clamp-2 leading-relaxed flex-1">
                           {tv.notes}
@@ -295,9 +303,9 @@ export default function MatchesPage() {
                     <VerificationBadge level={tv.profile.verification_level} />
                   )}
                   <div className="text-end">
-                    <div className="text-[12px] text-ink-400">À partir de</div>
+                    <div className="text-[12px] text-ink-400">{t.matches_min}</div>
                     <div className="font-bold text-ink-600 text-[17px] num-display tracking-[-0.015em]">
-                      {tv.compensation_min}€
+                      {tv.compensation_min}{t.common_eur}
                     </div>
                   </div>
                 </div>
