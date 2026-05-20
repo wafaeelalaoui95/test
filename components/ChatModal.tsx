@@ -52,6 +52,14 @@ export function ChatModal({
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Stash onMessagesRead in a ref so changes to that callback don't
+  // re-fire effects on every parent re-render. The parent passes an
+  // inline arrow function, which gets a new identity on every render —
+  // putting it in deps caused the boot effect to re-run on every keystroke,
+  // which is the lag the user saw while typing.
+  const onMessagesReadRef = useRef(onMessagesRead);
+  useEffect(() => { onMessagesReadRef.current = onMessagesRead; }, [onMessagesRead]);
+
   // Boot: get or create the conversation, load messages, mark as read.
   useEffect(() => {
     let cancelled = false;
@@ -72,8 +80,10 @@ export function ChatModal({
         setMessages(msgs);
 
         // Mark as read in the background — don't block the UI on it.
+        // We use the ref to avoid re-firing this whole effect on every
+        // parent re-render (which is what made the input lag).
         browser.markMessagesRead(conv.id, currentUserId).then(() => {
-          if (!cancelled) onMessagesRead?.();
+          if (!cancelled) onMessagesReadRef.current?.();
         });
       } catch (e: any) {
         if (!cancelled) setErr(e?.message ?? 'Échec du chargement');
@@ -82,7 +92,7 @@ export function ChatModal({
       }
     })();
     return () => { cancelled = true; };
-  }, [bookingIntentId, senderId, travelerId, currentUserId, onMessagesRead]);
+  }, [bookingIntentId, senderId, travelerId, currentUserId]);
 
   // Refresh messages when the tab becomes visible again — covers the
   // "I came back from email" case without needing realtime.
@@ -94,12 +104,12 @@ export function ChatModal({
         .then((msgs) => setMessages(msgs))
         .catch(() => {});
       browser.markMessagesRead(conversationId!, currentUserId)
-        .then(() => onMessagesRead?.())
+        .then(() => onMessagesReadRef.current?.())
         .catch(() => {});
     }
     document.addEventListener('visibilitychange', refresh);
     return () => document.removeEventListener('visibilitychange', refresh);
-  }, [conversationId, currentUserId, onMessagesRead]);
+  }, [conversationId, currentUserId]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
