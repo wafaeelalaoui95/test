@@ -18,7 +18,6 @@ export function Navbar() {
   const navLinks = [
     { href: '/envoyer', label: t.nav_send },
     { href: '/voyager', label: t.nav_travel },
-    { href: '/matches', label: t.nav_discover },
     { href: '/trust', label: t.nav_trust },
   ];
 
