@@ -39,9 +39,12 @@ export function LocationSelector({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) {
+      // Show ALL countries by default, with up to 5 cities each.
+      // This way users can spot London, New York, etc. without having to
+      // know they need to type them.
       const initial: CityLocation[] = [];
-      COUNTRIES.slice(0, 4).forEach((c) => {
-        c.cities.slice(0, 4).forEach((city) =>
+      COUNTRIES.forEach((c) => {
+        c.cities.slice(0, 5).forEach((city) =>
           initial.push({
             countryCode: c.code,
             countryName: c.name_fr,
