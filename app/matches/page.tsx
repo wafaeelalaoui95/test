@@ -1,12 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
-import { Plane, Star, Clock, MessageCircle, Loader2, SlidersHorizontal, X } from 'lucide-react';
+import {
+  Plane,
+  Star,
+  Calendar,
+  Loader2,
+  Search,
+  ArrowRight,
+  MapPin,
+  Wallet,
+  ShieldCheck,
+  X,
+  SlidersHorizontal,
+  Sparkles,
+} from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { VerificationBadge } from '@/components/ui/Badge';
-import { formatShortDate } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { browser } from '@/lib/supabase/queries';
@@ -24,11 +37,19 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [showFilters, setShowFilters] = useState(false);
-  const [fromFilter, setFromFilter] = useState('');
-  const [toFilter, setToFilter] = useState('');
-  const [maxDate, setMaxDate] = useState('');
+  // Search box (the prominent one at the top)
+  const [searchFrom, setSearchFrom] = useState('');
+  const [searchTo, setSearchTo] = useState('');
+  const [searchDate, setSearchDate] = useState('');
+
+  // Active filters (applied after the user clicks Search OR types in the
+  // advanced filters)
+  const [activeFrom, setActiveFrom] = useState('');
+  const [activeTo, setActiveTo] = useState('');
+  const [activeDate, setActiveDate] = useState('');
+
+  // Advanced filters (collapsible)
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [maxBudget, setMaxBudget] = useState<number | ''>('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
@@ -43,283 +64,413 @@ export default function MatchesPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err.message ?? t.auth_error_generic);
+        setError(err.message ?? 'Erreur de chargement');
       })
       .finally(() => {
         if (cancelled) return;
         setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [t.auth_error_generic]);
+  }, []);
 
-  // Client-side filtering — keeps UX snappy.
-  const filteredTrips = useMemo(() => {
-    return trips.filter((tv) => {
-      if (fromFilter && !tv.departure_city.toLowerCase().includes(fromFilter.toLowerCase())) return false;
-      if (toFilter && !tv.arrival_city.toLowerCase().includes(toFilter.toLowerCase())) return false;
-      if (maxDate && tv.departure_date > maxDate) return false;
-      if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
-      if (verifiedOnly && tv.profile?.verification_level !== 'id_verified' && tv.profile?.verification_level !== 'trusted') return false;
-      return true;
-    });
-  }, [trips, fromFilter, toFilter, maxDate, maxBudget, verifiedOnly]);
+  function handleSearch() {
+    setActiveFrom(searchFrom);
+    setActiveTo(searchTo);
+    setActiveDate(searchDate);
+    // Smooth scroll to results
+    const el = document.getElementById('results');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
-  const hasActiveFilters = !!fromFilter || !!toFilter || !!maxDate || maxBudget !== '' || verifiedOnly;
-
-  function resetFilters() {
-    setFromFilter('');
-    setToFilter('');
-    setMaxDate('');
+  function resetAll() {
+    setSearchFrom('');
+    setSearchTo('');
+    setSearchDate('');
+    setActiveFrom('');
+    setActiveTo('');
+    setActiveDate('');
     setMaxBudget('');
     setVerifiedOnly(false);
   }
 
+  const filteredTrips = useMemo(() => {
+    return trips.filter((tv) => {
+      if (activeFrom && !tv.departure_city.toLowerCase().includes(activeFrom.toLowerCase())) return false;
+      if (activeTo && !tv.arrival_city.toLowerCase().includes(activeTo.toLowerCase())) return false;
+      if (activeDate && tv.departure_date > activeDate) return false;
+      if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
+      if (verifiedOnly && tv.profile?.verification_level !== 'id_verified' && tv.profile?.verification_level !== 'trusted') return false;
+      return true;
+    });
+  }, [trips, activeFrom, activeTo, activeDate, maxBudget, verifiedOnly]);
+
+  const hasActiveSearch = !!(activeFrom || activeTo || activeDate || maxBudget !== '' || verifiedOnly);
+
   return (
-    <div className="min-h-screen py-12 lg:py-20">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-12 lg:mb-16 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6"
-        >
-          <div className="max-w-2xl">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-ink-600 leading-[1.05] tracking-[-0.03em] text-balance mb-3">
-              {t.matches_title}
+    <div className="min-h-screen">
+      {/* HERO — search box prominent */}
+      <section className="relative py-16 lg:py-24 px-5 sm:px-8 lg:px-12 overflow-hidden">
+        {/* soft decorative halo */}
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute top-20 left-1/4 w-[480px] h-[480px] rounded-full bg-lavender-200/30 blur-3xl" />
+          <div className="absolute bottom-0 right-1/3 w-[420px] h-[420px] rounded-full bg-butter-200/40 blur-3xl" />
+        </div>
+
+        <div className="mx-auto max-w-5xl text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cream-50 border border-ink-50 text-[12px] font-semibold text-ink-500 tracking-[0.06em] uppercase mb-6">
+              <Sparkles className="w-3 h-3 text-butter-500" />
+              <span>Voyageurs disponibles</span>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-ink-600 leading-[1.02] tracking-[-0.035em] text-balance mb-4">
+              Quelqu&apos;un va
+              <br />
+              <span className="italic font-light">déjà votre direction.</span>
             </h1>
-            <p className="text-lg text-ink-400">
-              <span className="font-semibold text-ink-600 num-display">{filteredTrips.length}</span>{' '}
-              {t.matches_subtitle}
-              {hasActiveFilters && (
-                <span className="text-[14px] text-ink-300">
-                  {' '}· <span className="num-display">{trips.length}</span> {t.matches_total}
-                </span>
-              )}
+
+            <p className="text-[17px] sm:text-[18px] text-ink-400 max-w-xl mx-auto mb-10 leading-relaxed">
+              Trouvez le voyageur qui apportera votre colis. Recherchez par destination, date ou budget.
             </p>
-          </div>
-          <div className="flex items-center gap-3">
+          </motion.div>
+
+          {/* SEARCH BOX */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(24,20,16,0.12)] border border-ink-50/60 p-2 max-w-3xl mx-auto"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-1">
+              {/* From */}
+              <div className="relative px-5 py-4 rounded-2xl hover:bg-cream-50/60 transition-colors text-start">
+                <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
+                  Départ
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />
+                  <input
+                    type="text"
+                    value={searchFrom}
+                    onChange={(e) => setSearchFrom(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    placeholder="Paris, Casablanca…"
+                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div className="hidden md:block w-px bg-ink-50 mx-0 my-3" />
+
+              {/* To — but the separator above messes the grid. So we use a divider line baked into the cell */}
+              <div className="relative px-5 py-4 rounded-2xl hover:bg-cream-50/60 transition-colors text-start md:border-l md:border-ink-50">
+                <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
+                  Arrivée
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />
+                  <input
+                    type="text"
+                    value={searchTo}
+                    onChange={(e) => setSearchTo(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    placeholder="Londres, Marrakech…"
+                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Date */}
+              <div className="relative px-5 py-4 rounded-2xl hover:bg-cream-50/60 transition-colors text-start md:border-l md:border-ink-50">
+                <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
+                  Avant le
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />
+                  <input
+                    type="date"
+                    value={searchDate}
+                    onChange={(e) => setSearchDate(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
+                  />
+                </div>
+              </div>
+
+              {/* Search button */}
+              <button
+                onClick={handleSearch}
+                className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-ink-500 hover:bg-ink-600 text-cream-50 font-semibold text-[15px] transition-colors min-h-[64px]"
+              >
+                <Search className="w-4 h-4" strokeWidth={2.5} />
+                <span className="md:hidden lg:inline">Rechercher</span>
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Advanced filters link */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="mt-5 flex items-center justify-center gap-4"
+          >
             <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full border text-[14px] font-medium transition-colors ${
-                showFilters || hasActiveFilters
-                  ? 'border-lavender-300 bg-lavender-50 text-lavender-700'
-                  : 'border-ink-100 hover:border-ink-200 text-ink-500'
-              }`}
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-400 hover:text-ink-600 transition-colors"
             >
-              <SlidersHorizontal className="w-4 h-4" />
-              {t.matches_filters}
-              {hasActiveFilters && (
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-lavender-500 text-cream-50 text-[10px] font-bold ml-0.5">
-                  {[fromFilter, toFilter, maxDate, maxBudget !== '' ? '1' : '', verifiedOnly ? '1' : ''].filter(Boolean).length}
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              {showAdvanced ? 'Masquer les filtres avancés' : 'Filtres avancés'}
+              {(maxBudget !== '' || verifiedOnly) && (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-lavender-500 text-cream-50 text-[10px] font-bold ms-1">
+                  {[maxBudget !== '' ? '1' : '', verifiedOnly ? '1' : ''].filter(Boolean).length}
                 </span>
               )}
             </button>
-            <Link href={user ? '/envoyer' : '/login?next=/envoyer'}>
-              <Button size="sm">{t.matches_publish_btn}</Button>
-            </Link>
-          </div>
-        </motion.div>
-
-        {/* Filter bar */}
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-10 bg-white rounded-2xl p-5 border border-ink-100"
-          >
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-              <div>
-                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">{t.matches_filter_from}</label>
-                <input
-                  type="text"
-                  value={fromFilter}
-                  onChange={(e) => setFromFilter(e.target.value)}
-                  placeholder="Paris…"
-                  className="w-full px-3 py-2 rounded-lg bg-cream-50 border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">{t.matches_filter_to}</label>
-                <input
-                  type="text"
-                  value={toFilter}
-                  onChange={(e) => setToFilter(e.target.value)}
-                  placeholder="Casablanca…"
-                  className="w-full px-3 py-2 rounded-lg bg-cream-50 border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">{t.matches_filter_before}</label>
-                <input
-                  type="date"
-                  value={maxDate}
-                  onChange={(e) => setMaxDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-cream-50 border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-ink-500 mb-1.5">{t.matches_filter_max_price}</label>
-                <input
-                  type="number"
-                  min={0}
-                  step={5}
-                  value={maxBudget}
-                  onChange={(e) => setMaxBudget(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="50"
-                  className="w-full px-3 py-2 rounded-lg bg-cream-50 border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200"
-                />
-              </div>
-              <div className="flex flex-col justify-end">
-                <label className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-cream-50">
-                  <input
-                    type="checkbox"
-                    checked={verifiedOnly}
-                    onChange={(e) => setVerifiedOnly(e.target.checked)}
-                    className="rounded accent-lavender-500"
-                  />
-                  <span className="text-[13px] text-ink-500 font-medium">{t.matches_filter_verified}</span>
-                </label>
-              </div>
-            </div>
-            {hasActiveFilters && (
-              <div className="flex justify-end mt-3 pt-3 border-t border-ink-50">
-                <button
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600"
-                >
-                  <X className="w-3 h-3" />
-                  {t.matches_filter_clear}
-                </button>
-              </div>
+            {hasActiveSearch && (
+              <button
+                onClick={resetAll}
+                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-400 hover:text-ink-600"
+              >
+                <X className="w-3 h-3" />
+                Effacer
+              </button>
             )}
           </motion.div>
-        )}
 
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-6 h-6 text-ink-300 animate-spin" />
-          </div>
-        ) : error ? (
-          <div className="bg-blush-50 rounded-2xl p-6 text-center text-blush-500 text-[14px] max-w-2xl mx-auto">
-            {error}
-          </div>
-        ) : filteredTrips.length === 0 ? (
-          <div className="bg-white rounded-2xl p-16 text-center border border-dashed border-ink-100 max-w-2xl mx-auto">
-            <h2 className="text-xl font-bold text-ink-600 mb-3 tracking-[-0.015em]">{t.matches_empty_title}</h2>
-            <p className="text-[15px] text-ink-400 mb-8">
-              {hasActiveFilters ? t.matches_empty_filtered : t.matches_empty_text}
-            </p>
-            {hasActiveFilters ? (
-              <Button onClick={resetFilters} variant="outline">
-                {t.matches_filter_clear}
-              </Button>
-            ) : (
-              <Link href={user ? '/envoyer' : '/login?next=/envoyer'}>
-                <Button>{t.matches_publish_btn}</Button>
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
-            {filteredTrips.map((tv, i) => (
-              <motion.article
-                key={tv.id}
-                initial={{ opacity: 0, y: 14 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-30px' }}
-                transition={{ duration: 0.4, delay: (i % 6) * 0.04 }}
-                className="bg-white rounded-2xl p-6 border border-ink-50 hover:border-ink-100 transition-colors flex flex-col"
+          {/* Advanced filters drawer */}
+          <AnimatePresence>
+            {showAdvanced && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden max-w-3xl mx-auto"
               >
-                <Link href={`/u/${tv.user_id}`} className="flex items-center gap-3 mb-5 hover:opacity-80 transition-opacity">
-                  <div className="w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[15px] text-lavender-700">
-                    {(tv.profile?.full_name ?? '·').charAt(0).toUpperCase()}
+                <div className="mt-5 bg-white rounded-2xl border border-ink-50 p-5 grid sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="flex items-center gap-2 text-[12px] font-semibold text-ink-500 tracking-[0.06em] uppercase mb-2">
+                      <Wallet className="w-3 h-3" />
+                      Budget maximum
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={5}
+                      value={maxBudget}
+                      onChange={(e) => setMaxBudget(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="50 €"
+                      className="w-full px-3 py-2.5 rounded-xl bg-cream-50 border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 num-display"
+                    />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-ink-600 truncate text-[15px]">
-                      {tv.profile?.full_name ?? '—'}
-                    </div>
-                    <div className="flex items-center gap-1 text-[13px] text-ink-400">
-                      <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
-                      <span className="font-medium text-ink-500">{tv.profile?.rating?.toFixed(1) ?? '—'}</span>
-                      <span>· {tv.profile?.trips_completed ?? 0} {t.travelers_trips}</span>
-                    </div>
-                  </div>
-                </Link>
-
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 text-[15px] font-medium text-ink-600 mb-1.5">
-                    <span>{tv.departure_city}</span>
-                    <Plane className="w-3.5 h-3.5 text-ink-300 mx-0.5" />
-                    <span>{tv.arrival_city}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
-                    <Clock className="w-3 h-3" />
-                    {formatShortDate(tv.departure_date)}
-                    {tv.flight_time && ` · ${tv.flight_time}`}
-                  </div>
-                </div>
-
-                {(() => {
-                  // notes is JSON-encoded { accepted_categories: string[] }
-                  // We parse it to render nice chips with icon + label.
-                  let categories: string[] = [];
-                  if (tv.notes) {
-                    try {
-                      const parsed = JSON.parse(tv.notes);
-                      if (Array.isArray(parsed?.accepted_categories)) {
-                        categories = parsed.accepted_categories;
-                      }
-                    } catch {
-                      // Old free-text note — keep showing it as before.
-                      return (
-                        <p className="text-[14px] text-ink-400 mb-5 line-clamp-2 leading-relaxed flex-1">
-                          {tv.notes}
-                        </p>
-                      );
-                    }
-                  }
-                  if (categories.length === 0) return <div className="flex-1" />;
-                  return (
-                    <div className="flex flex-wrap gap-1.5 mb-5 flex-1 content-start">
-                      {categories.map((cat) => {
-                        const meta = ITEM_CATEGORIES.find((c) => c.value === cat);
-                        if (!meta) return null;
-                        return (
-                          <span
-                            key={cat}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-lavender-50 text-lavender-700 rounded-full text-[12px] font-medium"
-                          >
-                            <span>{meta.icon}</span>
-                            <span>{t[meta.labelKey]}</span>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-
-                <div className="flex items-center justify-between mb-5 mt-auto">
-                  {tv.profile?.verification_level && (
-                    <VerificationBadge level={tv.profile.verification_level} />
-                  )}
-                  <div className="text-end">
-                    <div className="text-[12px] text-ink-400">{t.matches_min}</div>
-                    <div className="font-bold text-ink-600 text-[17px] num-display tracking-[-0.015em]">
-                      {tv.compensation_min}{t.common_eur}
-                    </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold text-ink-500 tracking-[0.06em] uppercase mb-2">
+                      Confiance
+                    </label>
+                    <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-cream-50 border border-ink-100 cursor-pointer hover:bg-cream-100">
+                      <input
+                        type="checkbox"
+                        checked={verifiedOnly}
+                        onChange={(e) => setVerifiedOnly(e.target.checked)}
+                        className="rounded accent-lavender-500"
+                      />
+                      <ShieldCheck className="w-3.5 h-3.5 text-ink-400" />
+                      <span className="text-[14px] text-ink-500 font-medium">Identité vérifiée uniquement</span>
+                    </label>
                   </div>
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </section>
 
-                <Link href={`/u/${tv.user_id}`}>
-                  <Button variant="outline" size="sm" fullWidth>
-                    Voir le profil
-                  </Button>
-                </Link>
-              </motion.article>
-            ))}
+      {/* RESULTS */}
+      <section id="results" className="py-10 lg:py-14 px-5 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-7xl">
+          {/* Section heading */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.025em] mb-1">
+                {hasActiveSearch ? (
+                  <>
+                    <span className="num-display">{filteredTrips.length}</span> voyageur{filteredTrips.length > 1 ? 's' : ''} trouvé{filteredTrips.length > 1 ? 's' : ''}
+                  </>
+                ) : (
+                  <>Voyageurs disponibles</>
+                )}
+              </h2>
+              <p className="text-[14px] text-ink-400">
+                {hasActiveSearch ? (
+                  <>
+                    Sur <span className="num-display font-medium text-ink-500">{trips.length}</span> annonces actives
+                  </>
+                ) : (
+                  <>
+                    <span className="num-display font-medium text-ink-500">{trips.length}</span> personnes prêtes à aider
+                  </>
+                )}
+              </p>
+            </div>
+            <Link href={user ? '/envoyer' : '/login?next=/envoyer'}>
+              <Button size="sm">
+                Publier ma demande
+                <ArrowRight className="w-3 h-3" />
+              </Button>
+            </Link>
           </div>
-        )}
-      </div>
+
+          {loading ? (
+            <div className="flex justify-center py-24">
+              <Loader2 className="w-6 h-6 text-ink-300 animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="bg-blush-50 rounded-2xl p-6 text-center text-blush-500 text-[14px] max-w-2xl mx-auto">
+              {error}
+            </div>
+          ) : filteredTrips.length === 0 ? (
+            <div className="bg-white rounded-3xl p-16 text-center border border-dashed border-ink-100 max-w-2xl mx-auto">
+              <div className="w-14 h-14 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-5">
+                <Search className="w-6 h-6 text-ink-300" />
+              </div>
+              <h2 className="text-xl font-bold text-ink-600 mb-3 tracking-[-0.015em]">
+                {hasActiveSearch ? 'Aucun voyageur sur cette route' : 'Aucun voyageur pour le moment'}
+              </h2>
+              <p className="text-[15px] text-ink-400 mb-8 max-w-md mx-auto leading-relaxed">
+                {hasActiveSearch
+                  ? 'Essayez d\'élargir vos critères, ou publiez une demande — on vous prévient dès qu\'un voyageur correspond.'
+                  : 'Publiez votre demande, on vous prévient dès qu\'un voyageur passe par chez vous.'}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                {hasActiveSearch && (
+                  <Button onClick={resetAll} variant="outline">
+                    Effacer la recherche
+                  </Button>
+                )}
+                <Link href={user ? '/envoyer' : '/login?next=/envoyer'}>
+                  <Button>Publier ma demande</Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+              {filteredTrips.map((tv, i) => (
+                <TripCard key={tv.id} trip={tv} delay={(i % 6) * 0.04} t={t} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
     </div>
+  );
+}
+
+function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t: any }) {
+  const fullName = formatName(trip.profile?.full_name);
+  const initial = nameInitial(trip.profile?.full_name);
+
+  // Parse accepted categories from notes JSON
+  let categories: string[] = [];
+  let plainNote: string | null = null;
+  if (trip.notes) {
+    try {
+      const parsed = JSON.parse(trip.notes);
+      if (Array.isArray(parsed?.accepted_categories)) {
+        categories = parsed.accepted_categories;
+      }
+    } catch {
+      plainNote = trip.notes;
+    }
+  }
+
+  return (
+    <Link href={`/u/${trip.user_id}`} className="block group">
+      <motion.article
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-30px' }}
+        transition={{ duration: 0.4, delay }}
+        className="bg-white rounded-3xl p-6 border border-ink-50 group-hover:border-ink-200 group-hover:shadow-[0_8px_30px_-12px_rgba(24,20,16,0.12)] transition-all flex flex-col h-full"
+      >
+        {/* Top: avatar + name */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[15px] text-lavender-700 flex-shrink-0">
+            {initial}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-ink-600 truncate text-[15px] tracking-[-0.005em]">
+              {fullName || '—'}
+            </div>
+            <div className="flex items-center gap-1 text-[13px] text-ink-400">
+              <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
+              <span className="font-medium text-ink-500 num-display">
+                {trip.profile?.rating?.toFixed(1) ?? '—'}
+              </span>
+              <span>· <span className="num-display">{trip.profile?.trips_completed ?? 0}</span> trajets</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Route */}
+        <div className="mb-4">
+          <div className="flex items-baseline gap-2 text-[18px] font-bold text-ink-600 mb-1.5 tracking-[-0.015em]">
+            <span>{trip.departure_city}</span>
+            <Plane className="w-4 h-4 text-ink-300" />
+            <span>{trip.arrival_city}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
+            <Calendar className="w-3 h-3" />
+            <span className="num-display">{formatShortDate(trip.departure_date)}</span>
+            {trip.flight_time && <span>· {trip.flight_time}</span>}
+          </div>
+        </div>
+
+        {/* Categories or note */}
+        {categories.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 mb-5 flex-1 content-start">
+            {categories.map((cat) => {
+              const meta = ITEM_CATEGORIES.find((c) => c.value === cat);
+              if (!meta) return null;
+              return (
+                <span
+                  key={cat}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-lavender-50 text-lavender-700 rounded-full text-[12px] font-medium"
+                >
+                  <span>{meta.icon}</span>
+                  <span>{t[meta.labelKey]}</span>
+                </span>
+              );
+            })}
+          </div>
+        ) : plainNote ? (
+          <p className="text-[14px] text-ink-400 mb-5 line-clamp-2 leading-relaxed flex-1">
+            {plainNote}
+          </p>
+        ) : (
+          <div className="flex-1" />
+        )}
+
+        {/* Bottom: verification + price */}
+        <div className="flex items-center justify-between pt-4 border-t border-ink-50/60 mt-auto">
+          {trip.profile?.verification_level ? (
+            <VerificationBadge level={trip.profile.verification_level} />
+          ) : (
+            <span />
+          )}
+          <div className="text-end">
+            <div className="text-[11px] text-ink-300 tracking-[0.04em] uppercase">À partir de</div>
+            <div className="font-bold text-ink-600 text-[18px] num-display tracking-[-0.015em]">
+              {trip.compensation_min}€
+            </div>
+          </div>
+        </div>
+      </motion.article>
+    </Link>
   );
 }
