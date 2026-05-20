@@ -410,7 +410,59 @@ function OverviewTab({
           <ArrowRight className="w-4 h-4 text-ink-300 group-hover:text-ink-500 transition-colors" />
         </Link>
       </div>
-
+{/* Withdraw modal — informative for now, no real action */}
+      <AnimatePresence>
+        {showWithdrawModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+            onClick={() => setShowWithdrawModal(false)}
+          >
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 20, opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-cream-50 rounded-3xl p-7 max-w-md w-full shadow-xl text-center"
+            >
+              <div className="w-14 h-14 rounded-full bg-butter-100 mx-auto flex items-center justify-center mb-5">
+                <Wallet className="w-7 h-7 text-butter-500" strokeWidth={2} />
+              </div>
+              <h3 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em] mb-3">
+                Le retrait arrive bientôt
+              </h3>
+              <p className="text-[15px] text-ink-400 leading-relaxed mb-6">
+                Nous mettons en place les virements bancaires sécurisés.
+                En attendant, vos gains sont conservés sur Jibly et nous vous contactons directement pour vous les transmettre.
+              </p>
+              <div className="rounded-xl bg-white border border-ink-50 px-4 py-3 mb-6 text-[14px] text-ink-500">
+                <div className="text-[11px] font-semibold text-ink-300 tracking-[0.06em] uppercase mb-1">
+                  Votre solde
+                </div>
+                <div className="text-3xl font-extrabold text-ink-600 num-display tracking-[-0.02em]">
+                  {walletEuros.toFixed(2)}€
+                </div>
+              </div>
+              <p className="text-[13px] text-ink-400 mb-6">
+                Une question ? Écrivez-nous à{' '}
+                <a href="mailto:hello@jibly.com" className="font-semibold text-ink-600 underline">
+                  hello@jibly.com
+                </a>
+              </p>
+              <button
+                onClick={() => setShowWithdrawModal(false)}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 font-semibold text-[14px] transition-colors"
+              >
+                Compris
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {pendingMatches.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-6">
