@@ -73,6 +73,7 @@ export default function MyPage() {
   const [trips, setTrips] = useState<TravelerTripRow[]>([]);
   const [matches, setMatches] = useState<MatchWithRefs[]>([]);
   const [incomingIntents, setIncomingIntents] = useState<IncomingIntent[]>([]);
+  const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,13 +105,15 @@ export default function MyPage() {
       withTimeout(browser.listMyTrips(user.id), [] as TravelerTripRow[]),
       withTimeout(browser.listMyMatches(user.id), [] as MatchRow[]),
       withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[]),
+      withTimeout(browser.listMyBookings(user.id), [] as MyBooking[]),
     ])
-      .then(([rRes, trRes, mRes, iRes]) => {
+      .then(([rRes, trRes, mRes, iRes, bRes]) => {
         if (cancelled) return;
         if (rRes.status === 'fulfilled') setRequests(rRes.value);
         if (trRes.status === 'fulfilled') setTrips(trRes.value);
         if (mRes.status === 'fulfilled') setMatches(mRes.value as MatchWithRefs[]);
         if (iRes.status === 'fulfilled') setIncomingIntents(iRes.value as IncomingIntent[]);
+        if (bRes.status === 'fulfilled') setMyBookings(bRes.value as MyBooking[]);
       })
       .finally(() => {
         if (cancelled) return;
@@ -191,9 +194,12 @@ export default function MyPage() {
           <div className="inline-flex border-b border-ink-100">
             {TABS.map((tabItem) => {
               const active = tab === tabItem.id;
-              const showBadge =
-                tabItem.id === 'matches' && incomingIntents.filter((i) => i.status === 'pending').length > 0;
               const pendingCount = incomingIntents.filter((i) => i.status === 'pending').length;
+              const confirmedBookings = myBookings.filter((b) => b.status === 'confirmed').length;
+              const showMatchesBadge = tabItem.id === 'matches' && pendingCount > 0;
+              const showRequestsBadge = tabItem.id === 'requests' && confirmedBookings > 0;
+              const badgeCount = showMatchesBadge ? pendingCount : showRequestsBadge ? confirmedBookings : 0;
+              const badgeColor = showRequestsBadge ? 'bg-mint-500' : 'bg-blush-500';
               return (
                 <button
                   key={tabItem.id}
@@ -207,9 +213,12 @@ export default function MyPage() {
                 >
                   <tabItem.icon className="w-4 h-4" strokeWidth={2} />
                   <span>{tabItem.label}</span>
-                  {showBadge && (
-                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-blush-500 text-cream-50 text-[10px] font-bold">
-                      {pendingCount}
+                  {(showMatchesBadge || showRequestsBadge) && (
+                    <span className={cn(
+                      'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-cream-50 text-[10px] font-bold',
+                      badgeColor
+                    )}>
+                      {badgeCount}
                     </span>
                   )}
                 </button>
@@ -238,7 +247,7 @@ export default function MyPage() {
               {tab === 'overview' && (
                 <OverviewTab stats={stats} matches={matches} t={t} />
               )}
-              {tab === 'requests' && <RequestsTab requests={requests} t={t} />}
+              {tab === 'requests' && <RequestsTab requests={requests} bookings={myBookings} t={t} />}
               {tab === 'trips' && <TripsTab trips={trips} t={t} />}
               {tab === 'matches' && (
                 <MatchesTab
@@ -354,28 +363,210 @@ function StatItem({ label, value }: { label: string; value: string }) {
 }
 
 // === REQUESTS ===
-function RequestsTab({ requests, t }: { requests: ShippingRequestRow[]; t: Translations }) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">{t.me_section_my_requests}</h2>
-        <Link href="/envoyer">
-          <Button size="sm">
-            <Plus className="w-4 h-4" />
-            {t.me_new_request}
-          </Button>
-        </Link>
-      </div>
+// MyBooking type = a booking_intent created by ME, enriched with the trip + traveler profile
+type MyBooking = {
+  id: string;
+  sender_id: string;
+  traveler_trip_id: string;
+  item_category: string;
+  item_description: string | null;
+  proposed_price: number;
+  pickup_city: string;
+  destination_city: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  created_at: string;
+  traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string; user_id: string } | null;
+  traveler_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: string; rating: number; trips_completed: number } | null;
+};
 
-      {requests.length === 0 ? (
-        <EmptyState message={t.empty_my_requests} />
-      ) : (
-        <div className="space-y-3">
-          {requests.map((r) => (
-            <RequestCard key={r.id} request={r} t={t} />
-          ))}
+function RequestsTab({
+  requests,
+  bookings,
+  t,
+}: {
+  requests: ShippingRequestRow[];
+  bookings: MyBooking[];
+  t: Translations;
+}) {
+  return (
+    <div className="space-y-10">
+      {/* Direct bookings — reservations on a specific traveler */}
+      {bookings.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold text-ink-600 mb-2 tracking-[-0.02em]">
+            Mes réservations
+          </h2>
+          <p className="text-[14px] text-ink-400 mb-6">
+            Trajets que vous avez réservés directement avec un voyageur.
+          </p>
+          <div className="space-y-3">
+            {bookings.map((b) => (
+              <BookingCard key={b.id} booking={b} t={t} />
+            ))}
+          </div>
         </div>
       )}
+
+      {/* Public requests — when you publish to /matches without picking anyone */}
+      <div>
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">
+            {t.me_section_my_requests}
+          </h2>
+          <Link href="/envoyer">
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              {t.me_new_request}
+            </Button>
+          </Link>
+        </div>
+
+        {requests.length === 0 ? (
+          <EmptyState message={t.empty_my_requests} />
+        ) : (
+          <div className="space-y-3">
+            {requests.map((r) => (
+              <RequestCard key={r.id} request={r} t={t} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BookingCard({ booking, t }: { booking: MyBooking; t: Translations }) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
+  const trip = booking.traveler_trip;
+  const traveler = booking.traveler_profile;
+  const travelerName = traveler?.full_name ?? 'Voyageur';
+  const initial = travelerName.charAt(0).toUpperCase();
+
+  // Use Supabase auth.users email — we don't have it on the public profile
+  // (RLS hides emails). For the contact info to be visible the simplest
+  // path is to expose `phone` only, plus a "send a message" mailto via
+  // a server route. We'll show the phone if set, and a generic message
+  // otherwise — see the "Contact" block below.
+
+  if (booking.status === 'confirmed') {
+    return (
+      <div className="bg-white rounded-2xl border border-mint-200 overflow-hidden">
+        {/* Celebration banner */}
+        <div className="bg-mint-50 px-5 py-4 flex items-center gap-3 border-b border-mint-200">
+          <span className="text-2xl">🎉</span>
+          <div>
+            <div className="font-bold text-mint-700 text-[15px]">
+              {travelerName.split(' ')[0]} a accepté !
+            </div>
+            <div className="text-[13px] text-mint-700/80">
+              Vous pouvez maintenant convenir des détails du transport.
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5">
+          <div className="flex items-start gap-4 mb-5">
+            <Link href={`/u/${traveler?.id}`} className="flex-shrink-0">
+              <div className="w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[14px] text-lavender-700">
+                {initial}
+              </div>
+            </Link>
+            <div className="flex-1 min-w-0">
+              <Link
+                href={`/u/${traveler?.id}`}
+                className="font-semibold text-ink-600 text-[15px] hover:underline"
+              >
+                {travelerName}
+              </Link>
+              <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap mt-0.5">
+                <span>{booking.pickup_city} → {booking.destination_city}</span>
+                <span>·</span>
+                <span>{trip && formatShortDate(trip.departure_date)}</span>
+                <span>·</span>
+                <span>{cat ? t[cat.labelKey] : booking.item_category}</span>
+                <span>·</span>
+                <span className="font-semibold text-ink-600">{booking.proposed_price}€</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Contact details */}
+          <div className="rounded-xl bg-cream-50 px-4 py-3.5 space-y-2.5">
+            <div className="text-[11px] font-semibold text-ink-300 tracking-[0.12em] uppercase">
+              Comment le contacter
+            </div>
+            {traveler?.phone ? (
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-[15px] font-medium text-ink-600 num-display">
+                  {traveler.phone}
+                </span>
+                <a
+                  href={`https://wa.me/${traveler.phone.replace(/[^0-9]/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[13px] font-semibold transition-colors"
+                >
+                  WhatsApp
+                </a>
+                <a
+                  href={`tel:${traveler.phone}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
+                >
+                  Appeler
+                </a>
+              </div>
+            ) : (
+              <p className="text-[13px] text-ink-400 leading-relaxed">
+                Le voyageur n&apos;a pas encore renseigné de numéro. Une messagerie in-app arrive bientôt — en attendant, vous pouvez{' '}
+                <Link href={`/u/${traveler?.id}`} className="underline font-medium text-ink-500">
+                  voir son profil
+                </Link>
+                .
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Pending or cancelled
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-ink-50">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center text-xl">
+          {cat?.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3 mb-1.5">
+            <div className="font-semibold text-ink-600 flex items-center gap-2 flex-wrap text-[15px]">
+              <span>{booking.pickup_city}</span>
+              <ArrowRight className="w-3.5 h-3.5 text-ink-300" />
+              <span>{booking.destination_city}</span>
+            </div>
+            {booking.status === 'pending' ? (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold uppercase tracking-[0.06em]">
+                En attente
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-ink-50 text-ink-400 text-[11px] font-semibold uppercase tracking-[0.06em]">
+                Refusée
+              </span>
+            )}
+          </div>
+          <div className="text-[13px] text-ink-400">
+            Avec <span className="font-medium text-ink-500">{travelerName}</span> ·{' '}
+            {cat ? t[cat.labelKey] : ''} ·{' '}
+            {trip && formatShortDate(trip.departure_date)} ·{' '}
+            {booking.proposed_price}€
+          </div>
+          {booking.status === 'pending' && (
+            <p className="text-[13px] text-ink-400 mt-2 leading-relaxed">
+              {travelerName.split(' ')[0]} n&apos;a pas encore répondu. On vous prévient dès qu&apos;il accepte.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -735,6 +926,7 @@ function ProfileTab({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+33 6 12 34 56 78"
+            hint="Utilisé pour vous joindre par WhatsApp ou téléphone après une réservation."
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
