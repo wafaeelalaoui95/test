@@ -46,10 +46,15 @@ export function StripePaymentForm({
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/stripe/create-payment-intent', {
+   fetch('/api/stripe/create-payment-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amountEuros, description }),
+      body: JSON.stringify({
+        // Stripe works in cents. Round to avoid floating-point dust
+        // (51.7499999...) that breaks the integer check on the server.
+        amountCents: Math.round(amountEuros * 100),
+        description,
+      }),
     })
       .then(async (r) => {
         const data = await r.json();
