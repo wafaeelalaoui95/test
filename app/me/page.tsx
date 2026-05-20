@@ -548,6 +548,9 @@ type MyBooking = {
   destination_city: string;
   status: 'pending' | 'confirmed' | 'cancelled';
   created_at: string;
+  payment_intent_id: string | null;
+  payment_status: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed';
+  payment_amount: number | null;
   delivery_proof_url: string | null;
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
