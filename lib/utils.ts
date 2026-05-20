@@ -94,3 +94,32 @@ export function displayName(name: string | null | undefined): string {
   const initial = parts[1].charAt(0).toUpperCase();
   return `${first} ${initial}.`;
 }
+/**
+ * Jibly fee model.
+ * Traveler sets a price (e.g. 50€) — that's what they receive.
+ * Sender pays that price PLUS 15% service fee on top.
+ */
+export const JIBLY_FEE_RATE = 0.15;
+
+export type PriceBreakdown = {
+  traveler: number;
+  fees: number;
+  total: number;
+};
+
+export function priceBreakdown(travelerEuros: number): PriceBreakdown {
+  const fees = Math.round(travelerEuros * JIBLY_FEE_RATE * 100) / 100;
+  return {
+    traveler: travelerEuros,
+    fees,
+    total: travelerEuros + fees,
+  };
+}
+
+/**
+ * Format euro amount with French decimal separator.
+ */
+export function formatEuros(amount: number): string {
+  if (Number.isInteger(amount)) return `${amount}€`;
+  return `${amount.toFixed(2).replace('.', ',')}€`;
+}
