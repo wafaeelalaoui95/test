@@ -18,8 +18,8 @@ import {
   ArrowRight,
   Loader2,
   AlertTriangle,
-  Wallet,
   Trash2,
+  Wallet,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -152,7 +152,7 @@ export default function MyPage() {
     );
   }
 
- // Wallet balance: sum of all captured Stripe payments where I'm the
+  // Wallet balance: sum of all captured Stripe payments where I'm the
   // traveler. payment_amount is in cents → divide by 100 to get euros.
   // We only count `captured` (not `authorized`) because authorized funds
   // can still be canceled if I decline.
@@ -258,11 +258,13 @@ export default function MyPage() {
                 <OverviewTab stats={stats} matches={matches} walletEuros={walletEuros} t={t} />
               )}
               {tab === 'requests' && <RequestsTab requests={requests} bookings={myBookings} t={t} />}
-           {tab === 'trips' && (
+              {tab === 'trips' && (
                 <TripsTab
                   trips={trips}
                   onCancel={async (tripId) => {
                     await browser.cancelTrip(tripId);
+                    // Update local state: mark the trip as cancelled (it will
+                    // be filtered out by TripsTab on next render).
                     setTrips((prev) =>
                       prev.map((tr) => (tr.id === tripId ? { ...tr, status: 'cancelled' } : tr))
                     );
@@ -356,6 +358,7 @@ function OverviewTab({
 
       {/* WALLET — total received from Stripe-captured payments */}
       <div className="bg-gradient-to-br from-ink-500 to-ink-600 rounded-3xl p-7 lg:p-9 text-cream-50 relative overflow-hidden">
+        {/* Decorative halo */}
         <div className="pointer-events-none absolute -top-12 -right-12 w-48 h-48 rounded-full bg-lavender-500/20 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-butter-500/15 blur-2xl" />
 
@@ -421,7 +424,8 @@ function OverviewTab({
           <ArrowRight className="w-4 h-4 text-ink-300 group-hover:text-ink-500 transition-colors" />
         </Link>
       </div>
-{/* Withdraw modal — informative for now, no real action */}
+
+      {/* Withdraw modal — informative for now, no real action */}
       <AnimatePresence>
         {showWithdrawModal && (
           <motion.div
@@ -474,6 +478,7 @@ function OverviewTab({
           </motion.div>
         )}
       </AnimatePresence>
+
       {pendingMatches.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-6">
@@ -752,6 +757,8 @@ function TripsTab({
   onCancel: (tripId: string) => Promise<void>;
   t: Translations;
 }) {
+  // Only show non-cancelled trips. Cancelled ones live on in DB for history
+  // but we don't surface them in the main list.
   const visibleTrips = trips.filter((t) => t.status !== 'cancelled');
 
   return (
@@ -779,7 +786,36 @@ function TripsTab({
   );
 }
 
+function TripCard({
+  trip,
+  onCancel,
+  t,
+}: {
+  trip: TravelerTripRow;
+  onCancel: (tripId: string) => Promise<void>;
+  t: Translations;
+}) {
+  const space = SPACE_OPTIONS.find((s) => s.value === (trip.available_space as AvailableSpace));
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [activeBookings, setActiveBookings] = useState<number | null>(null);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
+  async function openCancelModal() {
+    setShowCancelModal(true);
+    setErr(null);
+    // Load the count of active bookings so we can warn the user
+    setLoadingBookings(true);
+    try {
+      const { count } = await browser.countActiveBookingsForTrip(trip.id);
+      setActiveBookings(count);
+    } catch {
+      setActiveBookings(null); // unknown — proceed without exact warning
+    } finally {
+      setLoadingBookings(false);
+    }
+  }
 
   async function confirmCancel() {
     setCancelling(true);
@@ -826,6 +862,7 @@ function TripsTab({
         </div>
       </div>
 
+      {/* Cancellation modal */}
       <AnimatePresence>
         {showCancelModal && (
           <motion.div
@@ -858,6 +895,7 @@ function TripsTab({
                 </div>
               </div>
 
+              {/* Booking warning */}
               {loadingBookings ? (
                 <div className="rounded-xl bg-cream-100 px-4 py-3 mb-5 text-[13px] text-ink-400 flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -907,32 +945,6 @@ function TripsTab({
         )}
       </AnimatePresence>
     </>
-  );
-}
-
-function TripCard({ trip, t }: { trip: TravelerTripRow; t: Translations }) {
-  const space = SPACE_OPTIONS.find((s) => s.value === (trip.available_space as AvailableSpace));
-  return (
-    <div className="bg-white rounded-2xl p-5 border border-ink-50 hover:border-ink-100 transition-colors">
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center text-xl">
-          {space?.icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-1.5">
-            <div className="font-semibold text-ink-600 flex items-center gap-2 flex-wrap text-[15px]">
-              <span>{trip.departure_city}</span>
-              <Plane className="w-3.5 h-3.5 text-ink-300" />
-              <span>{trip.arrival_city}</span>
-            </div>
-            <StatusBadge status={trip.status} t={t} />
-          </div>
-          <div className="text-[13px] text-ink-400">
-            {formatShortDate(trip.departure_date)} · {space ? t[space.labelKey] : ''} · {t.matches_min} {trip.compensation_min}{t.common_eur}
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
