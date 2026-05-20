@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { VerificationBadge } from '@/components/ui/Badge';
-import { formatShortDate, formatName, nameInitial } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial, displayName } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { browser } from '@/lib/supabase/queries';
@@ -145,7 +145,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
   }
 
   const initial = nameInitial(profile.full_name);
-  const displayName = formatName(profile.full_name) || 'Voyageur';
+  const publicName = displayName(profile.full_name) || 'Voyageur';
 
   return (
     <div className="min-h-screen py-10 lg:py-16">
@@ -169,7 +169,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
           {profile.avatar_url ? (
             <img
               src={profile.avatar_url}
-              alt={displayName}
+              alt={publicName}
               className="w-24 h-24 rounded-full object-cover"
             />
           ) : (
@@ -180,7 +180,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
 
           <div className="flex-1 min-w-0">
             <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-2">
-              {displayName}
+              {publicName}
             </h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-ink-400">
               <div className="flex items-center gap-1.5">
@@ -211,7 +211,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
         {trips.length === 0 ? (
           <div className="bg-white rounded-2xl p-10 text-center border border-dashed border-ink-100">
             <p className="text-[14px] text-ink-400">
-              {formatName(profile.full_name)?.split(' ')[0] || 'Ce voyageur'} n&apos;a aucun trajet ouvert pour le moment.
+              {publicName.split(' ')[0]} n&apos;a aucun trajet ouvert pour le moment.
             </p>
           </div>
         ) : (
