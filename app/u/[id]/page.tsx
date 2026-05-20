@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { VerificationBadge } from '@/components/ui/Badge';
-import { formatShortDate } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { browser } from '@/lib/supabase/queries';
@@ -30,8 +30,8 @@ type PublicProfile = Pick<
   'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed' | 'city' | 'country'
 >;
 
-export default function PublicProfilePage({ params }: { params: { id: string } }) {
-  const travelerId = params.id;
+export default function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: travelerId } = use(params);
   const { t } = useI18n();
   const { user } = useAuth();
 
@@ -144,7 +144,8 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     );
   }
 
-  const initial = (profile.full_name ?? '?').charAt(0).toUpperCase();
+  const initial = nameInitial(profile.full_name);
+  const displayName = formatName(profile.full_name) || 'Voyageur';
 
   return (
     <div className="min-h-screen py-10 lg:py-16">
@@ -168,7 +169,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
           {profile.avatar_url ? (
             <img
               src={profile.avatar_url}
-              alt={profile.full_name ?? ''}
+              alt={displayName}
               className="w-24 h-24 rounded-full object-cover"
             />
           ) : (
@@ -179,7 +180,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
 
           <div className="flex-1 min-w-0">
             <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-2">
-              {profile.full_name ?? 'Voyageur'}
+              {displayName}
             </h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-ink-400">
               <div className="flex items-center gap-1.5">
@@ -210,7 +211,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
         {trips.length === 0 ? (
           <div className="bg-white rounded-2xl p-10 text-center border border-dashed border-ink-100">
             <p className="text-[14px] text-ink-400">
-              {profile.full_name?.split(' ')[0] ?? 'Ce voyageur'} n&apos;a aucun trajet ouvert pour le moment.
+              {formatName(profile.full_name)?.split(' ')[0] || 'Ce voyageur'} n&apos;a aucun trajet ouvert pour le moment.
             </p>
           </div>
         ) : (
