@@ -373,7 +373,7 @@ export const translations: Record<Locale, Translations> = {
     nav_send: 'J\'envoie quelque chose',
     nav_travel: 'Je transporte quelque chose',
     nav_discover: 'Découvrir',
-    nav_trust: 'Comment ça marche',
+    nav_trust: 'Voyager & envoyer sereinement',
     nav_my_space: 'Mon espace',
     nav_start: 'Commencer',
 
@@ -707,10 +707,10 @@ export const translations: Record<Locale, Translations> = {
   },
 
   en: {
- nav_send: 'I\'m sending something',
-    nav_travel: 'I\'m carrying something',
+ nav_send: 'I want to send something',
+    nav_travel: 'I can carry something',
     nav_discover: 'Discover',
-  nav_trust: 'How it works',
+  nav_trust: 'Travel & Send safely',
     nav_my_space: 'My Space',
     nav_start: 'Get Started',
 
