@@ -715,6 +715,41 @@ function BookingCard({
   // a server route. We'll show the phone if set, and a generic message
   // otherwise — see the "Contact" block below.
 
+  // Confirmed AND already delivered (proof uploaded) → compact "historic"
+  // version. Just one line, with a small "Voir la preuve" link that opens
+  // the photo in a popup. No banner, no contacts, no celebration. The deal
+  // is done.
+  if (booking.status === 'confirmed' && booking.delivery_proof_url) {
+    return (
+      <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
+            {cat?.icon}
+          </div>
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+            <span className="font-semibold text-ink-600">{travelerName}</span>
+            <span className="text-ink-300">·</span>
+            <span className="text-ink-500 truncate">{booking.pickup_city} → {booking.destination_city}</span>
+            <span className="text-ink-300">·</span>
+            <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
+            <span className="text-[11px] text-mint-600 ml-1">📸 livré</span>
+          </div>
+          <a
+            href={booking.delivery_proof_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 text-[12px] font-medium text-ink-400 hover:text-ink-600 underline transition-colors"
+          >
+            Voir la preuve
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Confirmed BUT not yet delivered → rich view. The sender needs the
+  // contact info to coordinate the actual handover, and the celebration
+  // banner signals progress. Once delivered, we collapse it (above).
   if (booking.status === 'confirmed') {
     return (
       <div className="bg-white rounded-2xl border border-mint-200 overflow-hidden">
