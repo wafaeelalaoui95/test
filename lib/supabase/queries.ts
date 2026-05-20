@@ -1060,6 +1060,189 @@ export async function listUnreadCountsByConversation(
   return map;
 }
 
+/**
+ * List all my conversations, enriched with: the OTHER user's profile,
+ * the last message (for the preview), the unread count, and the
+ * booking's pickup/destination cities for context. Sorted by most
+ * recent activity (last message timestamp, falling back to conversation
+ * creation time).
+ *
+ * This is what the /messages inbox renders.
+ */
+export type ConversationListItem = {
+  id: string;
+  booking_intent_id: string;
+  // The two participants — useful to open the ChatModal without re-querying
+  sender_id: string;
+  traveler_id: string;
+  pickup_city: string;
+  destination_city: string;
+  other_user: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+  last_message: {
+    body: string;
+    created_at: string;
+    sender_id: string;
+  } | null;
+  unread_count: number;
+  // For sorting and display
+  last_activity_at: string;
+};
+
+export async function listMyConversations(
+  supabase: SB,
+  userId: string
+): Promise<ConversationListItem[]> {
+  // 1. Get all conversations I'm in
+  const { data: convs, error: convsErr } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('conversations')
+        .select('id, booking_intent_id, sender_id, traveler_id, created_at')
+        .or(`sender_id.eq.${userId},traveler_id.eq.${userId}`)
+        .order('created_at', { ascending: false })
+    ),
+    8000,
+    'My conversations'
+  );
+  if (convsErr) throw convsErr;
+  if (!convs || convs.length === 0) return [];
+
+  const convIds = convs.map((c: any) => c.id);
+  const bookingIds = convs.map((c: any) => c.booking_intent_id);
+  // The other user is whichever participant isn't me.
+  const otherUserIds = Array.from(
+    new Set(
+      convs.map((c: any) => (c.sender_id === userId ? c.traveler_id : c.sender_id))
+    )
+  );
+
+  // 2. Get all messages for these conversations in one shot. We'll
+  //    derive the "last message" per conv and the unread count locally.
+  const { data: msgs } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('messages')
+        .select('conversation_id, sender_id, body, read_at, created_at')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false })
+    ),
+    8000,
+    'Conversation messages'
+  );
+
+  // 3. Get the bookings to surface pickup/destination
+  const { data: bookings } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .select('id, pickup_city, destination_city')
+        .in('id', bookingIds)
+    ),
+    8000,
+    'Conversation bookings'
+  );
+  const bookingById = new Map((bookings ?? []).map((b: any) => [b.id, b]));
+
+  // 4. Get the other users' profiles
+  const { data: profiles } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', otherUserIds)
+    ),
+    8000,
+    'Conversation profiles'
+  );
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  // 5. Per-conversation aggregation
+  const lastMsgByConv = new Map<string, any>();
+  const unreadByConv = new Map<string, number>();
+  (msgs ?? []).forEach((m: any) => {
+    // first message we see for a conv is the most recent (we ordered desc)
+    if (!lastMsgByConv.has(m.conversation_id)) {
+      lastMsgByConv.set(m.conversation_id, m);
+    }
+    // Unread if sent by the OTHER user AND not yet read
+    if (m.sender_id !== userId && !m.read_at) {
+      unreadByConv.set(
+        m.conversation_id,
+        (unreadByConv.get(m.conversation_id) ?? 0) + 1
+      );
+    }
+  });
+
+  const items: ConversationListItem[] = convs.map((c: any) => {
+    const otherId = c.sender_id === userId ? c.traveler_id : c.sender_id;
+    const other = profileById.get(otherId) as any;
+    const booking = bookingById.get(c.booking_intent_id) as any;
+    const lastMsg = lastMsgByConv.get(c.id);
+    return {
+      id: c.id,
+      booking_intent_id: c.booking_intent_id,
+      sender_id: c.sender_id,
+      traveler_id: c.traveler_id,
+      pickup_city: booking?.pickup_city ?? '',
+      destination_city: booking?.destination_city ?? '',
+      other_user: other
+        ? {
+            id: other.id,
+            full_name: other.full_name,
+            avatar_url: other.avatar_url,
+          }
+        : null,
+      last_message: lastMsg
+        ? {
+            body: lastMsg.body,
+            created_at: lastMsg.created_at,
+            sender_id: lastMsg.sender_id,
+          }
+        : null,
+      unread_count: unreadByConv.get(c.id) ?? 0,
+      last_activity_at: lastMsg?.created_at ?? c.created_at,
+    };
+  });
+
+  // Sort by last_activity_at desc
+  items.sort(
+    (a, b) => new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
+  );
+  return items;
+}
+
+/**
+ * Quick "do I have any unread message?" check used by the Navbar inbox
+ * icon to decide whether to show the red dot. Returns true if any
+ * unread exists in any of my conversations.
+ */
+export async function hasUnreadMessages(
+  supabase: SB,
+  userId: string
+): Promise<boolean> {
+  // First get my conversation ids
+  const { data: convs } = await supabase
+    .from('conversations')
+    .select('id')
+    .or(`sender_id.eq.${userId},traveler_id.eq.${userId}`);
+  const ids = (convs ?? []).map((c: any) => c.id);
+  if (ids.length === 0) return false;
+
+  // Then check if any unread message exists from someone other than me.
+  // Use head:true to skip data return — we only care about existence.
+  const { count } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .in('conversation_id', ids)
+    .neq('sender_id', userId)
+    .is('read_at', null);
+  return (count ?? 0) > 0;
+}
+
 export const browser = {
   getProfile: (userId: string) => getProfile(getBrowserClient(), userId),
   updateProfile: (userId: string, patch: Partial<Profile>) => updateProfile(getBrowserClient(), userId, patch),
@@ -1095,4 +1278,6 @@ export const browser = {
     markMessagesRead(getBrowserClient(), conversationId, userId),
   listUnreadCountsByConversation: (userId: string) =>
     listUnreadCountsByConversation(getBrowserClient(), userId),
+  listMyConversations: (userId: string) => listMyConversations(getBrowserClient(), userId),
+  hasUnreadMessages: (userId: string) => hasUnreadMessages(getBrowserClient(), userId),
 };
