@@ -20,10 +20,12 @@ import {
   AlertTriangle,
   Trash2,
   Wallet,
+  Camera,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
+import { DeliveryProofModal } from '@/components/DeliveryProofModal';
 import { Input } from '@/components/ui/Form';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
 import { formatShortDate, formatName, nameInitial, displayName, formatEuros } from '@/lib/utils';
@@ -64,6 +66,10 @@ type IncomingIntent = {
   payment_intent_id: string | null;
   payment_status: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed';
   payment_amount: number | null;
+  delivery_proof_url: string | null;
+  delivery_proof_uploaded_at: string | null;
+  delivery_proof_receiver_name: string | null;
+  delivery_proof_notes: string | null;
   sender_profile: { id: string; full_name: string | null; avatar_url: string | null; rating: number; trips_completed: number; verification_level: string } | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
@@ -311,6 +317,22 @@ export default function MyPage() {
                       prev.map((it) => (it.id === id ? { ...it, status } : it))
                     );
                   }}
+                  onProofUploaded={(id, url, receiverName) => {
+                    // The proof was uploaded successfully — reflect it in local
+                    // state so the card moves from "À livrer" to history.
+                    setIncomingIntents((prev) =>
+                      prev.map((it) =>
+                        it.id === id
+                          ? {
+                              ...it,
+                              delivery_proof_url: url,
+                              delivery_proof_uploaded_at: new Date().toISOString(),
+                              delivery_proof_receiver_name: receiverName || null,
+                            }
+                          : it
+                      )
+                    );
+                  }}
                   t={t}
                 />
               )}
@@ -525,6 +547,10 @@ type MyBooking = {
   destination_city: string;
   status: 'pending' | 'confirmed' | 'cancelled';
   created_at: string;
+  delivery_proof_url: string | null;
+  delivery_proof_uploaded_at: string | null;
+  delivery_proof_receiver_name: string | null;
+  delivery_proof_notes: string | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string; user_id: string } | null;
   traveler_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: string; rating: number; trips_completed: number } | null;
 };
@@ -639,6 +665,40 @@ function BookingCard({ booking, t }: { booking: MyBooking; t: Translations }) {
               </div>
             </div>
           </div>
+
+          {/* Delivery proof — visible only once the traveler has uploaded one */}
+          {booking.delivery_proof_url && (
+            <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3.5 mb-3">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">📸</span>
+                <div className="text-[13px] font-bold text-mint-700">
+                  Preuve de livraison
+                </div>
+              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={booking.delivery_proof_url}
+                alt="Preuve de livraison"
+                className="w-full max-h-64 object-cover rounded-lg mb-3 border border-mint-200/40"
+              />
+              {booking.delivery_proof_receiver_name && (
+                <div className="text-[13px] text-ink-500 mb-1">
+                  <span className="text-ink-400">Remis à :</span>{' '}
+                  <strong className="text-ink-600">{booking.delivery_proof_receiver_name}</strong>
+                </div>
+              )}
+              {booking.delivery_proof_notes && (
+                <div className="text-[13px] text-ink-500 leading-relaxed mt-1">
+                  <span className="text-ink-400">Note :</span> « {booking.delivery_proof_notes} »
+                </div>
+              )}
+              {booking.delivery_proof_uploaded_at && (
+                <div className="text-[11px] text-ink-300 mt-2">
+                  Téléversée le {formatShortDate(booking.delivery_proof_uploaded_at)}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Contact details */}
           <div className="rounded-xl bg-cream-50 px-4 py-3.5 space-y-2.5">
@@ -953,14 +1013,25 @@ function TripCard({
 function MatchesTab({
   intents,
   onUpdate,
+  onProofUploaded,
   t,
 }: {
   intents: IncomingIntent[];
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
+  onProofUploaded: (id: string, url: string, receiverName: string) => void;
   t: Translations;
 }) {
+  // Three groups:
+  //   pending      → awaiting traveler decision (Accept / Decline)
+  //   toDeliver    → accepted but proof not yet uploaded (show "I delivered" button)
+  //   history      → cancelled, or accepted + delivered (proof uploaded)
   const pending = intents.filter((i) => i.status === 'pending');
-  const decided = intents.filter((i) => i.status !== 'pending');
+  const toDeliver = intents.filter(
+    (i) => i.status === 'confirmed' && !i.delivery_proof_url
+  );
+  const history = intents.filter(
+    (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
+  );
 
   return (
     <div className="space-y-10">
@@ -976,20 +1047,50 @@ function MatchesTab({
         ) : (
           <div className="space-y-3">
             {pending.map((intent) => (
-              <IntentCard key={intent.id} intent={intent} onUpdate={onUpdate} />
+              <IntentCard
+                key={intent.id}
+                intent={intent}
+                onUpdate={onUpdate}
+                onProofUploaded={onProofUploaded}
+              />
             ))}
           </div>
         )}
       </div>
 
-      {decided.length > 0 && (
+      {toDeliver.length > 0 && (
+        <div>
+          <h3 className="text-[12px] font-semibold text-ink-300 tracking-[0.12em] uppercase mb-4">
+            À livrer
+          </h3>
+          <div className="space-y-3">
+            {toDeliver.map((intent) => (
+              <IntentCard
+                key={intent.id}
+                intent={intent}
+                onUpdate={onUpdate}
+                onProofUploaded={onProofUploaded}
+                showDeliverButton
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {history.length > 0 && (
         <div>
           <h3 className="text-[12px] font-semibold text-ink-300 tracking-[0.12em] uppercase mb-4">
             Historique
           </h3>
           <div className="space-y-3 opacity-70">
-            {decided.map((intent) => (
-              <IntentCard key={intent.id} intent={intent} onUpdate={onUpdate} historic />
+            {history.map((intent) => (
+              <IntentCard
+                key={intent.id}
+                intent={intent}
+                onUpdate={onUpdate}
+                onProofUploaded={onProofUploaded}
+                historic
+              />
             ))}
           </div>
         </div>
@@ -1001,13 +1102,18 @@ function MatchesTab({
 function IntentCard({
   intent,
   onUpdate,
+  onProofUploaded,
   historic = false,
+  showDeliverButton = false,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
+  onProofUploaded: (id: string, url: string, receiverName: string) => void;
   historic?: boolean;
+  showDeliverButton?: boolean;
 }) {
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
+  const [showProofModal, setShowProofModal] = useState(false);
   const senderName = displayName(intent.sender_profile?.full_name) || 'Quelqu\'un';
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
 
@@ -1057,7 +1163,14 @@ function IntentCard({
               <span>Paiement encaissé</span>
             </div>
           )}
-          {historic && (
+          {/* Delivered badge in history */}
+          {historic && intent.delivery_proof_url && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[12px] font-semibold">
+              <span>📸</span>
+              <span>Livré · preuve téléversée</span>
+            </div>
+          )}
+          {historic && !intent.delivery_proof_url && (
             <div className="mt-2 text-[12px] font-medium">
               {intent.status === 'confirmed' ? (
                 <span className="text-mint-500">✓ Acceptée</span>
@@ -1069,7 +1182,8 @@ function IntentCard({
         </div>
       </div>
 
-      {!historic && (
+      {/* Pending: Accept / Decline */}
+      {!historic && !showDeliverButton && (
         <div className="flex flex-col sm:flex-row gap-2 mt-5">
           <button
             onClick={() => handle('cancelled')}
@@ -1087,6 +1201,36 @@ function IntentCard({
           </button>
         </div>
       )}
+
+      {/* Confirmed but not yet delivered: "I delivered" button */}
+      {!historic && showDeliverButton && (
+        <div className="mt-5">
+          <button
+            onClick={() => setShowProofModal(true)}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
+          >
+            <Camera className="w-4 h-4" />
+            J&apos;ai livré le colis
+          </button>
+          <p className="text-[11px] text-ink-300 text-center mt-2">
+            Téléversez une photo de la remise pour valider la livraison.
+          </p>
+        </div>
+      )}
+
+      {/* Proof upload modal */}
+      <AnimatePresence>
+        {showProofModal && (
+          <DeliveryProofModal
+            bookingIntentId={intent.id}
+            onSuccess={(url) => {
+              onProofUploaded(intent.id, url, '');
+              setShowProofModal(false);
+            }}
+            onClose={() => setShowProofModal(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
