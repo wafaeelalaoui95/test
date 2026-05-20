@@ -24,21 +24,35 @@ import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros 
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { browser } from '@/lib/supabase/queries';
-import type { TravelerTripRow, Profile } from '@/lib/supabase/types';
+import type { TravelerTripRow, Profile, ShippingRequestRow } from '@/lib/supabase/types';
 import { useAuth } from '@/lib/supabase/auth-provider';
+import { RespondToRequestModal } from '@/components/RespondToRequestModal';
 
 type TripWithProfile = TravelerTripRow & {
   profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'> | null;
 };
 
+type RequestWithProfile = ShippingRequestRow & {
+  profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'> | null;
+};
+
+type Mode = 'travelers' | 'requests';
+
 export default function HomePage() {
   const { t } = useI18n();
   const { user } = useAuth();
 
-  // Live data
+  // Mode toggle: are we showing travelers or shipping requests?
+  const [mode, setMode] = useState<Mode>('travelers');
+
+  // Live data — both sides
   const [trips, setTrips] = useState<TripWithProfile[]>([]);
+  const [requests, setRequests] = useState<RequestWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal state for "respond to a request"
+  const [respondingTo, setRespondingTo] = useState<RequestWithProfile | null>(null);
 
   // Search box state (uncontrolled until user clicks search)
   const [searchFrom, setSearchFrom] = useState('');
@@ -58,15 +72,23 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    browser
-      .listOpenTrips({ limit: 50 })
-      .then((data) => {
+    // Load both sides in parallel — we always need both since the user can
+    // flip the toggle at any moment, and we don't want a loading flash then.
+    Promise.allSettled([
+      browser.listOpenTrips({ limit: 50 }),
+      browser.listOpenRequestsWithProfile(),
+    ])
+      .then(([tripsRes, requestsRes]) => {
         if (cancelled) return;
-        setTrips(data as TripWithProfile[]);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(err.message ?? 'Erreur de chargement');
+        if (tripsRes.status === 'fulfilled') {
+          setTrips(tripsRes.value as TripWithProfile[]);
+        }
+        if (requestsRes.status === 'fulfilled') {
+          setRequests(requestsRes.value as RequestWithProfile[]);
+        }
+        if (tripsRes.status === 'rejected' && requestsRes.status === 'rejected') {
+          setError('Erreur de chargement');
+        }
       })
       .finally(() => {
         if (cancelled) return;
@@ -107,6 +129,26 @@ export default function HomePage() {
       return true;
     });
   }, [trips, user, activeFrom, activeTo, activeDate, maxBudget, verifiedOnly]);
+
+  // Same filtering logic but applied to shipping requests:
+  //   - hide my own requests
+  //   - filter by route (from/to substring)
+  //   - filter by date: keep requests whose deadline is >= the chosen date
+  //     (the chosen date represents "I can deliver before this")
+  //   - filter by budget: keep requests where budget >= maxBudget (the traveler
+  //     wants requests that pay at least the entered amount)
+  //   - verified filter is symmetric: check the SENDER's verification
+  const filteredRequests = useMemo(() => {
+    return requests.filter((r) => {
+      if (user && r.user_id === user.id) return false;
+      if (activeFrom && !r.pickup_city.toLowerCase().includes(activeFrom.toLowerCase())) return false;
+      if (activeTo && !r.destination_city.toLowerCase().includes(activeTo.toLowerCase())) return false;
+      if (activeDate && r.desired_delivery_date < activeDate) return false;
+      if (maxBudget !== '' && r.budget < Number(maxBudget)) return false;
+      if (verifiedOnly && r.profile?.verification_level !== 'id_verified' && r.profile?.verification_level !== 'trusted') return false;
+      return true;
+    });
+  }, [requests, user, activeFrom, activeTo, activeDate, maxBudget, verifiedOnly]);
 
   const hasActiveSearch = !!(activeFrom || activeTo || activeDate || maxBudget !== '' || verifiedOnly);
 
@@ -299,32 +341,75 @@ export default function HomePage() {
       {/* RESULTS — full traveler list with active filters */}
       <section id="results" className="border-t border-ink-50 section-solid">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-16 lg:py-24">
+
+          {/* MODE TOGGLE — Travelers vs Requests */}
+          <div className="mb-10 flex items-center justify-center">
+            <div className="inline-flex items-center bg-white rounded-full p-1 border border-ink-100 shadow-[0_1px_3px_rgba(24,20,16,0.04)]">
+              <button
+                onClick={() => setMode('travelers')}
+                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[14px] font-semibold transition-colors ${
+                  mode === 'travelers'
+                    ? 'bg-ink-500 text-cream-50'
+                    : 'text-ink-400 hover:text-ink-600'
+                }`}
+              >
+                <Plane className="w-3.5 h-3.5" />
+                Voyageurs
+              </button>
+              <button
+                onClick={() => setMode('requests')}
+                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[14px] font-semibold transition-colors ${
+                  mode === 'requests'
+                    ? 'bg-ink-500 text-cream-50'
+                    : 'text-ink-400 hover:text-ink-600'
+                }`}
+              >
+                <span>📦</span>
+                Demandes
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
             <div>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-1">
-                {hasActiveSearch ? (
-                  <>
-                    <span className="num-display">{filteredTrips.length}</span> voyageur{filteredTrips.length > 1 ? 's' : ''} trouvé{filteredTrips.length > 1 ? 's' : ''}
-                  </>
+                {mode === 'travelers' ? (
+                  hasActiveSearch ? (
+                    <>
+                      <span className="num-display">{filteredTrips.length}</span> voyageur{filteredTrips.length > 1 ? 's' : ''} trouvé{filteredTrips.length > 1 ? 's' : ''}
+                    </>
+                  ) : (
+                    <>Voyageurs disponibles</>
+                  )
                 ) : (
-                  <>Voyageurs disponibles</>
+                  hasActiveSearch ? (
+                    <>
+                      <span className="num-display">{filteredRequests.length}</span> demande{filteredRequests.length > 1 ? 's' : ''} trouvée{filteredRequests.length > 1 ? 's' : ''}
+                    </>
+                  ) : (
+                    <>Demandes de transport</>
+                  )
                 )}
               </h2>
               <p className="text-[14px] text-ink-400">
-                {hasActiveSearch ? (
-                  <>
-                    Sur <span className="num-display font-medium text-ink-500">{trips.length}</span> annonces actives
-                  </>
+                {mode === 'travelers' ? (
+                  hasActiveSearch ? (
+                    <>Sur <span className="num-display font-medium text-ink-500">{trips.length}</span> annonces actives</>
+                  ) : (
+                    <><span className="num-display font-medium text-ink-500">{trips.length}</span> personnes prêtes à aider</>
+                  )
                 ) : (
-                  <>
-                    <span className="num-display font-medium text-ink-500">{trips.length}</span> personnes prêtes à aider
-                  </>
+                  hasActiveSearch ? (
+                    <>Sur <span className="num-display font-medium text-ink-500">{requests.length}</span> demandes actives</>
+                  ) : (
+                    <><span className="num-display font-medium text-ink-500">{requests.length}</span> personnes qui cherchent un voyageur</>
+                  )
                 )}
               </p>
             </div>
-            <Link href={user ? '/envoyer' : '/login?next=/envoyer'}>
+            <Link href={user ? (mode === 'travelers' ? '/envoyer' : '/voyager') : '/login'}>
               <Button size="sm">
-                Publier ma demande
+                {mode === 'travelers' ? 'Publier ma demande' : 'Publier mon trajet'}
                 <ArrowRight className="w-3 h-3" />
               </Button>
             </Link>
@@ -338,39 +423,60 @@ export default function HomePage() {
             <div className="bg-blush-50 rounded-2xl p-6 text-center text-blush-500 text-[14px] max-w-2xl mx-auto">
               {error}
             </div>
-          ) : filteredTrips.length === 0 ? (
-            <div className="bg-white rounded-3xl p-16 text-center border border-dashed border-ink-100 max-w-2xl mx-auto">
-              <div className="w-14 h-14 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-5">
-                <Search className="w-6 h-6 text-ink-300" />
+          ) : mode === 'travelers' ? (
+            filteredTrips.length === 0 ? (
+              <EmptyResults
+                hasActiveSearch={hasActiveSearch}
+                onReset={resetAll}
+                user={user}
+                kind="travelers"
+              />
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+                {filteredTrips.map((tv, i) => (
+                  <TripCard key={tv.id} trip={tv} delay={(i % 6) * 0.04} t={t} />
+                ))}
               </div>
-              <h3 className="text-xl font-bold text-ink-600 mb-3 tracking-[-0.015em]">
-                {hasActiveSearch ? 'Aucun voyageur sur cette route' : 'Aucun voyageur pour le moment'}
-              </h3>
-              <p className="text-[15px] text-ink-400 mb-8 max-w-md mx-auto leading-relaxed">
-                {hasActiveSearch
-                  ? 'Essayez d\'élargir vos critères, ou publiez une demande — on vous prévient dès qu\'un voyageur correspond.'
-                  : 'Publiez votre demande, on vous prévient dès qu\'un voyageur passe par chez vous.'}
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                {hasActiveSearch && (
-                  <Button onClick={resetAll} variant="outline">
-                    Effacer la recherche
-                  </Button>
-                )}
-                <Link href={user ? '/envoyer' : '/login?next=/envoyer'}>
-                  <Button>Publier ma demande</Button>
-                </Link>
-              </div>
-            </div>
+            )
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
-              {filteredTrips.map((tv, i) => (
-                <TripCard key={tv.id} trip={tv} delay={(i % 6) * 0.04} t={t} />
-              ))}
-            </div>
+            filteredRequests.length === 0 ? (
+              <EmptyResults
+                hasActiveSearch={hasActiveSearch}
+                onReset={resetAll}
+                user={user}
+                kind="requests"
+              />
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+                {filteredRequests.map((r, i) => (
+                  <RequestCard
+                    key={r.id}
+                    request={r}
+                    delay={(i % 6) * 0.04}
+                    t={t}
+                    onRespond={() => setRespondingTo(r)}
+                  />
+                ))}
+              </div>
+            )
           )}
         </div>
       </section>
+
+      {/* Respond-to-request modal */}
+      <AnimatePresence>
+        {respondingTo && (
+          <RespondToRequestModal
+            request={respondingTo}
+            onClose={() => setRespondingTo(null)}
+            onSuccess={() => {
+              setRespondingTo(null);
+              // Could re-fetch to mark this request as "already responded",
+              // but for MVP we let the user just see their own /me page.
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* HOW IT WORKS */}
       <section className="border-t border-ink-50">
@@ -589,5 +695,174 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
         </div>
       </motion.article>
     </Link>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared empty-state component for both "no travelers" and "no requests"
+// ---------------------------------------------------------------------------
+function EmptyResults({
+  hasActiveSearch,
+  onReset,
+  user,
+  kind,
+}: {
+  hasActiveSearch: boolean;
+  onReset: () => void;
+  user: any;
+  kind: 'travelers' | 'requests';
+}) {
+  const isTravelers = kind === 'travelers';
+  return (
+    <div className="bg-white rounded-3xl p-16 text-center border border-dashed border-ink-100 max-w-2xl mx-auto">
+      <div className="w-14 h-14 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-5">
+        <Search className="w-6 h-6 text-ink-300" />
+      </div>
+      <h3 className="text-xl font-bold text-ink-600 mb-3 tracking-[-0.015em]">
+        {hasActiveSearch
+          ? isTravelers
+            ? 'Aucun voyageur sur cette route'
+            : 'Aucune demande sur cette route'
+          : isTravelers
+            ? 'Aucun voyageur pour le moment'
+            : 'Aucune demande pour le moment'}
+      </h3>
+      <p className="text-[15px] text-ink-400 mb-8 max-w-md mx-auto leading-relaxed">
+        {hasActiveSearch
+          ? 'Essayez d\'élargir vos critères.'
+          : isTravelers
+            ? 'Publiez votre demande, on vous prévient dès qu\'un voyageur passe par chez vous.'
+            : 'Publiez votre trajet — les expéditeurs vous trouveront.'}
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        {hasActiveSearch && (
+          <Button onClick={onReset} variant="outline">
+            Effacer la recherche
+          </Button>
+        )}
+        <Link href={user ? (isTravelers ? '/envoyer' : '/voyager') : '/login'}>
+          <Button>{isTravelers ? 'Publier ma demande' : 'Publier mon trajet'}</Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RequestCard — displays a shipping request to potential travelers
+// ---------------------------------------------------------------------------
+function RequestCard({
+  request,
+  delay,
+  t,
+  onRespond,
+}: {
+  request: RequestWithProfile;
+  delay: number;
+  t: any;
+  onRespond: () => void;
+}) {
+  const name = displayName(request.profile?.full_name);
+  const initial = nameInitial(request.profile?.full_name);
+  const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
+
+  // "Created X days ago" — simple stale freshness signal so travelers see
+  // which requests are still likely to be relevant.
+  const ageDays = Math.floor(
+    (Date.now() - new Date(request.created_at).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const ageLabel =
+    ageDays === 0 ? 'Aujourd\'hui'
+      : ageDays === 1 ? 'Hier'
+      : `Il y a ${ageDays} jours`;
+
+  // For the traveler we show what they'll receive (net), since the budget
+  // stored is the TTC total the sender is willing to pay. Net = budget / 1.15.
+  // We use Math.round to keep round numbers; the exact figure shows in the modal.
+  const netTraveler = Math.round(request.budget / 1.15);
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-30px' }}
+      transition={{ duration: 0.4, delay }}
+      className="bg-white rounded-3xl p-6 border border-ink-50 hover:border-ink-200 hover:shadow-[0_8px_30px_-12px_rgba(24,20,16,0.12)] transition-all flex flex-col h-full"
+    >
+      {/* Sender */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[15px] text-ink-500 flex-shrink-0">
+          {initial}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-ink-600 truncate text-[15px] tracking-[-0.005em]">
+            {name || '—'}
+          </div>
+          <div className="flex items-center gap-1 text-[13px] text-ink-400">
+            <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
+            <span className="font-medium text-ink-500 num-display">
+              {request.profile?.rating?.toFixed(1) ?? '—'}
+            </span>
+            <span>· {ageLabel}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Route */}
+      <div className="mb-4">
+        <div className="flex items-baseline gap-2 text-[18px] font-bold text-ink-600 mb-1.5 tracking-[-0.015em]">
+          <span>{request.pickup_city}</span>
+          <ArrowRight className="w-4 h-4 text-ink-300" />
+          <span>{request.destination_city}</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
+          <Calendar className="w-3 h-3" />
+          <span>Avant le </span>
+          <span className="num-display">{formatShortDate(request.desired_delivery_date)}</span>
+        </div>
+      </div>
+
+      {/* Category + description */}
+      <div className="flex-1 mb-5">
+        {category && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-lavender-50 text-lavender-700 rounded-full text-[12px] font-medium mb-3">
+            <span>{category.icon}</span>
+            <span>{t[category.labelKey]}</span>
+          </span>
+        )}
+        {request.item_description && (
+          <p className="text-[14px] text-ink-500 line-clamp-2 leading-relaxed">
+            « {request.item_description} »
+          </p>
+        )}
+      </div>
+
+      {/* Footer: verification + price + CTA */}
+      <div className="space-y-3 pt-4 border-t border-ink-50/60 mt-auto">
+        <div className="flex items-center justify-between">
+          {request.profile?.verification_level ? (
+            <VerificationBadge level={request.profile.verification_level} />
+          ) : (
+            <span />
+          )}
+          <div className="text-end">
+            <div className="text-[11px] text-ink-300 tracking-[0.04em] uppercase">Vous recevrez</div>
+            <div className="font-bold text-mint-600 text-[18px] num-display tracking-[-0.015em]">
+              ~{formatEuros(netTraveler)}
+            </div>
+            <div className="text-[10px] text-ink-300 mt-0.5">
+              sur {formatEuros(request.budget)} payés
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={onRespond}
+          className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
+        >
+          Je peux le faire
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </motion.article>
   );
 }
