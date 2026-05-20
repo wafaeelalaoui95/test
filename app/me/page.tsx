@@ -26,12 +26,14 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
 import { DeliveryProofModal } from '@/components/DeliveryProofModal';
+import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { Input } from '@/components/ui/Form';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
 import { formatShortDate, formatName, nameInitial, displayName, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
+import { getBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
 import type {
@@ -56,7 +58,7 @@ type MatchWithRefs = MatchRow & {
 type IncomingIntent = {
   id: string;
   sender_id: string;
-  traveler_trip_id: string;
+  traveler_trip_id: string | null;
   item_category: string;
   item_description: string | null;
   proposed_price: number;
@@ -71,6 +73,9 @@ type IncomingIntent = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
+  shipping_request_id: string | null;
+  traveler_message: string | null;
+  initiated_by: 'sender' | 'traveler';
   sender_profile: { id: string; full_name: string | null; avatar_url: string | null; rating: number; trips_completed: number; verification_level: VerificationLevel } | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
@@ -85,8 +90,13 @@ export default function MyPage() {
   const [matches, setMatches] = useState<MatchWithRefs[]>([]);
   const [incomingIntents, setIncomingIntents] = useState<IncomingIntent[]>([]);
   const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
+  const [myProposals, setMyProposals] = useState<TravelerProposal[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // When the sender accepts a traveler's proposal, we open a Stripe payment
+  // modal. The proposal booking is held here while paying.
+  const [proposalToPay, setProposalToPay] = useState<MyBooking | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -117,14 +127,16 @@ export default function MyPage() {
       withTimeout(browser.listMyMatches(user.id), [] as MatchRow[]),
       withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[]),
       withTimeout(browser.listMyBookings(user.id), [] as MyBooking[]),
+      withTimeout(browser.listMyTravelerProposals(user.id), [] as TravelerProposal[]),
     ])
-      .then(([rRes, trRes, mRes, iRes, bRes]) => {
+      .then(([rRes, trRes, mRes, iRes, bRes, pRes]) => {
         if (cancelled) return;
         if (rRes.status === 'fulfilled') setRequests(rRes.value);
         if (trRes.status === 'fulfilled') setTrips(trRes.value);
         if (mRes.status === 'fulfilled') setMatches(mRes.value as MatchWithRefs[]);
         if (iRes.status === 'fulfilled') setIncomingIntents(iRes.value as IncomingIntent[]);
         if (bRes.status === 'fulfilled') setMyBookings(bRes.value as MyBooking[]);
+        if (pRes.status === 'fulfilled') setMyProposals(pRes.value as TravelerProposal[]);
       })
       .finally(() => {
         if (cancelled) return;
@@ -264,7 +276,23 @@ export default function MyPage() {
               {tab === 'overview' && (
                 <OverviewTab stats={stats} matches={matches} walletEuros={walletEuros} t={t} />
               )}
-              {tab === 'requests' && <RequestsTab requests={requests} bookings={myBookings} t={t} />}
+              {tab === 'requests' && (
+                <RequestsTab
+                  requests={requests}
+                  bookings={myBookings}
+                  onAcceptProposal={(b) => setProposalToPay(b)}
+                  onDeclineProposal={async (id) => {
+                    // Mark cancelled in DB and locally — no Stripe call
+                    // because there's no PaymentIntent yet (the sender
+                    // hadn't paid). Just close the proposal.
+                    await browser.updateBookingIntentStatus(id, 'cancelled');
+                    setMyBookings((prev) =>
+                      prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' } : b))
+                    );
+                  }}
+                  t={t}
+                />
+              )}
               {tab === 'trips' && (
                 <TripsTab
                   trips={trips}
@@ -282,6 +310,7 @@ export default function MyPage() {
               {tab === 'matches' && (
                 <MatchesTab
                   intents={incomingIntents}
+                  myProposals={myProposals}
                   onUpdate={async (id, status) => {
                     // 1. Update the booking_intent status in our DB first
                     await browser.updateBookingIntentStatus(id, status);
@@ -349,6 +378,32 @@ export default function MyPage() {
           </AnimatePresence>
         )}
       </div>
+
+      {/* Sender accepts a traveler's proposal → pay via Stripe */}
+      <AnimatePresence>
+        {proposalToPay && (
+          <ProposalPaymentModal
+            booking={proposalToPay}
+            onClose={() => setProposalToPay(null)}
+            onSuccess={(paymentIntentId) => {
+              // Mark the booking as confirmed + paid in local state.
+              setMyBookings((prev) =>
+                prev.map((b) =>
+                  b.id === proposalToPay.id
+                    ? {
+                        ...b,
+                        status: 'confirmed',
+                        payment_intent_id: paymentIntentId,
+                        payment_status: 'authorized',
+                      }
+                    : b
+                )
+              );
+              setProposalToPay(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -536,11 +591,12 @@ function StatItem({ label, value }: { label: string; value: string }) {
 }
 
 // === REQUESTS ===
-// MyBooking type = a booking_intent created by ME, enriched with the trip + traveler profile
-type MyBooking = {
+// TravelerProposal = a proposal I (as a traveler) made on a public request,
+// enriched with the sender's profile so I can see who I offered to help.
+type TravelerProposal = {
   id: string;
   sender_id: string;
-  traveler_trip_id: string;
+  traveler_trip_id: string | null;
   item_category: string;
   item_description: string | null;
   proposed_price: number;
@@ -555,6 +611,35 @@ type MyBooking = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
+  shipping_request_id: string | null;
+  traveler_message: string | null;
+  initiated_by: 'sender' | 'traveler';
+  traveler_user_id: string | null;
+  sender_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: VerificationLevel; rating: number; trips_completed: number } | null;
+};
+
+// MyBooking type = a booking_intent created by ME, enriched with the trip + traveler profile
+type MyBooking = {
+  id: string;
+  sender_id: string;
+  traveler_trip_id: string | null;
+  item_category: string;
+  item_description: string | null;
+  proposed_price: number;
+  pickup_city: string;
+  destination_city: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  created_at: string;
+  payment_intent_id: string | null;
+  payment_status: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed';
+  payment_amount: number | null;
+  delivery_proof_url: string | null;
+  delivery_proof_uploaded_at: string | null;
+  delivery_proof_receiver_name: string | null;
+  delivery_proof_notes: string | null;
+  shipping_request_id: string | null;
+  traveler_message: string | null;
+  initiated_by: 'sender' | 'traveler';
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string; user_id: string } | null;
   traveler_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: VerificationLevel; rating: number; trips_completed: number } | null;
 };
@@ -562,10 +647,14 @@ type MyBooking = {
 function RequestsTab({
   requests,
   bookings,
+  onAcceptProposal,
+  onDeclineProposal,
   t,
 }: {
   requests: ShippingRequestRow[];
   bookings: MyBooking[];
+  onAcceptProposal: (b: MyBooking) => void;
+  onDeclineProposal: (id: string) => void;
   t: Translations;
 }) {
   return (
@@ -581,7 +670,13 @@ function RequestsTab({
           </p>
           <div className="space-y-3">
             {bookings.map((b) => (
-              <BookingCard key={b.id} booking={b} t={t} />
+              <BookingCard
+                key={b.id}
+                booking={b}
+                onAcceptProposal={onAcceptProposal}
+                onDeclineProposal={onDeclineProposal}
+                t={t}
+              />
             ))}
           </div>
         </div>
@@ -615,7 +710,17 @@ function RequestsTab({
   );
 }
 
-function BookingCard({ booking, t }: { booking: MyBooking; t: Translations }) {
+function BookingCard({
+  booking,
+  onAcceptProposal,
+  onDeclineProposal,
+  t,
+}: {
+  booking: MyBooking;
+  onAcceptProposal?: (b: MyBooking) => void;
+  onDeclineProposal?: (id: string) => void;
+  t: Translations;
+}) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
   const trip = booking.traveler_trip;
   const traveler = booking.traveler_profile;
@@ -745,8 +850,15 @@ function BookingCard({ booking, t }: { booking: MyBooking; t: Translations }) {
   }
 
   // Pending or cancelled
+  // Two pending sub-cases:
+  //   A) initiated_by='sender' → I (the sender) made the booking and am
+  //      waiting for the traveler. Payment already authorized.
+  //   B) initiated_by='traveler' → A traveler responded to my public
+  //      request. Payment NOT yet made. I need to Accept & Pay.
+  const isTravelerProposal = booking.initiated_by === 'traveler' && booking.status === 'pending';
+
   return (
-    <div className="bg-white rounded-2xl p-5 border border-ink-50">
+    <div className={`bg-white rounded-2xl p-5 border ${isTravelerProposal ? 'border-lavender-300 ring-1 ring-lavender-200/40' : 'border-ink-50'}`}>
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center text-xl">
           {cat?.icon}
@@ -759,9 +871,15 @@ function BookingCard({ booking, t }: { booking: MyBooking; t: Translations }) {
               <span>{booking.destination_city}</span>
             </div>
             {booking.status === 'pending' ? (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold uppercase tracking-[0.06em]">
-                En attente
-              </span>
+              isTravelerProposal ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-lavender-100 text-lavender-700 text-[11px] font-semibold uppercase tracking-[0.06em]">
+                  ✨ Nouvelle proposition
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold uppercase tracking-[0.06em]">
+                  En attente
+                </span>
+              )
             ) : (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-ink-50 text-ink-400 text-[11px] font-semibold uppercase tracking-[0.06em]">
                 Refusée
@@ -769,13 +887,46 @@ function BookingCard({ booking, t }: { booking: MyBooking; t: Translations }) {
             )}
           </div>
           <div className="text-[13px] text-ink-400">
-            Avec <span className="font-medium text-ink-500">{travelerName}</span> ·{' '}
+            {isTravelerProposal ? (
+              <><span className="font-medium text-ink-500">{travelerName}</span> propose son aide · </>
+            ) : (
+              <>Avec <span className="font-medium text-ink-500">{travelerName}</span> · </>
+            )}
             {cat ? t[cat.labelKey] : ''} ·{' '}
-            {trip && formatShortDate(trip.departure_date)} ·{' '}
+            {trip && <>{formatShortDate(trip.departure_date)} · </>}
             <span className="font-semibold text-ink-600">{formatEuros(booking.proposed_price)}</span>
             <span className="text-[11px] text-ink-300 ms-1">(tout compris)</span>
           </div>
-          {booking.status === 'pending' && (
+
+          {/* Traveler's optional message */}
+          {isTravelerProposal && booking.traveler_message && (
+            <div className="mt-3 rounded-xl bg-lavender-50 border border-lavender-100/60 px-3.5 py-2.5 text-[13px] text-ink-500 leading-relaxed">
+              <span className="text-[10px] font-semibold text-lavender-600 tracking-[0.08em] uppercase block mb-1">
+                Message
+              </span>
+              « {booking.traveler_message} »
+            </div>
+          )}
+
+          {/* Action buttons */}
+          {isTravelerProposal && onAcceptProposal && onDeclineProposal && (
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => onDeclineProposal(booking.id)}
+                className="flex-1 px-4 py-2.5 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
+              >
+                Refuser
+              </button>
+              <button
+                onClick={() => onAcceptProposal(booking)}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
+              >
+                Accepter et payer {formatEuros(booking.proposed_price)}
+              </button>
+            </div>
+          )}
+
+          {booking.status === 'pending' && !isTravelerProposal && (
             <p className="text-[13px] text-ink-400 mt-2 leading-relaxed">
               {travelerName.split(' ')[0]} n&apos;a pas encore répondu. On vous prévient dès qu&apos;il accepte.
             </p>
@@ -1016,16 +1167,18 @@ function TripCard({
 // === MATCHES ===
 function MatchesTab({
   intents,
+  myProposals,
   onUpdate,
   onProofUploaded,
   t,
 }: {
   intents: IncomingIntent[];
+  myProposals: TravelerProposal[];
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   t: Translations;
 }) {
-  // Three groups:
+  // Three groups for incoming requests (initiated by senders):
   //   pending      → awaiting traveler decision (Accept / Decline)
   //   toDeliver    → accepted but proof not yet uploaded (show "I delivered" button)
   //   history      → cancelled, or accepted + delivered (proof uploaded)
@@ -1037,8 +1190,36 @@ function MatchesTab({
     (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
   );
 
+  // Proposals I sent on public requests, split into active and historical.
+  const activeProposals = myProposals.filter((p) => p.status === 'pending');
+  const historyProposals = myProposals.filter((p) => p.status === 'cancelled');
+  // Confirmed proposals (sender accepted) become real bookings to deliver,
+  // so we surface them in the toDeliver-style flow via the IntentCard pattern.
+  // To keep the data flow simple, we display them in their own section.
+  const confirmedProposals = myProposals.filter((p) => p.status === 'confirmed');
+
   return (
     <div className="space-y-10">
+      {/* My proposals sent on public requests */}
+      {(activeProposals.length > 0 || confirmedProposals.length > 0) && (
+        <div>
+          <h2 className="text-2xl font-bold text-ink-600 mb-2 tracking-[-0.02em]">
+            Mes propositions envoyées
+          </h2>
+          <p className="text-[14px] text-ink-400 mb-7">
+            Demandes publiques sur lesquelles vous avez offert votre aide.
+          </p>
+          <div className="space-y-3">
+            {confirmedProposals.map((p) => (
+              <ProposalCard key={p.id} proposal={p} accepted />
+            ))}
+            {activeProposals.map((p) => (
+              <ProposalCard key={p.id} proposal={p} />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
         <h2 className="text-2xl font-bold text-ink-600 mb-2 tracking-[-0.02em]">
           Demandes reçues
@@ -1593,6 +1774,190 @@ function EmptyState({ message }: { message: string }) {
   return (
     <div className="rounded-2xl p-16 border border-dashed border-ink-100 text-center">
       <p className="text-[15px] text-ink-400">{message}</p>
+    </div>
+  );
+}
+
+// ===========================================================================
+// ProposalPaymentModal
+// ---------------------------------------------------------------------------
+// When a traveler responded to my (the sender's) public request, I see their
+// proposal in /me → My sends with a button "Accept and pay X€". Clicking it
+// opens this modal: it shows the proposal recap and renders the Stripe
+// payment form. On authorisation we update the booking_intent in DB so it
+// becomes confirmed + payment_status=authorized.
+// ===========================================================================
+function ProposalPaymentModal({
+  booking,
+  onClose,
+  onSuccess,
+}: {
+  booking: MyBooking;
+  onClose: () => void;
+  onSuccess: (paymentIntentId: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const traveler = booking.traveler_profile;
+  const travelerName = displayName(traveler?.full_name) || 'Le voyageur';
+
+  async function handleAuthorized(paymentIntentId: string) {
+    setBusy(true);
+    setErr(null);
+    try {
+      // Persist the authorisation on the booking_intent row.
+      // We also flip status to 'confirmed' so both sides see the green light.
+      const { error: updErr } = await getBrowserClient()
+        .from('booking_intents')
+        .update({
+          status: 'confirmed',
+          payment_intent_id: paymentIntentId,
+          payment_status: 'authorized',
+        })
+        .eq('id', booking.id);
+      if (updErr) throw updErr;
+      onSuccess(paymentIntentId);
+    } catch (e: any) {
+      setErr(e?.message ?? 'Échec de la mise à jour. Contactez le support.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+      onClick={() => !busy && onClose()}
+    >
+      <motion.div
+        initial={{ y: 20, opacity: 0, scale: 0.98 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 20, opacity: 0, scale: 0.98 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-cream-50 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
+              Confirmer et payer
+            </div>
+            <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
+              {formatEuros(booking.proposed_price)}
+            </h2>
+            <div className="text-[13px] text-ink-400 mt-1.5">
+              Avec {travelerName} · {booking.pickup_city} → {booking.destination_city}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={busy}
+            className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {err && (
+          <div className="rounded-xl bg-blush-50 px-4 py-3 mb-4 text-[13px] text-blush-500">
+            {err}
+          </div>
+        )}
+
+        <StripePaymentForm
+          amountEuros={booking.proposed_price}
+          description={`Jibly · ${booking.pickup_city} → ${booking.destination_city}`}
+          onAuthorized={handleAuthorized}
+          onCancel={onClose}
+        />
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ===========================================================================
+// ProposalCard — what the traveler sees in /me → Matches
+// ---------------------------------------------------------------------------
+// I (Yassine) responded to Wafae's public request. Now I'm waiting to see if
+// she accepts. This card shows the proposal recap + status. When accepted
+// (and paid), I see her WhatsApp here and can later upload delivery proof
+// (handled by the existing IntentCard flow for confirmed bookings — for
+// proposals we use a simpler read-only display).
+// ===========================================================================
+function ProposalCard({
+  proposal,
+  accepted = false,
+}: {
+  proposal: TravelerProposal;
+  accepted?: boolean;
+}) {
+  const senderName = displayName(proposal.sender_profile?.full_name) || 'L\'expéditeur';
+  const initial = nameInitial(proposal.sender_profile?.full_name);
+  // What I'll actually receive after Jibly's 15% fee
+  const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
+
+  return (
+    <div className={`bg-white rounded-2xl p-5 border ${accepted ? 'border-mint-200' : 'border-ink-50'}`}>
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[14px] text-ink-500">
+          {initial}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3 mb-1.5">
+            <div className="font-semibold text-ink-600 text-[15px]">
+              {senderName}
+            </div>
+            {accepted ? (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold uppercase tracking-[0.06em]">
+                Acceptée
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-butter-100 text-ink-600 text-[11px] font-semibold uppercase tracking-[0.06em]">
+                En attente
+              </span>
+            )}
+          </div>
+          <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap">
+            <span>{proposal.pickup_city} → {proposal.destination_city}</span>
+            <span>·</span>
+            <span className="font-semibold text-mint-600">
+              Vous recevrez {formatEuros(netTraveler)}
+            </span>
+          </div>
+
+          {accepted && proposal.sender_profile?.phone && (
+            <div className="mt-3 rounded-xl bg-mint-50 border border-mint-200/60 px-3.5 py-2.5">
+              <div className="text-[11px] font-semibold text-mint-700 tracking-[0.06em] uppercase mb-1">
+                Contactez {senderName.split(' ')[0]}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[14px] text-ink-600 font-medium num-display">
+                  {proposal.sender_profile.phone}
+                </span>
+                <a
+                  href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
+                >
+                  WhatsApp
+                </a>
+              </div>
+            </div>
+          )}
+
+          {!accepted && (
+            <p className="text-[13px] text-ink-400 mt-2 leading-relaxed">
+              {senderName.split(' ')[0]} doit accepter et payer pour confirmer la mission.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
