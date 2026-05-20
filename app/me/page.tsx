@@ -60,6 +60,9 @@ type IncomingIntent = {
   destination_city: string;
   status: 'pending' | 'confirmed' | 'cancelled';
   created_at: string;
+  payment_intent_id: string | null;
+  payment_status: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed';
+  payment_amount: number | null;
   sender_profile: { id: string; full_name: string | null; avatar_url: string | null; rating: number; trips_completed: number; verification_level: string } | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
@@ -253,7 +256,37 @@ export default function MyPage() {
                 <MatchesTab
                   intents={incomingIntents}
                   onUpdate={async (id, status) => {
+                    // 1. Update the booking_intent status in our DB first
                     await browser.updateBookingIntentStatus(id, status);
+
+                    // 2. If there's a Stripe payment attached, capture (on
+                    //    accept) or cancel (on refuse). We don't await this
+                    //    in a way that would block the UI — failures are
+                    //    logged but don't roll back the status update,
+                    //    which would create a worse UX. A real-world
+                    //    deployment would use webhooks + reconciliation
+                    //    for that, but this is fine for the MVP.
+                    const intent = incomingIntents.find((i) => i.id === id);
+                    if (intent?.payment_intent_id) {
+                      const endpoint = status === 'confirmed' ? 'capture' : 'cancel';
+                      try {
+                        const res = await fetch(`/api/stripe/${endpoint}`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            paymentIntentId: intent.payment_intent_id,
+                            bookingIntentId: id,
+                          }),
+                        });
+                        if (!res.ok) {
+                          const data = await res.json().catch(() => ({}));
+                          console.warn(`Stripe ${endpoint} failed:`, data);
+                        }
+                      } catch (e) {
+                        console.warn(`Stripe ${endpoint} error:`, e);
+                      }
+                    }
+
                     setIncomingIntents((prev) =>
                       prev.map((it) => (it.id === id ? { ...it, status } : it))
                     );
@@ -742,6 +775,19 @@ function IntentCard({
             <p className="text-[14px] text-ink-500 mt-2 leading-relaxed line-clamp-2">
               « {intent.item_description} »
             </p>
+          )}
+          {/* Reassurance: payment is already secured */}
+          {intent.payment_status === 'authorized' && !historic && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[12px] font-semibold">
+              <span>💳</span>
+              <span>Paiement réservé · sécurisé par Stripe</span>
+            </div>
+          )}
+          {intent.payment_status === 'captured' && historic && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[12px] font-semibold">
+              <span>✓</span>
+              <span>Paiement encaissé</span>
+            </div>
           )}
           {historic && (
             <div className="mt-2 text-[12px] font-medium">
