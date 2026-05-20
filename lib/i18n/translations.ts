@@ -370,10 +370,10 @@ export type Translations = {
 
 export const translations: Record<Locale, Translations> = {
   fr: {
-    nav_send: 'J\'envoie quelque chose',
-    nav_travel: 'Je transporte quelque chose',
+    nav_send: 'Je cherche un voyageur',
+    nav_travel: 'Je peux transporter',
     nav_discover: 'Découvrir',
-    nav_trust: 'Voyager & envoyer sereinement',
+    nav_trust: 'Confiance',
     nav_my_space: 'Mon espace',
     nav_start: 'Commencer',
 
@@ -458,7 +458,7 @@ export const translations: Record<Locale, Translations> = {
     trip_label_time: 'Heure (optionnel)',
     trip_space_title: 'Que pouvez-vous transporter ?',
     trip_label_min_comp: 'Compensation minimum acceptée',
-    trip_min_comp_hint: 'La plupart des voyageurs fixent leur prix autour de 50€.',
+    trip_min_comp_hint: 'La plupart des voyageurs fixent leur prix autour de 50€. Vous recevrez ce montant exactement.',
     trip_accepted_categories_label: 'Ce que vous acceptez de transporter',
     trip_accepted_categories_hint: 'Sélectionnez ce avec quoi vous êtes à l\'aise. Vous pourrez toujours refuser à la livraison.',
     trip_identity_title: 'Vérifier votre identité',
@@ -666,8 +666,8 @@ export const translations: Record<Locale, Translations> = {
     admin_activity_report: 'Signalement #4821',
     admin_activity_id_verified: 'Karim T. — ID vérifié',
 
-   auth_login_title: 'Connexion',
-    auth_login_subtitle: 'Accédez à vos trajets et envois.',
+    auth_login_title: 'Bon retour.',
+    auth_login_subtitle: 'Connectez-vous pour gérer vos trajets et envois.',
     auth_signup_title: 'Créez votre compte.',
     auth_signup_subtitle: 'Quelques secondes, et vous y êtes.',
     auth_email: 'Email',
@@ -707,10 +707,10 @@ export const translations: Record<Locale, Translations> = {
   },
 
   en: {
- nav_send: 'I want to send something',
-    nav_travel: 'I can carry something',
+    nav_send: 'I need a traveler',
+    nav_travel: 'I can carry',
     nav_discover: 'Discover',
-  nav_trust: 'Travel & Send safely',
+    nav_trust: 'Trust',
     nav_my_space: 'My Space',
     nav_start: 'Get Started',
 
@@ -795,7 +795,7 @@ export const translations: Record<Locale, Translations> = {
     trip_label_time: 'Time (optional)',
     trip_space_title: 'What can you carry?',
     trip_label_min_comp: 'Minimum compensation accepted',
-   trip_min_comp_hint: 'Most travelers set their price around €50.',
+    trip_min_comp_hint: 'Most travelers set their price around €50. You\'ll receive exactly this amount.',
     trip_accepted_categories_label: 'What you\'re willing to carry',
     trip_accepted_categories_hint: 'Pick what you\'re comfortable with. You can always decline at handover.',
     trip_identity_title: 'Verify your identity',
@@ -1003,8 +1003,8 @@ export const translations: Record<Locale, Translations> = {
     admin_activity_report: 'Report #4821',
     admin_activity_id_verified: 'Karim T. — ID verified',
 
-    auth_login_title: 'Sign in',
-    auth_login_subtitle: 'Access your trips and shipments.',
+    auth_login_title: 'Welcome back.',
+    auth_login_subtitle: 'Sign in to manage your trips and shipments.',
     auth_signup_title: 'Create your account.',
     auth_signup_subtitle: 'A few seconds and you\'re in.',
     auth_email: 'Email',
