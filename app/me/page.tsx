@@ -108,41 +108,49 @@ export default function MyPage() {
     setDataLoading(true);
     setError(null);
 
-    // Safety: even if one Supabase query hangs forever, never freeze the page.
-    const safetyTimeout = setTimeout(() => {
-      if (!cancelled) setDataLoading(false);
-    }, 6000);
-
-    // Wrap each query with a short timeout so a single stuck join doesn't
-    // block the whole dashboard. Failed queries fall back to empty arrays.
-    const withTimeout = <T,>(p: Promise<T>, fallback: T, ms = 5000): Promise<T> =>
+    // Per-query timeout. We bumped this from 5s to 12s because Supabase
+    // can be slow on cold queries (especially with our RLS policies that
+    // need to evaluate joins). 12s is still well under the user's
+    // patience but covers ~99% of real-world latencies.
+    const withTimeout = <T,>(p: Promise<T>, fallback: T, ms = 12000): Promise<T> =>
       Promise.race([
-        p.catch(() => fallback),
+        p.catch((e) => {
+          console.warn('Query failed:', e);
+          return fallback;
+        }),
         new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
       ]);
 
-    Promise.allSettled([
-      withTimeout(browser.listMyRequests(user.id), [] as ShippingRequestRow[]),
-      withTimeout(browser.listMyTrips(user.id), [] as TravelerTripRow[]),
-      withTimeout(browser.listMyMatches(user.id), [] as MatchRow[]),
-      withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[]),
-      withTimeout(browser.listMyBookings(user.id), [] as MyBooking[]),
-      withTimeout(browser.listMyTravelerProposals(user.id), [] as TravelerProposal[]),
-    ])
-      .then(([rRes, trRes, mRes, iRes, bRes, pRes]) => {
-        if (cancelled) return;
-        if (rRes.status === 'fulfilled') setRequests(rRes.value);
-        if (trRes.status === 'fulfilled') setTrips(trRes.value);
-        if (mRes.status === 'fulfilled') setMatches(mRes.value as MatchWithRefs[]);
-        if (iRes.status === 'fulfilled') setIncomingIntents(iRes.value as IncomingIntent[]);
-        if (bRes.status === 'fulfilled') setMyBookings(bRes.value as MyBooking[]);
-        if (pRes.status === 'fulfilled') setMyProposals(pRes.value as TravelerProposal[]);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        clearTimeout(safetyTimeout);
+    // Progressive loading: each query updates its own state as soon as
+    // it finishes, rather than waiting for the slowest one. The dataLoading
+    // flag flips off once the first one returns — after that, we still
+    // wait for the others but the user already sees something.
+    let firstDone = false;
+    const flipLoadingOnce = () => {
+      if (!cancelled && !firstDone) {
+        firstDone = true;
         setDataLoading(false);
-      });
+      }
+    };
+
+    withTimeout(browser.listMyRequests(user.id), [] as ShippingRequestRow[])
+      .then((v) => { if (!cancelled) { setRequests(v); flipLoadingOnce(); } });
+    withTimeout(browser.listMyTrips(user.id), [] as TravelerTripRow[])
+      .then((v) => { if (!cancelled) { setTrips(v); flipLoadingOnce(); } });
+    withTimeout(browser.listMyMatches(user.id), [] as MatchRow[])
+      .then((v) => { if (!cancelled) { setMatches(v as MatchWithRefs[]); flipLoadingOnce(); } });
+    withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[])
+      .then((v) => { if (!cancelled) { setIncomingIntents(v as IncomingIntent[]); flipLoadingOnce(); } });
+    withTimeout(browser.listMyBookings(user.id), [] as MyBooking[])
+      .then((v) => { if (!cancelled) { setMyBookings(v as MyBooking[]); flipLoadingOnce(); } });
+    withTimeout(browser.listMyTravelerProposals(user.id), [] as TravelerProposal[])
+      .then((v) => { if (!cancelled) { setMyProposals(v as TravelerProposal[]); flipLoadingOnce(); } });
+
+    // Hard ceiling: even if every single query hangs, never leave the
+    // spinner up past 15 seconds. At that point we show whatever we have.
+    const safetyTimeout = setTimeout(() => {
+      if (!cancelled) setDataLoading(false);
+    }, 15000);
 
     return () => {
       cancelled = true;
