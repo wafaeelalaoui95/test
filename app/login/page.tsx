@@ -3,10 +3,11 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail, Lock, ArrowRight, Loader2, Check } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
 import { getBrowserClient } from '@/lib/supabase/client';
+import { purgeStaleSession } from '@/lib/supabase/auth-provider';
 import { withTimeout } from '@/lib/supabase/timeout';
 import { useI18n } from '@/lib/i18n/context';
 
@@ -16,6 +17,7 @@ function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get('next') || '/me';
+  const recovered = searchParams.get('recovered') === '1';
   const { t } = useI18n();
 
   const [mode, setMode] = useState<Mode>('password');
@@ -99,6 +101,16 @@ function LoginInner() {
           <p className="text-[16px] text-ink-400">{t.auth_login_subtitle}</p>
         </div>
 
+        {recovered && (
+          <div className="mb-6 rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 flex gap-2.5">
+            <RefreshCw className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
+            <div className="text-[13px] text-ink-500 leading-relaxed">
+              <strong className="text-ink-600">Votre session a été réinitialisée.</strong>{' '}
+              Reconnectez-vous pour continuer.
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-1 mb-6 border-b border-ink-100">
           <button
             onClick={() => setMode('password')}
@@ -159,6 +171,18 @@ function LoginInner() {
             <ArrowRight className="w-3 h-3 inline ms-1" />
           </Link>
         </p>
+
+        <div className="mt-12 pt-6 border-t border-ink-50 text-center">
+          <button
+            onClick={() => {
+              purgeStaleSession();
+              window.location.href = '/login';
+            }}
+            className="text-[12px] text-ink-300 hover:text-ink-500 transition-colors"
+          >
+            Problème de connexion ? Réinitialiser
+          </button>
+        </div>
       </div>
     </div>
   );
