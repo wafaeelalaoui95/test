@@ -170,7 +170,108 @@ export type ShippingRequestWithProfile = ShippingRequestRow & {
     'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'
   > | null;
 };
-
+export type Notification = {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  related_booking_id: string | null;
+  related_trip_id: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+ 
+/**
+ * List the user's notifications, newest first. Default to the last 20
+ * for the dropdown; the full /notifications page can paginate further.
+ */
+export async function listNotifications(
+  supabase: SB,
+  userId: string,
+  limit = 20
+): Promise<Notification[]> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+    ),
+    8000,
+    'Notifications list'
+  );
+  if (error) throw error;
+  return (data ?? []) as Notification[];
+}
+ 
+/**
+ * Count unread notifications. Cheap query for the bell badge.
+ */
+export async function countUnreadNotifications(
+  supabase: SB,
+  userId: string
+): Promise<number> {
+  const { count, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .is('read_at', null)
+    ),
+    8000,
+    'Notifications unread count'
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
+ 
+/**
+ * Mark one notification as read. Idempotent.
+ */
+export async function markNotificationRead(
+  supabase: SB,
+  notificationId: string
+): Promise<void> {
+  const { error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('id', notificationId)
+        .is('read_at', null) // don't bump the timestamp if already read
+    ),
+    8000,
+    'Mark notification read'
+  );
+  if (error) throw error;
+}
+ 
+/**
+ * Mark every unread notification of the current user as read in one shot.
+ * Called from the "Tout marquer lu" button in the dropdown.
+ */
+export async function markAllNotificationsRead(
+  supabase: SB,
+  userId: string
+): Promise<void> {
+  const { error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .is('read_at', null)
+    ),
+    8000,
+    'Mark all read'
+  );
+  if (error) throw error;
+}
 export async function listOpenRequestsWithProfile(
   supabase: SB
 ): Promise<ShippingRequestWithProfile[]> {
