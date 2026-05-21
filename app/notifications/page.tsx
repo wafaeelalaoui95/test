@@ -5,7 +5,7 @@
 // /wallet. Pagination beyond the first batch happens client-side.
 
 import { redirect } from 'next/navigation';
-import { getServerClient } from '@/lib/supabase/server';
+import { getServerClient } from '@/lib/supabase/server'; 
 import { listNotifications } from '@/lib/supabase/queries';
 import NotificationsPageClient from './NotificationsPageClient';
 
