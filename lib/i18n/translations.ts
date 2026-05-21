@@ -373,7 +373,7 @@ export const translations: Record<Locale, Translations> = {
     nav_send: 'Je cherche un voyageur',
     nav_travel: 'Je peux transporter',
     nav_discover: 'Découvrir',
-    nav_trust: 'Confiance',
+    nav_trust: 'FAQ - Sérénité',
     nav_my_space: 'Mon espace',
     nav_start: 'S\'inscrire',
 
@@ -618,7 +618,7 @@ export const translations: Record<Locale, Translations> = {
 
     footer_tagline: 'Une communauté de voyageurs vérifiés, partout dans le monde.',
     footer_platform: 'Plateforme',
-    footer_trust: 'Confiance',
+    footer_trust: 'FAQ - Sérénité',
     footer_community: 'Communauté',
     footer_made_with: 'Fait avec',
 
