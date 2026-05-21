@@ -390,7 +390,7 @@ export type MatchingRequest = {
   } | null;
 };
 
-xport async function listMatchingRequestsForTrip(
+export async function listMatchingRequestsForTrip(
   supabase: SB,
   departureCity: string,
   arrivalCity: string,
