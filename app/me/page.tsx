@@ -2114,37 +2114,60 @@ function TripsView({
   onOpenChat: (intent: IncomingIntent) => void;
   t: Translations;
 }) {
-  // 🔥 À traiter:
-  //   - pending incoming requests (need to accept/decline)
-  //   - confirmed bookings without delivery proof (need to upload "I delivered")
-  const todoRequests = incomingIntents.filter((i) => i.status === 'pending');
-  const todoDeliver = incomingIntents.filter(
-    (i) => i.status === 'confirmed' && !i.delivery_proof_url
-  );
+  // We group the traveler's work by TRIP — the user thinks "what am I
+  // carrying on my Marrakech→Toulouse flight on June 9th". Within each
+  // trip we list every active booking attached to it (pending requests
+  // to decide on, confirmed bookings to deliver, accepted proposals).
+  //
+  // The dashboard shows ACTIVE only (status != 'cancelled', not yet
+  // delivered). Historic items live on /historique.
 
-  // ⏳ En cours: active trips + pending proposals + accepted proposals
-  // waiting for delivery (no action button visible on ProposalCard, so they
-  // belong here, not in "À traiter").
   const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
-  const pendingProposals = myProposals.filter((p) => p.status === 'pending');
-  const inProgressProposalsAccepted = myProposals.filter(
-    (p) => p.status === 'confirmed' && !p.delivery_proof_url
+
+  // Active items linked to a trip: incoming bookings + my proposals
+  const activeIncoming = incomingIntents.filter(
+    (i) => i.status !== 'cancelled' && !i.delivery_proof_url
+  );
+  const activeProposals = myProposals.filter(
+    (p) => p.status !== 'cancelled' && !p.delivery_proof_url
   );
 
-  // 📜 Historique (côté voyageur): incoming livré/refusé, propositions
-  // livrées/refusées, trajets annulés. Tout ce qui touche au rôle de voyageur.
-  const historyIncoming = incomingIntents.filter(
-    (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
-  );
-  const historyProposals = myProposals.filter(
-    (p) => p.status === 'cancelled' || (p.status === 'confirmed' && p.delivery_proof_url)
-  );
-  const cancelledTrips = trips.filter((tr) => tr.status === 'cancelled');
+  // Build the map: trip_id → list of "packages" (mixed incoming + proposals)
+  type TripPackage =
+    | { kind: 'incoming'; row: IncomingIntent }
+    | { kind: 'proposal'; row: TravelerProposal };
+  const packagesByTrip = new Map<string, TripPackage[]>();
+  activeIncoming.forEach((i) => {
+    const tripId = i.traveler_trip_id;
+    if (!tripId) return;
+    const arr = packagesByTrip.get(tripId) ?? [];
+    arr.push({ kind: 'incoming', row: i });
+    packagesByTrip.set(tripId, arr);
+  });
+  activeProposals.forEach((p) => {
+    const tripId = p.traveler_trip_id;
+    if (!tripId) return;
+    const arr = packagesByTrip.get(tripId) ?? [];
+    arr.push({ kind: 'proposal', row: p });
+    packagesByTrip.set(tripId, arr);
+  });
 
-  const totalTodos = todoRequests.length + todoDeliver.length;
-  const totalInProgress = activeTrips.length + pendingProposals.length + inProgressProposalsAccepted.length;
-  const totalHistory = historyIncoming.length + historyProposals.length + cancelledTrips.length;
-  const hasContent = totalTodos > 0 || totalInProgress > 0 || totalHistory > 0;
+  // Sort trips by departure date ascending (next trip first)
+  const sortedTrips = [...activeTrips].sort(
+    (a, b) => new Date(a.departure_date).getTime() - new Date(b.departure_date).getTime()
+  );
+
+  // History link counter — same definition as before for the bottom link
+  const historyCount =
+    incomingIntents.filter(
+      (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
+    ).length +
+    myProposals.filter(
+      (p) => p.status === 'cancelled' || (p.status === 'confirmed' && p.delivery_proof_url)
+    ).length +
+    trips.filter((tr) => tr.status === 'cancelled').length;
+
+  const hasContent = activeTrips.length > 0 || historyCount > 0;
 
   if (!hasContent) {
     return (
@@ -2164,7 +2187,7 @@ function TripsView({
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes transports</h2>
         <Link href="/voyager">
@@ -2175,58 +2198,272 @@ function TripsView({
         </Link>
       </div>
 
-      {totalTodos > 0 && (
-        <section>
-          <GroupHeader icon="🔥" label="À traiter" count={totalTodos} />
-          <div className="space-y-3">
-            {todoRequests.map((intent) => (
-              <IntentCard
-                key={intent.id}
-                intent={intent}
-                onUpdate={onUpdateIntent}
-                onProofUploaded={onProofUploaded}
-              />
-            ))}
-            {todoDeliver.map((intent) => (
-              <IntentCard
-                key={intent.id}
-                intent={intent}
-                onUpdate={onUpdateIntent}
-                onProofUploaded={onProofUploaded}
-                onOpenChat={onOpenChat}
-                showDeliverButton
-              />
-            ))}
-          </div>
-        </section>
+      {sortedTrips.length === 0 ? (
+        <div className="bg-white rounded-2xl p-8 text-center border border-dashed border-ink-100">
+          <p className="text-[14px] text-ink-400 leading-relaxed mb-4">
+            Aucun voyage à venir. Ajoutez votre prochain vol pour commencer à transporter.
+          </p>
+          <Link href="/voyager">
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              Publier un trajet
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {sortedTrips.map((trip) => (
+            <TripGroup
+              key={trip.id}
+              trip={trip}
+              packages={packagesByTrip.get(trip.id) ?? []}
+              onUpdateIntent={onUpdateIntent}
+              onProofUploaded={onProofUploaded}
+              onCancelTrip={onCancelTrip}
+              onOpenChat={onOpenChat}
+              t={t}
+            />
+          ))}
+        </div>
       )}
 
-      {totalInProgress > 0 && (
-        <section>
-          <GroupHeader icon="⏳" label="En cours" count={totalInProgress} />
-          <div className="space-y-3">
-            {activeTrips.map((trip) => (
-              <TripCard key={trip.id} trip={trip} onCancel={onCancelTrip} t={t} />
-            ))}
-            {inProgressProposalsAccepted.map((p) => (
-              <ProposalCard key={p.id} proposal={p} accepted />
-            ))}
-            {pendingProposals.map((p) => (
-              <ProposalCard key={p.id} proposal={p} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {totalHistory > 0 && (
+      {historyCount > 0 && (
         <div className="pt-2">
           <Link
             href="/historique?type=transports"
             className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
           >
-            📜 Voir l&apos;historique ({totalHistory})
+            📜 Voir l&apos;historique ({historyCount})
           </Link>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TripGroup — one trip with all its packages stacked under it
+// ---------------------------------------------------------------------------
+function TripGroup({
+  trip,
+  packages,
+  onUpdateIntent,
+  onProofUploaded,
+  onCancelTrip,
+  onOpenChat,
+  t,
+}: {
+  trip: TravelerTripRow;
+  packages: Array<
+    | { kind: 'incoming'; row: IncomingIntent }
+    | { kind: 'proposal'; row: TravelerProposal }
+  >;
+  onUpdateIntent: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
+  onProofUploaded: (id: string, url: string, receiverName: string) => void;
+  onCancelTrip: (tripId: string) => Promise<void>;
+  onOpenChat: (intent: IncomingIntent) => void;
+  t: Translations;
+}) {
+  // "Potential earnings" = sum of NET (post-fee) for every package on this
+  // trip, including pending ones. The user wants to see "what I could
+  // make on this flight". We don't differentiate confirmed vs pending in
+  // the headline — they're all things to handle.
+  const totalNet = packages.reduce((sum, p) => {
+    const ttc = p.row.proposed_price ?? 0;
+    return sum + ttc / 1.15;
+  }, 0);
+
+  const count = packages.length;
+  const isCancelable = packages.every(
+    (p) => p.row.status !== 'confirmed' // only allow trip cancel if no confirmed package
+  );
+
+  return (
+    <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
+      {/* Trip header */}
+      <div className="px-4 py-3.5 bg-cream-50 border-b border-ink-100 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <Plane className="w-4 h-4 text-ink-400 flex-shrink-0" />
+          <div className="min-w-0">
+            <div className="font-bold text-ink-600 text-[15px] truncate">
+              {trip.departure_city} → {trip.arrival_city}
+            </div>
+            <div className="text-[12px] text-ink-400 num-display">
+              {formatShortDate(trip.departure_date)} · {count} colis · {formatEuros(totalNet)} potentiels
+            </div>
+          </div>
+        </div>
+        {isCancelable && (
+          <button
+            onClick={() => onCancelTrip(trip.id)}
+            className="flex-shrink-0 p-1.5 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
+            aria-label="Annuler ce trajet"
+            title="Annuler ce trajet"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Packages list */}
+      {count === 0 ? (
+        <div className="px-4 py-6 text-center text-[13px] text-ink-400">
+          Pas encore de colis sur ce vol. Les demandes pour cette route apparaîtront ici.
+        </div>
+      ) : (
+        <div className="divide-y divide-ink-50">
+          {packages.map((p, i) => (
+            <div key={`${p.kind}-${p.row.id}-${i}`} className="px-3 py-2">
+              {p.kind === 'incoming' ? (
+                <IntentCardInline
+                  intent={p.row}
+                  onUpdate={onUpdateIntent}
+                  onProofUploaded={onProofUploaded}
+                  onOpenChat={onOpenChat}
+                />
+              ) : (
+                <ProposalCardInline proposal={p.row} />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Stripped-down versions of IntentCard/ProposalCard for use inside a
+// TripGroup — borderless (the group has its own border), single line,
+// dense.
+function IntentCardInline({
+  intent,
+  onUpdate,
+  onProofUploaded,
+  onOpenChat,
+}: {
+  intent: IncomingIntent;
+  onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
+  onProofUploaded: (id: string, url: string, receiverName: string) => void;
+  onOpenChat: (intent: IncomingIntent) => void;
+}) {
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
+  const senderName = displayName(intent.sender_profile?.full_name) || 'Expéditeur';
+  const senderInitial = nameInitial(intent.sender_profile?.full_name);
+
+  async function handle(status: 'confirmed' | 'cancelled') {
+    setBusy(status === 'confirmed' ? 'confirm' : 'cancel');
+    try {
+      await onUpdate(intent.id, status);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const showAccept = intent.status === 'pending';
+  const showDeliver = intent.status === 'confirmed' && !intent.delivery_proof_url;
+
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[12px] text-lavender-700">
+          {senderInitial}
+        </div>
+        <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+          <span className="font-semibold text-ink-600">{senderName}</span>
+          <span className="text-ink-300">·</span>
+          <span className="font-semibold text-mint-600 num-display">
+            {formatEuros(intent.proposed_price / 1.15)}
+          </span>
+          {intent.payment_status === 'authorized' && (
+            <span className="text-[11px] text-mint-600 ml-1">💳</span>
+          )}
+        </div>
+        {showAccept && (
+          <div className="flex-shrink-0 flex items-center gap-1.5">
+            <button
+              onClick={() => handle('cancelled')}
+              disabled={!!busy}
+              className="px-3 py-1.5 text-[12px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
+            >
+              {busy === 'cancel' ? '...' : 'Refuser'}
+            </button>
+            <button
+              onClick={() => handle('confirmed')}
+              disabled={!!busy}
+              className="px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
+            >
+              {busy === 'confirm' ? '...' : 'Accepter'}
+            </button>
+          </div>
+        )}
+        {showDeliver && (
+          <div className="flex-shrink-0 flex items-center gap-1.5">
+            <button
+              onClick={() => onOpenChat(intent)}
+              className="px-2.5 py-1.5 rounded-full bg-cream-100 hover:bg-cream-200 text-ink-500 text-[12px] transition-colors"
+              aria-label="Message"
+              title="Message"
+            >
+              💬
+            </button>
+            <button
+              onClick={() => setShowProofModal(true)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
+            >
+              <Camera className="w-3 h-3" />
+              J&apos;ai livré
+            </button>
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {showProofModal && (
+          <DeliveryProofModal
+            bookingIntentId={intent.id}
+            onSuccess={(url) => {
+              onProofUploaded(intent.id, url, '');
+              setShowProofModal(false);
+            }}
+            onClose={() => setShowProofModal(false)}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
+  const senderName = displayName(proposal.sender_profile?.full_name) || 'Expéditeur';
+  const initial = nameInitial(proposal.sender_profile?.full_name);
+  const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
+  const accepted = proposal.status === 'confirmed';
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[12px] text-ink-500">
+        {initial}
+      </div>
+      <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+        <span className="font-semibold text-ink-600">{senderName}</span>
+        <span className="text-ink-300">·</span>
+        <span className="font-semibold text-mint-600 num-display">{formatEuros(netTraveler)}</span>
+        {accepted ? (
+          <span className="text-[11px] text-mint-600 ml-1">✓ acceptée</span>
+        ) : (
+          <span className="text-[11px] text-ink-300 ml-1">⏳ ma proposition</span>
+        )}
+      </div>
+      {accepted && proposal.sender_profile?.phone && (
+        <a
+          href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-shrink-0 inline-flex items-center px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
+        >
+          WhatsApp
+        </a>
       )}
     </div>
   );
