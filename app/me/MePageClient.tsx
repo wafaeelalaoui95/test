@@ -81,6 +81,7 @@ type IncomingIntent = {
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
+  traveler_user_id: string | null;
   sender_profile: { id: string; full_name: string | null; avatar_url: string | null; rating: number; trips_completed: number; verification_level: VerificationLevel } | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
@@ -852,6 +853,7 @@ type MyBooking = {
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
+  traveler_user_id: string | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string; user_id: string } | null;
   traveler_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: VerificationLevel; rating: number; trips_completed: number } | null;
 };
