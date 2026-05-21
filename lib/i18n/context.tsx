@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { translations, type Locale, type Translations, LOCALES } from './translations';
 
 type I18nContextValue = {
@@ -12,37 +12,23 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-const STORAGE_KEY = 'jibly-locale';
-
-function detectInitialLocale(): Locale {
-  if (typeof window === 'undefined') return 'fr';
-  const saved = window.localStorage.getItem(STORAGE_KEY) as Locale | null;
-  if (saved && (saved === 'fr' || saved === 'en')) return saved;
-  const browser = window.navigator.language.toLowerCase();
-  if (browser.startsWith('en')) return 'en';
-  return 'fr';
-}
+// MVP decision: French-only until we have proper EN copy reviewed.
+// We keep the i18n plumbing in place (translations.ts still has both
+// locales) so re-enabling EN later only needs flipping LOCKED_LOCALE
+// back to the detection logic — no code changes elsewhere.
+const LOCKED_LOCALE: Locale = 'fr';
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('fr');
-  const [mounted, setMounted] = useState(false);
+  // No state, no localStorage, no navigator sniffing. Just French.
+  const locale: Locale = LOCKED_LOCALE;
 
   useEffect(() => {
-    setLocaleState(detectInitialLocale());
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
     document.documentElement.lang = locale;
     document.documentElement.dir = 'ltr';
-    try {
-      window.localStorage.setItem(STORAGE_KEY, locale);
-    } catch {}
-  }, [locale, mounted]);
+  }, [locale]);
 
-  function setLocale(l: Locale) {
-    setLocaleState(l);
+  function setLocale(_l: Locale) {
+    // No-op while locked. Kept on the context so callers don't break.
   }
 
   return (
