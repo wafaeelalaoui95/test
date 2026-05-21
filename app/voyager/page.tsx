@@ -165,7 +165,7 @@ export default function VoyagerPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <Input
                       type="date"
-                      label={t.send_label_date}
+                      label="Date de mon vol"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
