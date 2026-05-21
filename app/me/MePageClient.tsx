@@ -302,7 +302,7 @@ export default function MyPage({
 
   const TABS: { id: TabId; label: string; icon: typeof Plane }[] = [
     { id: 'trips', label: 'Mes voyages', icon: Plane },
-    { id: 'sends', label: 'Mes envois', icon: Package },
+    { id: 'sends', label: 'Mes colis', icon: Package },
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
 
@@ -2553,7 +2553,7 @@ function SendsView({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes colis</h2>
           <Link href="/envoyer">
             <Button size="sm">
               <Plus className="w-4 h-4" />
@@ -2561,7 +2561,7 @@ function SendsView({
             </Button>
           </Link>
         </div>
-        <EmptyState message="Aucun envoi pour le moment. Publiez votre première demande." />
+        <EmptyState message="Aucun colis pour le moment. Publiez votre première demande." />
       </div>
     );
   }
@@ -2692,13 +2692,13 @@ function SendsView({
       </div>
     )
   ) : (
-    <DetailEmpty message="Sélectionnez un envoi pour voir ses détails." />
+    <DetailEmpty message="Sélectionnez un colis pour voir ses détails." />
   );
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes colis</h2>
         <Link href="/envoyer">
           <Button size="sm">
             <Plus className="w-4 h-4" />
@@ -2857,36 +2857,54 @@ function SendDetailCard({
 
   return (
     <div className="space-y-5">
-      {/* HERO — the object. Big emoji, category name, description directly
-          underneath (no box), route + date on a single small meta line.
-          Mirrors the layout of RequestDetailCard so the two states feel
-          like the same thing at different stages of the same flow. */}
+      {/* HERO — the object. Big emoji, category name, optional description,
+          and the price on the right. This is the headline of the card. */}
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-cream-100 flex items-center justify-center text-3xl">
           {cat?.icon ?? '📦'}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em]">
-            {catLabel} → {booking.destination_city}
+          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em] mb-1">
+            {catLabel}
           </div>
           {booking.item_description ? (
-            <p className="text-[14px] text-ink-500 italic leading-relaxed mt-1">
+            <p className="text-[14px] text-ink-500 italic leading-relaxed">
               {booking.item_description}
             </p>
           ) : (
-            <p className="text-[13px] text-ink-300 italic mt-1">
+            <p className="text-[13px] text-ink-300 italic">
               Aucune description
             </p>
           )}
-          {/* Route + date as one small meta line, same shape as
-              RequestDetailCard's "Depuis X · avant le Y". */}
-          <div className="text-[12px] text-ink-400 mt-1.5">
-            Depuis {booking.pickup_city}
-            {trip && ` · ${formatShortDate(trip.departure_date)}`}
+        </div>
+        <div className="flex-shrink-0 text-right">
+          <div className="text-[24px] font-extrabold text-ink-600 tracking-[-0.02em] num-display leading-none">
+            {formatEuros(booking.proposed_price)}
+          </div>
+          <div className="text-[11px] text-ink-400 mt-1">prix total</div>
+        </div>
+      </div>
+
+      {/* ROUTE + DATE — boxed meta panel with the two key facts side by
+          side. The cream background makes the panel feel like a labelled
+          chip set, distinct from the hero. */}
+      <div className="rounded-xl bg-cream-50 px-4 py-3 flex items-center gap-5 flex-wrap">
+        <div>
+          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
+            Itinéraire
+          </div>
+          <div className="text-[14px] font-bold text-ink-600">
+            {booking.pickup_city} → {booking.destination_city}
           </div>
         </div>
-        <div className="flex-shrink-0 text-[20px] font-extrabold text-ink-600 num-display tracking-[-0.015em]">
-          {formatEuros(booking.proposed_price)}
+        <div className="h-8 w-px bg-ink-100" />
+        <div>
+          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
+            Date du voyage
+          </div>
+          <div className="text-[14px] font-bold text-ink-600 num-display">
+            {trip ? formatShortDate(trip.departure_date) : '—'}
+          </div>
         </div>
       </div>
 
@@ -3034,35 +3052,60 @@ function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Tra
   const categoryLabel = cat ? t[cat.labelKey] : 'Colis';
   const description = request.item_description?.trim();
   return (
-    <div className="bg-white rounded-2xl border border-ink-50 p-5">
-      {/* Hero: the OBJECT (category icon + label) + price on the right.
-          Route + date sit one line below, smaller, as secondary context. */}
-      <div className="flex items-start gap-3 mb-4">
-        <div className="w-12 h-12 rounded-full bg-cream-100 flex items-center justify-center text-2xl flex-shrink-0">
+    <div className="space-y-5">
+      {/* HERO — same shape as BookingCard: object on the left, description
+          underneath, big price on the right with a "budget" label. */}
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-cream-100 flex items-center justify-center text-3xl">
           {cat?.icon ?? '📦'}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em]">
-            {categoryLabel} → {request.destination_city}
+          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em] mb-1">
+            {categoryLabel}
           </div>
-          {/* Description flows directly under the title, no box, no label.
-              Italic to set it apart from system metadata. */}
-          {description && (
-            <p className="text-[14px] text-ink-500 italic leading-relaxed mt-1">
+          {description ? (
+            <p className="text-[14px] text-ink-500 italic leading-relaxed">
               {description}
             </p>
+          ) : (
+            <p className="text-[13px] text-ink-300 italic">
+              Aucune description
+            </p>
           )}
-          <div className="text-[12px] text-ink-400 mt-1.5">
-            Depuis {request.pickup_city} · avant le {formatShortDate(request.desired_delivery_date)}
-          </div>
         </div>
-        <div className="text-[20px] font-extrabold text-ink-600 num-display tracking-[-0.015em]">
-          {formatEuros(request.budget)}
+        <div className="flex-shrink-0 text-right">
+          <div className="text-[24px] font-extrabold text-ink-600 tracking-[-0.02em] num-display leading-none">
+            {formatEuros(request.budget)}
+          </div>
+          <div className="text-[11px] text-ink-400 mt-1">budget</div>
         </div>
       </div>
 
-      {/* Status banner — kept compact, no separate description box above
-          since the description is now part of the hero. */}
+      {/* ROUTE + DATE — same boxed meta panel as BookingCard for visual
+          consistency. The two states are the same colis at different
+          stages, so the layout language should be identical. */}
+      <div className="rounded-xl bg-cream-50 px-4 py-3 flex items-center gap-5 flex-wrap">
+        <div>
+          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
+            Itinéraire
+          </div>
+          <div className="text-[14px] font-bold text-ink-600">
+            {request.pickup_city} → {request.destination_city}
+          </div>
+        </div>
+        <div className="h-8 w-px bg-ink-100" />
+        <div>
+          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
+            Avant le
+          </div>
+          <div className="text-[14px] font-bold text-ink-600 num-display">
+            {formatShortDate(request.desired_delivery_date)}
+          </div>
+        </div>
+      </div>
+
+      {/* Status banner — kept compact, sits at the bottom as the only
+          non-data element. */}
       <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 text-[13px] text-ink-500 leading-relaxed flex gap-2.5">
         <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
         <div>
