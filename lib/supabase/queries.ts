@@ -170,108 +170,7 @@ export type ShippingRequestWithProfile = ShippingRequestRow & {
     'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'
   > | null;
 };
-export type Notification = {
-  id: string;
-  user_id: string;
-  type: string;
-  title: string;
-  body: string | null;
-  link: string | null;
-  related_booking_id: string | null;
-  related_trip_id: string | null;
-  read_at: string | null;
-  created_at: string;
-};
- 
-/**
- * List the user's notifications, newest first. Default to the last 20
- * for the dropdown; the full /notifications page can paginate further.
- */
-export async function listNotifications(
-  supabase: SB,
-  userId: string,
-  limit = 20
-): Promise<Notification[]> {
-  const { data, error } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(limit)
-    ),
-    8000,
-    'Notifications list'
-  );
-  if (error) throw error;
-  return (data ?? []) as Notification[];
-}
- 
-/**
- * Count unread notifications. Cheap query for the bell badge.
- */
-export async function countUnreadNotifications(
-  supabase: SB,
-  userId: string
-): Promise<number> {
-  const { count, error } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .is('read_at', null)
-    ),
-    8000,
-    'Notifications unread count'
-  );
-  if (error) throw error;
-  return count ?? 0;
-}
- 
-/**
- * Mark one notification as read. Idempotent.
- */
-export async function markNotificationRead(
-  supabase: SB,
-  notificationId: string
-): Promise<void> {
-  const { error } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('notifications')
-        .update({ read_at: new Date().toISOString() })
-        .eq('id', notificationId)
-        .is('read_at', null) // don't bump the timestamp if already read
-    ),
-    8000,
-    'Mark notification read'
-  );
-  if (error) throw error;
-}
- 
-/**
- * Mark every unread notification of the current user as read in one shot.
- * Called from the "Tout marquer lu" button in the dropdown.
- */
-export async function markAllNotificationsRead(
-  supabase: SB,
-  userId: string
-): Promise<void> {
-  const { error } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('notifications')
-        .update({ read_at: new Date().toISOString() })
-        .eq('user_id', userId)
-        .is('read_at', null)
-    ),
-    8000,
-    'Mark all read'
-  );
-  if (error) throw error;
-}
+
 export async function listOpenRequestsWithProfile(
   supabase: SB
 ): Promise<ShippingRequestWithProfile[]> {
@@ -542,6 +441,28 @@ export async function listMatchingRequestsForTrip(
     user: (profileById.get(r.user_id) as any) ?? null,
   }));
 }
+
+// ============================================================================
+// REVIEWS
+// ============================================================================
+
+export async function listReviewsForUser(supabase: SB, userId: string): Promise<ReviewRow[]> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('reviewed_user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * Mark a booking as "received" by the sender. This is the signal that
+ * unlocks reviews: once received_confirmed_at is set, both parties can
+ * post a mutual review.
+ *
+ * Only the sender can call this — enforced by RLS on the table.
+ */
 export async function confirmBookingReceipt(
   supabase: SB,
   bookingIntentId: string
@@ -637,17 +558,116 @@ export async function listReviewsByBookingIds(
 }
 
 // ============================================================================
-// REVIEWS
+// NOTIFICATIONS
 // ============================================================================
+// In-app notifications populated by DB triggers (see 05_notifications.sql).
+// The bell dropdown shows the 5-20 latest; a dedicated /notifications page
+// can paginate further.
 
-export async function listReviewsForUser(supabase: SB, userId: string): Promise<ReviewRow[]> {
-  const { data, error } = await supabase
-    .from('reviews')
+export type Notification = {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  related_booking_id: string | null;
+  related_trip_id: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
+/**
+ * List the user's notifications, newest first. Default to 20 for the
+ * dropdown; the full /notifications page can request more by paging.
+ */
+export async function listNotifications(
+  supabase: SB,
+  userId: string,
+  limit = 20,
+  before?: string // ISO timestamp for pagination ("older than this")
+): Promise<Notification[]> {
+  let q = supabase
+    .from('notifications')
     .select('*')
-    .eq('reviewed_user_id', userId)
-    .order('created_at', { ascending: false });
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (before) q = q.lt('created_at', before);
+  const { data, error } = await withTimeout(
+    Promise.resolve(q),
+    8000,
+    'Notifications list'
+  );
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as Notification[];
+}
+
+/**
+ * Count unread notifications. Cheap query for the bell badge — uses HEAD
+ * so we don't ship the rows themselves.
+ */
+export async function countUnreadNotifications(
+  supabase: SB,
+  userId: string
+): Promise<number> {
+  const { count, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .is('read_at', null)
+    ),
+    8000,
+    'Notifications unread count'
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
+ * Mark one notification as read. Idempotent — re-marking doesn't bump
+ * the timestamp thanks to the `.is('read_at', null)` filter.
+ */
+export async function markNotificationRead(
+  supabase: SB,
+  notificationId: string
+): Promise<void> {
+  const { error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('id', notificationId)
+        .is('read_at', null)
+    ),
+    8000,
+    'Mark notification read'
+  );
+  if (error) throw error;
+}
+
+/**
+ * Mark every unread notification of the current user as read in one shot.
+ * Called from "Tout marquer lu" in the dropdown.
+ */
+export async function markAllNotificationsRead(
+  supabase: SB,
+  userId: string
+): Promise<void> {
+  const { error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .is('read_at', null)
+    ),
+    8000,
+    'Mark all read'
+  );
+  if (error) throw error;
 }
 
 // ============================================================================
@@ -1604,13 +1624,7 @@ export const browser = {
   listMyMatches: (userId: string) => listMyMatches(getBrowserClient(), userId),
   createMatch: (travelerTripId: string, shippingRequestId: string, agreedCompensation?: number) =>
     createMatch(getBrowserClient(), travelerTripId, shippingRequestId, agreedCompensation),
-confirmBookingReceipt: (bookingIntentId: string) =>
-    confirmBookingReceipt(getBrowserClient(), bookingIntentId),
-  createReview: (input: Parameters<typeof createReview>[1]) =>
-    createReview(getBrowserClient(), input),
-  listReviewsByBookingIds: (bookingIds: string[]) =>
-    listReviewsByBookingIds(getBrowserClient(), bookingIds),
-  
+
   // Matching (live preview on /envoyer and /voyager)
   listMatchingTripsForRequest: (
     pickupCity: string,
@@ -1641,6 +1655,23 @@ confirmBookingReceipt: (bookingIntentId: string) =>
 
   listReviewsForUser: (userId: string) =>
     listReviewsForUser(getBrowserClient(), userId),
+  confirmBookingReceipt: (bookingIntentId: string) =>
+    confirmBookingReceipt(getBrowserClient(), bookingIntentId),
+  createReview: (input: Parameters<typeof createReview>[1]) =>
+    createReview(getBrowserClient(), input),
+  listReviewsByBookingIds: (bookingIds: string[]) =>
+    listReviewsByBookingIds(getBrowserClient(), bookingIds),
+
+  // Notifications
+  listNotifications: (userId: string, limit?: number, before?: string) =>
+    listNotifications(getBrowserClient(), userId, limit, before),
+  countUnreadNotifications: (userId: string) =>
+    countUnreadNotifications(getBrowserClient(), userId),
+  markNotificationRead: (notificationId: string) =>
+    markNotificationRead(getBrowserClient(), notificationId),
+  markAllNotificationsRead: (userId: string) =>
+    markAllNotificationsRead(getBrowserClient(), userId),
+
   createReport: (input: Parameters<typeof createReport>[1]) =>
     createReport(getBrowserClient(), input),
   getPublicProfile: (userId: string) =>
@@ -1682,16 +1713,3 @@ confirmBookingReceipt: (bookingIntentId: string) =>
     listMyConversations(getBrowserClient(), userId),
   hasUnreadMessages: (userId: string) => hasUnreadMessages(getBrowserClient(), userId),
 };
- 
-// =============================================================================
-// WRAPPERS À AJOUTER DANS l'objet `browser` (en bas de queries.ts)
-// =============================================================================
-//
-//   listNotifications: (userId: string, limit?: number) =>
-//     listNotifications(getBrowserClient(), userId, limit),
-//   countUnreadNotifications: (userId: string) =>
-//     countUnreadNotifications(getBrowserClient(), userId),
-//   markNotificationRead: (id: string) =>
-//     markNotificationRead(getBrowserClient(), id),
-//   markAllNotificationsRead: (userId: string) =>
-//     markAllNotificationsRead(getBrowserClient(), userId),
