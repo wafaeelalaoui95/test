@@ -5,7 +5,7 @@
  * file casts results to these types. This avoids fighting the postgres-js
  * generic type inference for `update` / `insert`. If you want full typing later,
  * regenerate with the Supabase CLI:
- *   supabase gen types typescript --project-id <id> > lib/supabase/types.ts
+ *   supabase gen types typescript --project-id <id> > lib/supabase/types.ts 
  */
 
 export type VerificationLevel = 'none' | 'email' | 'id_verified' | 'trusted';
@@ -45,6 +45,9 @@ export interface TravelerTripRow {
   available_weight_kg: number | null;
   available_space: AvailableSpace;
   flight_time: string | null;
+  flight_number: string | null;
+  departure_airport: string | null;
+  arrival_airport: string | null;
   notes: string | null;
   status: TripStatus;
   created_at: string;
