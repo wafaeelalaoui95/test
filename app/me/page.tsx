@@ -2278,11 +2278,12 @@ function TripGroup({
     (p) => p.row.status !== 'confirmed' // only allow trip cancel if no confirmed package
   );
 
-  // Airport-code style — first 3 letters of the city, uppercase. Not IATA
-  // accurate (CAS for Casablanca, not CMN) but gives the right ticket vibe
-  // and works for any city without a lookup table.
-  const departCode = trip.departure_city.slice(0, 3).toUpperCase();
-  const arriveCode = trip.arrival_city.slice(0, 3).toUpperCase();
+  // Airport-code style — prefer the user-provided 3-letter IATA when set,
+  // otherwise fall back to the first 3 letters of the city, uppercase.
+  // Not strictly IATA-correct in the fallback case (CAS for Casablanca,
+  // not CMN) but gives the right ticket vibe without a lookup table.
+  const departCode = trip.departure_airport || trip.departure_city.slice(0, 3).toUpperCase();
+  const arriveCode = trip.arrival_airport || trip.arrival_city.slice(0, 3).toUpperCase();
 
   return (
     <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
@@ -2298,6 +2299,14 @@ function TripGroup({
         <div className="flex items-stretch">
           {/* LEFT — trip ticket section, on warm cream paper */}
           <div className="flex-1 px-5 py-4 min-w-0 relative bg-gradient-to-br from-cream-50 to-cream-100">
+            {/* Flight number stamp at top — visible only when provided.
+                Sits above the codes like a real boarding pass header. */}
+            {trip.flight_number && (
+              <div className="text-[10px] text-ink-400 font-bold tracking-[0.14em] uppercase mb-1.5 num-display">
+                Vol {trip.flight_number}
+                {trip.flight_time && <span className="ml-2 text-ink-300">· {trip.flight_time}</span>}
+              </div>
+            )}
             {/* Codes row with a chunkier plane between */}
             <div className="flex items-center gap-3 mb-1">
               <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
@@ -2343,7 +2352,7 @@ function TripGroup({
               {formatEuros(totalNet)}
             </div>
             <div className="text-[11px] sm:text-[12px] text-lavender-700/80 font-medium mt-1.5 leading-snug px-1">
-              de gains sur ce vol grâce à Jibly ✨
+              de gains sur ce vol ✨
             </div>
             {isCancelable && (
               <button
@@ -2386,6 +2395,7 @@ function TripGroup({
                   onUpdate={onUpdateIntent}
                   onProofUploaded={onProofUploaded}
                   onOpenChat={onOpenChat}
+                  tripDepartureDate={trip.departure_date}
                 />
               ) : (
                 <ProposalCardInline proposal={p.row} />
@@ -2406,16 +2416,26 @@ function IntentCardInline({
   onUpdate,
   onProofUploaded,
   onOpenChat,
+  tripDepartureDate,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onOpenChat: (intent: IncomingIntent) => void;
+  tripDepartureDate: string;
 }) {
   const [showProofModal, setShowProofModal] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
   const senderName = displayName(intent.sender_profile?.full_name) || 'Expéditeur';
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
+
+  // Marking as delivered should only be possible AFTER the flight has
+  // actually happened — otherwise the traveler could falsely claim
+  // delivery and trigger payment capture before the trip. We use the
+  // trip's declared departure_date as the gating threshold (compared
+  // in YYYY-MM-DD strings to dodge timezone surprises).
+  const today = new Date().toISOString().slice(0, 10);
+  const flightHasDeparted = today >= tripDepartureDate;
 
   async function handle(status: 'confirmed' | 'cancelled') {
     setBusy(status === 'confirmed' ? 'confirm' : 'cancel');
@@ -2493,8 +2513,18 @@ function IntentCardInline({
               💬
             </button>
             <button
-              onClick={() => setShowProofModal(true)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
+              onClick={() => flightHasDeparted && setShowProofModal(true)}
+              disabled={!flightHasDeparted}
+              title={
+                flightHasDeparted
+                  ? 'Confirmer la livraison'
+                  : `Disponible le ${formatShortDate(tripDepartureDate)}`
+              }
+              className={`inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold rounded-full transition-colors ${
+                flightHasDeparted
+                  ? 'text-cream-50 bg-lavender-500 hover:bg-lavender-600 cursor-pointer'
+                  : 'text-ink-300 bg-cream-100 cursor-not-allowed'
+              }`}
             >
               <Camera className="w-3 h-3" />
               J&apos;ai livré
