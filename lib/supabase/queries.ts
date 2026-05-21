@@ -279,6 +279,7 @@ export async function createMatch(
   if (error) throw error;
   return data;
 }
+
 // =============================================================================
 // MATCHING — list trips that fit a freshly-published shipping request
 // =============================================================================
@@ -358,6 +359,7 @@ export async function listMatchingTripsForRequest(
     user: (profileById.get(t.user_id) as any) ?? null,
   }));
 }
+
 // =============================================================================
 // MATCHING (mirror) — list shipping requests that fit a freshly-planned trip
 // =============================================================================
@@ -395,6 +397,8 @@ export async function listMatchingRequestsForTrip(
   departureCity: string,
   arrivalCity: string,
   departureDate: string,
+  // Optional: hide requests owned by this user. Used so the traveler
+  // doesn't see their own requests on /voyager.
   excludeUserId?: string | null
 ): Promise<MatchingRequest[]> {
   let query = supabase
@@ -437,8 +441,6 @@ export async function listMatchingRequestsForTrip(
     user: (profileById.get(r.user_id) as any) ?? null,
   }));
 }
-
-
 
 // ============================================================================
 // REVIEWS
@@ -1038,10 +1040,6 @@ export async function cancelTrip(supabase: SB, tripId: string): Promise<void> {
   );
 }
 
-// ============================================================================
-// Browser convenience wrappers
-// ============================================================================
-
 // =============================================================================
 // CHAT (conversations + messages)
 // =============================================================================
@@ -1390,46 +1388,97 @@ export async function hasUnreadMessages(
   return (count ?? 0) > 0;
 }
 
+// ============================================================================
+// Browser convenience wrappers
+// ============================================================================
+
 export const browser = {
   getProfile: (userId: string) => getProfile(getBrowserClient(), userId),
-  updateProfile: (userId: string, patch: Partial<Profile>) => updateProfile(getBrowserClient(), userId, patch),
-  listOpenTrips: (filters?: Parameters<typeof listOpenTrips>[1]) => listOpenTrips(getBrowserClient(), filters),
+  updateProfile: (userId: string, patch: Partial<Profile>) =>
+    updateProfile(getBrowserClient(), userId, patch),
+  listOpenTrips: (filters?: Parameters<typeof listOpenTrips>[1]) =>
+    listOpenTrips(getBrowserClient(), filters),
   listMyTrips: (userId: string) => listMyTrips(getBrowserClient(), userId),
-  createTrip: (input: Parameters<typeof createTrip>[1]) => createTrip(getBrowserClient(), input),
+  createTrip: (input: Parameters<typeof createTrip>[1]) =>
+    createTrip(getBrowserClient(), input),
   listOpenRequests: () => listOpenRequests(getBrowserClient()),
+  listOpenRequestsWithProfile: () =>
+    listOpenRequestsWithProfile(getBrowserClient()),
   listMyRequests: (userId: string) => listMyRequests(getBrowserClient(), userId),
-  createShippingRequest: (input: Parameters<typeof createShippingRequest>[1]) => createShippingRequest(getBrowserClient(), input),
+  createShippingRequest: (input: Parameters<typeof createShippingRequest>[1]) =>
+    createShippingRequest(getBrowserClient(), input),
   listMyMatches: (userId: string) => listMyMatches(getBrowserClient(), userId),
- listMatchingTripsForRequest: (pickupCity, destinationCity, desiredDeliveryDate, excludeUserId) =>
-    listMatchingTripsForRequest(getBrowserClient(), pickupCity, destinationCity, desiredDeliveryDate, excludeUserId),
   createMatch: (travelerTripId: string, shippingRequestId: string, agreedCompensation?: number) =>
     createMatch(getBrowserClient(), travelerTripId, shippingRequestId, agreedCompensation),
-  listReviewsForUser: (userId: string) => listReviewsForUser(getBrowserClient(), userId),
-  createReport: (input: Parameters<typeof createReport>[1]) => createReport(getBrowserClient(), input),
-  getPublicProfile: (userId: string) => getPublicProfile(getBrowserClient(), userId),
-  listTripsByUser: (userId: string) => listTripsByUser(getBrowserClient(), userId),
-  createBookingIntent: (input: BookingIntentInput) => createBookingIntent(getBrowserClient(), input),
-  listIncomingBookingIntents: (travelerId: string) => listIncomingBookingIntents(getBrowserClient(), travelerId),
+
+  // Matching (live preview on /envoyer and /voyager)
+  listMatchingTripsForRequest: (
+    pickupCity: string,
+    destinationCity: string,
+    desiredDeliveryDate: string,
+    excludeUserId?: string | null
+  ) =>
+    listMatchingTripsForRequest(
+      getBrowserClient(),
+      pickupCity,
+      destinationCity,
+      desiredDeliveryDate,
+      excludeUserId
+    ),
+  listMatchingRequestsForTrip: (
+    departureCity: string,
+    arrivalCity: string,
+    departureDate: string,
+    excludeUserId?: string | null
+  ) =>
+    listMatchingRequestsForTrip(
+      getBrowserClient(),
+      departureCity,
+      arrivalCity,
+      departureDate,
+      excludeUserId
+    ),
+
+  listReviewsForUser: (userId: string) =>
+    listReviewsForUser(getBrowserClient(), userId),
+  createReport: (input: Parameters<typeof createReport>[1]) =>
+    createReport(getBrowserClient(), input),
+  getPublicProfile: (userId: string) =>
+    getPublicProfile(getBrowserClient(), userId),
+  listTripsByUser: (userId: string) =>
+    listTripsByUser(getBrowserClient(), userId),
+
+  // Booking intents
+  createBookingIntent: (input: BookingIntentInput) =>
+    createBookingIntent(getBrowserClient(), input),
+  listIncomingBookingIntents: (travelerId: string) =>
+    listIncomingBookingIntents(getBrowserClient(), travelerId),
   updateBookingIntentStatus: (intentId: string, status: 'confirmed' | 'cancelled') =>
     updateBookingIntentStatus(getBrowserClient(), intentId, status),
-  listMyBookings: (senderId: string) => listMyBookings(getBrowserClient(), senderId),
-  countActiveBookingsForTrip: (tripId: string) => countActiveBookingsForTrip(getBrowserClient(), tripId),
+  listMyBookings: (senderId: string) =>
+    listMyBookings(getBrowserClient(), senderId),
+  listMyTravelerProposals: (travelerId: string) =>
+    listMyTravelerProposals(getBrowserClient(), travelerId),
+  countActiveBookingsForTrip: (tripId: string) =>
+    countActiveBookingsForTrip(getBrowserClient(), tripId),
   cancelTrip: (tripId: string) => cancelTrip(getBrowserClient(), tripId),
-  listOpenRequestsWithProfile: () => listOpenRequestsWithProfile(getBrowserClient()),
-  listMyTravelerProposals: (travelerId: string) => listMyTravelerProposals(getBrowserClient(), travelerId),
-  getWalletBalance: (travelerId: string) => getWalletBalance(getBrowserClient(), travelerId),
-  listWalletTransactions: (travelerId: string) => listWalletTransactions(getBrowserClient(), travelerId),
-listMatchingRequestsForTrip: (departureCity, arrivalCity, departureDate, excludeUserId) =>
-    listMatchingRequestsForTrip(getBrowserClient(), departureCity, arrivalCity, departureDate, excludeUserId),
+
+  // Wallet
+  getWalletBalance: (travelerId: string) =>
+    getWalletBalance(getBrowserClient(), travelerId),
+  listWalletTransactions: (travelerId: string) =>
+    listWalletTransactions(getBrowserClient(), travelerId),
+
   // Chat
   getOrCreateConversation: (bookingIntentId: string, senderId: string, travelerId: string) =>
     getOrCreateConversation(getBrowserClient(), bookingIntentId, senderId, travelerId),
-  listMessages: (conversationId: string) => listMessages(getBrowserClient(), conversationId),
+  listMessages: (conversationId: string) =>
+    listMessages(getBrowserClient(), conversationId),
   markMessagesRead: (conversationId: string, userId: string) =>
     markMessagesRead(getBrowserClient(), conversationId, userId),
   listUnreadCountsByConversation: (userId: string) =>
     listUnreadCountsByConversation(getBrowserClient(), userId),
-  listMyConversations: (userId: string) => listMyConversations(getBrowserClient(), userId),
+  listMyConversations: (userId: string) =>
+    listMyConversations(getBrowserClient(), userId),
   hasUnreadMessages: (userId: string) => hasUnreadMessages(getBrowserClient(), userId),
-  
 };
