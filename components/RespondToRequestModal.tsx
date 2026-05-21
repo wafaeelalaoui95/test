@@ -1,15 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowRight, Loader2, X, AlertCircle, MapPin, Calendar, ShieldCheck } from 'lucide-react';
+import {
+  ArrowRight, Loader2, X, AlertCircle, ShieldCheck, Plane, Plus,
+} from 'lucide-react';
 import { formatShortDate, formatEuros, nameInitial, displayName } from '@/lib/utils';
 import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
-import type { ShippingRequestRow, Profile } from '@/lib/supabase/types';
+import type { ShippingRequestRow, Profile, TravelerTripRow } from '@/lib/supabase/types';
 
 type RequestWithProfile = ShippingRequestRow & {
   profile: Pick<
@@ -27,66 +29,123 @@ type Props = {
 /**
  * Traveler-side modal: confirm responding to a shipping request.
  *
- * Creates a booking_intent with shipping_request_id set, status='pending',
- * initiated_by='traveler', and no payment yet. The sender will see this
- * in their /me → Matches and will pay when they accept.
- *
- * Note we do NOT require the traveler to have a matching trip — per the
- * product decision, the sender decides at acceptance, and the traveler can
- * sort out which trip to use later (via /me).
+ * Per the "voyage d'abord" product vision, every proposal must be tied
+ * to a concrete trip. The user either:
+ *   - picks an existing future trip from their list, OR
+ *   - creates a new one inline (pre-filled with the request's route)
  */
 export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
   const router = useRouter();
   const { user } = useAuth();
   const { t } = useI18n();
+
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const senderName = displayName(request.profile?.full_name) || 'L\'expéditeur';
+  const [trips, setTrips] = useState<TravelerTripRow[]>([]);
+  const [tripsLoading, setTripsLoading] = useState(true);
+  const [selectedTripId, setSelectedTripId] = useState<string | 'new' | ''>('');
+  const [newTripDate, setNewTripDate] = useState('');
+  const newTripCompensation = 50;
+
+  const senderName = displayName(request.profile?.full_name) || "L'expéditeur";
   const initial = nameInitial(request.profile?.full_name);
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
 
-  // Pricing model:
-  //   - sender's budget is the TOTAL TTC (what they'll pay)
-  //   - traveler receives ~ budget / 1.15 (because 15% goes to Jibly)
-  // We compute both for display. Storage uses budget as proposed_price
-  // (matches the sender→traveler flow which stores the TTC amount too).
   const netTraveler = Math.round((request.budget / 1.15) * 100) / 100;
   const jiblyFee = Math.round((request.budget - netTraveler) * 100) / 100;
+
+  // Load my future, non-cancelled trips. Auto-select one that matches
+  // the route if any; otherwise default to "new trip".
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setTripsLoading(true);
+    browser
+      .listMyTrips(user.id)
+      .then((rows) => {
+        if (cancelled) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const usable = rows.filter(
+          (tr) => tr.status !== 'cancelled' && tr.departure_date >= today
+        );
+        setTrips(usable);
+
+        const matching = usable.find(
+          (tr) =>
+            tr.departure_city.toLowerCase().includes(request.pickup_city.toLowerCase()) &&
+            tr.arrival_city.toLowerCase().includes(request.destination_city.toLowerCase())
+        );
+        if (matching) setSelectedTripId(matching.id);
+        else if (usable.length === 0) setSelectedTripId('new');
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setTripsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, request.pickup_city, request.destination_city]);
+
+  function isValid(): boolean {
+    if (!selectedTripId) return false;
+    if (selectedTripId === 'new' && !newTripDate) return false;
+    return true;
+  }
 
   async function handleSubmit() {
     if (!user) {
       router.push(`/login?next=/`);
       return;
     }
+    if (!isValid()) return;
     setSubmitting(true);
     setErr(null);
 
     try {
+      let tripId: string;
+      if (selectedTripId === 'new') {
+        const newTrip = await browser.createTrip({
+          user_id: user.id,
+          departure_country: request.pickup_country,
+          departure_city: request.pickup_city,
+          arrival_country: request.destination_country,
+          arrival_city: request.destination_city,
+          departure_date: newTripDate,
+          arrival_date: null,
+          compensation_min: newTripCompensation,
+          compensation_max: null,
+          available_weight_kg: null,
+          available_space: 'enveloppe',
+          flight_time: null,
+          notes: null,
+          status: 'open',
+        });
+        tripId = newTrip.id;
+      } else {
+        tripId = selectedTripId as string;
+      }
+
       await browser.createBookingIntent({
         sender_id: request.user_id,
-        // No trip linked yet — the traveler can attach one later
-        traveler_trip_id: null,
+        traveler_trip_id: tripId,
         item_category: request.item_category,
         item_description: request.item_description,
-        proposed_price: request.budget, // TTC, what sender will pay
+        proposed_price: request.budget,
         pickup_city: request.pickup_city,
         destination_city: request.destination_city,
-        // No payment yet — sender pays at acceptance (different from
-        // sender→traveler flow where payment is captured upfront)
         payment_status: 'unpaid',
         payment_intent_id: null,
         payment_amount: Math.round(request.budget * 100),
-        // Mark this as a traveler→sender response
         shipping_request_id: request.id,
         traveler_message: message.trim() || null,
         initiated_by: 'traveler',
         traveler_user_id: user.id,
       });
       onSuccess();
-      // Send the traveler to their own page so they see what they just did
-      router.push('/me?tab=matches');
+      router.push('/me');
     } catch (e: any) {
       setErr(e?.message ?? 'Échec de la proposition. Réessayez.');
     } finally {
@@ -140,9 +199,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
               <div className="text-[12px] text-ink-400">Expéditeur</div>
             </div>
           </div>
-
           <div className="h-px bg-ink-50" />
-
           <div className="grid grid-cols-2 gap-3 text-[13px]">
             <div>
               <div className="text-[11px] text-ink-300 uppercase tracking-[0.06em] mb-1">Catégorie</div>
@@ -158,24 +215,91 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
               </div>
             </div>
           </div>
+        </div>
 
-          {request.item_description && (
-            <>
-              <div className="h-px bg-ink-50" />
-              <div>
-                <div className="text-[11px] text-ink-300 uppercase tracking-[0.06em] mb-1">Description</div>
-                <p className="text-[13px] text-ink-500 leading-relaxed">
-                  « {request.item_description} »
-                </p>
-              </div>
-            </>
+        {/* Trip selection */}
+        <div className="mb-5">
+          <label className="block text-[13px] font-semibold text-ink-500 mb-2">
+            <Plane className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
+            Sur quel vol allez-vous le transporter ?
+          </label>
+          {tripsLoading ? (
+            <div className="rounded-xl bg-white border border-ink-100 px-4 py-3 text-[13px] text-ink-400 flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Chargement de vos vols…
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {trips.map((tr) => (
+                <button
+                  key={tr.id}
+                  type="button"
+                  onClick={() => setSelectedTripId(tr.id)}
+                  className={`w-full text-left rounded-xl px-3.5 py-2.5 border transition-colors ${
+                    selectedTripId === tr.id
+                      ? 'border-ink-500 bg-cream-100'
+                      : 'border-ink-100 bg-white hover:border-ink-300'
+                  }`}
+                >
+                  <div className="text-[13px] font-medium text-ink-600">
+                    {tr.departure_city} → {tr.arrival_city}
+                  </div>
+                  <div className="text-[12px] text-ink-400">
+                    {formatShortDate(tr.departure_date)}
+                  </div>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setSelectedTripId('new')}
+                className={`w-full text-left rounded-xl px-3.5 py-2.5 border-2 border-dashed transition-colors ${
+                  selectedTripId === 'new'
+                    ? 'border-ink-500 bg-cream-100'
+                    : 'border-ink-200 bg-white hover:border-ink-300'
+                }`}
+              >
+                <div className="text-[13px] font-semibold text-ink-600 flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" />
+                  Nouveau vol
+                </div>
+                <div className="text-[12px] text-ink-400 mt-0.5">
+                  {request.pickup_city} → {request.destination_city}
+                </div>
+              </button>
+
+              {selectedTripId === 'new' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="ml-1 mt-2 space-y-2.5 overflow-hidden"
+                >
+                  <div>
+                    <label className="block text-[11px] font-semibold text-ink-400 tracking-[0.06em] uppercase mb-1">
+                      Date du vol
+                    </label>
+                    <input
+                      type="date"
+                      value={newTripDate}
+                      onChange={(e) => setNewTripDate(e.target.value)}
+                      min={new Date().toISOString().slice(0, 10)}
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-ink-100 text-[13px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300"
+                    />
+                  </div>
+                  <p className="text-[11px] text-ink-400 leading-relaxed">
+                    Votre vol sera enregistré et visible dans &quot;Mes transports&quot;.
+                  </p>
+                </motion.div>
+              )}
+            </div>
           )}
         </div>
 
         {/* Price breakdown */}
         <div className="rounded-2xl bg-mint-50 border border-mint-200/60 p-4 mb-5 space-y-2">
           <div className="text-[11px] font-semibold text-mint-700 tracking-[0.06em] uppercase">
-            Si l'expéditeur accepte
+            Si l&apos;expéditeur accepte
           </div>
           <div className="flex items-center justify-between text-[14px]">
             <span className="text-ink-500">Vous recevrez</span>
@@ -187,37 +311,27 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
             <span>Protection Jibly (15%)</span>
             <span className="num-display">{formatEuros(jiblyFee)}</span>
           </div>
-          <div className="h-px bg-mint-200/40" />
-          <div className="flex items-center justify-between text-[12px] text-ink-400">
-            <span>L'expéditeur paiera</span>
-            <span className="num-display font-medium text-ink-500">
-              {formatEuros(request.budget)}
-            </span>
-          </div>
         </div>
 
         {/* Optional message */}
         <div className="mb-5">
           <label className="block text-[13px] font-semibold text-ink-500 mb-2">
-            Message à l'expéditeur (optionnel)
+            Message à l&apos;expéditeur (optionnel)
           </label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Ex: Je voyage le 18 mai, je peux passer chercher l'item à votre adresse."
-            rows={3}
+            placeholder="Ex: Je peux passer chercher l'item à votre adresse."
+            rows={2}
             maxLength={500}
-            className="w-full px-4 py-3 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300 resize-none"
+            className="w-full px-4 py-2.5 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300 resize-none"
           />
-          <p className="text-[11px] text-ink-300 mt-1.5">
-            Précisez votre date de voyage ou tout détail utile.
-          </p>
         </div>
 
         {/* Reassurance */}
         <div className="rounded-xl bg-cream-100 px-4 py-3 mb-5 text-[12px] text-ink-500 leading-relaxed">
           <ShieldCheck className="w-3.5 h-3.5 inline mr-1 text-ink-400" />
-          Aucune carte n'est demandée à ce stade. L'expéditeur recevra votre proposition et décidera. S'il accepte, vous serez notifié·e et pourrez convenir des détails.
+          Aucune carte n&apos;est demandée à ce stade. S&apos;il accepte, vous serez notifié·e.
         </div>
 
         {err && (
@@ -237,7 +351,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || !isValid()}
             className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 disabled:bg-ink-200 disabled:cursor-not-allowed rounded-full transition-colors"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
