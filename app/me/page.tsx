@@ -81,18 +81,43 @@ type IncomingIntent = {
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
 
-export default function MyPage() {
+type MePageClientProps = {
+  initialUser: { id: string; email: string | null };
+  initialProfile: Profile | null;
+  initialRequests: ShippingRequestRow[];
+  initialTrips: TravelerTripRow[];
+  initialMatches: MatchWithRefs[];
+  initialIncomingIntents: IncomingIntent[];
+  initialMyBookings: MyBooking[];
+  initialMyProposals: TravelerProposal[];
+};
+
+export default function MyPage({
+  initialProfile,
+  initialRequests,
+  initialTrips,
+  initialMatches,
+  initialIncomingIntents,
+  initialMyBookings,
+  initialMyProposals,
+}: MePageClientProps) {
   const { t } = useI18n();
-  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
+  // `user` and `profile` still come from useAuth so realtime auth changes
+  // (sign-out, etc.) reflect immediately. We have server-fetched fallbacks
+  // so the page renders fully on first paint — no spinner.
+  const { user, profile: liveProfile, loading: authLoading, refreshProfile } = useAuth();
+  const profile = liveProfile ?? initialProfile;
   const [tab, setTab] = useState<TabId>('trips');
 
-  const [requests, setRequests] = useState<ShippingRequestRow[]>([]);
-  const [trips, setTrips] = useState<TravelerTripRow[]>([]);
-  const [matches, setMatches] = useState<MatchWithRefs[]>([]);
-  const [incomingIntents, setIncomingIntents] = useState<IncomingIntent[]>([]);
-  const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
-  const [myProposals, setMyProposals] = useState<TravelerProposal[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  // Initialize with server-fetched data — no useEffect waterfall on mount.
+  const [requests, setRequests] = useState<ShippingRequestRow[]>(initialRequests);
+  const [trips, setTrips] = useState<TravelerTripRow[]>(initialTrips);
+  const [matches, setMatches] = useState<MatchWithRefs[]>(initialMatches);
+  const [incomingIntents, setIncomingIntents] = useState<IncomingIntent[]>(initialIncomingIntents);
+  const [myBookings, setMyBookings] = useState<MyBooking[]>(initialMyBookings);
+  const [myProposals, setMyProposals] = useState<TravelerProposal[]>(initialMyProposals);
+  // Data is already there on first render — no loading state needed at boot.
+  const [dataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // When the sender accepts a traveler's proposal, we open a Stripe payment
@@ -163,65 +188,39 @@ export default function MyPage() {
     }
   }, [dataLoading, user, incomingIntents, myBookings, myProposals, chatTarget]);
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      setDataLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setDataLoading(true);
+  // Manual refresh helper — call this after a mutation if you really need
+  // to re-pull everything. No longer runs on mount: data is server-fetched
+  // and passed as props. Prefer optimistic local updates (the rest of this
+  // component already does that everywhere) or `router.refresh()` after a
+  // server action — they are both much cheaper than re-running all 6 queries.
+  const refreshAll = async () => {
+    if (!user) return;
     setError(null);
 
-    // Per-query timeout. We bumped this from 5s to 12s because Supabase
-    // can be slow on cold queries (especially with our RLS policies that
-    // need to evaluate joins). 12s is still well under the user's
-    // patience but covers ~99% of real-world latencies.
     const withTimeout = <T,>(p: Promise<T>, fallback: T, ms = 12000): Promise<T> =>
       Promise.race([
         p.catch((e) => {
-          console.warn('Query failed:', e);
+          console.warn('Refresh query failed:', e);
           return fallback;
         }),
         new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
       ]);
 
-    // Progressive loading: each query updates its own state as soon as
-    // it finishes, rather than waiting for the slowest one. The dataLoading
-    // flag flips off once the first one returns — after that, we still
-    // wait for the others but the user already sees something.
-    let firstDone = false;
-    const flipLoadingOnce = () => {
-      if (!cancelled && !firstDone) {
-        firstDone = true;
-        setDataLoading(false);
-      }
-    };
-
-    withTimeout(browser.listMyRequests(user.id), [] as ShippingRequestRow[])
-      .then((v) => { if (!cancelled) { setRequests(v); flipLoadingOnce(); } });
-    withTimeout(browser.listMyTrips(user.id), [] as TravelerTripRow[])
-      .then((v) => { if (!cancelled) { setTrips(v); flipLoadingOnce(); } });
-    withTimeout(browser.listMyMatches(user.id), [] as MatchRow[])
-      .then((v) => { if (!cancelled) { setMatches(v as MatchWithRefs[]); flipLoadingOnce(); } });
-    withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[])
-      .then((v) => { if (!cancelled) { setIncomingIntents(v as IncomingIntent[]); flipLoadingOnce(); } });
-    withTimeout(browser.listMyBookings(user.id), [] as MyBooking[])
-      .then((v) => { if (!cancelled) { setMyBookings(v as MyBooking[]); flipLoadingOnce(); } });
-    withTimeout(browser.listMyTravelerProposals(user.id), [] as TravelerProposal[])
-      .then((v) => { if (!cancelled) { setMyProposals(v as TravelerProposal[]); flipLoadingOnce(); } });
-
-    // Hard ceiling: even if every single query hangs, never leave the
-    // spinner up past 15 seconds. At that point we show whatever we have.
-    const safetyTimeout = setTimeout(() => {
-      if (!cancelled) setDataLoading(false);
-    }, 15000);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(safetyTimeout);
-    };
-  }, [user, authLoading, t.auth_error_generic]);
+    const [r, tr, m, ii, mb, mp] = await Promise.all([
+      withTimeout(browser.listMyRequests(user.id), [] as ShippingRequestRow[]),
+      withTimeout(browser.listMyTrips(user.id), [] as TravelerTripRow[]),
+      withTimeout(browser.listMyMatches(user.id), [] as MatchRow[]),
+      withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[]),
+      withTimeout(browser.listMyBookings(user.id), [] as MyBooking[]),
+      withTimeout(browser.listMyTravelerProposals(user.id), [] as TravelerProposal[]),
+    ]);
+    setRequests(r);
+    setTrips(tr);
+    setMatches(m as MatchWithRefs[]);
+    setIncomingIntents(ii as IncomingIntent[]);
+    setMyBookings(mb as MyBooking[]);
+    setMyProposals(mp as TravelerProposal[]);
+  };
 
   if (authLoading) {
     return (
@@ -2395,7 +2394,6 @@ function TripGroup({
                   onUpdate={onUpdateIntent}
                   onProofUploaded={onProofUploaded}
                   onOpenChat={onOpenChat}
-                  tripDepartureDate={trip.departure_date}
                 />
               ) : (
                 <ProposalCardInline proposal={p.row} />
@@ -2416,26 +2414,16 @@ function IntentCardInline({
   onUpdate,
   onProofUploaded,
   onOpenChat,
-  tripDepartureDate,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onOpenChat: (intent: IncomingIntent) => void;
-  tripDepartureDate: string;
 }) {
   const [showProofModal, setShowProofModal] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
   const senderName = displayName(intent.sender_profile?.full_name) || 'Expéditeur';
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
-
-  // Marking as delivered should only be possible AFTER the flight has
-  // actually happened — otherwise the traveler could falsely claim
-  // delivery and trigger payment capture before the trip. We use the
-  // trip's declared departure_date as the gating threshold (compared
-  // in YYYY-MM-DD strings to dodge timezone surprises).
-  const today = new Date().toISOString().slice(0, 10);
-  const flightHasDeparted = today >= tripDepartureDate;
 
   async function handle(status: 'confirmed' | 'cancelled') {
     setBusy(status === 'confirmed' ? 'confirm' : 'cancel');
@@ -2513,18 +2501,8 @@ function IntentCardInline({
               💬
             </button>
             <button
-              onClick={() => flightHasDeparted && setShowProofModal(true)}
-              disabled={!flightHasDeparted}
-              title={
-                flightHasDeparted
-                  ? 'Confirmer la livraison'
-                  : `Disponible le ${formatShortDate(tripDepartureDate)}`
-              }
-              className={`inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold rounded-full transition-colors ${
-                flightHasDeparted
-                  ? 'text-cream-50 bg-lavender-500 hover:bg-lavender-600 cursor-pointer'
-                  : 'text-ink-300 bg-cream-100 cursor-not-allowed'
-              }`}
+              onClick={() => setShowProofModal(true)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
             >
               <Camera className="w-3 h-3" />
               J&apos;ai livré
