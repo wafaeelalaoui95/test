@@ -2284,6 +2284,26 @@ function TripGroup({
   const departCode = trip.departure_city.slice(0, 3).toUpperCase();
   const arriveCode = trip.arrival_city.slice(0, 3).toUpperCase();
 
+  // Date short form, ideally compact (e.g. "20 mai" or "20/05"). We reuse
+  // formatShortDate but display it in the same big font as the IATA codes,
+  // so the date reads as a primary piece of info, not metadata.
+  const dateDisplay = formatShortDate(trip.departure_date);
+
+  // If EVERY package on this trip is confirmed (paid + accepted), the
+  // amount is no longer "potential" — it's locked in. We change the caption
+  // accordingly: "de gains sur ce trajet" instead of "à gagner".
+  const allConfirmed =
+    count > 0 &&
+    packages.every(
+      (p) =>
+        p.row.status === 'confirmed' &&
+        // for incoming packages this means payment is authorized;
+        // for my proposals, "confirmed" alone is enough — the sender paid
+        // when accepting.
+        (p.kind === 'proposal' || p.row.payment_status === 'authorized')
+    );
+  const earningsCaption = allConfirmed ? 'de gains sur ce trajet ✨' : 'à gagner sur ce trajet ✨';
+
   return (
     <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
       {/* Boarding-pass-style header: two zones separated by a perforated
@@ -2319,22 +2339,26 @@ function TripGroup({
               <span className="truncate max-w-[40%]">{trip.departure_city}</span>
               <span className="truncate max-w-[40%] text-right">{trip.arrival_city}</span>
             </div>
-            {/* Departure date + colis count, stamped style */}
-            <div className="flex items-center gap-4 text-[11px]">
-              <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
+            {/* Departure date — sized to match the IATA codes so it reads
+                as primary info, not a footnote. The "DÉPART" stamp sits
+                small above it, ticket-style. */}
+            <div className="flex items-end gap-4">
+              <div className="min-w-0">
+                <div className="text-[10px] text-ink-300 font-semibold tracking-[0.14em] uppercase mb-0.5">
                   Départ
                 </div>
-                <div className="text-ink-600 font-bold num-display">
-                  {formatShortDate(trip.departure_date)}
+                <div className="text-[26px] sm:text-[30px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
+                  {dateDisplay}
                 </div>
               </div>
-              <div className="h-7 w-px bg-ink-100" />
-              <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
+              <div className="h-12 w-px bg-ink-100 flex-shrink-0" />
+              <div className="flex-shrink-0">
+                <div className="text-[10px] text-ink-300 font-semibold tracking-[0.14em] uppercase mb-0.5">
                   Colis
                 </div>
-                <div className="text-ink-600 font-bold num-display">{count}</div>
+                <div className="text-[26px] sm:text-[30px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
+                  {count}
+                </div>
               </div>
             </div>
           </div>
@@ -2344,8 +2368,8 @@ function TripGroup({
             <div className="text-[28px] sm:text-[32px] font-extrabold text-mint-600 num-display leading-none">
               {formatEuros(totalNet)}
             </div>
-            <div className="text-[10px] sm:text-[11px] text-ink-500 font-medium mt-1.5 leading-snug px-1">
-              à gagner sur ce trajet ✨
+            <div className="text-[12px] sm:text-[13px] text-ink-600 font-semibold mt-2 leading-tight px-1">
+              {earningsCaption}
             </div>
             {isCancelable && (
               <button
@@ -2363,8 +2387,20 @@ function TripGroup({
 
       {/* Packages list */}
       {count === 0 ? (
-        <div className="px-4 py-6 text-center text-[13px] text-ink-400">
-          Pas encore de colis sur ce vol. Les demandes pour cette route apparaîtront ici.
+        // Empty state: encourage the traveler to browse open requests on
+        // this route. The link prefills the search via query params so
+        // they land on the matching demands immediately.
+        <div className="px-4 py-6 text-center space-y-3">
+          <p className="text-[13px] text-ink-400 leading-relaxed">
+            Aucun colis sur ce vol pour l&apos;instant.
+          </p>
+          <Link
+            href={`/?type=demandes&from=${encodeURIComponent(trip.departure_city)}&to=${encodeURIComponent(trip.arrival_city)}`}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Trouver des colis sur mon trajet
+          </Link>
         </div>
       ) : (
         <div className="divide-y divide-ink-50">
