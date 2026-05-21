@@ -307,29 +307,31 @@ export type MatchingTrip = {
   } | null;
 };
 
-export async function listMatchingTripsForRequest(
+xport async function listMatchingTripsForRequest(
   supabase: SB,
   pickupCity: string,
   destinationCity: string,
-  desiredDeliveryDate: string
+  desiredDeliveryDate: string,
+  // Optional: hide trips owned by this user. Used so the sender doesn't
+  // see their own trips on /envoyer (you can't book yourself).
+  excludeUserId?: string | null
 ): Promise<MatchingTrip[]> {
-  // 1) Trips on the same route, departing on/before the desired date, still
-  //    open. We sort by departure_date desc so the soonest-but-still-in-time
-  //    trips come first — those are the most actionable.
+  let query = supabase
+    .from('traveler_trips')
+    .select(
+      'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
+    )
+    .eq('departure_city', pickupCity)
+    .eq('arrival_city', destinationCity)
+    .lte('departure_date', desiredDeliveryDate)
+    .eq('status', 'open')
+    .order('departure_date', { ascending: false })
+    .limit(20);
+  if (excludeUserId) {
+    query = query.neq('user_id', excludeUserId);
+  }
   const { data: trips, error } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('traveler_trips')
-        .select(
-          'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
-        )
-        .eq('departure_city', pickupCity)
-        .eq('arrival_city', destinationCity)
-        .lte('departure_date', desiredDeliveryDate)
-        .eq('status', 'open')
-        .order('departure_date', { ascending: false })
-        .limit(20)
-    ),
+    Promise.resolve(query),
     6000,
     'Matching trips'
   );
@@ -388,26 +390,29 @@ export type MatchingRequest = {
   } | null;
 };
 
-export async function listMatchingRequestsForTrip(
+xport async function listMatchingRequestsForTrip(
   supabase: SB,
   departureCity: string,
   arrivalCity: string,
-  departureDate: string
+  departureDate: string,
+  excludeUserId?: string | null
 ): Promise<MatchingRequest[]> {
+  let query = supabase
+    .from('shipping_requests')
+    .select(
+      'id, user_id, pickup_city, destination_city, desired_delivery_date, budget, item_category, item_description, created_at'
+    )
+    .eq('pickup_city', departureCity)
+    .eq('destination_city', arrivalCity)
+    .gte('desired_delivery_date', departureDate)
+    .eq('status', 'pending')
+    .order('desired_delivery_date', { ascending: true })
+    .limit(20);
+  if (excludeUserId) {
+    query = query.neq('user_id', excludeUserId);
+  }
   const { data: requests, error } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('shipping_requests')
-        .select(
-          'id, user_id, pickup_city, destination_city, desired_delivery_date, budget, item_category, item_description, created_at'
-        )
-        .eq('pickup_city', departureCity)
-        .eq('destination_city', arrivalCity)
-        .gte('desired_delivery_date', departureDate)
-        .eq('status', 'pending')
-        .order('desired_delivery_date', { ascending: true })
-        .limit(20)
-    ),
+    Promise.resolve(query),
     6000,
     'Matching requests'
   );
@@ -1395,8 +1400,8 @@ export const browser = {
   listMyRequests: (userId: string) => listMyRequests(getBrowserClient(), userId),
   createShippingRequest: (input: Parameters<typeof createShippingRequest>[1]) => createShippingRequest(getBrowserClient(), input),
   listMyMatches: (userId: string) => listMyMatches(getBrowserClient(), userId),
-  listMatchingTripsForRequest: (pickupCity: string, destinationCity: string, desiredDeliveryDate: string) =>
-    listMatchingTripsForRequest(getBrowserClient(), pickupCity, destinationCity, desiredDeliveryDate),
+ listMatchingTripsForRequest: (pickupCity, destinationCity, desiredDeliveryDate, excludeUserId) =>
+    listMatchingTripsForRequest(getBrowserClient(), pickupCity, destinationCity, desiredDeliveryDate, excludeUserId),
   createMatch: (travelerTripId: string, shippingRequestId: string, agreedCompensation?: number) =>
     createMatch(getBrowserClient(), travelerTripId, shippingRequestId, agreedCompensation),
   listReviewsForUser: (userId: string) => listReviewsForUser(getBrowserClient(), userId),
@@ -1414,8 +1419,8 @@ export const browser = {
   listMyTravelerProposals: (travelerId: string) => listMyTravelerProposals(getBrowserClient(), travelerId),
   getWalletBalance: (travelerId: string) => getWalletBalance(getBrowserClient(), travelerId),
   listWalletTransactions: (travelerId: string) => listWalletTransactions(getBrowserClient(), travelerId),
-  listMatchingRequestsForTrip: (departureCity: string, arrivalCity: string, departureDate: string) =>
-    listMatchingRequestsForTrip(getBrowserClient(), departureCity, arrivalCity, departureDate),
+listMatchingRequestsForTrip: (departureCity, arrivalCity, departureDate, excludeUserId) =>
+    listMatchingRequestsForTrip(getBrowserClient(), departureCity, arrivalCity, departureDate, excludeUserId),
   // Chat
   getOrCreateConversation: (bookingIntentId: string, senderId: string, travelerId: string) =>
     getOrCreateConversation(getBrowserClient(), bookingIntentId, senderId, travelerId),
@@ -1426,4 +1431,5 @@ export const browser = {
     listUnreadCountsByConversation(getBrowserClient(), userId),
   listMyConversations: (userId: string) => listMyConversations(getBrowserClient(), userId),
   hasUnreadMessages: (userId: string) => hasUnreadMessages(getBrowserClient(), userId),
+  
 };
