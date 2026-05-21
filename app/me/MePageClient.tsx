@@ -312,7 +312,7 @@ export default function MyPage({
 
   return (
     <div className="min-h-screen py-12 lg:py-20">
-      <div className="mx-auto max-w-4xl px-5 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2278,6 +2278,7 @@ function ListRow({
   emoji,
   title,
   subtitle,
+  subtitleItalic,
   rightLabel,
   dotClass,
 }: {
@@ -2286,6 +2287,7 @@ function ListRow({
   emoji: string;
   title: string;
   subtitle: string;
+  subtitleItalic?: boolean;
   rightLabel?: string;
   dotClass?: string; // e.g. 'bg-butter-500' for urgent
 }) {
@@ -2300,7 +2302,7 @@ function ListRow({
       <span className="flex-shrink-0 text-[18px]">{emoji}</span>
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-semibold text-ink-600 truncate">{title}</div>
-        <div className="text-[12px] text-ink-400 truncate">{subtitle}</div>
+        <div className={`text-[12px] text-ink-400 truncate ${subtitleItalic ? 'italic' : ''}`}>{subtitle}</div>
       </div>
       {rightLabel && (
         <div className="flex-shrink-0 text-[12px] font-semibold text-ink-500 num-display">{rightLabel}</div>
@@ -2340,20 +2342,43 @@ function MasterDetailLayout({
   detailOpen: boolean;
   onCloseDetail: () => void;
 }) {
+  // Lock body scroll while the mobile detail sheet is open, otherwise
+  // iOS Safari lets the underlying page scroll behind the sheet which
+  // feels broken.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (!detailOpen) return;
+    // Only apply on mobile widths
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    if (!isMobile) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [detailOpen]);
+
   return (
-    <div className="md:grid md:grid-cols-[320px_1fr] md:gap-4 md:min-h-[600px]">
+    <div className="md:grid md:grid-cols-[360px_1fr] md:gap-5 md:min-h-[600px]">
       {/* Master list */}
       <aside className={`bg-white rounded-2xl border border-ink-50 overflow-hidden ${detailOpen ? 'hidden md:block' : 'block'}`}>
         {master}
       </aside>
 
       {/* Detail panel — on desktop sits next to master. On mobile,
-          slides in over the list as a full-screen sheet. */}
+          covers the full viewport as a fixed sheet. We make sure the
+          sheet itself owns the scroll and is constrained to the
+          viewport height so the content never escapes the screen. */}
       <section
-        className={`bg-white rounded-2xl border border-ink-50 overflow-hidden ${detailOpen ? 'fixed inset-0 z-40 md:relative md:inset-auto md:z-auto' : 'hidden md:block'}`}
+        className={`bg-white md:rounded-2xl md:border md:border-ink-50 md:overflow-hidden ${
+          detailOpen
+            ? 'fixed inset-0 z-40 flex flex-col md:relative md:inset-auto md:z-auto md:flex-none'
+            : 'hidden md:block'
+        }`}
       >
-        {/* Mobile back bar — only visible when detail is open on mobile */}
-        <div className="md:hidden flex items-center gap-2 px-3 py-3 border-b border-ink-50 bg-cream-50">
+        {/* Mobile back bar — sticky so it stays visible while the content
+            scrolls. On desktop the bar is hidden entirely. */}
+        <div className="md:hidden flex-shrink-0 flex items-center gap-2 px-3 py-3 border-b border-ink-50 bg-cream-50">
           <button
             type="button"
             onClick={onCloseDetail}
@@ -2363,7 +2388,10 @@ function MasterDetailLayout({
             Retour
           </button>
         </div>
-        <div className="overflow-y-auto md:max-h-[80vh]">
+        {/* Scroll container. On mobile flex-1 + overflow-y-auto bounds the
+            content to the available viewport height (sheet minus back bar).
+            On desktop we cap at 80vh as before. */}
+        <div className="flex-1 overflow-y-auto md:max-h-[80vh] md:flex-none">
           {detail}
         </div>
       </section>
@@ -2651,7 +2679,10 @@ function SendsView({
   );
 }
 
-// One row in the Sends master list. Picks emoji + subtitle based on bucket.
+// One row in the Sends master list. The hero is the OBJECT being sent
+// (icon + category label + → destination). The subtitle is the description
+// in italic if there is one, else the contextual status. Right side shows
+// the price as the only number that matters at a glance.
 function SendListRow({
   booking,
   selected,
@@ -2667,14 +2698,24 @@ function SendListRow({
 }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
   const emoji = cat?.icon ?? '📦';
+  const categoryLabel = cat ? t[cat.labelKey] : 'Colis';
   const travelerName = displayName(booking.traveler_profile?.full_name) || 'Voyageur';
   const bucket = bucketForSendBooking(booking);
 
+  // Title = the object, with destination so the user can tell apart two
+  // similar packages going to different places (e.g. two "Documents").
+  const title = `${categoryLabel} → ${booking.destination_city}`;
+
+  // Subtitle: prefer the user's own description (their wording wins). Fall
+  // back to a status line that explains WHERE in the flow this booking is.
+  const description = booking.item_description?.trim();
   let subtitle = '';
-  if (bucket === 'todo' && booking.status === 'pending') {
-    subtitle = `${travelerName} propose · ${booking.pickup_city} → ${booking.destination_city}`;
+  if (description) {
+    subtitle = description;
+  } else if (bucket === 'todo' && booking.status === 'pending') {
+    subtitle = `${travelerName} propose`;
   } else if (bucket === 'todo' && booking.delivery_proof_url) {
-    subtitle = `📸 Livré par ${travelerName} · à confirmer`;
+    subtitle = `📸 Livré · à confirmer`;
   } else if (bucket === 'inProgress' && booking.status === 'confirmed') {
     subtitle = `${travelerName} · en transit`;
   } else if (bucket === 'inProgress') {
@@ -2690,8 +2731,9 @@ function SendListRow({
       selected={selected}
       onClick={onClick}
       emoji={emoji}
-      title={`${booking.pickup_city} → ${booking.destination_city}`}
+      title={title}
       subtitle={subtitle}
+      subtitleItalic={!!description}
       rightLabel={formatEuros(booking.proposed_price)}
       dotClass={tone === 'urgent' ? 'bg-butter-500' : undefined}
     />
@@ -2699,6 +2741,7 @@ function SendListRow({
 }
 
 // One row in the Sends master list for a public request without a traveler.
+// Same pattern: object as the headline, description (or "Avant le …") below.
 function RequestListRow({
   request,
   selected,
@@ -2711,13 +2754,16 @@ function RequestListRow({
   t: Translations;
 }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  const categoryLabel = cat ? t[cat.labelKey] : 'Colis';
+  const description = request.item_description?.trim();
   return (
     <ListRow
       selected={selected}
       onClick={onClick}
       emoji={cat?.icon ?? '📦'}
-      title={`${request.pickup_city} → ${request.destination_city}`}
-      subtitle={`Avant le ${formatShortDate(request.desired_delivery_date)}`}
+      title={`${categoryLabel} → ${request.destination_city}`}
+      subtitle={description ?? `Avant le ${formatShortDate(request.desired_delivery_date)}`}
+      subtitleItalic={!!description}
       rightLabel={formatEuros(request.budget)}
     />
   );
@@ -2964,36 +3010,38 @@ function SendDetailCard({
 
 function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Translations }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  const categoryLabel = cat ? t[cat.labelKey] : 'Colis';
+  const description = request.item_description?.trim();
   return (
     <div className="bg-white rounded-2xl border border-ink-50 p-5">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-full bg-cream-100 flex items-center justify-center text-xl">
+      {/* Hero: the OBJECT (category icon + label) + price on the right.
+          Route + date sit one line below, smaller, as secondary context. */}
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-12 h-12 rounded-full bg-cream-100 flex items-center justify-center text-2xl flex-shrink-0">
           {cat?.icon ?? '📦'}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[16px] font-bold text-ink-600">
-            {request.pickup_city} → {request.destination_city}
+          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em]">
+            {categoryLabel} → {request.destination_city}
           </div>
-          <div className="text-[13px] text-ink-400">
-            Avant le {formatShortDate(request.desired_delivery_date)}
+          {/* Description flows directly under the title, no box, no label.
+              Italic to set it apart from system metadata. */}
+          {description && (
+            <p className="text-[14px] text-ink-500 italic leading-relaxed mt-1">
+              {description}
+            </p>
+          )}
+          <div className="text-[12px] text-ink-400 mt-1.5">
+            Depuis {request.pickup_city} · avant le {formatShortDate(request.desired_delivery_date)}
           </div>
         </div>
-        <div className="text-[16px] font-bold text-ink-600 num-display">
+        <div className="text-[20px] font-extrabold text-ink-600 num-display tracking-[-0.015em]">
           {formatEuros(request.budget)}
         </div>
       </div>
 
-      {request.item_description && (
-        <div className="rounded-xl bg-cream-50 px-4 py-3 mb-4">
-          <div className="text-[11px] font-semibold text-ink-300 tracking-[0.08em] uppercase mb-1">
-            Description
-          </div>
-          <p className="text-[14px] text-ink-500 leading-relaxed">
-            « {request.item_description} »
-          </p>
-        </div>
-      )}
-
+      {/* Status banner — kept compact, no separate description box above
+          since the description is now part of the hero. */}
       <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 text-[13px] text-ink-500 leading-relaxed flex gap-2.5">
         <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
         <div>
@@ -3267,9 +3315,6 @@ function TripDetailCard({
   const count = packages.length;
   const isCancelable = packages.every((p) => p.row.status !== 'confirmed');
 
-  const departCode = trip.departure_airport || trip.departure_city.slice(0, 3).toUpperCase();
-  const arriveCode = trip.arrival_airport || trip.arrival_city.slice(0, 3).toUpperCase();
-
   return (
     <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
       {/* Boarding-pass-style header */}
@@ -3286,22 +3331,16 @@ function TripDetailCard({
                 {trip.flight_time && <span className="ml-2 text-ink-300">· {trip.flight_time}</span>}
               </div>
             )}
-            <div className="flex items-center gap-3 mb-1">
-              <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
-                {departCode}
+            {/* City names as the headline — full names look better than
+                3-letter slices of non-IATA cities (CAS, PAR aren't real). */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="text-[18px] sm:text-[22px] font-extrabold text-ink-600 tracking-tight leading-tight truncate flex-1 min-w-0">
+                {trip.departure_city}
               </div>
-              <div className="flex-1 flex items-center min-w-0 px-1">
-                <div className="h-px bg-ink-200 flex-1" />
-                <Plane className="w-6 h-6 sm:w-7 sm:h-7 mx-2 text-ink-400 -rotate-12 flex-shrink-0" />
-                <div className="h-px bg-ink-200 flex-1" />
+              <Plane className="w-5 h-5 sm:w-6 sm:h-6 text-ink-400 -rotate-12 flex-shrink-0" />
+              <div className="text-[18px] sm:text-[22px] font-extrabold text-ink-600 tracking-tight leading-tight truncate flex-1 min-w-0 text-right">
+                {trip.arrival_city}
               </div>
-              <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
-                {arriveCode}
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-ink-400 mb-3">
-              <span className="truncate max-w-[40%]">{trip.departure_city}</span>
-              <span className="truncate max-w-[40%] text-right">{trip.arrival_city}</span>
             </div>
             <div className="flex items-center gap-4 text-[11px]">
               <div>
