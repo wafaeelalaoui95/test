@@ -25,6 +25,7 @@ import {
   Star,
   Inbox,
   ArrowLeft,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
