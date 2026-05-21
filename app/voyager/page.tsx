@@ -192,7 +192,7 @@ export default function VoyagerPage() {
                       <div>
                         <Input
                           type="text"
-                          label="Numéro de vol *"
+                          label="Numéro de vol*"
                           placeholder="AF1896, AT4513…"
                           value={flightNumber}
                           onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
