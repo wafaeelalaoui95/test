@@ -4,17 +4,19 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ArrowLeft, ArrowRight, Upload, AlertCircle, Loader2, Sparkles, Plane, Star, ShieldCheck } from 'lucide-react';
+import { Check, ArrowLeft, ArrowRight, Upload, AlertCircle, Loader2, Sparkles, Plane, Star, ShieldCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Textarea, Checkbox, Input } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { LocationSelector, type LocationValue } from '@/components/ui/LocationSelector';
 import { VerificationBadge } from '@/components/ui/Badge';
+import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES } from '@/lib/constants';
-import { formatShortDate, displayName, nameInitial } from '@/lib/utils';
+import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
+import { getBrowserClient } from '@/lib/supabase/client';
 import type { ItemCategory } from '@/lib/types';
 import type { MatchingTrip } from '@/lib/supabase/queries';
 
@@ -35,6 +37,15 @@ export default function EnvoyerPage() {
   // the success screen progressively (success first, matches when ready).
   const [matchingTrips, setMatchingTrips] = useState<MatchingTrip[]>([]);
   const [matchingLoading, setMatchingLoading] = useState(false);
+
+  // We capture the freshly-created shipping_request's id so we can link any
+  // booking_intent the user creates from the success screen back to it.
+  const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
+
+  // Booking flow on the success screen — when the sender clicks "Réserver"
+  // on a matching trip, we open a Stripe payment modal. The selected trip
+  // is held here while paying.
+  const [tripToBook, setTripToBook] = useState<MatchingTrip | null>(null);
 
   const [from, setFrom] = useState<LocationValue>(null);
   const [to, setTo] = useState<LocationValue>(null);
@@ -68,7 +79,7 @@ export default function EnvoyerPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      await browser.createShippingRequest({
+      const created = await browser.createShippingRequest({
         user_id: user.id,
         item_title: null,
         item_category: category,
@@ -86,6 +97,9 @@ export default function EnvoyerPage() {
         prescription_url: null,
         status: 'pending',
       });
+      // Save the new request's id — we'll link any booking_intent created
+      // from the success screen back to it.
+      setCreatedRequestId(created.id || null);
       // Flip to success view immediately — the user shouldn't wait on the
       // matching query to see confirmation. Then we kick off matching in
       // the background; the success screen updates progressively when it
@@ -181,7 +195,11 @@ export default function EnvoyerPage() {
                     on /matches. */}
                 <div className="space-y-2.5 mb-7">
                   {matchingTrips.slice(0, 4).map((trip) => (
-                    <TripMatchCard key={trip.id} trip={trip} />
+                    <TripMatchCard
+                      key={trip.id}
+                      trip={trip}
+                      onBook={() => setTripToBook(trip)}
+                    />
                   ))}
                   {matchingTrips.length > 4 && (
                     <p className="text-[12px] text-ink-400 text-center pt-2">
@@ -231,6 +249,29 @@ export default function EnvoyerPage() {
             )}
           </AnimatePresence>
         </div>
+
+        {/* Stripe payment modal — opens when sender clicks "Réserver" on
+            a matching trip. Creates a booking_intent linked to the freshly
+            published shipping_request, then redirects to /me on success. */}
+        <AnimatePresence>
+          {tripToBook && user && category && from && to && (
+            <BookingPaymentModal
+              trip={tripToBook}
+              senderId={user.id}
+              shippingRequestId={createdRequestId}
+              itemCategory={category}
+              itemDescription={description}
+              pickupCity={from.city}
+              destinationCity={to.city}
+              onClose={() => setTripToBook(null)}
+              onSuccess={() => {
+                // After successful booking, send the user to /me where the
+                // new booking is now visible in their dashboard.
+                router.push('/me');
+              }}
+            />
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -428,7 +469,7 @@ function Row({ label, value }: { label: string; value: string }) {
 // TripMatchCard — compact row for a matching trip on the success screen.
 // Dense by design: the user already engaged, we want to make picking easy.
 // =============================================================================
-function TripMatchCard({ trip }: { trip: MatchingTrip }) {
+function TripMatchCard({ trip, onBook }: { trip: MatchingTrip; onBook: () => void }) {
   const name = displayName(trip.user?.full_name) || 'Voyageur';
   const initial = nameInitial(trip.user?.full_name);
   const rating = trip.user?.rating ?? 0;
@@ -469,7 +510,160 @@ function TripMatchCard({ trip }: { trip: MatchingTrip }) {
             <span className="font-semibold text-ink-500 num-display">{trip.compensation_min}€</span>
           </div>
         </div>
+        {/* Primary action: book this traveler. Clicking opens the Stripe
+            payment modal with the trip's compensation_min pre-filled. */}
+        <button
+          type="button"
+          onClick={onBook}
+          className="flex-shrink-0 inline-flex items-center gap-1 px-3.5 py-2 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[12px] font-semibold transition-colors"
+        >
+          Réserver
+        </button>
       </div>
     </div>
+  );
+}
+
+// =============================================================================
+// BookingPaymentModal
+// -----------------------------------------------------------------------------
+// Opens when the sender clicks "Réserver" on a matching trip just after
+// publishing a shipping_request. Renders the Stripe payment form pre-filled
+// with the traveler's compensation_min. On authorisation, we:
+//   1. Create a booking_intent row linked to BOTH the trip and the
+//      shipping_request (so it shows up on /me as a real booking).
+//   2. Mark the payment as authorized (funds held, captured only after
+//      the traveler accepts).
+// =============================================================================
+function BookingPaymentModal({
+  trip,
+  senderId,
+  shippingRequestId,
+  itemCategory,
+  itemDescription,
+  pickupCity,
+  destinationCity,
+  onClose,
+  onSuccess,
+}: {
+  trip: MatchingTrip;
+  senderId: string;
+  shippingRequestId: string | null;
+  itemCategory: string;
+  itemDescription: string;
+  pickupCity: string;
+  destinationCity: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const travelerName = displayName(trip.user?.full_name) || 'Le voyageur';
+  // Default the proposed price to the traveler's published minimum. The
+  // sender can always send a higher counter-offer later via the chat.
+  const price = trip.compensation_min;
+
+  async function handleAuthorized(paymentIntentId: string) {
+    setBusy(true);
+    setErr(null);
+    try {
+      // Create the booking_intent row. initiated_by='sender' marks this
+      // as a direct booking (vs a public-request proposal), so the
+      // traveler will see it as a "Nouvelle demande" on /me, with
+      // payment already authorized.
+      await browser.createBookingIntent({
+        sender_id: senderId,
+        traveler_trip_id: trip.id,
+        traveler_user_id: trip.user_id,
+        item_category: itemCategory,
+        item_description: itemDescription,
+        proposed_price: price,
+        pickup_city: pickupCity,
+        destination_city: destinationCity,
+        payment_intent_id: paymentIntentId,
+        payment_status: 'authorized',
+        payment_amount: Math.round(price * 100), // stored in cents
+        shipping_request_id: shippingRequestId,
+        initiated_by: 'sender',
+      });
+      onSuccess();
+    } catch (e: any) {
+      setErr(e?.message ?? 'Échec de la création. Contactez le support.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+      onClick={() => !busy && onClose()}
+    >
+      <motion.div
+        initial={{ y: 20, opacity: 0, scale: 0.98 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 20, opacity: 0, scale: 0.98 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-cream-50 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
+              Réserver et payer
+            </div>
+            <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
+              {formatEuros(price)}
+            </h2>
+            <div className="text-[13px] text-ink-400 mt-1.5">
+              Avec {travelerName} · {pickupCity} → {destinationCity}
+            </div>
+            {trip.flight_number && (
+              <div className="text-[12px] text-ink-400 mt-0.5">
+                Vol {trip.flight_number} · {formatShortDate(trip.departure_date)}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            disabled={busy}
+            className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+            aria-label="Fermer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Protection Jibly reminder — gives confidence right before paying.
+            The 15% fee is folded into the displayed price, so we just remind
+            them what they're getting for it. */}
+        <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 mb-4 text-[12px] text-ink-500 leading-relaxed">
+          <div className="font-bold text-mint-700 mb-1 flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Protection Jibly incluse
+          </div>
+          Votre paiement est bloqué et ne sera versé au voyageur qu&apos;une
+          fois la livraison confirmée.
+        </div>
+
+        {err && (
+          <div className="rounded-xl bg-blush-50 px-4 py-3 mb-4 text-[13px] text-blush-500">
+            {err}
+          </div>
+        )}
+
+        <StripePaymentForm
+          amountEuros={price}
+          description={`Jibly · ${pickupCity} → ${destinationCity}`}
+          onAuthorized={handleAuthorized}
+          onCancel={onClose}
+        />
+      </motion.div>
+    </motion.div>
   );
 }
