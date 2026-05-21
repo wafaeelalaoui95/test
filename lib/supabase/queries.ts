@@ -18,7 +18,10 @@ import type {
   ShippingRequestRow,
   MatchRow,
   ReviewRow,
+  AvailableSpace,
+  VerificationLevel,
 } from './types';
+
 
 type SB = SupabaseClient<Database>;
 
