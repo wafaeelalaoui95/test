@@ -356,6 +356,84 @@ export async function listMatchingTripsForRequest(
     user: (profileById.get(t.user_id) as any) ?? null,
   }));
 }
+// =============================================================================
+// MATCHING (mirror) — list shipping requests that fit a freshly-planned trip
+// =============================================================================
+// Symmetric to listMatchingTripsForRequest. When a traveler enters their
+// route + flight date on /voyager, we surface "✨ 5 personnes cherchent un
+// voyageur" so they can propose help directly without going through the
+// full publish wizard. Criteria:
+//   - same pickup_city / destination_city as the trip
+//   - desired_delivery_date >= the trip's departure_date (the package
+//     can ride this flight and still arrive on time)
+//   - status = 'pending' (still looking for someone)
+
+export type MatchingRequest = {
+  id: string;
+  user_id: string;
+  pickup_city: string;
+  destination_city: string;
+  desired_delivery_date: string;
+  budget: number;
+  item_category: string;
+  item_description: string;
+  created_at: string;
+  user: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    rating: number;
+    trips_completed: number;
+    verification_level: VerificationLevel;
+  } | null;
+};
+
+export async function listMatchingRequestsForTrip(
+  supabase: SB,
+  departureCity: string,
+  arrivalCity: string,
+  departureDate: string
+): Promise<MatchingRequest[]> {
+  const { data: requests, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('shipping_requests')
+        .select(
+          'id, user_id, pickup_city, destination_city, desired_delivery_date, budget, item_category, item_description, created_at'
+        )
+        .eq('pickup_city', departureCity)
+        .eq('destination_city', arrivalCity)
+        .gte('desired_delivery_date', departureDate)
+        .eq('status', 'pending')
+        .order('desired_delivery_date', { ascending: true })
+        .limit(20)
+    ),
+    6000,
+    'Matching requests'
+  );
+  if (error) throw error;
+  if (!requests || requests.length === 0) return [];
+
+  const userIds = Array.from(new Set(requests.map((r: any) => r.user_id)));
+  const { data: profiles } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, rating, trips_completed, verification_level')
+        .in('id', userIds)
+    ),
+    6000,
+    'Matching sender profiles'
+  );
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  return requests.map((r: any) => ({
+    ...r,
+    user: (profileById.get(r.user_id) as any) ?? null,
+  }));
+}
+
+
 
 // ============================================================================
 // REVIEWS
@@ -1336,6 +1414,8 @@ export const browser = {
   listMyTravelerProposals: (travelerId: string) => listMyTravelerProposals(getBrowserClient(), travelerId),
   getWalletBalance: (travelerId: string) => getWalletBalance(getBrowserClient(), travelerId),
   listWalletTransactions: (travelerId: string) => listWalletTransactions(getBrowserClient(), travelerId),
+  listMatchingRequestsForTrip: (departureCity: string, arrivalCity: string, departureDate: string) =>
+    listMatchingRequestsForTrip(getBrowserClient(), departureCity, arrivalCity, departureDate),
   // Chat
   getOrCreateConversation: (bookingIntentId: string, senderId: string, travelerId: string) =>
     getOrCreateConversation(getBrowserClient(), bookingIntentId, senderId, travelerId),
