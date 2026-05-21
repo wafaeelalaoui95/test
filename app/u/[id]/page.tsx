@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,22 +24,18 @@ import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import type { Profile, TravelerTripRow } from '@/lib/supabase/types';
-
 type PublicProfile = Pick<
   Profile,
   'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed' | 'city' | 'country'
 >;
-
 export default function PublicProfilePage({ params }: { params: { id: string } }) {
   const travelerId = params.id;
   const { t } = useI18n();
   const { user } = useAuth();
-
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [trips, setTrips] = useState<TravelerTripRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   // Booking intent modal state
   const [bookingTrip, setBookingTrip] = useState<TravelerTripRow | null>(null);
   const [bookingStep, setBookingStep] = useState<'details' | 'payment' | 'success'>('details');
@@ -48,7 +43,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   const [intentDescription, setIntentDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -72,7 +66,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       cancelled = true;
     };
   }, [travelerId]);
-
   function openBooking(trip: TravelerTripRow) {
     setBookingTrip(trip);
     setBookingStep('details');
@@ -80,7 +73,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     setIntentDescription('');
     setSubmitErr(null);
   }
-
   // Step 1 → Step 2: validate form, move to payment
   function handleProceedToPayment() {
     if (!intentCategory) {
@@ -90,7 +82,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     setSubmitErr(null);
     setBookingStep('payment');
   }
-
   // Step 2 → Step 3: payment authorised, now create the booking_intent row
   // with the paymentIntentId attached so the traveler can later trigger
   // capture from their /me page.
@@ -119,7 +110,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       setSubmitting(false);
     }
   }
-
   // Parse accepted categories from notes (JSON)
   function getAcceptedCategories(trip: TravelerTripRow): string[] {
     if (!trip.notes) return [];
@@ -131,7 +121,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     }
     return [];
   }
-
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -139,7 +128,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       </div>
     );
   }
-
   if (error || !profile) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-5">
@@ -155,10 +143,8 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       </div>
     );
   }
-
   const initial = nameInitial(profile.full_name);
   const publicName = displayName(profile.full_name) || 'Voyageur';
-
   return (
     <div className="min-h-screen py-10 lg:py-16">
       <div className="mx-auto max-w-5xl px-5 sm:px-8">
@@ -170,7 +156,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
           <ArrowLeft className="w-3.5 h-3.5" />
           Retour aux voyageurs
         </Link>
-
         {/* Profile header */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -189,7 +174,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
               {initial}
             </div>
           )}
-
           <div className="flex-1 min-w-0">
             <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-2">
               {publicName}
@@ -214,12 +198,10 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
             </div>
           </div>
         </motion.div>
-
         {/* Open trips */}
         <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em] mb-6">
           Trajets ouverts
         </h2>
-
         {trips.length === 0 ? (
           <div className="bg-white rounded-2xl p-10 text-center border border-dashed border-ink-100">
             <p className="text-[14px] text-ink-400">
@@ -250,7 +232,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       {tr.flight_time && ` · ${tr.flight_time}`}
                     </div>
                   </div>
-
                   {categories.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-5">
                       {categories.map((cat) => {
@@ -268,7 +249,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       })}
                     </div>
                   )}
-
                   <div className="flex items-end justify-between mb-5 mt-auto">
                     <div>
                       <div className="text-[13px] text-ink-400">À partir de</div>
@@ -278,7 +258,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       {formatEuros(priceBreakdown(tr.compensation_min).total)}
                     </div>
                   </div>
-
                   <Button
                     onClick={() => (user ? openBooking(tr) : (window.location.href = `/login?next=/u/${travelerId}`))}
                     size="sm"
@@ -293,7 +272,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
           </div>
         )}
       </div>
-
       {/* Booking intent modal */}
       <AnimatePresence>
         {bookingTrip && (
@@ -302,17 +280,26 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+            // Mobile: stick to bottom but let the top scroll into view via
+            // overflow-y-auto on the OUTER container. Desktop: center it.
+            // Important: the outer container (not the inner card) owns the
+            // scroll, so the whole modal — including its header with the
+            // success checkmark — is reachable on small screens.
+            className="fixed inset-0 z-[100] overflow-y-auto bg-ink-600/40 backdrop-blur-sm"
             onClick={() => !submitting && setBookingTrip(null)}
           >
-            <motion.div
-              initial={{ y: 20, opacity: 0, scale: 0.98 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 20, opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.2 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-cream-50 rounded-3xl p-7 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto"
-            >
+            <div className="min-h-full flex items-end sm:items-center justify-center p-3 sm:p-4">
+              <motion.div
+                initial={{ y: 20, opacity: 0, scale: 0.98 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 20, opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+                onClick={(e) => e.stopPropagation()}
+                // No max-height + overflow on the card: the parent scrolls.
+                // Smaller padding on mobile (p-5) for breathing room without
+                // wasting screen real estate; comfortable p-7 on sm+.
+                className="bg-cream-50 rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-xl my-3 sm:my-0"
+              >
               {bookingStep === 'details' && (
                 <>
                   <div className="flex items-start justify-between mb-5">
@@ -335,7 +322,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-
                   {/* Category picker */}
                   <div className="mb-5">
                     <label className="block text-[13px] font-semibold text-ink-500 mb-2.5">
@@ -367,7 +353,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       })}
                     </div>
                   </div>
-
                   {/* Description */}
                   <div className="mb-5">
                     <label className="block text-[13px] font-semibold text-ink-500 mb-2">
@@ -381,7 +366,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       className="w-full px-4 py-3 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300 resize-none"
                     />
                   </div>
-
                   {/* Price breakdown — fixed to the traveler's minimum.
                       No slider: the traveler set the price, sender accepts. */}
                   <div className="mb-6">
@@ -410,13 +394,11 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       </div>
                     </div>
                   </div>
-
                   {submitErr && (
                     <div className="rounded-xl bg-blush-50 px-4 py-3 text-[13px] text-blush-500 mb-4">
                       {submitErr}
                     </div>
                   )}
-
                   {/* Soft disclosure about Stripe's hold mechanism */}
                   <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 mb-5 text-[13px] text-ink-500 flex gap-2.5">
                     <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
@@ -425,7 +407,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       Votre carte sera autorisée mais le paiement ne sera prélevé qu&apos;une fois le voyageur d&apos;accord.
                     </div>
                   </div>
-
                   <div className="flex flex-col sm:flex-row gap-2.5">
                     <button
                       onClick={() => setBookingTrip(null)}
@@ -444,7 +425,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   </div>
                 </>
               )}
-
               {bookingStep === 'payment' && (
                 <>
                   <div className="flex items-start justify-between mb-5">
@@ -466,20 +446,17 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       ← Modifier
                     </button>
                   </div>
-
                   {submitErr && (
                     <div className="rounded-xl bg-blush-50 px-4 py-3 text-[13px] text-blush-500 mb-4">
                       {submitErr}
                     </div>
                   )}
-
                   <StripePaymentForm
                     amountEuros={priceBreakdown(bookingTrip.compensation_min).total}
                     description={`Jibly · ${bookingTrip.departure_city} → ${bookingTrip.arrival_city}`}
                     onAuthorized={handlePaymentAuthorized}
                     onCancel={() => setBookingStep('details')}
                   />
-
                   {submitting && (
                     <div className="mt-4 text-center text-[13px] text-ink-400">
                       <Loader2 className="w-4 h-4 animate-spin inline mr-1.5" />
@@ -488,9 +465,9 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   )}
                 </>
               )}
-
               {bookingStep === 'success' && (
-                /* Success state */
+                /* Success state — important: the page parent scrolls so the
+                   checkmark header at the top is always reachable on phone. */
                 <div className="text-center py-4">
                   <div className="w-14 h-14 rounded-full bg-mint-500 mx-auto flex items-center justify-center mb-5">
                     <CheckCircle2 className="w-7 h-7 text-white" strokeWidth={2.5} />
@@ -518,7 +495,8 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   </div>
                 </div>
               )}
-            </motion.div>
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
