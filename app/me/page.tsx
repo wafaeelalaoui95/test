@@ -8,7 +8,7 @@
 // the same region as Supabase (RTT ~5-20ms vs 100-300ms from a phone). They
 // run in parallel via Promise.all, and the rendered HTML arrives with the
 // data already inlined. The user sees content on first paint instead of a
-// spinner. 
+// spinner.
 
 import { redirect } from 'next/navigation';
 import { getServerClient } from '@/lib/supabase/server';
