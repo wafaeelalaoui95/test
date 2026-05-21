@@ -47,7 +47,7 @@ export default function VoyagerPage() {
   const [acceptedCategories, setAcceptedCategories] = useState<string[]>([]);
 
   // Loose airline flight number check: 2-3 letters then 1-4 digits, with
-  // optional space (e.g. "AF1234", "RAM 451", "TO 8231"). Case-insensitive.
+  // optional space (e.g. "AF1234", "AT4451", "TO8231"). Case-insensitive.
   const FLIGHT_NUMBER_PATTERN = /^[A-Z]{2,3}\s?\d{1,4}$/i;
   const isValidFlightNumber = (s: string) => FLIGHT_NUMBER_PATTERN.test(s.trim());
 
@@ -193,14 +193,14 @@ export default function VoyagerPage() {
                         <Input
                           type="text"
                           label="Numéro de vol *"
-                          placeholder="AF1234, RAM 451…"
+                          placeholder="AF1896, AT4513…"
                           value={flightNumber}
                           onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
                           maxLength={12}
                         />
                         {flightNumber && !isValidFlightNumber(flightNumber) && (
                           <p className="mt-1.5 text-[11px] text-blush-500">
-                            Format invalide. Ex: AF1234, RAM 451, TO 8231
+                            Format invalide. Ex: AF1234, RAM451, TO 8231
                           </p>
                         )}
                       </div>
