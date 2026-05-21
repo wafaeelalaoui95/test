@@ -61,6 +61,15 @@ export default function VoyagerPage() {
 
   // ---- Instant-propose modal state ----
   const [requestToHelp, setRequestToHelp] = useState<MatchingRequest | null>(null);
+  // Track which requests this user has already proposed help to in this
+  // session. We use this to lock their cards visually so the traveler
+  // can continue browsing and proposing to other requests on the same
+  // flight without leaving the page.
+  const [proposedRequestIds, setProposedRequestIds] = useState<string[]>([]);
+  // The first proposal of the session creates a minimal traveler_trip.
+  // Subsequent proposals on the same flight reuse that trip's id, so we
+  // don't end up with N duplicate draft trips in the DB for one flight.
+  const [createdTripId, setCreatedTripId] = useState<string | null>(null);
 
   // ---- Public wizard state ----
   const [step, setStep] = useState(0);
@@ -215,6 +224,37 @@ export default function VoyagerPage() {
               Trouvez un colis à transporter sur votre vol, ou publiez votre trajet.
             </p>
           </div>
+
+          {/* Recap banner: once the traveler has proposed help to at least
+              one sender, we surface a friendly recap with a shortcut to
+              /me so they can track responses without losing their search. */}
+          {proposedRequestIds.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 rounded-2xl bg-mint-50 border border-mint-200 px-5 py-4 flex items-center gap-3"
+            >
+              <div className="w-9 h-9 rounded-full bg-mint-500 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="w-4 h-4 text-white" strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-semibold text-mint-700">
+                  {proposedRequestIds.length === 1
+                    ? '1 proposition envoyée'
+                    : `${proposedRequestIds.length} propositions envoyées`}
+                </div>
+                <div className="text-[12px] text-ink-500 mt-0.5">
+                  Vous pouvez continuer à proposer votre aide à d&apos;autres expéditeurs ci-dessous.
+                </div>
+              </div>
+              <Link
+                href="/me"
+                className="flex-shrink-0 text-[12px] font-semibold text-mint-700 hover:text-mint-800 underline underline-offset-2"
+              >
+                Voir mes propositions
+              </Link>
+            </motion.div>
+          )}
 
           {/* Horizontal search bar */}
           <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(24,20,16,0.10)] border border-ink-50/60 p-2">
@@ -381,6 +421,7 @@ export default function VoyagerPage() {
                       request={req}
                       onPropose={() => setRequestToHelp(req)}
                       flightNumberRequired={!isValidFlightNumber(flightNumber)}
+                      alreadyProposed={proposedRequestIds.includes(req.id)}
                     />
                   ))}
                   {previewRequests.length > 8 && (
@@ -437,8 +478,21 @@ export default function VoyagerPage() {
               flightNumber={flightNumber}
               departureAirport={departureAirport}
               arrivalAirport={arrivalAirport}
+              // Reuse the same trip for all proposals on this flight, so
+              // we don't end up with N draft trips for the same journey.
+              existingTripId={createdTripId}
               onClose={() => setRequestToHelp(null)}
-              onSuccess={() => router.push('/me')}
+              onSuccess={(proposedId, tripId) => {
+                // Stay on the page so the traveler can keep proposing to
+                // other senders on the same flight. Mark the card locked.
+                setProposedRequestIds((prev) =>
+                  prev.includes(proposedId) ? prev : [...prev, proposedId]
+                );
+                if (tripId && !createdTripId) {
+                  setCreatedTripId(tripId);
+                }
+                setRequestToHelp(null);
+              }}
             />
           )}
         </AnimatePresence>
@@ -742,18 +796,26 @@ export default function VoyagerPage() {
 
 // =============================================================================
 // RequestHelpableCard — clickable card in the search results.
-// Shows what the sender wants to ship + net the traveler will receive.
+// Two visual states:
+//   - default     : actionable, shows sender info + "Proposer" button
+//   - alreadyProposed : locked, grayed out, "✓ Proposition envoyée" badge
+//                       and a "En attente de la réponse de X" hint
 // =============================================================================
 function RequestHelpableCard({
   request,
   onPropose,
   flightNumberRequired,
+  alreadyProposed,
 }: {
   request: MatchingRequest;
   onPropose: () => void;
   // When the traveler hasn't given a valid flight number yet, the button
   // shows as disabled with a tooltip pointing them to fill it.
   flightNumberRequired: boolean;
+  // Set true after the traveler has successfully sent a proposal for this
+  // request in the current session. The card stays in place (so the page
+  // doesn't reflow) but becomes non-interactive and visually muted.
+  alreadyProposed: boolean;
 }) {
   const { t } = useI18n();
   const name = displayName(request.user?.full_name) || 'Expéditeur';
@@ -765,6 +827,42 @@ function RequestHelpableCard({
   // What the traveler nets after the 15% Jibly fee.
   const netTraveler = Math.round((request.budget / 1.15) * 100) / 100;
 
+  // ----- Locked state: proposal already sent -----
+  if (alreadyProposed) {
+    return (
+      <motion.div
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 1 }}
+        className="bg-mint-50/60 rounded-xl px-3 py-2.5 border border-mint-200/70 relative"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 w-9 h-9 rounded-full bg-mint-100 flex items-center justify-center font-bold text-[13px] text-mint-700 opacity-80">
+            {initial}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 text-[14px] flex-wrap">
+              <span className="font-semibold text-ink-500">{name}</span>
+              {verified && (
+                <ShieldCheck className="w-3.5 h-3.5 text-mint-400" strokeWidth={2.5} />
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[12px] text-mint-700 mt-0.5">
+              <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.5} />
+              <span className="font-semibold">Proposition envoyée</span>
+              <span className="text-ink-400">· en attente de la réponse de {name.split(' ')[0]}</span>
+            </div>
+          </div>
+          {/* Small badge mirroring the button position so the layout stays
+              consistent with the actionable state. */}
+          <div className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-100 text-mint-700 text-[11px] font-bold uppercase tracking-[0.06em]">
+            Locked
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // ----- Default state: actionable card -----
   return (
     <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50 hover:border-ink-200 transition-colors">
       <div className="flex items-center gap-3">
@@ -830,6 +928,7 @@ function InstantProposeModal({
   flightNumber,
   departureAirport,
   arrivalAirport,
+  existingTripId,
   onClose,
   onSuccess,
 }: {
@@ -842,8 +941,14 @@ function InstantProposeModal({
   flightNumber: string;
   departureAirport: string;
   arrivalAirport: string;
+  // If the user has already proposed once during this session, the trip
+  // already exists — we reuse it instead of creating a new draft.
+  existingTripId: string | null;
   onClose: () => void;
-  onSuccess: () => void;
+  // Called after the booking_intent is successfully created. Receives the
+  // shipping_request id (to lock the card) and the trip id (which the
+  // parent caches so the next proposal reuses it).
+  onSuccess: (proposedRequestId: string, tripId: string | null) => void;
 }) {
   const { t } = useI18n();
   const [travelerMessage, setTravelerMessage] = useState('');
@@ -858,29 +963,34 @@ function InstantProposeModal({
     setBusy(true);
     setErr(null);
     try {
-      // 1. Create a minimal traveler_trip. Status 'draft' keeps it out of
-      //    the public search — the traveler can promote it to 'open' from
-      //    /me if they want to be discoverable by other senders too.
-      //    compensation_min = sender's budget (we know what they'll pay).
-      const trip = await browser.createTrip({
-        user_id: travelerId,
-        departure_country: '',
-        departure_city: fromCity,
-        arrival_country: '',
-        arrival_city: toCity,
-        departure_date: date,
-        arrival_date: null,
-        compensation_min: request.budget,
-        compensation_max: null,
-        available_weight_kg: null,
-        available_space: 'pochette',
-        flight_time: time || null,
-        flight_number: flightNumber.trim().toUpperCase().replace(/\s+/g, ' '),
-        departure_airport: departureAirport.trim().toUpperCase() || null,
-        arrival_airport: arrivalAirport.trim().toUpperCase() || null,
-        notes: null,
-        status: 'draft',
-      });
+      // 1. If we already created a trip earlier in this session for this
+      //    same flight (i.e. user is proposing for the 2nd/3rd time),
+      //    reuse it. Otherwise create a minimal draft trip.
+      //    compensation_min = sender's budget for the FIRST proposal —
+      //    when we reuse, we keep whatever was set on the original trip.
+      let tripId = existingTripId;
+      if (!tripId) {
+        const trip = await browser.createTrip({
+          user_id: travelerId,
+          departure_country: '',
+          departure_city: fromCity,
+          arrival_country: '',
+          arrival_city: toCity,
+          departure_date: date,
+          arrival_date: null,
+          compensation_min: request.budget,
+          compensation_max: null,
+          available_weight_kg: null,
+          available_space: 'pochette',
+          flight_time: time || null,
+          flight_number: flightNumber.trim().toUpperCase().replace(/\s+/g, ' '),
+          departure_airport: departureAirport.trim().toUpperCase() || null,
+          arrival_airport: arrivalAirport.trim().toUpperCase() || null,
+          notes: null,
+          status: 'draft',
+        });
+        tripId = trip?.id || null;
+      }
 
       // 2. Create the booking_intent. initiated_by='traveler' means /me
       //    shows it as an outgoing proposal on the traveler side and as
@@ -888,7 +998,7 @@ function InstantProposeModal({
       await browser.createBookingIntent({
         sender_id: request.user_id,
         traveler_user_id: travelerId,
-        traveler_trip_id: trip?.id || null,
+        traveler_trip_id: tripId,
         shipping_request_id: request.id,
         item_category: request.item_category,
         item_description: request.item_description,
@@ -901,7 +1011,7 @@ function InstantProposeModal({
         traveler_message: travelerMessage.trim() || null,
         initiated_by: 'traveler',
       });
-      onSuccess();
+      onSuccess(request.id, tripId);
     } catch (e: any) {
       setErr(e?.message ?? 'Échec de l\'envoi. Réessayez.');
     } finally {
