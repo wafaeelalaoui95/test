@@ -81,7 +81,7 @@ export default function EnvoyerPage() {
     setPreviewLoading(true);
     const handle = setTimeout(() => {
       browser
-        .listMatchingTripsForRequest(fromCity, toCity, date)
+        .listMatchingTripsForRequest(fromCity, toCity, date, user?.id || null)
         .then((trips) => {
           if (cancelled) return;
           setPreviewTrips(trips);
