@@ -23,6 +23,8 @@ import {
   Camera,
   X,
   Star,
+  Inbox,
+  ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
@@ -2224,6 +2226,7 @@ function ProposalCard({
 //   - Historique  → everything finished, mixed together
 // ===========================================================================
 
+// GroupHeader — small icon + label + count, used in HistoryView sections.
 function GroupHeader({ icon, label, count }: { icon: string; label: string; count: number }) {
   return (
     <div className="flex items-center gap-2 mb-4">
@@ -2238,44 +2241,536 @@ function GroupHeader({ icon, label, count }: { icon: string; label: string; coun
   );
 }
 
-// Renders a list of items with a "Voir tout" toggle. Shows the first `limit`
-// items by default (default 3); click reveals the rest. Used for the
-// History section inside Voyages and Envois so it doesn't dominate the page.
-function CollapsibleList({
-  items,
-  limit = 3,
-  showAllLabel = 'Voir tout',
-  showLessLabel = 'Réduire',
-}: {
-  items: React.ReactNode[];
-  limit?: number;
-  showAllLabel?: string;
-  showLessLabel?: string;
-}) {
-  const [showAll, setShowAll] = useState(false);
-  if (items.length === 0) return null;
-  const visible = showAll ? items : items.slice(0, limit);
-  const hidden = items.length - limit;
+// =============================================================================
+// SECTION COMPLÈTE À INSÉRER ENTRE BookingCard et HistoryView
+// =============================================================================
+// Remplace tout le bloc des anciennes vues (GroupHeader, TripsView,
+// TripGroup, IntentCardInline, ProposalCardInline, SendsView,
+// CollapsibleSection, RequestCardSimple).
+//
+// Pattern: master-detail like Airbnb / Gmail.
+//   - Desktop: list on the left, detail panel on the right
+//   - Mobile : list takes the full screen; tapping an item slides a
+//     full-screen overlay with the detail; a back button returns to the list
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// SHARED — small components used by both Sends and Trips master-detail views
+// ---------------------------------------------------------------------------
+
+// A bucket header inside the master list. Small caption + count.
+function ListBucketHeader({ label, count, tone = 'default' }: { label: string; count: number; tone?: 'default' | 'urgent' | 'success' }) {
+  const toneClass =
+    tone === 'urgent' ? 'text-butter-700' : tone === 'success' ? 'text-mint-700' : 'text-ink-400';
   return (
-    <div className="space-y-3">
-      {visible.map((item, i) => (
-        <div key={i}>{item}</div>
-      ))}
-      {hidden > 0 && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="text-[13px] font-medium text-ink-400 hover:text-ink-600 transition-colors"
-        >
-          {showAll ? showLessLabel : `${showAllLabel} (${hidden} de plus)`}
-        </button>
+    <div className="flex items-center gap-2 px-3 pt-4 pb-2">
+      <span className={`text-[10px] font-bold tracking-[0.14em] uppercase ${toneClass}`}>
+        {label}
+      </span>
+      <span className="text-[10px] text-ink-300 num-display">({count})</span>
+    </div>
+  );
+}
+
+// A clickable row in the master list. Compact, scannable, with a colored
+// dot on the left to signal status at a glance.
+function ListRow({
+  selected,
+  onClick,
+  emoji,
+  title,
+  subtitle,
+  rightLabel,
+  dotClass,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  emoji: string;
+  title: string;
+  subtitle: string;
+  rightLabel?: string;
+  dotClass?: string; // e.g. 'bg-butter-500' for urgent
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition-colors ${
+        selected ? 'bg-lavender-50/80 border-l-2 border-lavender-500' : 'hover:bg-cream-50 border-l-2 border-transparent'
+      }`}
+    >
+      <span className="flex-shrink-0 text-[18px]">{emoji}</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-semibold text-ink-600 truncate">{title}</div>
+        <div className="text-[12px] text-ink-400 truncate">{subtitle}</div>
+      </div>
+      {rightLabel && (
+        <div className="flex-shrink-0 text-[12px] font-semibold text-ink-500 num-display">{rightLabel}</div>
       )}
+      {dotClass && (
+        <span className={`flex-shrink-0 w-2 h-2 rounded-full ${dotClass}`} />
+      )}
+    </button>
+  );
+}
+
+// Empty-state placeholder shown in the detail panel when nothing is selected
+// or the user has no items at all.
+function DetailEmpty({ message }: { message: string }) {
+  return (
+    <div className="h-full flex items-center justify-center px-6 py-16 text-center">
+      <div className="max-w-sm">
+        <div className="w-12 h-12 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-4">
+          <Inbox className="w-5 h-5 text-ink-300" />
+        </div>
+        <p className="text-[14px] text-ink-400 leading-relaxed">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+// Wrapper that lays out master + detail. Desktop: side-by-side. Mobile:
+// only one panel visible at a time, controlled by `detailOpen`.
+function MasterDetailLayout({
+  master,
+  detail,
+  detailOpen,
+  onCloseDetail,
+}: {
+  master: React.ReactNode;
+  detail: React.ReactNode;
+  detailOpen: boolean;
+  onCloseDetail: () => void;
+}) {
+  return (
+    <div className="md:grid md:grid-cols-[320px_1fr] md:gap-4 md:min-h-[600px]">
+      {/* Master list */}
+      <aside className={`bg-white rounded-2xl border border-ink-50 overflow-hidden ${detailOpen ? 'hidden md:block' : 'block'}`}>
+        {master}
+      </aside>
+
+      {/* Detail panel — on desktop sits next to master. On mobile,
+          slides in over the list as a full-screen sheet. */}
+      <section
+        className={`bg-white rounded-2xl border border-ink-50 overflow-hidden ${detailOpen ? 'fixed inset-0 z-40 md:relative md:inset-auto md:z-auto' : 'hidden md:block'}`}
+      >
+        {/* Mobile back bar — only visible when detail is open on mobile */}
+        <div className="md:hidden flex items-center gap-2 px-3 py-3 border-b border-ink-50 bg-cream-50">
+          <button
+            type="button"
+            onClick={onCloseDetail}
+            className="inline-flex items-center gap-1.5 text-[14px] font-medium text-ink-500 hover:text-ink-600"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour
+          </button>
+        </div>
+        <div className="overflow-y-auto md:max-h-[80vh]">
+          {detail}
+        </div>
+      </section>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// TripsView — "Mes voyages" tab
+// SENDS — master list of booking_intents I sent, detail panel for the picked one
 // ---------------------------------------------------------------------------
+// Buckets, in the order they appear:
+//   🔥 À traiter — proposals to accept/pay, OR proof uploaded I need to confirm
+//   ⏳ En cours  — paid + accepted, in transit (no proof yet)
+//   ✓ Livrés   — confirmed received (fully closed)
+//   🔍 En recherche — public requests with no traveler yet
+//   ❌ Annulés
+// ---------------------------------------------------------------------------
+
+type SendItem =
+  | { kind: 'booking'; row: MyBooking }
+  | { kind: 'request'; row: ShippingRequestRow };
+
+function bucketForSendBooking(b: MyBooking): 'todo' | 'inProgress' | 'delivered' | 'cancelled' {
+  if (b.status === 'cancelled') return 'cancelled';
+  // I need to act on it:
+  //  - a traveler proposed and I haven't accepted/paid yet
+  //  - the traveler delivered + uploaded proof, I need to click "I received"
+  if (b.status === 'pending' && b.initiated_by === 'traveler') return 'todo';
+  if (b.status === 'confirmed' && b.delivery_proof_url && !b.received_confirmed_at)
+    return 'todo';
+  // Fully closed
+  if (b.status === 'confirmed' && b.received_confirmed_at) return 'delivered';
+  // In flight / accepted but not yet delivered, OR I'm waiting for accept
+  return 'inProgress';
+}
+
+function SendsView({
+  bookings,
+  requests,
+  onAcceptProposal,
+  onDeclineProposal,
+  onOpenChat,
+  onConfirmReceipt,
+  onOpenReview,
+  hasReviewed,
+  reviewFromOther,
+  t,
+}: {
+  bookings: MyBooking[];
+  requests: ShippingRequestRow[];
+  onAcceptProposal: (b: MyBooking) => void;
+  onDeclineProposal: (id: string) => void;
+  onOpenChat: (b: MyBooking) => void;
+  onConfirmReceipt: (bookingId: string) => void;
+  onOpenReview: (b: MyBooking) => void;
+  hasReviewed: (bookingIntentId: string) => boolean;
+  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
+  t: Translations;
+}) {
+  // Partition all bookings into buckets
+  const todoBookings = bookings.filter((b) => bucketForSendBooking(b) === 'todo');
+  const inProgressBookings = bookings.filter((b) => bucketForSendBooking(b) === 'inProgress');
+  const deliveredBookings = bookings.filter((b) => bucketForSendBooking(b) === 'delivered');
+  const cancelledBookings = bookings.filter((b) => bucketForSendBooking(b) === 'cancelled');
+  // "En recherche": public requests that don't have a confirmed booking
+  // tied to them yet (so the sender still actively looking for a traveler).
+  const linkedRequestIds = new Set(
+    bookings
+      .filter((b) => b.status === 'confirmed' || b.status === 'pending')
+      .map((b) => b.shipping_request_id)
+      .filter(Boolean)
+  );
+  const searchingRequests = requests.filter(
+    (r) => r.status === 'pending' && !linkedRequestIds.has(r.id)
+  );
+
+  // Build the flat ordered list of items that will appear in the master list.
+  // Order matters: actionable first, then progress, then closed/searching/cancelled.
+  const orderedItems: SendItem[] = [
+    ...todoBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
+    ...inProgressBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
+    ...searchingRequests.map<SendItem>((row) => ({ kind: 'request', row })),
+    ...deliveredBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
+    ...cancelledBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
+  ];
+
+  // Default selection: first actionable item (todo > inProgress), else first
+  // item, else null. We use the item's id as the selection key.
+  const firstItem = orderedItems[0];
+  const initialId = firstItem
+    ? firstItem.kind === 'booking'
+      ? `b:${firstItem.row.id}`
+      : `r:${firstItem.row.id}`
+    : null;
+  const [selectedId, setSelectedId] = useState<string | null>(initialId);
+  const [detailOpenMobile, setDetailOpenMobile] = useState(false);
+
+  // If the items list changes (e.g. user accepts a proposal → bucket changes),
+  // re-seed selection so it doesn't point at a nonexistent id.
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedId(initialId);
+      return;
+    }
+    const stillThere = orderedItems.some(
+      (it) =>
+        (it.kind === 'booking' ? `b:${it.row.id}` : `r:${it.row.id}`) === selectedId
+    );
+    if (!stillThere) setSelectedId(initialId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderedItems.length, initialId]);
+
+  const selected =
+    orderedItems.find(
+      (it) => (it.kind === 'booking' ? `b:${it.row.id}` : `r:${it.row.id}`) === selectedId
+    ) ?? null;
+
+  const hasContent = orderedItems.length > 0;
+
+  if (!hasContent) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
+          <Link href="/envoyer">
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              Publier une demande
+            </Button>
+          </Link>
+        </div>
+        <EmptyState message="Aucun envoi pour le moment. Publiez votre première demande." />
+      </div>
+    );
+  }
+
+  function selectItem(id: string) {
+    setSelectedId(id);
+    setDetailOpenMobile(true);
+  }
+
+  // The master list, built bucket by bucket.
+  const master = (
+    <div className="overflow-y-auto md:max-h-[80vh]">
+      {todoBookings.length > 0 && (
+        <>
+          <ListBucketHeader label="🔥 À traiter" count={todoBookings.length} tone="urgent" />
+          {todoBookings.map((b) => {
+            const id = `b:${b.id}`;
+            return (
+              <SendListRow
+                key={id}
+                booking={b}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+                tone="urgent"
+                t={t}
+              />
+            );
+          })}
+        </>
+      )}
+
+      {inProgressBookings.length > 0 && (
+        <>
+          <ListBucketHeader label="⏳ En cours" count={inProgressBookings.length} />
+          {inProgressBookings.map((b) => {
+            const id = `b:${b.id}`;
+            return (
+              <SendListRow
+                key={id}
+                booking={b}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+                t={t}
+              />
+            );
+          })}
+        </>
+      )}
+
+      {searchingRequests.length > 0 && (
+        <>
+          <ListBucketHeader label="🔍 En recherche" count={searchingRequests.length} />
+          {searchingRequests.map((r) => {
+            const id = `r:${r.id}`;
+            return (
+              <RequestListRow
+                key={id}
+                request={r}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+                t={t}
+              />
+            );
+          })}
+        </>
+      )}
+
+      {deliveredBookings.length > 0 && (
+        <>
+          <ListBucketHeader label="✓ Livrés" count={deliveredBookings.length} tone="success" />
+          {deliveredBookings.map((b) => {
+            const id = `b:${b.id}`;
+            return (
+              <SendListRow
+                key={id}
+                booking={b}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+                t={t}
+              />
+            );
+          })}
+        </>
+      )}
+
+      {cancelledBookings.length > 0 && (
+        <>
+          <ListBucketHeader label="Annulés" count={cancelledBookings.length} />
+          {cancelledBookings.map((b) => {
+            const id = `b:${b.id}`;
+            return (
+              <SendListRow
+                key={id}
+                booking={b}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+                t={t}
+              />
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+
+  // The detail panel — shows the selected item's full info + actions.
+  const detail = selected ? (
+    selected.kind === 'booking' ? (
+      <div className="p-4">
+        <BookingCard
+          booking={selected.row}
+          onAcceptProposal={onAcceptProposal}
+          onDeclineProposal={onDeclineProposal}
+          onOpenChat={onOpenChat}
+          onConfirmReceipt={onConfirmReceipt}
+          onOpenReview={onOpenReview}
+          hasReviewed={hasReviewed(selected.row.id)}
+          otherReview={reviewFromOther(selected.row.id)}
+          t={t}
+        />
+      </div>
+    ) : (
+      <div className="p-4">
+        <RequestDetailCard request={selected.row} t={t} />
+      </div>
+    )
+  ) : (
+    <DetailEmpty message="Sélectionnez un envoi pour voir ses détails." />
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
+        <Link href="/envoyer">
+          <Button size="sm">
+            <Plus className="w-4 h-4" />
+            Publier une demande
+          </Button>
+        </Link>
+      </div>
+
+      <MasterDetailLayout
+        master={master}
+        detail={detail}
+        detailOpen={detailOpenMobile}
+        onCloseDetail={() => setDetailOpenMobile(false)}
+      />
+    </div>
+  );
+}
+
+// One row in the Sends master list. Picks emoji + subtitle based on bucket.
+function SendListRow({
+  booking,
+  selected,
+  onClick,
+  tone,
+  t,
+}: {
+  booking: MyBooking;
+  selected: boolean;
+  onClick: () => void;
+  tone?: 'urgent';
+  t: Translations;
+}) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
+  const emoji = cat?.icon ?? '📦';
+  const travelerName = displayName(booking.traveler_profile?.full_name) || 'Voyageur';
+  const bucket = bucketForSendBooking(booking);
+
+  let subtitle = '';
+  if (bucket === 'todo' && booking.status === 'pending') {
+    subtitle = `${travelerName} propose · ${booking.pickup_city} → ${booking.destination_city}`;
+  } else if (bucket === 'todo' && booking.delivery_proof_url) {
+    subtitle = `📸 Livré par ${travelerName} · à confirmer`;
+  } else if (bucket === 'inProgress' && booking.status === 'confirmed') {
+    subtitle = `${travelerName} · en transit`;
+  } else if (bucket === 'inProgress') {
+    subtitle = `En attente de ${travelerName}`;
+  } else if (bucket === 'delivered') {
+    subtitle = `Livré par ${travelerName}`;
+  } else {
+    subtitle = `Annulé`;
+  }
+
+  return (
+    <ListRow
+      selected={selected}
+      onClick={onClick}
+      emoji={emoji}
+      title={`${booking.pickup_city} → ${booking.destination_city}`}
+      subtitle={subtitle}
+      rightLabel={formatEuros(booking.proposed_price)}
+      dotClass={tone === 'urgent' ? 'bg-butter-500' : undefined}
+    />
+  );
+}
+
+// One row in the Sends master list for a public request without a traveler.
+function RequestListRow({
+  request,
+  selected,
+  onClick,
+  t,
+}: {
+  request: ShippingRequestRow;
+  selected: boolean;
+  onClick: () => void;
+  t: Translations;
+}) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  return (
+    <ListRow
+      selected={selected}
+      onClick={onClick}
+      emoji={cat?.icon ?? '📦'}
+      title={`${request.pickup_city} → ${request.destination_city}`}
+      subtitle={`Avant le ${formatShortDate(request.desired_delivery_date)}`}
+      rightLabel={formatEuros(request.budget)}
+    />
+  );
+}
+
+// Detail panel for a request without traveler — simple card with route +
+// budget + link to edit/cancel. Minimal because there's not much to do yet.
+function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Translations }) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  return (
+    <div className="bg-white rounded-2xl border border-ink-50 p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-full bg-cream-100 flex items-center justify-center text-xl">
+          {cat?.icon ?? '📦'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[16px] font-bold text-ink-600">
+            {request.pickup_city} → {request.destination_city}
+          </div>
+          <div className="text-[13px] text-ink-400">
+            Avant le {formatShortDate(request.desired_delivery_date)}
+          </div>
+        </div>
+        <div className="text-[16px] font-bold text-ink-600 num-display">
+          {formatEuros(request.budget)}
+        </div>
+      </div>
+
+      {request.item_description && (
+        <div className="rounded-xl bg-cream-50 px-4 py-3 mb-4">
+          <div className="text-[11px] font-semibold text-ink-300 tracking-[0.08em] uppercase mb-1">
+            Description
+          </div>
+          <p className="text-[14px] text-ink-500 leading-relaxed">
+            « {request.item_description} »
+          </p>
+        </div>
+      )}
+
+      <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 text-[13px] text-ink-500 leading-relaxed flex gap-2.5">
+        <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
+        <div>
+          <strong className="text-ink-600">Vous êtes en recherche de voyageur.</strong>{' '}
+          Nous vous notifierons dès qu&apos;une personne accepte votre colis.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TRIPS — master list of my trips, detail panel with boarding-pass + packages
+// ---------------------------------------------------------------------------
+
 function TripsView({
   trips,
   incomingIntents,
@@ -2301,27 +2796,9 @@ function TripsView({
   reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
   t: Translations;
 }) {
-  // We group the traveler's work by TRIP — the user thinks "what am I
-  // carrying on my Marrakech→Toulouse flight on June 9th". Within each
-  // trip we list every active booking attached to it (pending requests
-  // to decide on, confirmed bookings to deliver, accepted proposals).
-  //
-  // The dashboard shows ACTIVE only (status != 'cancelled', not yet
-  // delivered). Historic items live on /historique.
-
+  // Build the trip → packages map. Only keep active trips & packages
+  // (cancelled and fully-closed packages don't show — they go to /historique).
   const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
-
-  // Active items linked to a trip: incoming bookings + my proposals.
-  //
-  // What stays visible on /me for a given trip = ALL packages whose flow
-  // isn't fully closed yet, so the traveler keeps seeing every parcel they
-  // committed to carry on that flight (and the total earnings keep adding
-  // up correctly per trip). A package is "fully closed" only when:
-  //   - it's cancelled, OR
-  //   - it's been confirmed received by the sender AND the traveler has
-  //     posted their review (the loop is done from both sides).
-  // Everything else stays here: in-flight, delivered-but-not-yet-confirmed,
-  // confirmed-but-not-yet-reviewed.
   const activeIncoming = incomingIntents.filter((i) => {
     if (i.status === 'cancelled') return false;
     const fullyClosed = !!i.received_confirmed_at && hasReviewed(i.id);
@@ -2329,14 +2806,10 @@ function TripsView({
   });
   const activeProposals = myProposals.filter((p) => {
     if (p.status === 'cancelled') return false;
-    // Symmetric for proposals — though most won't reach review since the
-    // sender side rarely loops back. Safe default: hide once delivered &
-    // confirmed & reviewed.
     const fullyClosed = !!p.received_confirmed_at && hasReviewed(p.id);
     return !fullyClosed;
   });
 
-  // Build the map: trip_id → list of "packages" (mixed incoming + proposals)
   type TripPackage =
     | { kind: 'incoming'; row: IncomingIntent }
     | { kind: 'proposal'; row: TravelerProposal };
@@ -2356,24 +2829,38 @@ function TripsView({
     packagesByTrip.set(tripId, arr);
   });
 
-  // Sort trips by departure date ascending (next trip first)
-  const sortedTrips = [...activeTrips].sort(
-    (a, b) => new Date(a.departure_date).getTime() - new Date(b.departure_date).getTime()
-  );
+  // Sort: soonest-upcoming first, but past trips (already departed) at the
+  // bottom. Within each group, ascending by date.
+  const today = new Date().toISOString().slice(0, 10);
+  const sortedTrips = [...activeTrips].sort((a, b) => {
+    const aPast = a.departure_date < today;
+    const bPast = b.departure_date < today;
+    if (aPast !== bPast) return aPast ? 1 : -1;
+    return a.departure_date.localeCompare(b.departure_date);
+  });
 
-  // History link counter — same definition as before for the bottom link
-  const historyCount =
-    incomingIntents.filter(
-      (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
-    ).length +
-    myProposals.filter(
-      (p) => p.status === 'cancelled' || (p.status === 'confirmed' && p.delivery_proof_url)
-    ).length +
-    trips.filter((tr) => tr.status === 'cancelled').length;
+  // Pick default selection: first upcoming trip with packages > first
+  // upcoming trip > first trip overall.
+  const firstWithPackages = sortedTrips.find((tr) => (packagesByTrip.get(tr.id) ?? []).length > 0);
+  const initialId = firstWithPackages?.id ?? sortedTrips[0]?.id ?? null;
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(initialId);
+  const [detailOpenMobile, setDetailOpenMobile] = useState(false);
 
-  const hasContent = activeTrips.length > 0 || historyCount > 0;
+  // Re-seed selection if the trip list changes.
+  useEffect(() => {
+    if (!selectedTripId) {
+      setSelectedTripId(initialId);
+      return;
+    }
+    if (!sortedTrips.find((tr) => tr.id === selectedTripId)) {
+      setSelectedTripId(initialId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedTrips.length, initialId]);
 
-  if (!hasContent) {
+  const selectedTrip = sortedTrips.find((tr) => tr.id === selectedTripId) ?? null;
+
+  if (sortedTrips.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -2385,13 +2872,59 @@ function TripsView({
             </Button>
           </Link>
         </div>
-        <EmptyState message="Aucun trajet pour le moment. Publiez votre premier voyage." />
+        <EmptyState message="Aucun voyage planifié. Publiez votre prochain vol pour proposer vos services." />
       </div>
     );
   }
 
+  function selectTrip(id: string) {
+    setSelectedTripId(id);
+    setDetailOpenMobile(true);
+  }
+
+  // Master list — trips by chronological order
+  const master = (
+    <div className="overflow-y-auto md:max-h-[80vh]">
+      <ListBucketHeader label="✈️ Mes voyages" count={sortedTrips.length} />
+      {sortedTrips.map((tr) => {
+        const pkgs = packagesByTrip.get(tr.id) ?? [];
+        const isPast = tr.departure_date < today;
+        return (
+          <TripListRow
+            key={tr.id}
+            trip={tr}
+            packagesCount={pkgs.length}
+            selected={selectedTripId === tr.id}
+            onClick={() => selectTrip(tr.id)}
+            isPast={isPast}
+          />
+        );
+      })}
+    </div>
+  );
+
+  // Detail panel — boarding pass + packages list, just like the old TripGroup
+  const detail = selectedTrip ? (
+    <div className="p-4">
+      <TripDetailCard
+        trip={selectedTrip}
+        packages={packagesByTrip.get(selectedTrip.id) ?? []}
+        onUpdateIntent={onUpdateIntent}
+        onProofUploaded={onProofUploaded}
+        onCancelTrip={onCancelTrip}
+        onOpenChat={onOpenChat}
+        onOpenReview={onOpenReview}
+        hasReviewed={hasReviewed}
+        reviewFromOther={reviewFromOther}
+        t={t}
+      />
+    </div>
+  ) : (
+    <DetailEmpty message="Sélectionnez un voyage pour voir ses détails." />
+  );
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
         <Link href="/voyager">
@@ -2402,56 +2935,68 @@ function TripsView({
         </Link>
       </div>
 
-      {sortedTrips.length === 0 ? (
-        <div className="bg-white rounded-2xl p-8 text-center border border-dashed border-ink-100">
-          <p className="text-[14px] text-ink-400 leading-relaxed mb-4">
-            Aucun voyage à venir. Ajoutez votre prochain vol pour commencer à transporter.
-          </p>
-          <Link href="/voyager">
-            <Button size="sm">
-              <Plus className="w-4 h-4" />
-              Publier un trajet
-            </Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {sortedTrips.map((trip) => (
-            <TripGroup
-              key={trip.id}
-              trip={trip}
-              packages={packagesByTrip.get(trip.id) ?? []}
-              onUpdateIntent={onUpdateIntent}
-              onProofUploaded={onProofUploaded}
-              onCancelTrip={onCancelTrip}
-              onOpenChat={onOpenChat}
-              onOpenReview={onOpenReview}
-              hasReviewed={hasReviewed}
-              reviewFromOther={reviewFromOther}
-              t={t}
-            />
-          ))}
-        </div>
-      )}
-
-      {historyCount > 0 && (
-        <div className="pt-2">
-          <Link
-            href="/historique?type=transports"
-            className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
-          >
-            📜 Voir l&apos;historique ({historyCount})
-          </Link>
-        </div>
-      )}
+      <MasterDetailLayout
+        master={master}
+        detail={detail}
+        detailOpen={detailOpenMobile}
+        onCloseDetail={() => setDetailOpenMobile(false)}
+      />
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// TripGroup — one trip with all its packages stacked under it
-// ---------------------------------------------------------------------------
-function TripGroup({
+// One row in the Trips master list. Short, scannable: date, route, count.
+function TripListRow({
+  trip,
+  packagesCount,
+  selected,
+  onClick,
+  isPast,
+}: {
+  trip: TravelerTripRow;
+  packagesCount: number;
+  selected: boolean;
+  onClick: () => void;
+  isPast: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition-colors ${
+        selected
+          ? 'bg-lavender-50/80 border-l-2 border-lavender-500'
+          : 'hover:bg-cream-50 border-l-2 border-transparent'
+      } ${isPast ? 'opacity-60' : ''}`}
+    >
+      <span className="flex-shrink-0 text-[18px]">✈️</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-semibold text-ink-600 truncate">
+          {trip.departure_city} → {trip.arrival_city}
+        </div>
+        <div className="text-[12px] text-ink-400 truncate num-display">
+          {formatShortDate(trip.departure_date)}
+          {trip.flight_number && <span className="ml-1.5 text-ink-300">· {trip.flight_number}</span>}
+        </div>
+      </div>
+      <div className="flex-shrink-0 text-[12px] font-semibold text-ink-500">
+        {packagesCount > 0 ? (
+          <span className="inline-flex items-center gap-1">
+            <span className="num-display">{packagesCount}</span>
+            <span className="text-ink-400">colis</span>
+          </span>
+        ) : (
+          <span className="text-ink-300">—</span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// Detail panel for a trip: boarding-pass header + packages list.
+// Reuses the same visual language as the old TripGroup so the design
+// language stays consistent (perforation, lavender earnings panel).
+function TripDetailCard({
   trip,
   packages,
   onUpdateIntent,
@@ -2477,50 +3022,32 @@ function TripGroup({
   reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
   t: Translations;
 }) {
-  // "Potential earnings" = sum of NET (post-fee) for every package on this
-  // trip, including pending ones. The user wants to see "what I could
-  // make on this flight". We don't differentiate confirmed vs pending in
-  // the headline — they're all things to handle.
   const totalNet = packages.reduce((sum, p) => {
     const ttc = p.row.proposed_price ?? 0;
     return sum + ttc / 1.15;
   }, 0);
-
   const count = packages.length;
-  const isCancelable = packages.every(
-    (p) => p.row.status !== 'confirmed' // only allow trip cancel if no confirmed package
-  );
+  const isCancelable = packages.every((p) => p.row.status !== 'confirmed');
 
-  // Airport-code style — prefer the user-provided 3-letter IATA when set,
-  // otherwise fall back to the first 3 letters of the city, uppercase.
-  // Not strictly IATA-correct in the fallback case (CAS for Casablanca,
-  // not CMN) but gives the right ticket vibe without a lookup table.
   const departCode = trip.departure_airport || trip.departure_city.slice(0, 3).toUpperCase();
   const arriveCode = trip.arrival_airport || trip.arrival_city.slice(0, 3).toUpperCase();
 
   return (
     <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
-      {/* Boarding-pass-style header. Two zones split by a perforated
-          tear-line. Left = trip info (route, codes). Right = earnings panel
-          tinted lavender so the money pops as the headline reward. */}
+      {/* Boarding-pass-style header */}
       <div className="relative border-b border-ink-100">
-        {/* Perforation notches at the tear line (~63% across) */}
         <div className="absolute top-1/2 -translate-y-1/2 left-[63%] -translate-x-1/2 w-4 h-4 rounded-full bg-white border border-ink-100 z-10 hidden sm:block" />
         <div className="absolute top-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-b-full bg-white border-x border-b border-ink-100 hidden sm:block" />
         <div className="absolute bottom-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-t-full bg-white border-x border-t border-ink-100 hidden sm:block" />
 
         <div className="flex items-stretch">
-          {/* LEFT — trip ticket section, on warm cream paper */}
           <div className="flex-1 px-5 py-4 min-w-0 relative bg-gradient-to-br from-cream-50 to-cream-100">
-            {/* Flight number stamp at top — visible only when provided.
-                Sits above the codes like a real boarding pass header. */}
             {trip.flight_number && (
               <div className="text-[10px] text-ink-400 font-bold tracking-[0.14em] uppercase mb-1.5 num-display">
                 Vol {trip.flight_number}
                 {trip.flight_time && <span className="ml-2 text-ink-300">· {trip.flight_time}</span>}
               </div>
             )}
-            {/* Codes row with a chunkier plane between */}
             <div className="flex items-center gap-3 mb-1">
               <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
                 {departCode}
@@ -2534,32 +3061,23 @@ function TripGroup({
                 {arriveCode}
               </div>
             </div>
-            {/* City names row */}
             <div className="flex items-center justify-between text-[11px] text-ink-400 mb-3">
               <span className="truncate max-w-[40%]">{trip.departure_city}</span>
               <span className="truncate max-w-[40%] text-right">{trip.arrival_city}</span>
             </div>
-            {/* Departure date + colis count, stamped style */}
             <div className="flex items-center gap-4 text-[11px]">
               <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
-                  Départ
-                </div>
-                <div className="text-ink-600 font-bold num-display">
-                  {formatShortDate(trip.departure_date)}
-                </div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">Départ</div>
+                <div className="text-ink-600 font-bold num-display">{formatShortDate(trip.departure_date)}</div>
               </div>
               <div className="h-7 w-px bg-ink-100" />
               <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
-                  Colis
-                </div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">Colis</div>
                 <div className="text-ink-600 font-bold num-display">{count}</div>
               </div>
             </div>
           </div>
 
-          {/* RIGHT — earnings panel, tinted lavender to spotlight the money */}
           <div className="w-[35%] flex-shrink-0 border-l border-dashed border-lavender-300/50 px-3 py-4 flex flex-col justify-center items-center text-center relative bg-gradient-to-br from-lavender-50 to-lavender-100/70">
             <div className="text-[28px] sm:text-[32px] font-extrabold text-lavender-700 num-display leading-none">
               {formatEuros(totalNet)}
@@ -2583,9 +3101,6 @@ function TripGroup({
 
       {/* Packages list */}
       {count === 0 ? (
-        // Empty state: encourage the traveler to browse open requests on
-        // this route. The link prefills the search via query params so
-        // they land on the matching demands immediately.
         <div className="px-4 py-6 text-center space-y-3">
           <p className="text-[13px] text-ink-400 leading-relaxed">
             Aucun colis sur ce vol pour l&apos;instant.
@@ -2623,9 +3138,11 @@ function TripGroup({
   );
 }
 
-// Stripped-down versions of IntentCard/ProposalCard for use inside a
-// TripGroup — borderless (the group has its own border), single line,
-// dense.
+// ---------------------------------------------------------------------------
+// INLINE PACKAGE CARDS — used inside TripDetailCard. Unchanged from before
+// except they now live here for clarity.
+// ---------------------------------------------------------------------------
+
 function IntentCardInline({
   intent,
   onUpdate,
@@ -2660,16 +3177,6 @@ function IntentCardInline({
   const showAccept = intent.status === 'pending';
   const showDeliver = intent.status === 'confirmed' && !intent.delivery_proof_url;
 
-  // Status pill — covers every state the package can be in for the traveler.
-  // The flow is sequential, so we check from the latest state backwards.
-  // Once a state matches, we stop — keeps the pill from flickering between
-  // related states (e.g., confirmed + paid + delivered).
-  //
-  //   pending                                   → "Nouvelle demande"
-  //   confirmed + delivered + confirmed receipt → "✓ Livraison confirmée"
-  //   confirmed + delivered (waiting for sender)→ "📸 En attente de confirmation"
-  //   confirmed + paid (still flying)           → "💳 Paiement réservé"
-  //   confirmed (not paid yet)                  → "À livrer"
   let statusText: string | null = null;
   let statusClass = '';
   if (intent.status === 'pending') {
@@ -2679,9 +3186,6 @@ function IntentCardInline({
     statusText = '✓ Livraison confirmée';
     statusClass = 'text-mint-700 bg-mint-50';
   } else if (intent.status === 'confirmed' && intent.delivery_proof_url) {
-    // Photo uploaded but the sender hasn't clicked "J'ai bien reçu" yet.
-    // This is the state the user reported missing — they want to keep
-    // seeing this booking with this label.
     statusText = '📸 En attente de confirmation';
     statusClass = 'text-butter-700 bg-butter-50';
   } else if (intent.status === 'confirmed' && intent.payment_status === 'authorized') {
@@ -2747,10 +3251,6 @@ function IntentCardInline({
             </button>
           </div>
         )}
-
-        {/* Delivered but not yet confirmed by the sender: let the traveler
-            re-open their proof photo (in case they want to double-check)
-            and message the sender (gentle nudge). */}
         {intent.status === 'confirmed' &&
           intent.delivery_proof_url &&
           !intent.received_confirmed_at && (
@@ -2773,9 +3273,6 @@ function IntentCardInline({
               </button>
             </div>
           )}
-
-        {/* Reviews — visible once the booking is delivered AND the sender
-            has confirmed receipt. Two states: "Noter" button, then locked. */}
         {intent.delivery_proof_url && intent.received_confirmed_at && (
           <div className="flex-shrink-0">
             {!hasReviewed ? (
@@ -2797,7 +3294,6 @@ function IntentCardInline({
         )}
       </div>
 
-      {/* If the sender already reviewed me, show a tiny preview below */}
       {otherReview && (
         <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
           <span>{senderName.split(' ')[0]} vous a noté</span>
@@ -2822,11 +3318,11 @@ function IntentCardInline({
         {showProofModal && (
           <DeliveryProofModal
             bookingIntentId={intent.id}
-            onSuccess={(url) => {
-              onProofUploaded(intent.id, url, '');
+            onClose={() => setShowProofModal(false)}
+            onUploaded={(url, receiverName) => {
+              onProofUploaded(intent.id, url, receiverName);
               setShowProofModal(false);
             }}
-            onClose={() => setShowProofModal(false)}
           />
         )}
       </AnimatePresence>
@@ -2837,15 +3333,15 @@ function IntentCardInline({
 function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
   const senderName = displayName(proposal.sender_profile?.full_name) || 'Expéditeur';
   const initial = nameInitial(proposal.sender_profile?.full_name);
-  const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
-  const accepted = proposal.status === 'confirmed';
+  const netTraveler = proposal.proposed_price / 1.15;
 
-  // Status pill style matches IntentCardInline so the visual language is
-  // consistent across the trip's package list.
-  const statusText = accepted ? '✓ Acceptée' : 'En attente de réponse';
+  const accepted = proposal.status === 'confirmed';
+  const statusText = accepted ? '✓ acceptée' : proposal.status === 'cancelled' ? '✕ refusée' : '⏳ en attente';
   const statusClass = accepted
     ? 'text-mint-700 bg-mint-50'
-    : 'text-ink-400 bg-cream-100';
+    : proposal.status === 'cancelled'
+      ? 'text-ink-400 bg-cream-100'
+      : 'text-butter-700 bg-butter-50';
 
   return (
     <div className="flex items-center gap-3">
@@ -2863,336 +3359,6 @@ function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// SendsView — "Mes envois" tab
-// ---------------------------------------------------------------------------
-function SendsView({
-  bookings,
-  requests,
-  onAcceptProposal,
-  onDeclineProposal,
-  onOpenChat,
-  onConfirmReceipt,
-  onOpenReview,
-  hasReviewed,
-  reviewFromOther,
-  t,
-}: {
-  bookings: MyBooking[];
-  requests: ShippingRequestRow[];
-  onAcceptProposal: (b: MyBooking) => void;
-  onDeclineProposal: (id: string) => void;
-  onOpenChat: (b: MyBooking) => void;
-  onConfirmReceipt: (bookingId: string) => void;
-  onOpenReview: (b: MyBooking) => void;
-  hasReviewed: (bookingIntentId: string) => boolean;
-  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
-  t: Translations;
-}) {
-  // ===== Statut-based buckets =====
-  //
-  // 🔥 À traiter — traveler proposals on my requests, awaiting accept/pay
-  const todoProposals = bookings.filter(
-    (b) => b.status === 'pending' && b.initiated_by === 'traveler'
-  );
-
-  // ⏳ En attente — I booked a traveler, payment authorized, waiting for them
-  //                 to accept. Or I have public requests still hanging.
-  const pendingBookings = bookings.filter(
-    (b) => b.status === 'pending' && b.initiated_by === 'sender'
-  );
-  const activeRequests = requests.filter((r) => r.status === 'pending');
-  const pendingCount = pendingBookings.length + activeRequests.length;
-
-  // ✈️ En vol — accepted, traveler is carrying, no proof yet
-  const inFlightBookings = bookings.filter(
-    (b) => b.status === 'confirmed' && !b.delivery_proof_url
-  );
-
-  // 📦 À confirmer — proof uploaded by traveler, I need to click "J'ai bien reçu"
-  const toConfirmBookings = bookings.filter(
-    (b) =>
-      b.status === 'confirmed' &&
-      b.delivery_proof_url &&
-      !b.received_confirmed_at
-  );
-
-  // ✓ Finalisés — fully closed: received confirmed (with or without review)
-  const finalizedBookings = bookings.filter(
-    (b) =>
-      b.status === 'confirmed' &&
-      b.delivery_proof_url &&
-      b.received_confirmed_at
-  );
-
-  // ❌ Annulés
-  const cancelledBookings = bookings.filter((b) => b.status === 'cancelled');
-
-  const hasContent =
-    todoProposals.length > 0 ||
-    pendingCount > 0 ||
-    inFlightBookings.length > 0 ||
-    toConfirmBookings.length > 0 ||
-    finalizedBookings.length > 0 ||
-    cancelledBookings.length > 0;
-
-  if (!hasContent) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
-          <Link href="/envoyer">
-            <Button size="sm">
-              <Plus className="w-4 h-4" />
-              Publier une demande
-            </Button>
-          </Link>
-        </div>
-        <EmptyState message="Aucun envoi pour le moment. Publiez votre première demande." />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
-        <Link href="/envoyer">
-          <Button size="sm">
-            <Plus className="w-4 h-4" />
-            Publier une demande
-          </Button>
-        </Link>
-      </div>
-
-      {/* Sections in priority order. Default-open: anything actionable.
-          Default-closed: in-flight (no action), confirmed (action done),
-          and cancelled (history). The user can flip any of them. */}
-
-      {todoProposals.length > 0 && (
-        <CollapsibleSection
-          icon="🔥"
-          label="À traiter"
-          count={todoProposals.length}
-          defaultOpen
-          tone="urgent"
-        >
-          {todoProposals.map((b) => (
-            <BookingCard
-              key={b.id}
-              booking={b}
-              onAcceptProposal={onAcceptProposal}
-              onDeclineProposal={onDeclineProposal}
-              t={t}
-            />
-          ))}
-        </CollapsibleSection>
-      )}
-
-      {pendingCount > 0 && (
-        <CollapsibleSection
-          icon="⏳"
-          label="En attente"
-          count={pendingCount}
-          defaultOpen
-        >
-          {pendingBookings.map((b) => (
-            <BookingCard
-              key={b.id}
-              booking={b}
-              onOpenChat={onOpenChat}
-              t={t}
-            />
-          ))}
-          {activeRequests.map((req) => (
-            <RequestCardSimple key={req.id} request={req} t={t} />
-          ))}
-        </CollapsibleSection>
-      )}
-
-      {inFlightBookings.length > 0 && (
-        <CollapsibleSection
-          icon="✈️"
-          label="En vol"
-          count={inFlightBookings.length}
-          defaultOpen={false}
-        >
-          {inFlightBookings.map((b) => (
-            <BookingCard
-              key={b.id}
-              booking={b}
-              onOpenChat={onOpenChat}
-              t={t}
-            />
-          ))}
-        </CollapsibleSection>
-      )}
-
-      {toConfirmBookings.length > 0 && (
-        <CollapsibleSection
-          icon="📦"
-          label="À confirmer"
-          count={toConfirmBookings.length}
-          defaultOpen
-          tone="urgent"
-        >
-          {toConfirmBookings.map((b) => (
-            <BookingCard
-              key={b.id}
-              booking={b}
-              onOpenChat={onOpenChat}
-              onConfirmReceipt={onConfirmReceipt}
-              onOpenReview={onOpenReview}
-              hasReviewed={hasReviewed(b.id)}
-              otherReview={reviewFromOther(b.id)}
-              t={t}
-            />
-          ))}
-        </CollapsibleSection>
-      )}
-
-      {finalizedBookings.length > 0 && (
-        <CollapsibleSection
-          icon="✓"
-          label="Finalisés"
-          count={finalizedBookings.length}
-          defaultOpen={false}
-        >
-          {finalizedBookings.map((b) => (
-            <BookingCard
-              key={b.id}
-              booking={b}
-              onOpenChat={onOpenChat}
-              onConfirmReceipt={onConfirmReceipt}
-              onOpenReview={onOpenReview}
-              hasReviewed={hasReviewed(b.id)}
-              otherReview={reviewFromOther(b.id)}
-              t={t}
-            />
-          ))}
-        </CollapsibleSection>
-      )}
-
-      {cancelledBookings.length > 0 && (
-        <CollapsibleSection
-          icon="❌"
-          label="Annulés"
-          count={cancelledBookings.length}
-          defaultOpen={false}
-        >
-          {cancelledBookings.map((b) => (
-            <BookingCard key={b.id} booking={b} t={t} />
-          ))}
-        </CollapsibleSection>
-      )}
-    </div>
-  );
-}
-
-// =============================================================================
-// CollapsibleSection — used in SendsView. A click on the header toggles the
-// children open/closed; the icon, label, and count stay visible either way.
-// Tone 'urgent' tints the header subtly to draw attention to required actions.
-// =============================================================================
-function CollapsibleSection({
-  icon,
-  label,
-  count,
-  defaultOpen = true,
-  tone = 'default',
-  children,
-}: {
-  icon: string;
-  label: string;
-  count: number;
-  defaultOpen?: boolean;
-  tone?: 'default' | 'urgent';
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <section className="bg-white rounded-2xl border border-ink-50 overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center gap-3 px-4 py-3 text-start transition-colors ${
-          tone === 'urgent'
-            ? 'bg-butter-50/60 hover:bg-butter-50'
-            : 'bg-white hover:bg-cream-50/60'
-        }`}
-        aria-expanded={open}
-      >
-        <span className="text-lg">{icon}</span>
-        <h3 className="text-[15px] font-bold text-ink-600 tracking-[-0.01em]">{label}</h3>
-        <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold ${
-          tone === 'urgent'
-            ? 'bg-butter-500 text-cream-50'
-            : 'bg-ink-500 text-cream-50'
-        }`}>
-          {count}
-        </span>
-        <span className="ml-auto text-ink-400">
-          {/* Simple chevron, rotates 90deg when open */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`transition-transform ${open ? 'rotate-90' : ''}`}
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </span>
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-3 pt-1 space-y-2 border-t border-ink-50">
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </section>
-  );
-}
-
-// Simple read-only card for an active public request I posted but
-// nobody has responded to yet. Just the route + budget + status.
-function RequestCardSimple({ request, t }: { request: ShippingRequestRow; t: Translations }) {
-  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
-  return (
-    <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
-      <div className="flex items-center gap-3">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
-          {cat?.icon}
-        </div>
-        <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
-          <span className="font-semibold text-ink-600">{request.pickup_city} → {request.destination_city}</span>
-          <span className="text-ink-300">·</span>
-          <span className="text-ink-500 num-display">{formatEuros(request.budget)}</span>
-          <span className="text-[11px] text-ink-300 ml-1">⏳ en attente de propositions</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// HistoryView — combines both sides, completed or cancelled items
-// ---------------------------------------------------------------------------
 function HistoryView({
   incomingIntents,
   myBookings,
