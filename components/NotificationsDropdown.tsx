@@ -1,0 +1,312 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Bell, Check, Inbox, Loader2 } from 'lucide-react';
+import { browser, type Notification } from '@/lib/supabase/queries';
+import { useAuth } from '@/lib/supabase/auth-provider';
+
+/**
+ * Bell icon in the navbar that opens a small dropdown panel with the 5
+ * most recent notifications. Each row links to the relevant /me view
+ * (or wherever the notification points) and is marked read on click.
+ *
+ * Why a dropdown instead of a full page: most notifications need a quick
+ * glance — "did anything happen on my colis?" — and the user wants to
+ * dismiss them or jump into action without losing their current page.
+ * The full /notifications page is still reachable from the footer for
+ * users who want the long history.
+ *
+ * Inbox messages are also reachable from the footer as a secondary
+ * action — we don't surface them in the navbar anymore because
+ * notifications and messages serve different mental models.
+ */
+export function NotificationsDropdown() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<Notification[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Background unread count poll — every 30s while the user is on the
+  // app. Cheap query (HEAD with count) so it's fine to run regularly.
+  // No realtime subscription for now to keep the surface small; we can
+  // add Supabase realtime later if needed.
+  useEffect(() => {
+    if (!user) {
+      setUnread(0);
+      return;
+    }
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const n = await browser.countUnreadNotifications(user.id);
+        if (!cancelled) setUnread(n);
+      } catch {
+        /* silent: bell can show stale count, not worth surfacing */
+      }
+    };
+    refresh();
+    const iv = setInterval(refresh, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, [user]);
+
+  // Load the dropdown contents lazily — only when the user actually opens
+  // the panel. Saves a query on every page load.
+  useEffect(() => {
+    if (!open || !user) return;
+    let cancelled = false;
+    setLoading(true);
+    browser
+      .listNotifications(user.id, 5)
+      .then((rows) => {
+        if (cancelled) return;
+        setItems(rows);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, user]);
+
+  // Close on outside click. We use mousedown so the click that opens the
+  // panel doesn't immediately close it before the state settles.
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
+
+  if (!user) return null;
+
+  // Click on a row: optimistically mark as read locally, fire the DB
+  // update, and navigate. We don't await the DB call before navigating —
+  // optimistic UX, and if it fails the worst case is the badge stays
+  // until the next 30s refresh.
+  function openNotification(n: Notification) {
+    if (!n.read_at) {
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === n.id ? { ...it, read_at: new Date().toISOString() } : it
+        )
+      );
+      setUnread((u) => Math.max(0, u - 1));
+      browser.markNotificationRead(n.id).catch(() => {});
+    }
+    setOpen(false);
+    if (n.link) router.push(n.link);
+  }
+
+  async function markAllRead() {
+    if (!user) return;
+    // Optimistic: zero out the badge immediately.
+    setItems((prev) =>
+      prev.map((it) =>
+        it.read_at ? it : { ...it, read_at: new Date().toISOString() }
+      )
+    );
+    setUnread(0);
+    try {
+      await browser.markAllNotificationsRead(user.id);
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  // Map notification types to emojis. Falls back to a generic bell.
+  // Keeps the list scannable: the icon alone hints what kind of event.
+  function emojiFor(type: string): string {
+    switch (type) {
+      case 'booking_request_received':
+        return '📦';
+      case 'proposal_received':
+        return '✋';
+      case 'booking_accepted':
+        return '✓';
+      case 'proposal_accepted':
+        return '🎉';
+      case 'proposal_declined':
+        return '✕';
+      case 'delivery_proof_uploaded':
+        return '📸';
+      case 'receipt_confirmed':
+        return '💰';
+      case 'matching_trip_available':
+        return '✈️';
+      case 'matching_request_available':
+        return '📍';
+      default:
+        return '🔔';
+    }
+  }
+
+  // Friendly relative-time string. We keep it simple here — for a long
+  // history view, /notifications can use a fuller library or a date.
+  function relativeTime(iso: string): string {
+    const now = Date.now();
+    const then = new Date(iso).getTime();
+    const sec = Math.max(0, Math.floor((now - then) / 1000));
+    if (sec < 60) return 'à l\'instant';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `il y a ${min} min`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `il y a ${hr} h`;
+    const days = Math.floor(hr / 24);
+    if (days < 7) return `il y a ${days} j`;
+    return new Date(iso).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+    });
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="relative p-2 rounded-full hover:bg-ink-50 text-ink-400 hover:text-ink-600 transition-colors"
+        aria-label="Notifications"
+        title="Notifications"
+      >
+        <Bell className="w-[18px] h-[18px]" />
+        {unread > 0 && (
+          // Numeric badge for low counts, "9+" cap to keep the bubble tight
+          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-blush-500 text-white text-[10px] font-bold flex items-center justify-center num-display">
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
+            // Anchored under the bell. Width fixed so it doesn't snap to
+            // ridiculous sizes; on phones it sits flush to the right edge.
+            className="absolute right-0 mt-2 w-[340px] max-w-[calc(100vw-2rem)] bg-white border border-ink-100 rounded-2xl shadow-xl overflow-hidden z-50"
+          >
+            {/* Header */}
+            <div className="px-4 py-3 flex items-center justify-between border-b border-ink-50">
+              <h3 className="text-[14px] font-bold text-ink-600">Notifications</h3>
+              {unread > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-400 hover:text-ink-600 transition-colors"
+                >
+                  <Check className="w-3 h-3" />
+                  Tout marquer lu
+                </button>
+              )}
+            </div>
+
+            {/* Body — list of notifications */}
+            <div className="max-h-[60vh] overflow-y-auto">
+              {loading ? (
+                <div className="px-4 py-6 flex items-center justify-center">
+                  <Loader2 className="w-4 h-4 text-ink-300 animate-spin" />
+                </div>
+              ) : items.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <div className="w-10 h-10 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-3">
+                    <Bell className="w-4 h-4 text-ink-300" />
+                  </div>
+                  <p className="text-[13px] text-ink-400">
+                    Aucune notification pour le moment.
+                  </p>
+                </div>
+              ) : (
+                items.map((n) => {
+                  const isUnread = !n.read_at;
+                  return (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => openNotification(n)}
+                      className={`w-full text-start px-4 py-3 flex gap-3 items-start transition-colors ${
+                        isUnread
+                          ? 'bg-lavender-50/40 hover:bg-lavender-50/70'
+                          : 'hover:bg-cream-50'
+                      } border-b border-ink-50 last:border-b-0`}
+                    >
+                      <span className="flex-shrink-0 text-[18px] mt-0.5">
+                        {emojiFor(n.type)}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div
+                          className={`text-[13px] leading-snug ${
+                            isUnread
+                              ? 'font-semibold text-ink-600'
+                              : 'font-medium text-ink-500'
+                          }`}
+                        >
+                          {n.title}
+                        </div>
+                        {n.body && (
+                          <div className="text-[12px] text-ink-400 mt-0.5 truncate">
+                            {n.body}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-ink-300 mt-0.5">
+                          {relativeTime(n.created_at)}
+                        </div>
+                      </div>
+                      {isUnread && (
+                        // Small dot on the right, mirrors how iOS Mail / Gmail
+                        // marks unread items
+                        <span className="flex-shrink-0 w-2 h-2 rounded-full bg-lavender-500 mt-1.5" />
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer — secondary entries: full notifications page +
+                inbox messages (kept here so it's still reachable but
+                doesn't clutter the navbar). */}
+            <div className="border-t border-ink-50 bg-cream-50/50 divide-y divide-ink-50">
+              <Link
+                href="/notifications"
+                onClick={() => setOpen(false)}
+                className="block px-4 py-2.5 text-[13px] font-medium text-ink-500 hover:text-ink-600 hover:bg-cream-50 text-center transition-colors"
+              >
+                Voir toutes les notifications
+              </Link>
+              <Link
+                href="/messages"
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-medium text-ink-400 hover:text-ink-600 hover:bg-cream-50 transition-colors"
+              >
+                <Inbox className="w-3.5 h-3.5" />
+                Mes messages
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
