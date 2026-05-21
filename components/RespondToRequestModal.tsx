@@ -120,6 +120,9 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
           available_weight_kg: null,
           available_space: 'enveloppe',
           flight_time: null,
+          flight_number: null,
+          departure_airport: null,
+          arrival_airport: null,
           notes: null,
           status: 'open',
         });
