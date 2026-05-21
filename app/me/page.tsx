@@ -4,7 +4,7 @@
 // HTML reaches the client. Then hands everything down to MePageClient as
 // props, so there's no useEffect waterfall at hydration time.
 //
-// Why this is fast: the 6 queries run from the Vercel server, which is in
+// Why this is fast: the queries run from the Vercel server, which is in
 // the same region as Supabase (RTT ~5-20ms vs 100-300ms from a phone). They
 // run in parallel via Promise.all, and the rendered HTML arrives with the
 // data already inlined. The user sees content on first paint instead of a
@@ -20,6 +20,7 @@ import {
   listIncomingBookingIntents,
   listMyBookings,
   listMyTravelerProposals,
+  listReviewsByBookingIds,
 } from '@/lib/supabase/queries';
 import MePageClient from './MePageClient';
 
@@ -65,6 +66,22 @@ export default async function MePage() {
     safe(listMyTravelerProposals(supabase, user.id), []),
   ]);
 
+  // Now that we have all the booking IDs the user is involved in, fetch
+  // all the reviews tied to them in one shot. We need both my reviews
+  // (to lock the "Noter" button) AND the other party's reviews (to display
+  // them inline as "X vous a noté ★★★★★"). One query, all bookings.
+  const allBookingIds = Array.from(
+    new Set([
+      ...incomingIntents.map((i: any) => i.id),
+      ...myBookings.map((i: any) => i.id),
+      ...myProposals.map((i: any) => i.id),
+    ])
+  );
+  const reviews = await safe(
+    listReviewsByBookingIds(supabase, allBookingIds),
+    [] as any[]
+  );
+
   return (
     <MePageClient
       initialUser={{ id: user.id, email: user.email ?? null }}
@@ -75,6 +92,7 @@ export default async function MePage() {
       initialIncomingIntents={incomingIntents as any}
       initialMyBookings={myBookings as any}
       initialMyProposals={myProposals as any}
+      initialReviews={reviews as any}
     />
   );
 }
