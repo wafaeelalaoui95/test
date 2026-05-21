@@ -4,16 +4,19 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ArrowLeft, ArrowRight, Upload, AlertCircle, Loader2 } from 'lucide-react';
+import { Check, ArrowLeft, ArrowRight, Upload, AlertCircle, Loader2, Sparkles, Plane, Star, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Textarea, Checkbox, Input } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { LocationSelector, type LocationValue } from '@/components/ui/LocationSelector';
+import { VerificationBadge } from '@/components/ui/Badge';
 import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES } from '@/lib/constants';
+import { formatShortDate, displayName, nameInitial } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
 import type { ItemCategory } from '@/lib/types';
+import type { MatchingTrip } from '@/lib/supabase/queries';
 
 export default function EnvoyerPage() {
   const { t } = useI18n();
@@ -25,6 +28,13 @@ export default function EnvoyerPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // After a successful publish, we fetch matching trips so the success screen
+  // can surface "✨ 3 voyageurs disponibles" instead of a generic thank-you.
+  // Loading & list are stored separately from the form data so we can render
+  // the success screen progressively (success first, matches when ready).
+  const [matchingTrips, setMatchingTrips] = useState<MatchingTrip[]>([]);
+  const [matchingLoading, setMatchingLoading] = useState(false);
 
   const [from, setFrom] = useState<LocationValue>(null);
   const [to, setTo] = useState<LocationValue>(null);
@@ -76,7 +86,21 @@ export default function EnvoyerPage() {
         prescription_url: null,
         status: 'pending',
       });
+      // Flip to success view immediately — the user shouldn't wait on the
+      // matching query to see confirmation. Then we kick off matching in
+      // the background; the success screen updates progressively when it
+      // resolves.
       setSubmitted(true);
+      setMatchingLoading(true);
+      browser
+        .listMatchingTripsForRequest(from.city, to.city, date)
+        .then((trips) => setMatchingTrips(trips))
+        .catch((e) => {
+          // Non-blocking: if the matching query fails we just don't show
+          // the section. The user still got their success screen.
+          console.warn('[envoyer] matching trips failed:', e);
+        })
+        .finally(() => setMatchingLoading(false));
     } catch (err: any) {
       setSubmitError(err.message ?? t.auth_error_generic);
     } finally {
@@ -85,29 +109,128 @@ export default function EnvoyerPage() {
   }
 
   if (submitted) {
+    const hasMatches = matchingTrips.length > 0;
+    const matchCount = matchingTrips.length;
+
     return (
-      <div className="min-h-screen flex items-center justify-center px-5 py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md text-center"
-        >
-          <div className="w-14 h-14 rounded-full bg-mint-500 mx-auto flex items-center justify-center mb-7">
-            <Check className="w-7 h-7 text-white" strokeWidth={2.5} />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 mb-4 tracking-[-0.025em]">
-            {t.send_success_title}
-          </h1>
-          <p className="text-[16px] text-ink-400 mb-9 leading-relaxed">{t.send_success_text}</p>
-          <div className="flex flex-col gap-2.5">
-            <Link href="/">
-              <Button variant="secondary" fullWidth>{t.send_success_see_travelers}</Button>
-            </Link>
-            <Link href="/">
-              <Button variant="ghost" fullWidth>{t.send_success_back}</Button>
-            </Link>
-          </div>
-        </motion.div>
+      <div className="min-h-screen py-12 lg:py-20 px-5">
+        <div className="mx-auto max-w-2xl">
+          {/* Success header — always shown immediately, no waiting */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-10"
+          >
+            <div className="w-14 h-14 rounded-full bg-mint-500 mx-auto flex items-center justify-center mb-7">
+              <Check className="w-7 h-7 text-white" strokeWidth={2.5} />
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 mb-4 tracking-[-0.025em]">
+              {t.send_success_title}
+            </h1>
+            <p className="text-[16px] text-ink-400 leading-relaxed max-w-md mx-auto">
+              {t.send_success_text}
+            </p>
+          </motion.div>
+
+          {/* Matching section — fades in once query resolves. While loading,
+              show a subtle placeholder so the user knows we're checking. */}
+          <AnimatePresence mode="wait">
+            {matchingLoading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-center gap-2.5 py-6 text-[13px] text-ink-400"
+              >
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Recherche de voyageurs disponibles…</span>
+              </motion.div>
+            ) : hasMatches ? (
+              <motion.div
+                key="matches"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Headline banner — celebrates the good news with a clear
+                    count + route reminder. */}
+                <div className="bg-gradient-to-br from-lavender-50 to-lavender-100/60 border border-lavender-200 rounded-2xl p-5 mb-5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-lavender-500 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-4 h-4 text-white" strokeWidth={2.5} />
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-[17px] font-extrabold text-lavender-700 tracking-[-0.01em] mb-1">
+                        Bonne nouvelle !
+                      </h2>
+                      <p className="text-[14px] text-ink-500 leading-relaxed">
+                        <strong className="text-ink-600">
+                          {matchCount === 1
+                            ? '1 voyageur est déjà disponible'
+                            : `${matchCount} voyageurs sont déjà disponibles`}
+                        </strong>{' '}
+                        sur votre route {from?.city} → {to?.city}, avant le {formatShortDate(date)}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trip cards. We list the top trips with key info so the
+                    user can scan and click. Showing up to 4; more available
+                    on /matches. */}
+                <div className="space-y-2.5 mb-7">
+                  {matchingTrips.slice(0, 4).map((trip) => (
+                    <TripMatchCard key={trip.id} trip={trip} />
+                  ))}
+                  {matchingTrips.length > 4 && (
+                    <p className="text-[12px] text-ink-400 text-center pt-2">
+                      Et {matchingTrips.length - 4} autres voyageurs sur cette route…
+                    </p>
+                  )}
+                </div>
+
+                {/* Primary CTA: go pick one. Secondary: dashboard / home. */}
+                <div className="flex flex-col gap-2.5">
+                  <Link
+                    href={`/?type=voyageurs&from=${encodeURIComponent(from?.city ?? '')}&to=${encodeURIComponent(to?.city ?? '')}`}
+                  >
+                    <Button fullWidth>
+                      Voir tous les voyageurs
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                  <Link href="/me">
+                    <Button variant="ghost" fullWidth>
+                      Plus tard, voir mes envois
+                    </Button>
+                  </Link>
+                </div>
+              </motion.div>
+            ) : (
+              // No matches — graceful fallback. We don't surface the absence
+              // as a failure, just nudge to keep an eye on /me.
+              <motion.div
+                key="no-matches"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center"
+              >
+                <p className="text-[14px] text-ink-400 mb-7 leading-relaxed max-w-md mx-auto">
+                  Aucun voyageur ne correspond pour l&apos;instant à votre route. Nous vous notifierons dès qu&apos;un voyageur publie un trajet compatible.
+                </p>
+                <div className="flex flex-col gap-2.5 max-w-md mx-auto">
+                  <Link href="/me">
+                    <Button variant="secondary" fullWidth>{t.nav_my_space}</Button>
+                  </Link>
+                  <Link href="/">
+                    <Button variant="ghost" fullWidth>{t.send_success_back}</Button>
+                  </Link>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     );
   }
@@ -297,6 +420,56 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between gap-4">
       <span className="text-ink-400">{label}</span>
       <span className="font-semibold text-ink-600 text-end">{value}</span>
+    </div>
+  );
+}
+
+// =============================================================================
+// TripMatchCard — compact row for a matching trip on the success screen.
+// Dense by design: the user already engaged, we want to make picking easy.
+// =============================================================================
+function TripMatchCard({ trip }: { trip: MatchingTrip }) {
+  const name = displayName(trip.user?.full_name) || 'Voyageur';
+  const initial = nameInitial(trip.user?.full_name);
+  const rating = trip.user?.rating ?? 0;
+  const tripsCount = trip.user?.trips_completed ?? 0;
+  const verified =
+    trip.user?.verification_level === 'id_verified' ||
+    trip.user?.verification_level === 'trusted';
+
+  return (
+    <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50 hover:border-ink-200 transition-colors">
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[13px] text-lavender-700">
+          {initial}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 text-[14px] flex-wrap">
+            <span className="font-semibold text-ink-600">{name}</span>
+            {verified && (
+              <ShieldCheck className="w-3.5 h-3.5 text-mint-500" strokeWidth={2.5} />
+            )}
+            {rating > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-[12px] text-ink-400">
+                <Star className="w-3 h-3 fill-butter-500 text-butter-500" />
+                <span className="num-display">{rating.toFixed(1)}</span>
+              </span>
+            )}
+            {tripsCount > 0 && (
+              <span className="text-[11px] text-ink-300">· {tripsCount} trajets</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-[12px] text-ink-400 mt-0.5">
+            <Plane className="w-3 h-3 -rotate-12" />
+            <span className="num-display">{formatShortDate(trip.departure_date)}</span>
+            {trip.flight_number && (
+              <span className="text-ink-300">· {trip.flight_number}</span>
+            )}
+            <span className="text-ink-300">· dès</span>
+            <span className="font-semibold text-ink-500 num-display">{trip.compensation_min}€</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
