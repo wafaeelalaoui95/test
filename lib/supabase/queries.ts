@@ -441,6 +441,99 @@ export async function listMatchingRequestsForTrip(
     user: (profileById.get(r.user_id) as any) ?? null,
   }));
 }
+export async function confirmBookingReceipt(
+  supabase: SB,
+  bookingIntentId: string
+): Promise<void> {
+  const { error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .update({ received_confirmed_at: new Date().toISOString() })
+        .eq('id', bookingIntentId)
+    ),
+    8000,
+    'Confirm receipt'
+  );
+  if (error) throw error;
+}
+
+/**
+ * Create a review tied to a specific booking. The DB enforces (via RLS):
+ *   - the reviewer is the authenticated user
+ *   - the reviewer is sender or traveler of THAT booking
+ *   - the booking has received_confirmed_at set
+ *   - the reviewed user is the other party
+ *   - unique(booking_intent_id, reviewer_id)
+ * The profile's average rating is recomputed by a trigger.
+ */
+export async function createReview(
+  supabase: SB,
+  input: {
+    booking_intent_id: string;
+    reviewer_id: string;
+    reviewed_user_id: string;
+    rating: number; // 1..5
+    comment?: string | null;
+  }
+) {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('reviews')
+        .insert({
+          booking_intent_id: input.booking_intent_id,
+          reviewer_id: input.reviewer_id,
+          reviewed_user_id: input.reviewed_user_id,
+          rating: input.rating,
+          comment: input.comment ?? null,
+        })
+        .select('*')
+        .maybeSingle()
+    ),
+    8000,
+    'Create review'
+  );
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * List reviews tied to a set of booking_intent_ids. Used in /me to know
+ * which bookings the current user has already reviewed (to lock the UI),
+ * AND to surface what the other party wrote (when they've reviewed first).
+ *
+ * Returns rows with both reviewer_id and reviewed_user_id, so the caller
+ * can filter both directions client-side.
+ */
+export type ReviewForBooking = {
+  id: string;
+  booking_intent_id: string;
+  reviewer_id: string;
+  reviewed_user_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+};
+
+export async function listReviewsByBookingIds(
+  supabase: SB,
+  bookingIds: string[]
+): Promise<ReviewForBooking[]> {
+  if (bookingIds.length === 0) return [];
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('reviews')
+        .select('id, booking_intent_id, reviewer_id, reviewed_user_id, rating, comment, created_at')
+        .in('booking_intent_id', bookingIds)
+    ),
+    8000,
+    'Reviews by booking ids'
+  );
+  if (error) throw error;
+  return (data ?? []) as ReviewForBooking[];
+}
 
 // ============================================================================
 // REVIEWS
@@ -1410,7 +1503,13 @@ export const browser = {
   listMyMatches: (userId: string) => listMyMatches(getBrowserClient(), userId),
   createMatch: (travelerTripId: string, shippingRequestId: string, agreedCompensation?: number) =>
     createMatch(getBrowserClient(), travelerTripId, shippingRequestId, agreedCompensation),
-
+confirmBookingReceipt: (bookingIntentId: string) =>
+    confirmBookingReceipt(getBrowserClient(), bookingIntentId),
+  createReview: (input: Parameters<typeof createReview>[1]) =>
+    createReview(getBrowserClient(), input),
+  listReviewsByBookingIds: (bookingIds: string[]) =>
+    listReviewsByBookingIds(getBrowserClient(), bookingIds),
+  
   // Matching (live preview on /envoyer and /voyager)
   listMatchingTripsForRequest: (
     pickupCity: string,
