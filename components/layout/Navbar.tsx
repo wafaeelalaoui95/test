@@ -155,7 +155,23 @@ export function Navbar() {
             )}
           </div>
 
+          {/* Mobile right-side cluster — wallet pill + inbox + burger.
+              Order matters: wallet first so it's the most prominent;
+              inbox stays compact (just icon); burger last as standard. */}
           <div className="flex md:hidden items-center gap-1">
+            {user && (
+              <Link
+                href="/wallet"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-ink-500 text-cream-50"
+                aria-label="Mon portefeuille"
+                title="Mon portefeuille"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                <span className="text-[12px] font-bold num-display">
+                  {walletBalance !== null ? formatEuros(walletBalance) : '—'}
+                </span>
+              </Link>
+            )}
             {user && (
               <Link
                 href="/messages"
@@ -209,6 +225,20 @@ export function Navbar() {
                   >
                     <User className="w-4 h-4" />
                     {t.nav_my_space}
+                  </Link>
+                  {/* Wallet entry in the drawer — full label here since we
+                      have the room. Also surfaces the balance so the user
+                      doesn't have to navigate to find it. */}
+                  <Link
+                    href="/wallet"
+                    className="py-3 text-base font-medium text-ink-500 flex items-center gap-2"
+                    onClick={() => setOpen(false)}
+                  >
+                    <Wallet className="w-4 h-4" />
+                    <span>Portefeuille</span>
+                    <span className="ml-auto text-[14px] font-bold text-ink-600 num-display">
+                      {walletBalance !== null ? formatEuros(walletBalance) : '—'}
+                    </span>
                   </Link>
                   <form action="/auth/sign-out" method="post" className="mt-2">
                     <button
