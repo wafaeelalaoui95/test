@@ -497,78 +497,75 @@ export default function MyPage({
                     });
                   }}
                   onConfirmReceipt={async (bookingId) => {
-                    // Sender confirms they got their package. This is the
-                    // pivotal moment of the whole flow:
-                    //   1. Mark received_confirmed_at on the booking (DB).
-                    //   2. Capture the Stripe payment → money moves from
-                    //      "authorized" (held on the sender's card) to
-                    //      "captured" (collected by Jibly's account).
-                    //      The wallet considers captured = available, so
-                    //      the traveler will see their net (price / 1.15)
-                    //      in their Wallet page immediately after.
-                    //   3. Unlock the mutual review for both parties.
+                    // Sender confirms they got their package. We call ONE
+                    // server endpoint that atomically:
+                    //   1. Sets received_confirmed_at on the booking
+                    //   2. Captures the Stripe payment authorization
+                    //   3. Sets payment_status='captured' in our DB
                     //
-                    // We do the DB write first because it's cheap; then we
-                    // fire Stripe capture. If Stripe fails we don't roll
-                    // back the DB — the booking is still "received", and
-                    // the captured-by-trigger reconciliation can pick it up
-                    // later. The user sees a non-blocking warning.
+                    // Doing all three on the server avoids the previous bug
+                    // where a flaky network or a 403 could leave the booking
+                    // in a "received but not captured" zombie state — the
+                    // traveler's money stuck on Stripe's hold forever.
+                    //
+                    // The endpoint is idempotent: calling it twice on an
+                    // already-confirmed booking is harmless.
                     const booking = myBookings.find((b) => b.id === bookingId);
                     try {
-                      await browser.confirmBookingReceipt(bookingId);
+                      const res = await fetch('/api/booking/confirm-receipt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ bookingIntentId: bookingId }),
+                      });
+                      const json = await res.json().catch(() => ({}));
+
+                      if (!res.ok) {
+                        // If the receipt got recorded but only the capture
+                        // failed (Stripe down, etc.), we still want to
+                        // reflect the receipt in the UI — the user did
+                        // their part. The reconciliation job picks up the
+                        // capture later.
+                        if (json?.receiptRecorded) {
+                          setMyBookings((prev) =>
+                            prev.map((b) =>
+                              b.id === bookingId
+                                ? {
+                                    ...b,
+                                    received_confirmed_at: new Date().toISOString(),
+                                  }
+                                : b
+                            )
+                          );
+                          alert(
+                            'Réception confirmée, mais le transfert au voyageur est en attente. Nous nous en occupons.'
+                          );
+                          return;
+                        }
+                        // Hard failure — nothing recorded.
+                        console.warn('[me] confirm receipt failed:', json);
+                        alert('Impossible de confirmer pour le moment. Réessayez.');
+                        return;
+                      }
+
+                      // Success — update both received_confirmed_at and
+                      // payment_status locally (optimistic). The wallet on
+                      // next render will reflect the new captured balance.
                       setMyBookings((prev) =>
                         prev.map((b) =>
                           b.id === bookingId
-                            ? { ...b, received_confirmed_at: new Date().toISOString() }
+                            ? {
+                                ...b,
+                                received_confirmed_at: new Date().toISOString(),
+                                payment_status: json?.captured
+                                  ? ('captured' as const)
+                                  : b.payment_status,
+                              }
                             : b
                         )
                       );
                     } catch (e) {
-                      console.warn('[me] confirm receipt failed:', e);
+                      console.warn('[me] confirm receipt network error:', e);
                       alert('Impossible de confirmer pour le moment. Réessayez.');
-                      return;
-                    }
-
-                    // Capture the Stripe payment now that the sender has
-                    // confirmed receipt. Only run if we actually have a
-                    // payment_intent_id and the payment is currently
-                    // authorized (not already captured/cancelled).
-                    if (
-                      booking?.payment_intent_id &&
-                      booking.payment_status === 'authorized'
-                    ) {
-                      try {
-                        const res = await fetch('/api/stripe/capture', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            paymentIntentId: booking.payment_intent_id,
-                            bookingIntentId: bookingId,
-                          }),
-                        });
-                        if (res.ok) {
-                          // Optimistic local update so the wallet pill in
-                          // the navbar and any in-flight UI reflect the
-                          // captured state right away. The wallet page
-                          // will re-fetch on its next mount.
-                          setMyBookings((prev) =>
-                            prev.map((b) =>
-                              b.id === bookingId
-                                ? { ...b, payment_status: 'captured' as const }
-                                : b
-                            )
-                          );
-                        } else {
-                          console.warn(
-                            '[me] Stripe capture returned non-OK',
-                            res.status
-                          );
-                        }
-                      } catch (e) {
-                        console.warn('[me] Stripe capture failed:', e);
-                        // Non-blocking — the receipt is already recorded.
-                        // Support / a reconciliation job will catch this.
-                      }
                     }
                   }}
                   onOpenReview={(booking) => {
