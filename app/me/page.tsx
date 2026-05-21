@@ -2278,42 +2278,86 @@ function TripGroup({
     (p) => p.row.status !== 'confirmed' // only allow trip cancel if no confirmed package
   );
 
+  // Airport-code style — first 3 letters of the city, uppercase. Not IATA
+  // accurate (CAS for Casablanca, not CMN) but gives the right ticket vibe
+  // and works for any city without a lookup table.
+  const departCode = trip.departure_city.slice(0, 3).toUpperCase();
+  const arriveCode = trip.arrival_city.slice(0, 3).toUpperCase();
+
   return (
     <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
-      {/* Trip header — route + count on left, date + big earnings on right.
-          The big number is meant to be motivating: "here's how much you stand
-          to make on this flight". */}
-      <div className="px-4 py-3.5 bg-cream-50 border-b border-ink-100 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Plane className="w-4 h-4 text-ink-400 flex-shrink-0" />
-          <div className="min-w-0">
-            <div className="font-bold text-ink-600 text-[15px] truncate">
-              {trip.departure_city} → {trip.arrival_city}
+      {/* Boarding-pass-style header: two zones separated by a perforated
+          tear-line, evocative of an airline ticket. Left zone = trip itself
+          (codes, route, date). Right zone = the prize: motivating earnings
+          on a sparkle-flecked panel. */}
+      <div className="relative bg-gradient-to-br from-cream-50 to-cream-100 border-b border-ink-100">
+        {/* Perforation notches — two small semi-circles biting into the
+            sides at the tear line (about 65% across). Pure decoration. */}
+        <div className="absolute top-1/2 -translate-y-1/2 left-[63%] -translate-x-1/2 w-4 h-4 rounded-full bg-white border border-ink-100 z-10 hidden sm:block" />
+        <div className="absolute top-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-b-full bg-white border-x border-b border-ink-100 hidden sm:block" />
+        <div className="absolute bottom-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-t-full bg-white border-x border-t border-ink-100 hidden sm:block" />
+
+        <div className="flex items-stretch">
+          {/* LEFT — flight info */}
+          <div className="flex-1 px-5 py-4 min-w-0 relative">
+            {/* Codes row */}
+            <div className="flex items-center gap-3 mb-1">
+              <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
+                {departCode}
+              </div>
+              <div className="flex-1 flex items-center min-w-0 px-1">
+                <div className="h-px bg-ink-200 flex-1" />
+                <Plane className="w-4 h-4 mx-1.5 text-ink-400 -rotate-12 flex-shrink-0" />
+                <div className="h-px bg-ink-200 flex-1" />
+              </div>
+              <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
+                {arriveCode}
+              </div>
             </div>
-            <div className="text-[12px] text-ink-400">
-              {count > 0 ? `${count} ${count === 1 ? 'colis' : 'colis'}` : 'Aucun colis'}
+            {/* City names row */}
+            <div className="flex items-center justify-between text-[11px] text-ink-400 mb-3">
+              <span className="truncate max-w-[40%]">{trip.departure_city}</span>
+              <span className="truncate max-w-[40%] text-right">{trip.arrival_city}</span>
+            </div>
+            {/* Departure date + colis count, stamped style */}
+            <div className="flex items-center gap-4 text-[11px]">
+              <div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
+                  Départ
+                </div>
+                <div className="text-ink-600 font-bold num-display">
+                  {formatShortDate(trip.departure_date)}
+                </div>
+              </div>
+              <div className="h-7 w-px bg-ink-100" />
+              <div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
+                  Colis
+                </div>
+                <div className="text-ink-600 font-bold num-display">{count}</div>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="text-right">
-            <div className="text-[20px] font-extrabold text-mint-600 num-display leading-none">
+
+          {/* RIGHT — earnings panel */}
+          <div className="w-[35%] flex-shrink-0 border-l border-dashed border-ink-200 px-3 py-4 flex flex-col justify-center items-center text-center relative">
+            <div className="text-[28px] sm:text-[32px] font-extrabold text-mint-600 num-display leading-none">
               {formatEuros(totalNet)}
             </div>
-            <div className="text-[11px] text-ink-400 num-display mt-0.5">
-              {formatShortDate(trip.departure_date)}
+            <div className="text-[10px] sm:text-[11px] text-ink-500 font-medium mt-1.5 leading-snug px-1">
+              à gagner sur ce trajet ✨
             </div>
+            {isCancelable && (
+              <button
+                onClick={() => onCancelTrip(trip.id)}
+                className="absolute top-1 right-1 p-1.5 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
+                aria-label="Annuler ce trajet"
+                title="Annuler ce trajet"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
           </div>
-          {isCancelable && (
-            <button
-              onClick={() => onCancelTrip(trip.id)}
-              className="p-1.5 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
-              aria-label="Annuler ce trajet"
-              title="Annuler ce trajet"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
       </div>
 
