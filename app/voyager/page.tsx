@@ -37,6 +37,10 @@ export default function VoyagerPage() {
   const [flightNumber, setFlightNumber] = useState('');
   const [departureAirport, setDepartureAirport] = useState('');
   const [arrivalAirport, setArrivalAirport] = useState('');
+  // Airport codes are an advanced field — hidden behind a toggle so the
+  // form doesn't feel cluttered. Most travelers won't bother; power users
+  // can open it for a sharper boarding-pass display.
+  const [showAirportCodes, setShowAirportCodes] = useState(false);
 
   const [space, setSpace] = useState<AvailableSpace | null>(null);
   const [minComp, setMinComp] = useState(20);
@@ -177,7 +181,8 @@ export default function VoyagerPage() {
                   {/* Flight details — number is required (credibility),
                       airports stay optional. Layout: flight number on its
                       own row so the validation hint reads well, then
-                      airports in a 2-col grid. */}
+                      airports tucked behind an "advanced" toggle so the
+                      form doesn't feel intimidating to casual travelers. */}
                   <div className="pt-2">
                     <div className="text-[13px] font-semibold text-ink-500 mb-3 flex items-center gap-2">
                       <span>Détails du vol</span>
@@ -199,24 +204,68 @@ export default function VoyagerPage() {
                           </p>
                         )}
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Input
-                          type="text"
-                          label="Aéroport départ"
-                          placeholder="CMN"
-                          value={departureAirport}
-                          onChange={(e) => setDepartureAirport(e.target.value.toUpperCase().slice(0, 4))}
-                          maxLength={4}
-                        />
-                        <Input
-                          type="text"
-                          label="Aéroport arrivée"
-                          placeholder="CDG"
-                          value={arrivalAirport}
-                          onChange={(e) => setArrivalAirport(e.target.value.toUpperCase().slice(0, 4))}
-                          maxLength={4}
-                        />
-                      </div>
+
+                      {/* Advanced toggle for airport IATA codes. Closed by
+                          default — keeps the form short. When opened, animates
+                          smoothly. The chevron rotates to signal state. */}
+                      <button
+                        type="button"
+                        onClick={() => setShowAirportCodes((v) => !v)}
+                        className="flex items-center gap-1.5 text-[12px] text-ink-400 hover:text-ink-600 transition-colors"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className={`transition-transform ${showAirportCodes ? 'rotate-90' : ''}`}
+                        >
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                        <span>
+                          {showAirportCodes ? 'Masquer' : 'Ajouter'} les codes aéroports
+                          <span className="text-ink-300 ml-1">(optionnel)</span>
+                        </span>
+                      </button>
+
+                      <AnimatePresence initial={false}>
+                        {showAirportCodes && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="grid grid-cols-2 gap-3 pt-1">
+                              <Input
+                                type="text"
+                                label="Aéroport départ"
+                                placeholder="CMN"
+                                value={departureAirport}
+                                onChange={(e) => setDepartureAirport(e.target.value.toUpperCase().slice(0, 4))}
+                                maxLength={4}
+                              />
+                              <Input
+                                type="text"
+                                label="Aéroport arrivée"
+                                placeholder="CDG"
+                                value={arrivalAirport}
+                                onChange={(e) => setArrivalAirport(e.target.value.toUpperCase().slice(0, 4))}
+                                maxLength={4}
+                              />
+                            </div>
+                            <p className="mt-2 text-[11px] text-ink-400 leading-relaxed">
+                              Codes IATA à 3 lettres. Affichés sur votre billet d&apos;embarquement Jibly.
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                 </div>
