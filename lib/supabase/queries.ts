@@ -276,6 +276,83 @@ export async function createMatch(
   if (error) throw error;
   return data;
 }
+// =============================================================================
+// MATCHING — list trips that fit a freshly-published shipping request
+// =============================================================================
+// Called right after createShippingRequest so we can surface "✨ 3 voyageurs
+// sur votre route" instead of just a thank-you screen. The criteria are
+// intentionally generous (any trip departing on/before the desired delivery
+// date) — we'd rather surface a few near-fits than show zero matches when
+// a perfectly viable traveler is leaving a day early.
+
+export type MatchingTrip = {
+  id: string;
+  user_id: string;
+  departure_city: string;
+  arrival_city: string;
+  departure_date: string;
+  compensation_min: number;
+  flight_number: string | null;
+  available_space: AvailableSpace;
+  user: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    rating: number;
+    trips_completed: number;
+    verification_level: VerificationLevel;
+  } | null;
+};
+
+export async function listMatchingTripsForRequest(
+  supabase: SB,
+  pickupCity: string,
+  destinationCity: string,
+  desiredDeliveryDate: string
+): Promise<MatchingTrip[]> {
+  // 1) Trips on the same route, departing on/before the desired date, still
+  //    open. We sort by departure_date desc so the soonest-but-still-in-time
+  //    trips come first — those are the most actionable.
+  const { data: trips, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('traveler_trips')
+        .select(
+          'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
+        )
+        .eq('departure_city', pickupCity)
+        .eq('arrival_city', destinationCity)
+        .lte('departure_date', desiredDeliveryDate)
+        .eq('status', 'open')
+        .order('departure_date', { ascending: false })
+        .limit(20)
+    ),
+    6000,
+    'Matching trips'
+  );
+  if (error) throw error;
+  if (!trips || trips.length === 0) return [];
+
+  // 2) Hydrate traveler profiles in one batch (avoids the RLS-join stall
+  //    pattern we use everywhere else).
+  const userIds = Array.from(new Set(trips.map((t: any) => t.user_id)));
+  const { data: profiles } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, rating, trips_completed, verification_level')
+        .in('id', userIds)
+    ),
+    6000,
+    'Matching traveler profiles'
+  );
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  return trips.map((t: any) => ({
+    ...t,
+    user: (profileById.get(t.user_id) as any) ?? null,
+  }));
+}
 
 // ============================================================================
 // REVIEWS
@@ -1237,6 +1314,8 @@ export const browser = {
   listMyRequests: (userId: string) => listMyRequests(getBrowserClient(), userId),
   createShippingRequest: (input: Parameters<typeof createShippingRequest>[1]) => createShippingRequest(getBrowserClient(), input),
   listMyMatches: (userId: string) => listMyMatches(getBrowserClient(), userId),
+  listMatchingTripsForRequest: (pickupCity: string, destinationCity: string, desiredDeliveryDate: string) =>
+    listMatchingTripsForRequest(getBrowserClient(), pickupCity, destinationCity, desiredDeliveryDate),
   createMatch: (travelerTripId: string, shippingRequestId: string, agreedCompensation?: number) =>
     createMatch(getBrowserClient(), travelerTripId, shippingRequestId, agreedCompensation),
   listReviewsForUser: (userId: string) => listReviewsForUser(getBrowserClient(), userId),
