@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X, User, LogOut, Wallet, Inbox } from 'lucide-react';
+import { Menu, X, User, LogOut, Wallet, Bell } from 'lucide-react';
 import { Logo } from '@/components/illustrations/Logo';
+import { NotificationsDropdown } from '@/components/NotificationsDropdown';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { nameInitial, formatName, formatEuros } from '@/lib/utils';
@@ -13,16 +14,19 @@ import { browser } from '@/lib/supabase/queries';
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [hasUnread, setHasUnread] = useState(false);
+  // We still poll unread notifications count for the MOBILE bell (the
+  // dropdown component handles its own count for the desktop bell).
+  const [mobileUnread, setMobileUnread] = useState(0);
   const { t } = useI18n();
   const { user, profile, loading, signOut } = useAuth();
 
-  // Fetch wallet balance + unread status when the user logs in. Both are
-  // best-effort: failures fall back to 0/false silently.
+  // Wallet balance is fetched once per session; the bell count is also
+  // refreshed every 30s. The dropdown component owns its own count, so
+  // here we only need it for the mobile-collapsed bell icon.
   useEffect(() => {
     if (!user) {
       setWalletBalance(null);
-      setHasUnread(false);
+      setMobileUnread(0);
       return;
     }
     let cancelled = false;
@@ -30,11 +34,19 @@ export function Navbar() {
       .getWalletBalance(user.id)
       .then((v) => { if (!cancelled) setWalletBalance(v); })
       .catch(() => { if (!cancelled) setWalletBalance(0); });
-    browser
-      .hasUnreadMessages(user.id)
-      .then((v) => { if (!cancelled) setHasUnread(v); })
-      .catch(() => { if (!cancelled) setHasUnread(false); });
-    return () => { cancelled = true; };
+
+    const refreshUnread = () => {
+      browser
+        .countUnreadNotifications(user.id)
+        .then((n) => { if (!cancelled) setMobileUnread(n); })
+        .catch(() => { if (!cancelled) setMobileUnread(0); });
+    };
+    refreshUnread();
+    const iv = setInterval(refreshUnread, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
   }, [user]);
 
   const navLinks = [
@@ -68,19 +80,10 @@ export function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-2">
-            {user && (
-              <Link
-                href="/messages"
-                className="relative p-2 rounded-full hover:bg-ink-50 text-ink-400 hover:text-ink-600 transition-colors"
-                aria-label="Messages"
-                title="Messages"
-              >
-                <Inbox className="w-[18px] h-[18px]" />
-                {hasUnread && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blush-500 border border-cream-50" />
-                )}
-              </Link>
-            )}
+            {/* Notifications bell — replaces the previous Inbox icon.
+                Inbox messages are still reachable, but as a secondary
+                entry from inside the notifications dropdown. */}
+            {user && <NotificationsDropdown />}
 
             {loading ? (
               <>
@@ -103,9 +106,7 @@ export function Navbar() {
               </>
             ) : user ? (
               <>
-                {/* Wallet pill — Vinted style. Shows balance when > 0,
-                    just the icon otherwise. Click goes to /wallet for the
-                    full transactions view. */}
+                {/* Wallet pill — Vinted style */}
                 <Link
                   href="/wallet"
                   className="ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 transition-colors"
@@ -155,9 +156,10 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile right-side cluster — wallet pill + inbox + burger.
-              Order matters: wallet first so it's the most prominent;
-              inbox stays compact (just icon); burger last as standard. */}
+          {/* Mobile right-side cluster — wallet pill + bell + burger.
+              The dropdown is full-featured on desktop, but on mobile we
+              just link to the dedicated /notifications page when the bell
+              is tapped — a small popover doesn't work well on phone. */}
           <div className="flex md:hidden items-center gap-1">
             {user && (
               <Link
@@ -174,13 +176,15 @@ export function Navbar() {
             )}
             {user && (
               <Link
-                href="/messages"
+                href="/notifications"
                 className="relative p-2 text-ink-500"
-                aria-label="Messages"
+                aria-label="Notifications"
               >
-                <Inbox className="h-5 w-5" />
-                {hasUnread && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blush-500 border border-cream-50" />
+                <Bell className="h-5 w-5" />
+                {mobileUnread > 0 && (
+                  <span className="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-1 rounded-full bg-blush-500 text-white text-[9px] font-bold flex items-center justify-center num-display border border-cream-50">
+                    {mobileUnread > 9 ? '9+' : mobileUnread}
+                  </span>
                 )}
               </Link>
             )}
@@ -226,9 +230,6 @@ export function Navbar() {
                     <User className="w-4 h-4" />
                     {t.nav_my_space}
                   </Link>
-                  {/* Wallet entry in the drawer — full label here since we
-                      have the room. Also surfaces the balance so the user
-                      doesn't have to navigate to find it. */}
                   <Link
                     href="/wallet"
                     className="py-3 text-base font-medium text-ink-500 flex items-center gap-2"
@@ -239,6 +240,19 @@ export function Navbar() {
                     <span className="ml-auto text-[14px] font-bold text-ink-600 num-display">
                       {walletBalance !== null ? formatEuros(walletBalance) : '—'}
                     </span>
+                  </Link>
+                  <Link
+                    href="/notifications"
+                    className="py-3 text-base font-medium text-ink-500 flex items-center gap-2"
+                    onClick={() => setOpen(false)}
+                  >
+                    <Bell className="w-4 h-4" />
+                    <span>Notifications</span>
+                    {mobileUnread > 0 && (
+                      <span className="ml-auto min-w-[18px] h-5 px-1.5 rounded-full bg-blush-500 text-white text-[11px] font-bold flex items-center justify-center num-display">
+                        {mobileUnread > 9 ? '9+' : mobileUnread}
+                      </span>
+                    )}
                   </Link>
                   <form action="/auth/sign-out" method="post" className="mt-2">
                     <button
