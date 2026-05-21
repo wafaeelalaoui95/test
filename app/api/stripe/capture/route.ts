@@ -7,12 +7,18 @@ import { getServerClient } from '@/lib/supabase/server';
  * POST /api/stripe/capture
  * Body: { paymentIntentId: string, bookingIntentId: string }
  *
- * Called when the traveler ACCEPTS a booking. Captures the previously
- * authorised payment — i.e. actually pulls the funds from the sender's card.
+ * Captures the previously-authorised payment — i.e. actually pulls funds
+ * from the sender's card. The escrow is released only when the *sender*
+ * confirms receipt, so the typical caller is the sender clicking "J'ai
+ * bien reçu" on /me. We accept either party for resilience (e.g. if we
+ * later add an admin tool or an automated reconciliation job).
  *
- * Only the traveler who owns the trip can trigger capture for that booking.
- * We re-verify ownership server-side because RLS doesn't apply to Stripe
- * calls — we must do the auth check ourselves.
+ * Authorisation: the caller must be either
+ *   - the SENDER of this booking (sender_id), OR
+ *   - the TRAVELER who owns the trip (traveler_trip.user_id), OR
+ *   - the user set as traveler_user_id directly on the booking
+ *
+ * We re-verify server-side because RLS doesn't apply to Stripe calls.
  */
 const schema = z.object({
   paymentIntentId: z.string().min(1),
@@ -33,31 +39,57 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  // Verify that this user is actually the traveler for this booking — we go
-  // through traveler_trips because booking_intents only stores the trip ID.
+  // Pull the booking + minimal context for auth & idempotency checks.
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
-    .select('id, traveler_trip_id, payment_intent_id, payment_status')
+    .select(
+      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, received_confirmed_at'
+    )
     .eq('id', body.bookingIntentId)
     .maybeSingle();
   if (intentErr || !intent) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
+
   if (intent.payment_intent_id !== body.paymentIntentId) {
     return NextResponse.json({ error: 'Payment intent mismatch' }, { status: 400 });
   }
 
-  const { data: trip } = await supabase
-    .from('traveler_trips')
-    .select('user_id')
-    .eq('id', intent.traveler_trip_id)
-    .maybeSingle();
-  if (!trip || trip.user_id !== user.id) {
+  // ===== Authorisation =====
+  // The caller is allowed if they are:
+  //   - the sender of this booking
+  //   - the traveler owner of the trip
+  //   - the user set as traveler_user_id directly
+  let isSender = intent.sender_id === user.id;
+  let isTraveler = intent.traveler_user_id === user.id;
+
+  // Also check trip ownership if the booking is tied to a trip — covers the
+  // case where traveler_user_id wasn't set but the user owns the trip.
+  if (!isTraveler && intent.traveler_trip_id) {
+    const { data: trip } = await supabase
+      .from('traveler_trips')
+      .select('user_id')
+      .eq('id', intent.traveler_trip_id)
+      .maybeSingle();
+    if (trip && trip.user_id === user.id) {
+      isTraveler = true;
+    }
+  }
+
+  if (!isSender && !isTraveler) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // If already captured, return success idempotently. Avoids double-charging
-  // on flaky network / double-click scenarios.
+  // Sender-initiated capture should only happen AFTER they have confirmed
+  // receipt — protects against accidental early captures.
+  if (isSender && !isTraveler && !intent.received_confirmed_at) {
+    return NextResponse.json(
+      { error: 'Receipt not yet confirmed' },
+      { status: 400 }
+    );
+  }
+
+  // Idempotency: already captured → return success without re-calling Stripe.
   if (intent.payment_status === 'captured') {
     return NextResponse.json({ ok: true, alreadyCaptured: true });
   }
@@ -66,12 +98,18 @@ export async function POST(req: NextRequest) {
   try {
     const captured = await stripe.paymentIntents.capture(body.paymentIntentId);
 
-    // Mirror Stripe status into our DB so the UI knows immediately,
+    // Mirror the Stripe status into our DB so the UI sees it immediately
     // without waiting for the webhook.
-    await supabase
+    const { error: updateErr } = await supabase
       .from('booking_intents')
       .update({ payment_status: 'captured' })
       .eq('id', body.bookingIntentId);
+
+    if (updateErr) {
+      console.error('[capture] DB update failed after Stripe capture:', updateErr);
+      // Stripe succeeded but our DB didn't reflect it. We still return ok
+      // because the money moved; the webhook will reconcile if configured.
+    }
 
     return NextResponse.json({ ok: true, status: captured.status });
   } catch (e: any) {
