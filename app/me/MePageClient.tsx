@@ -22,18 +22,21 @@ import {
   Wallet,
   Camera,
   X,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
 import { DeliveryProofModal } from '@/components/DeliveryProofModal';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { ChatModal } from '@/components/ChatModal';
+import { ReviewModal } from '@/components/ReviewModal';
 import { Input } from '@/components/ui/Form';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
 import { formatShortDate, formatName, nameInitial, displayName, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
+import type { ReviewForBooking } from '@/lib/supabase/queries';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
@@ -74,6 +77,7 @@ type IncomingIntent = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
+  received_confirmed_at: string | null;
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
@@ -89,6 +93,7 @@ export default function MyPage({
   initialIncomingIntents,
   initialMyBookings,
   initialMyProposals,
+  initialReviews = [],
 }: {
   initialUser: { id: string; email: string | null };
   initialProfile: Profile | null;
@@ -98,6 +103,7 @@ export default function MyPage({
   initialIncomingIntents: IncomingIntent[];
   initialMyBookings: MyBooking[];
   initialMyProposals: TravelerProposal[];
+  initialReviews?: ReviewForBooking[];
 }) {
   const { t } = useI18n();
   // `user` and `profile` still come from useAuth so realtime auth changes
@@ -114,6 +120,17 @@ export default function MyPage({
   const [incomingIntents, setIncomingIntents] = useState<IncomingIntent[]>(initialIncomingIntents);
   const [myBookings, setMyBookings] = useState<MyBooking[]>(initialMyBookings);
   const [myProposals, setMyProposals] = useState<TravelerProposal[]>(initialMyProposals);
+  // Reviews tied to all the bookings the user is part of. We keep this in
+  // local state so we can optimistically lock the UI after submitting a
+  // review without a roundtrip.
+  const [reviews, setReviews] = useState<ReviewForBooking[]>(initialReviews);
+  // ReviewModal target — set when the user clicks "Noter X", null when closed.
+  const [reviewing, setReviewing] = useState<{
+    bookingIntentId: string;
+    reviewedUserId: string;
+    reviewedUserName: string;
+    reviewedRole: 'sender' | 'traveler';
+  } | null>(null);
   // Data is already there on first render — no loading state needed at boot.
   const [dataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +149,27 @@ export default function MyPage({
     otherInitial: string;
     contextLine?: string;
   } | null>(null);
+
+  // Has the current user already reviewed this booking? Used to flip the
+  // "Noter" button into a locked "Vous avez noté" badge.
+  const hasReviewed = (bookingIntentId: string): boolean =>
+    !!user && reviews.some(
+      (r) => r.booking_intent_id === bookingIntentId && r.reviewer_id === user.id
+    );
+
+  // Did the OTHER party review me on this booking? Used to surface a small
+  // "X vous a noté ★★★★★" preview inline on the card.
+  const reviewFromOther = (bookingIntentId: string): ReviewForBooking | null => {
+    if (!user) return null;
+    return (
+      reviews.find(
+        (r) =>
+          r.booking_intent_id === bookingIntentId &&
+          r.reviewer_id !== user.id &&
+          r.reviewed_user_id === user.id
+      ) ?? null
+    );
+  };
 
   // Deep-link from notification emails: if the URL contains ?chat={id},
   // open the chat modal once data is loaded. Run on every relevant data
@@ -404,6 +442,18 @@ export default function MyPage({
                       contextLine: `${intent.pickup_city} → ${intent.destination_city}`,
                     });
                   }}
+                  onOpenReview={(intent) => {
+                    // Traveler reviews the sender of this confirmed booking.
+                    setReviewing({
+                      bookingIntentId: intent.id,
+                      reviewedUserId: intent.sender_id,
+                      reviewedUserName:
+                        displayName(intent.sender_profile?.full_name) || 'L\'expéditeur',
+                      reviewedRole: 'sender',
+                    });
+                  }}
+                  hasReviewed={hasReviewed}
+                  reviewFromOther={reviewFromOther}
                   t={t}
                 />
               )}
@@ -433,6 +483,36 @@ export default function MyPage({
                       contextLine: `${booking.pickup_city} → ${booking.destination_city}`,
                     });
                   }}
+                  onConfirmReceipt={async (bookingId) => {
+                    // Sender confirms they got their package. This unlocks
+                    // mutual reviews. Optimistic update keeps the UI snappy.
+                    try {
+                      await browser.confirmBookingReceipt(bookingId);
+                      setMyBookings((prev) =>
+                        prev.map((b) =>
+                          b.id === bookingId
+                            ? { ...b, received_confirmed_at: new Date().toISOString() }
+                            : b
+                        )
+                      );
+                    } catch (e) {
+                      console.warn('[me] confirm receipt failed:', e);
+                      alert('Impossible de confirmer pour le moment. Réessayez.');
+                    }
+                  }}
+                  onOpenReview={(booking) => {
+                    // Sender reviews the traveler of this delivered booking.
+                    if (!booking.traveler_profile) return;
+                    setReviewing({
+                      bookingIntentId: booking.id,
+                      reviewedUserId: booking.traveler_profile.id,
+                      reviewedUserName:
+                        displayName(booking.traveler_profile.full_name) || 'Le voyageur',
+                      reviewedRole: 'traveler',
+                    });
+                  }}
+                  hasReviewed={hasReviewed}
+                  reviewFromOther={reviewFromOther}
                   t={t}
                 />
               )}
@@ -498,6 +578,38 @@ export default function MyPage({
                   window.history.replaceState({}, '', url.toString());
                 }
               }
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Review modal — mutual rating after a booking is confirmed received.
+          Optimistically inserts the new review into local state so the lock
+          (and the "X vous a noté" preview, once the other side reviews) kick
+          in without a refetch. */}
+      <AnimatePresence>
+        {reviewing && user && (
+          <ReviewModal
+            bookingIntentId={reviewing.bookingIntentId}
+            reviewerId={user.id}
+            reviewedUserId={reviewing.reviewedUserId}
+            reviewedUserName={reviewing.reviewedUserName}
+            reviewedRole={reviewing.reviewedRole}
+            onClose={() => setReviewing(null)}
+            onSuccess={(rating) => {
+              setReviews((prev) => [
+                ...prev,
+                {
+                  id: `temp-${Date.now()}`,
+                  booking_intent_id: reviewing.bookingIntentId,
+                  reviewer_id: user.id,
+                  reviewed_user_id: reviewing.reviewedUserId,
+                  rating,
+                  comment: null,
+                  created_at: new Date().toISOString(),
+                },
+              ]);
+              setReviewing(null);
             }}
           />
         )}
@@ -709,6 +821,7 @@ type TravelerProposal = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
+  received_confirmed_at: string | null;
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
@@ -735,6 +848,7 @@ type MyBooking = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
+  received_confirmed_at: string | null;
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
@@ -813,12 +927,22 @@ function BookingCard({
   onAcceptProposal,
   onDeclineProposal,
   onOpenChat,
+  onConfirmReceipt,
+  onOpenReview,
+  hasReviewed,
+  otherReview,
   t,
 }: {
   booking: MyBooking;
   onAcceptProposal?: (b: MyBooking) => void;
   onDeclineProposal?: (id: string) => void;
   onOpenChat?: (b: MyBooking) => void;
+  // The 3 props below are only used in the delivered-card branch — they're
+  // optional so callers from the "todo proposals" section don't need them.
+  onConfirmReceipt?: (bookingId: string) => void;
+  onOpenReview?: (b: MyBooking) => void;
+  hasReviewed?: boolean;
+  otherReview?: ReviewForBooking | null;
   t: Translations;
 }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
@@ -833,14 +957,17 @@ function BookingCard({
   // a server route. We'll show the phone if set, and a generic message
   // otherwise — see the "Contact" block below.
 
-  // Confirmed AND already delivered (proof uploaded) → compact "historic"
-  // version. Just one line, with a small "Voir la preuve" link that opens
-  // the photo in a popup. No banner, no contacts, no celebration. The deal
-  // is done.
+  // Confirmed AND already delivered (proof uploaded) — three sub-states:
+  //   A) sender hasn't confirmed receipt yet → show "J'ai bien reçu" button
+  //   B) confirmed but not yet reviewed → show "Noter" button
+  //   C) reviewed → small "Vous avez noté" badge (+ what the other side wrote)
+  // All three states keep the compact one-line layout from before; the right
+  // side just swaps content based on state.
   if (booking.status === 'confirmed' && booking.delivery_proof_url) {
+    const isReceived = !!booking.received_confirmed_at;
     return (
       <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
             {cat?.icon}
           </div>
@@ -860,7 +987,59 @@ function BookingCard({
           >
             Voir la preuve
           </a>
+
+          {/* State A: not yet confirmed received */}
+          {!isReceived && onConfirmReceipt && (
+            <button
+              type="button"
+              onClick={() => onConfirmReceipt(booking.id)}
+              className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
+            >
+              J&apos;ai bien reçu
+            </button>
+          )}
+
+          {/* State B: received, not yet reviewed */}
+          {isReceived && !hasReviewed && onOpenReview && (
+            <button
+              type="button"
+              onClick={() => onOpenReview(booking)}
+              className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+            >
+              <Star className="w-3 h-3 fill-white" strokeWidth={0} />
+              Noter
+            </button>
+          )}
+
+          {/* State C: reviewed — locked badge */}
+          {isReceived && hasReviewed && (
+            <span className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+              <Star className="w-3 h-3 fill-current" strokeWidth={0} />
+              Vous avez noté
+            </span>
+          )}
         </div>
+
+        {/* If the traveler already reviewed me, show a tiny preview below */}
+        {otherReview && (
+          <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
+            <span>{travelerName.split(' ')[0]} vous a noté</span>
+            <span className="inline-flex items-center gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-3 h-3 ${
+                    i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
+                  }`}
+                  strokeWidth={0}
+                />
+              ))}
+            </span>
+            {otherReview.comment && (
+              <span className="text-ink-500">· « {otherReview.comment} »</span>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -2100,6 +2279,9 @@ function TripsView({
   onProofUploaded,
   onCancelTrip,
   onOpenChat,
+  onOpenReview,
+  hasReviewed,
+  reviewFromOther,
   t,
 }: {
   trips: TravelerTripRow[];
@@ -2109,6 +2291,9 @@ function TripsView({
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onCancelTrip: (tripId: string) => Promise<void>;
   onOpenChat: (intent: IncomingIntent) => void;
+  onOpenReview: (intent: IncomingIntent) => void;
+  hasReviewed: (bookingIntentId: string) => boolean;
+  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
   t: Translations;
 }) {
   // We group the traveler's work by TRIP — the user thinks "what am I
@@ -2121,9 +2306,17 @@ function TripsView({
 
   const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
 
-  // Active items linked to a trip: incoming bookings + my proposals
+  // Active items linked to a trip: incoming bookings + my proposals.
+  // We keep:
+  //   - non-delivered active bookings (in flight)
+  //   - bookings that are delivered AND confirmed by the sender BUT not
+  //     yet reviewed by the traveler (so the "Noter" button is reachable)
+  // Once the traveler reviews, the booking is moved to /historique.
   const activeIncoming = incomingIntents.filter(
-    (i) => i.status !== 'cancelled' && !i.delivery_proof_url
+    (i) =>
+      i.status !== 'cancelled' &&
+      (!i.delivery_proof_url ||
+        (i.received_confirmed_at && !hasReviewed(i.id)))
   );
   const activeProposals = myProposals.filter(
     (p) => p.status !== 'cancelled' && !p.delivery_proof_url
@@ -2218,6 +2411,9 @@ function TripsView({
               onProofUploaded={onProofUploaded}
               onCancelTrip={onCancelTrip}
               onOpenChat={onOpenChat}
+              onOpenReview={onOpenReview}
+              hasReviewed={hasReviewed}
+              reviewFromOther={reviewFromOther}
               t={t}
             />
           ))}
@@ -2248,6 +2444,9 @@ function TripGroup({
   onProofUploaded,
   onCancelTrip,
   onOpenChat,
+  onOpenReview,
+  hasReviewed,
+  reviewFromOther,
   t,
 }: {
   trip: TravelerTripRow;
@@ -2259,6 +2458,9 @@ function TripGroup({
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onCancelTrip: (tripId: string) => Promise<void>;
   onOpenChat: (intent: IncomingIntent) => void;
+  onOpenReview: (intent: IncomingIntent) => void;
+  hasReviewed: (bookingIntentId: string) => boolean;
+  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
   t: Translations;
 }) {
   // "Potential earnings" = sum of NET (post-fee) for every package on this
@@ -2349,7 +2551,7 @@ function TripGroup({
               {formatEuros(totalNet)}
             </div>
             <div className="text-[11px] sm:text-[12px] text-lavender-700/80 font-medium mt-1.5 leading-snug px-1">
-              De gains sur ce vol grâce à Jibly ✨
+              de gains sur ce vol ✨
             </div>
             {isCancelable && (
               <button
@@ -2392,6 +2594,9 @@ function TripGroup({
                   onUpdate={onUpdateIntent}
                   onProofUploaded={onProofUploaded}
                   onOpenChat={onOpenChat}
+                  onOpenReview={onOpenReview}
+                  hasReviewed={hasReviewed(p.row.id)}
+                  otherReview={reviewFromOther(p.row.id)}
                 />
               ) : (
                 <ProposalCardInline proposal={p.row} />
@@ -2412,11 +2617,17 @@ function IntentCardInline({
   onUpdate,
   onProofUploaded,
   onOpenChat,
+  onOpenReview,
+  hasReviewed,
+  otherReview,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onOpenChat: (intent: IncomingIntent) => void;
+  onOpenReview: (intent: IncomingIntent) => void;
+  hasReviewed: boolean;
+  otherReview: ReviewForBooking | null;
 }) {
   const [showProofModal, setShowProofModal] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
@@ -2507,7 +2718,50 @@ function IntentCardInline({
             </button>
           </div>
         )}
+
+        {/* Reviews — visible once the booking is delivered AND the sender
+            has confirmed receipt. Two states: "Noter" button, then locked. */}
+        {intent.delivery_proof_url && intent.received_confirmed_at && (
+          <div className="flex-shrink-0">
+            {!hasReviewed ? (
+              <button
+                type="button"
+                onClick={() => onOpenReview(intent)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+              >
+                <Star className="w-3 h-3 fill-white" strokeWidth={0} />
+                Noter
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+                <Star className="w-3 h-3 fill-current" strokeWidth={0} />
+                Vous avez noté
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* If the sender already reviewed me, show a tiny preview below */}
+      {otherReview && (
+        <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
+          <span>{senderName.split(' ')[0]} vous a noté</span>
+          <span className="inline-flex items-center gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                className={`w-3 h-3 ${
+                  i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
+                }`}
+                strokeWidth={0}
+              />
+            ))}
+          </span>
+          {otherReview.comment && (
+            <span className="text-ink-500">· « {otherReview.comment} »</span>
+          )}
+        </div>
+      )}
 
       <AnimatePresence>
         {showProofModal && (
@@ -2574,6 +2828,10 @@ function SendsView({
   onAcceptProposal,
   onDeclineProposal,
   onOpenChat,
+  onConfirmReceipt,
+  onOpenReview,
+  hasReviewed,
+  reviewFromOther,
   t,
 }: {
   bookings: MyBooking[];
@@ -2581,6 +2839,10 @@ function SendsView({
   onAcceptProposal: (b: MyBooking) => void;
   onDeclineProposal: (id: string) => void;
   onOpenChat: (b: MyBooking) => void;
+  onConfirmReceipt: (bookingId: string) => void;
+  onOpenReview: (b: MyBooking) => void;
+  hasReviewed: (bookingIntentId: string) => boolean;
+  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
   t: Translations;
 }) {
   // 🔥 À traiter: traveler proposals on my requests (accept and pay)
@@ -2589,16 +2851,23 @@ function SendsView({
   );
 
   // ⏳ En cours
+  // ⏳ En cours : pending (initiés par sender), confirmed sans proof, OR
+  // delivered but NOT yet confirmed by the sender. The sender must click
+  // "J'ai bien reçu" to close out the booking — only then it goes to history.
   const inProgressBookings = bookings.filter(
     (b) =>
       (b.status === 'confirmed' && !b.delivery_proof_url) ||
-      (b.status === 'pending' && b.initiated_by === 'sender')
+      (b.status === 'pending' && b.initiated_by === 'sender') ||
+      (b.status === 'confirmed' && b.delivery_proof_url && !b.received_confirmed_at)
   );
   const activeRequests = requests.filter((r) => r.status === 'pending');
 
-  // 📜 Historique côté sender: bookings cancelled/delivered
+  // 📜 Historique côté sender: bookings cancelled OR (delivered AND
+  // confirmed received by sender — the deal is fully closed).
   const historyBookings = bookings.filter(
-    (b) => b.status === 'cancelled' || (b.status === 'confirmed' && b.delivery_proof_url)
+    (b) =>
+      b.status === 'cancelled' ||
+      (b.status === 'confirmed' && b.delivery_proof_url && b.received_confirmed_at)
   );
 
   const totalTodos = todoProposals.length;
@@ -2659,7 +2928,16 @@ function SendsView({
           <GroupHeader icon="⏳" label="En cours" count={inProgressBookings.length + activeRequests.length} />
           <div className="space-y-3">
             {inProgressBookings.map((b) => (
-              <BookingCard key={b.id} booking={b} onOpenChat={onOpenChat} t={t} />
+              <BookingCard
+                key={b.id}
+                booking={b}
+                onOpenChat={onOpenChat}
+                onConfirmReceipt={onConfirmReceipt}
+                onOpenReview={onOpenReview}
+                hasReviewed={hasReviewed(b.id)}
+                otherReview={reviewFromOther(b.id)}
+                t={t}
+              />
             ))}
             {activeRequests.map((req) => (
               <RequestCardSimple key={req.id} request={req} t={t} />
