@@ -1046,125 +1046,73 @@ function BookingCard({
     );
   }
 
-  // Confirmed BUT not yet delivered → rich view. The sender needs the
-  // contact info to coordinate the actual handover, and the celebration
-  // banner signals progress. Once delivered, we collapse it (above).
+  // Confirmed BUT not yet delivered → one-line card consistent with the
+  // rest of the list. Just a small "✓ Accepté" badge inline, a Message
+  // button (no WhatsApp, ever), and optionally the delivery proof preview
+  // beneath if it's been uploaded.
   if (booking.status === 'confirmed') {
     return (
-      <div className="bg-white rounded-2xl border border-mint-200 overflow-hidden">
-        {/* Celebration banner */}
-        <div className="bg-mint-50 px-5 py-4 flex items-center gap-3 border-b border-mint-200">
-          <span className="text-2xl">🎉</span>
-          <div>
-            <div className="font-bold text-mint-700 text-[15px]">
-              {travelerName.split(' ')[0]} a accepté !
+      <div className="bg-white rounded-xl px-3 py-2.5 border border-mint-200">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href={`/u/${traveler?.id}`} className="flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[12px] text-lavender-700">
+              {initial}
             </div>
-            <div className="text-[13px] text-mint-700/80">
-              Vous pouvez maintenant convenir des détails du transport.
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5">
-          <div className="flex items-start gap-4 mb-5">
-            <Link href={`/u/${traveler?.id}`} className="flex-shrink-0">
-              <div className="w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[14px] text-lavender-700">
-                {initial}
-              </div>
+          </Link>
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+            <Link
+              href={`/u/${traveler?.id}`}
+              className="font-semibold text-ink-600 hover:underline"
+            >
+              {travelerName}
             </Link>
-            <div className="flex-1 min-w-0">
-              <Link
-                href={`/u/${traveler?.id}`}
-                className="font-semibold text-ink-600 text-[15px] hover:underline"
-              >
-                {travelerName}
-              </Link>
-              <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap mt-0.5">
-                <span>{booking.pickup_city} → {booking.destination_city}</span>
-                <span>·</span>
-                <span>{trip && formatShortDate(trip.departure_date)}</span>
-                <span>·</span>
-                <span>{cat ? t[cat.labelKey] : booking.item_category}</span>
-                <span>·</span>
-                <span className="font-semibold text-ink-600">{booking.proposed_price}€</span>
-              </div>
-            </div>
+            <span className="text-ink-300">·</span>
+            <span className="text-ink-500 truncate">{booking.pickup_city} → {booking.destination_city}</span>
+            <span className="text-ink-300">·</span>
+            <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
+            {/* Compact badge replaces the old celebration banner */}
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+              ✓ Accepté
+            </span>
           </div>
-
-          {/* Delivery proof — visible only once the traveler has uploaded one */}
-          {booking.delivery_proof_url && (
-            <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3.5 mb-3">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">📸</span>
-                <div className="text-[13px] font-bold text-mint-700">
-                  Preuve de livraison
-                </div>
-              </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={booking.delivery_proof_url}
-                alt="Preuve de livraison"
-                className="w-full max-h-64 object-cover rounded-lg mb-3 border border-mint-200/40"
-              />
-              {booking.delivery_proof_receiver_name && (
-                <div className="text-[13px] text-ink-500 mb-1">
-                  <span className="text-ink-400">Remis à :</span>{' '}
-                  <strong className="text-ink-600">{booking.delivery_proof_receiver_name}</strong>
-                </div>
-              )}
-              {booking.delivery_proof_notes && (
-                <div className="text-[13px] text-ink-500 leading-relaxed mt-1">
-                  <span className="text-ink-400">Note :</span> « {booking.delivery_proof_notes} »
-                </div>
-              )}
-              {booking.delivery_proof_uploaded_at && (
-                <div className="text-[11px] text-ink-300 mt-2">
-                  Téléversée le {formatShortDate(booking.delivery_proof_uploaded_at)}
-                </div>
-              )}
-            </div>
+          {/* Message — the ONLY contact path. No WhatsApp, no phone shown. */}
+          {onOpenChat && (
+            <button
+              onClick={() => onOpenChat(booking)}
+              className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+            >
+              💬 Message
+            </button>
           )}
-
-          {/* Contact details */}
-          <div className="rounded-xl bg-cream-50 px-4 py-3.5 space-y-2.5">
-            <div className="text-[11px] font-semibold text-ink-300 tracking-[0.12em] uppercase">
-              Comment le contacter
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* In-app messaging — primary, always available */}
-              {onOpenChat && (
-                <button
-                  onClick={() => onOpenChat(booking)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[13px] font-semibold transition-colors"
-                >
-                  💬 Message
-                </button>
-              )}
-              {traveler?.phone ? (
-                <>
-                  <a
-                    href={`https://wa.me/${traveler.phone.replace(/[^0-9]/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[13px] font-semibold transition-colors"
-                  >
-                    WhatsApp
-                  </a>
-                  <a
-                    href={`tel:${traveler.phone}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
-                  >
-                    Appeler
-                  </a>
-                </>
-              ) : (
-                <span className="text-[12px] text-ink-400">
-                  WhatsApp non renseigné
-                </span>
-              )}
-            </div>
-          </div>
         </div>
+
+        {/* Delivery proof — visible only once the traveler has uploaded one.
+            Sits below the row, indented to feel like a child of the booking. */}
+        {booking.delivery_proof_url && (
+          <div className="mt-3 ml-11 rounded-xl bg-mint-50 border border-mint-200/60 px-3 py-2.5">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-base">📸</span>
+              <div className="text-[12px] font-bold text-mint-700">Preuve de livraison</div>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={booking.delivery_proof_url}
+              alt="Preuve de livraison"
+              className="w-full max-h-48 object-cover rounded-lg mb-2 border border-mint-200/40"
+            />
+            {booking.delivery_proof_receiver_name && (
+              <div className="text-[12px] text-ink-500">
+                <span className="text-ink-400">Remis à :</span>{' '}
+                <strong className="text-ink-600">{booking.delivery_proof_receiver_name}</strong>
+              </div>
+            )}
+            {booking.delivery_proof_notes && (
+              <div className="text-[12px] text-ink-500 leading-relaxed mt-1">
+                <span className="text-ink-400">Note :</span> « {booking.delivery_proof_notes} »
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -1838,7 +1786,7 @@ function ProfileTab({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+33 6 12 34 56 78"
-            hint="Utilisé pour vous joindre par WhatsApp ou téléphone après une réservation."
+            hint="Utilisé en interne pour le support — pas partagé avec les autres utilisateurs."
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -2188,18 +2136,6 @@ function ProposalCard({
             <span className="text-[11px] text-ink-300 ml-1">⏳ en attente</span>
           )}
         </div>
-
-        {/* WhatsApp shortcut inline */}
-        {accepted && proposal.sender_profile?.phone && (
-          <a
-            href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
-          >
-            WhatsApp
-          </a>
-        )}
       </div>
     </div>
   );
@@ -2857,16 +2793,6 @@ function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
           {statusText}
         </span>
       </div>
-      {accepted && proposal.sender_profile?.phone && (
-        <a
-          href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-shrink-0 inline-flex items-center px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
-        >
-          WhatsApp
-        </a>
-      )}
     </div>
   );
 }
@@ -2897,37 +2823,52 @@ function SendsView({
   reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
   t: Translations;
 }) {
-  // 🔥 À traiter: traveler proposals on my requests (accept and pay)
+  // ===== Statut-based buckets =====
+  //
+  // 🔥 À traiter — traveler proposals on my requests, awaiting accept/pay
   const todoProposals = bookings.filter(
     (b) => b.status === 'pending' && b.initiated_by === 'traveler'
   );
 
-  // ⏳ En cours
-  // ⏳ En cours : pending (initiés par sender), confirmed sans proof, OR
-  // delivered but NOT yet confirmed by the sender. The sender must click
-  // "J'ai bien reçu" to close out the booking — only then it goes to history.
-  const inProgressBookings = bookings.filter(
-    (b) =>
-      (b.status === 'confirmed' && !b.delivery_proof_url) ||
-      (b.status === 'pending' && b.initiated_by === 'sender') ||
-      (b.status === 'confirmed' && b.delivery_proof_url && !b.received_confirmed_at)
+  // ⏳ En attente — I booked a traveler, payment authorized, waiting for them
+  //                 to accept. Or I have public requests still hanging.
+  const pendingBookings = bookings.filter(
+    (b) => b.status === 'pending' && b.initiated_by === 'sender'
   );
   const activeRequests = requests.filter((r) => r.status === 'pending');
+  const pendingCount = pendingBookings.length + activeRequests.length;
 
-  // 📜 Historique côté sender: bookings cancelled OR (delivered AND
-  // confirmed received by sender — the deal is fully closed).
-  const historyBookings = bookings.filter(
-    (b) =>
-      b.status === 'cancelled' ||
-      (b.status === 'confirmed' && b.delivery_proof_url && b.received_confirmed_at)
+  // ✈️ En vol — accepted, traveler is carrying, no proof yet
+  const inFlightBookings = bookings.filter(
+    (b) => b.status === 'confirmed' && !b.delivery_proof_url
   );
 
-  const totalTodos = todoProposals.length;
+  // 📦 À confirmer — proof uploaded by traveler, I need to click "J'ai bien reçu"
+  const toConfirmBookings = bookings.filter(
+    (b) =>
+      b.status === 'confirmed' &&
+      b.delivery_proof_url &&
+      !b.received_confirmed_at
+  );
+
+  // ✓ Finalisés — fully closed: received confirmed (with or without review)
+  const finalizedBookings = bookings.filter(
+    (b) =>
+      b.status === 'confirmed' &&
+      b.delivery_proof_url &&
+      b.received_confirmed_at
+  );
+
+  // ❌ Annulés
+  const cancelledBookings = bookings.filter((b) => b.status === 'cancelled');
+
   const hasContent =
-    inProgressBookings.length > 0 ||
-    activeRequests.length > 0 ||
-    totalTodos > 0 ||
-    historyBookings.length > 0;
+    todoProposals.length > 0 ||
+    pendingCount > 0 ||
+    inFlightBookings.length > 0 ||
+    toConfirmBookings.length > 0 ||
+    finalizedBookings.length > 0 ||
+    cancelledBookings.length > 0;
 
   if (!hasContent) {
     return (
@@ -2947,8 +2888,8 @@ function SendsView({
   }
 
   return (
-    <div className="space-y-10">
-      <div className="flex items-center justify-between">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
         <Link href="/envoyer">
           <Button size="sm">
@@ -2958,57 +2899,206 @@ function SendsView({
         </Link>
       </div>
 
-      {totalTodos > 0 && (
-        <section>
-          <GroupHeader icon="🔥" label="À traiter" count={totalTodos} />
-          <div className="space-y-3">
-            {todoProposals.map((b) => (
-              <BookingCard
-                key={b.id}
-                booking={b}
-                onAcceptProposal={onAcceptProposal}
-                onDeclineProposal={onDeclineProposal}
-                t={t}
-              />
-            ))}
-          </div>
-        </section>
+      {/* Sections in priority order. Default-open: anything actionable.
+          Default-closed: in-flight (no action), confirmed (action done),
+          and cancelled (history). The user can flip any of them. */}
+
+      {todoProposals.length > 0 && (
+        <CollapsibleSection
+          icon="🔥"
+          label="À traiter"
+          count={todoProposals.length}
+          defaultOpen
+          tone="urgent"
+        >
+          {todoProposals.map((b) => (
+            <BookingCard
+              key={b.id}
+              booking={b}
+              onAcceptProposal={onAcceptProposal}
+              onDeclineProposal={onDeclineProposal}
+              t={t}
+            />
+          ))}
+        </CollapsibleSection>
       )}
 
-      {(inProgressBookings.length > 0 || activeRequests.length > 0) && (
-        <section>
-          <GroupHeader icon="⏳" label="En cours" count={inProgressBookings.length + activeRequests.length} />
-          <div className="space-y-3">
-            {inProgressBookings.map((b) => (
-              <BookingCard
-                key={b.id}
-                booking={b}
-                onOpenChat={onOpenChat}
-                onConfirmReceipt={onConfirmReceipt}
-                onOpenReview={onOpenReview}
-                hasReviewed={hasReviewed(b.id)}
-                otherReview={reviewFromOther(b.id)}
-                t={t}
-              />
-            ))}
-            {activeRequests.map((req) => (
-              <RequestCardSimple key={req.id} request={req} t={t} />
-            ))}
-          </div>
-        </section>
+      {pendingCount > 0 && (
+        <CollapsibleSection
+          icon="⏳"
+          label="En attente"
+          count={pendingCount}
+          defaultOpen
+        >
+          {pendingBookings.map((b) => (
+            <BookingCard
+              key={b.id}
+              booking={b}
+              onOpenChat={onOpenChat}
+              t={t}
+            />
+          ))}
+          {activeRequests.map((req) => (
+            <RequestCardSimple key={req.id} request={req} t={t} />
+          ))}
+        </CollapsibleSection>
       )}
 
-      {historyBookings.length > 0 && (
-        <div className="pt-2">
-          <Link
-            href="/historique?type=envois"
-            className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
-          >
-            📜 Voir l&apos;historique ({historyBookings.length})
-          </Link>
-        </div>
+      {inFlightBookings.length > 0 && (
+        <CollapsibleSection
+          icon="✈️"
+          label="En vol"
+          count={inFlightBookings.length}
+          defaultOpen={false}
+        >
+          {inFlightBookings.map((b) => (
+            <BookingCard
+              key={b.id}
+              booking={b}
+              onOpenChat={onOpenChat}
+              t={t}
+            />
+          ))}
+        </CollapsibleSection>
+      )}
+
+      {toConfirmBookings.length > 0 && (
+        <CollapsibleSection
+          icon="📦"
+          label="À confirmer"
+          count={toConfirmBookings.length}
+          defaultOpen
+          tone="urgent"
+        >
+          {toConfirmBookings.map((b) => (
+            <BookingCard
+              key={b.id}
+              booking={b}
+              onOpenChat={onOpenChat}
+              onConfirmReceipt={onConfirmReceipt}
+              onOpenReview={onOpenReview}
+              hasReviewed={hasReviewed(b.id)}
+              otherReview={reviewFromOther(b.id)}
+              t={t}
+            />
+          ))}
+        </CollapsibleSection>
+      )}
+
+      {finalizedBookings.length > 0 && (
+        <CollapsibleSection
+          icon="✓"
+          label="Finalisés"
+          count={finalizedBookings.length}
+          defaultOpen={false}
+        >
+          {finalizedBookings.map((b) => (
+            <BookingCard
+              key={b.id}
+              booking={b}
+              onOpenChat={onOpenChat}
+              onConfirmReceipt={onConfirmReceipt}
+              onOpenReview={onOpenReview}
+              hasReviewed={hasReviewed(b.id)}
+              otherReview={reviewFromOther(b.id)}
+              t={t}
+            />
+          ))}
+        </CollapsibleSection>
+      )}
+
+      {cancelledBookings.length > 0 && (
+        <CollapsibleSection
+          icon="❌"
+          label="Annulés"
+          count={cancelledBookings.length}
+          defaultOpen={false}
+        >
+          {cancelledBookings.map((b) => (
+            <BookingCard key={b.id} booking={b} t={t} />
+          ))}
+        </CollapsibleSection>
       )}
     </div>
+  );
+}
+
+// =============================================================================
+// CollapsibleSection — used in SendsView. A click on the header toggles the
+// children open/closed; the icon, label, and count stay visible either way.
+// Tone 'urgent' tints the header subtly to draw attention to required actions.
+// =============================================================================
+function CollapsibleSection({
+  icon,
+  label,
+  count,
+  defaultOpen = true,
+  tone = 'default',
+  children,
+}: {
+  icon: string;
+  label: string;
+  count: number;
+  defaultOpen?: boolean;
+  tone?: 'default' | 'urgent';
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="bg-white rounded-2xl border border-ink-50 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full flex items-center gap-3 px-4 py-3 text-start transition-colors ${
+          tone === 'urgent'
+            ? 'bg-butter-50/60 hover:bg-butter-50'
+            : 'bg-white hover:bg-cream-50/60'
+        }`}
+        aria-expanded={open}
+      >
+        <span className="text-lg">{icon}</span>
+        <h3 className="text-[15px] font-bold text-ink-600 tracking-[-0.01em]">{label}</h3>
+        <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold ${
+          tone === 'urgent'
+            ? 'bg-butter-500 text-cream-50'
+            : 'bg-ink-500 text-cream-50'
+        }`}>
+          {count}
+        </span>
+        <span className="ml-auto text-ink-400">
+          {/* Simple chevron, rotates 90deg when open */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transition-transform ${open ? 'rotate-90' : ''}`}
+          >
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3 pt-1 space-y-2 border-t border-ink-50">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
   );
 }
 
