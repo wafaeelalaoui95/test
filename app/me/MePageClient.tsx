@@ -2330,7 +2330,9 @@ function DetailEmpty({ message }: { message: string }) {
 }
 
 // Wrapper that lays out master + detail. Desktop: side-by-side. Mobile:
-// only one panel visible at a time, controlled by `detailOpen`.
+// only one panel visible at a time, controlled by `detailOpen`. The mobile
+// "open" state is also pushed to the browser history stack so the device
+// back button closes the sheet instead of navigating away — feels native.
 function MasterDetailLayout({
   master,
   detail,
@@ -2342,21 +2344,55 @@ function MasterDetailLayout({
   detailOpen: boolean;
   onCloseDetail: () => void;
 }) {
-  // Lock body scroll while the mobile detail sheet is open, otherwise
-  // iOS Safari lets the underlying page scroll behind the sheet which
-  // feels broken.
+  // Lock body scroll + integrate with browser history while the mobile
+  // detail sheet is open. iOS Safari otherwise lets the underlying page
+  // scroll behind the sheet (broken feel), and without history integration
+  // the hardware back button takes the user to the previous page in the
+  // browser stack (e.g. home) instead of closing the sheet.
   useEffect(() => {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
     if (!detailOpen) return;
-    // Only apply on mobile widths
+
+    // Only apply on mobile widths — desktop has both panels visible, no
+    // sheet concept, so no history hijacking needed.
     const isMobile = window.matchMedia('(max-width: 767px)').matches;
     if (!isMobile) return;
-    const prev = document.body.style.overflow;
+
+    // 1) Stop the body from scrolling behind the sheet.
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
+
+    // 2) Push a synthetic history entry. When the user presses the device
+    //    back button, the browser pops THIS entry first (which we catch
+    //    via popstate), and we close the sheet rather than letting the
+    //    browser navigate to the previous URL.
+    const historyMarker = { __jiblyMobileSheet: true, at: Date.now() };
+    window.history.pushState(historyMarker, '');
+
+    const onPop = (e: PopStateEvent) => {
+      // The user hit back. We close the sheet; do NOT push another
+      // history entry here, because the pop already removed ours.
+      onCloseDetail();
     };
-  }, [detailOpen]);
+    window.addEventListener('popstate', onPop);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('popstate', onPop);
+      // If the sheet was closed by clicking the in-app back button (not
+      // via popstate), we still need to remove the synthetic history
+      // entry — otherwise the user would have to press back twice the
+      // next time to actually go to the previous page. We detect this
+      // by checking if our marker is still the current history.state.
+      if (
+        typeof window !== 'undefined' &&
+        window.history.state &&
+        (window.history.state as any).__jiblyMobileSheet
+      ) {
+        window.history.back();
+      }
+    };
+  }, [detailOpen, onCloseDetail]);
 
   return (
     <div className="md:grid md:grid-cols-[360px_1fr] md:gap-5 md:min-h-[600px]">
@@ -2366,32 +2402,34 @@ function MasterDetailLayout({
       </aside>
 
       {/* Detail panel — on desktop sits next to master. On mobile,
-          covers the full viewport as a fixed sheet. We make sure the
-          sheet itself owns the scroll and is constrained to the
-          viewport height so the content never escapes the screen. */}
+          covers the viewport BELOW the navbar (top-16 ≈ 64px = h-16 of
+          the global header) as a fixed sheet. z-30 sits ABOVE the page
+          content but BELOW the navbar (z-50), so the navbar stays
+          available and the back button isn't hidden underneath it. */}
       <section
         className={`bg-white md:rounded-2xl md:border md:border-ink-50 md:overflow-hidden ${
           detailOpen
-            ? 'fixed inset-0 z-40 flex flex-col md:relative md:inset-auto md:z-auto md:flex-none'
+            ? 'fixed inset-x-0 top-16 bottom-0 z-30 flex flex-col md:relative md:inset-auto md:z-auto md:flex-none'
             : 'hidden md:block'
         }`}
       >
-        {/* Mobile back bar — sticky so it stays visible while the content
-            scrolls. On desktop the bar is hidden entirely. */}
+        {/* Mobile back bar — sticky at the top of the sheet so it stays
+            visible while the content scrolls. Generous touch target. */}
         <div className="md:hidden flex-shrink-0 flex items-center gap-2 px-3 py-3 border-b border-ink-50 bg-cream-50">
           <button
             type="button"
             onClick={onCloseDetail}
-            className="inline-flex items-center gap-1.5 text-[14px] font-medium text-ink-500 hover:text-ink-600"
+            className="inline-flex items-center gap-1.5 px-2 py-1.5 -ml-1 text-[14px] font-medium text-ink-600 hover:bg-ink-50 rounded-lg"
+            aria-label="Retour à la liste"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour
           </button>
         </div>
         {/* Scroll container. On mobile flex-1 + overflow-y-auto bounds the
-            content to the available viewport height (sheet minus back bar).
-            On desktop we cap at 80vh as before. */}
-        <div className="flex-1 overflow-y-auto md:max-h-[80vh] md:flex-none">
+            content to the available sheet height. On desktop we cap at
+            80vh as before. */}
+        <div className="flex-1 overflow-y-auto overscroll-contain md:max-h-[80vh] md:flex-none">
           {detail}
         </div>
       </section>
@@ -2819,53 +2857,36 @@ function SendDetailCard({
 
   return (
     <div className="space-y-5">
-      {/* HERO — the object. Big emoji, category name, optional description,
-          and the price on the right. This is the headline of the card. */}
+      {/* HERO — the object. Big emoji, category name, description directly
+          underneath (no box), route + date on a single small meta line.
+          Mirrors the layout of RequestDetailCard so the two states feel
+          like the same thing at different stages of the same flow. */}
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-cream-100 flex items-center justify-center text-3xl">
           {cat?.icon ?? '📦'}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em] mb-1">
-            {catLabel}
+          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em]">
+            {catLabel} → {booking.destination_city}
           </div>
           {booking.item_description ? (
-            <p className="text-[14px] text-ink-500 leading-relaxed">
-              « {booking.item_description} »
+            <p className="text-[14px] text-ink-500 italic leading-relaxed mt-1">
+              {booking.item_description}
             </p>
           ) : (
-            <p className="text-[13px] text-ink-300 italic">
+            <p className="text-[13px] text-ink-300 italic mt-1">
               Aucune description
             </p>
           )}
-        </div>
-        <div className="flex-shrink-0 text-right">
-          <div className="text-[24px] font-extrabold text-ink-600 tracking-[-0.02em] num-display leading-none">
-            {formatEuros(booking.proposed_price)}
-          </div>
-          <div className="text-[11px] text-ink-400 mt-1">prix total</div>
-        </div>
-      </div>
-
-      {/* ROUTE + DATE — compact, two small data points side by side. The
-          date comes from the trip if set, otherwise from the booking itself. */}
-      <div className="rounded-xl bg-cream-50 px-4 py-3 flex items-center gap-5 flex-wrap">
-        <div>
-          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
-            Itinéraire
-          </div>
-          <div className="text-[14px] font-bold text-ink-600">
-            {booking.pickup_city} → {booking.destination_city}
+          {/* Route + date as one small meta line, same shape as
+              RequestDetailCard's "Depuis X · avant le Y". */}
+          <div className="text-[12px] text-ink-400 mt-1.5">
+            Depuis {booking.pickup_city}
+            {trip && ` · ${formatShortDate(trip.departure_date)}`}
           </div>
         </div>
-        <div className="h-8 w-px bg-ink-100" />
-        <div>
-          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
-            Date du voyage
-          </div>
-          <div className="text-[14px] font-bold text-ink-600 num-display">
-            {trip ? formatShortDate(trip.departure_date) : '—'}
-          </div>
+        <div className="flex-shrink-0 text-[20px] font-extrabold text-ink-600 num-display tracking-[-0.015em]">
+          {formatEuros(booking.proposed_price)}
         </div>
       </div>
 
