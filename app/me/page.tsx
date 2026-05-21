@@ -2284,50 +2284,28 @@ function TripGroup({
   const departCode = trip.departure_city.slice(0, 3).toUpperCase();
   const arriveCode = trip.arrival_city.slice(0, 3).toUpperCase();
 
-  // Date short form, ideally compact (e.g. "20 mai" or "20/05"). We reuse
-  // formatShortDate but display it in the same big font as the IATA codes,
-  // so the date reads as a primary piece of info, not metadata.
-  const dateDisplay = formatShortDate(trip.departure_date);
-
-  // If EVERY package on this trip is confirmed (paid + accepted), the
-  // amount is no longer "potential" — it's locked in. We change the caption
-  // accordingly: "de gains sur ce trajet" instead of "à gagner".
-  const allConfirmed =
-    count > 0 &&
-    packages.every(
-      (p) =>
-        p.row.status === 'confirmed' &&
-        // for incoming packages this means payment is authorized;
-        // for my proposals, "confirmed" alone is enough — the sender paid
-        // when accepting.
-        (p.kind === 'proposal' || p.row.payment_status === 'authorized')
-    );
-  const earningsCaption = allConfirmed ? 'de gains sur ce trajet ✨' : 'à gagner sur ce trajet ✨';
-
   return (
     <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
-      {/* Boarding-pass-style header: two zones separated by a perforated
-          tear-line, evocative of an airline ticket. Left zone = trip itself
-          (codes, route, date). Right zone = the prize: motivating earnings
-          on a sparkle-flecked panel. */}
-      <div className="relative bg-gradient-to-br from-cream-50 to-cream-100 border-b border-ink-100">
-        {/* Perforation notches — two small semi-circles biting into the
-            sides at the tear line (about 65% across). Pure decoration. */}
+      {/* Boarding-pass-style header. Two zones split by a perforated
+          tear-line. Left = trip info (route, codes). Right = earnings panel
+          tinted lavender so the money pops as the headline reward. */}
+      <div className="relative border-b border-ink-100">
+        {/* Perforation notches at the tear line (~63% across) */}
         <div className="absolute top-1/2 -translate-y-1/2 left-[63%] -translate-x-1/2 w-4 h-4 rounded-full bg-white border border-ink-100 z-10 hidden sm:block" />
         <div className="absolute top-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-b-full bg-white border-x border-b border-ink-100 hidden sm:block" />
         <div className="absolute bottom-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-t-full bg-white border-x border-t border-ink-100 hidden sm:block" />
 
         <div className="flex items-stretch">
-          {/* LEFT — flight info */}
-          <div className="flex-1 px-5 py-4 min-w-0 relative">
-            {/* Codes row */}
+          {/* LEFT — trip ticket section, on warm cream paper */}
+          <div className="flex-1 px-5 py-4 min-w-0 relative bg-gradient-to-br from-cream-50 to-cream-100">
+            {/* Codes row with a chunkier plane between */}
             <div className="flex items-center gap-3 mb-1">
               <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
                 {departCode}
               </div>
               <div className="flex-1 flex items-center min-w-0 px-1">
                 <div className="h-px bg-ink-200 flex-1" />
-                <Plane className="w-4 h-4 mx-1.5 text-ink-400 -rotate-12 flex-shrink-0" />
+                <Plane className="w-6 h-6 sm:w-7 sm:h-7 mx-2 text-ink-400 -rotate-12 flex-shrink-0" />
                 <div className="h-px bg-ink-200 flex-1" />
               </div>
               <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
@@ -2339,42 +2317,38 @@ function TripGroup({
               <span className="truncate max-w-[40%]">{trip.departure_city}</span>
               <span className="truncate max-w-[40%] text-right">{trip.arrival_city}</span>
             </div>
-            {/* Departure date — sized to match the IATA codes so it reads
-                as primary info, not a footnote. The "DÉPART" stamp sits
-                small above it, ticket-style. */}
-            <div className="flex items-end gap-4">
-              <div className="min-w-0">
-                <div className="text-[10px] text-ink-300 font-semibold tracking-[0.14em] uppercase mb-0.5">
+            {/* Departure date + colis count, stamped style */}
+            <div className="flex items-center gap-4 text-[11px]">
+              <div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
                   Départ
                 </div>
-                <div className="text-[26px] sm:text-[30px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
-                  {dateDisplay}
+                <div className="text-ink-600 font-bold num-display">
+                  {formatShortDate(trip.departure_date)}
                 </div>
               </div>
-              <div className="h-12 w-px bg-ink-100 flex-shrink-0" />
-              <div className="flex-shrink-0">
-                <div className="text-[10px] text-ink-300 font-semibold tracking-[0.14em] uppercase mb-0.5">
+              <div className="h-7 w-px bg-ink-100" />
+              <div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
                   Colis
                 </div>
-                <div className="text-[26px] sm:text-[30px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
-                  {count}
-                </div>
+                <div className="text-ink-600 font-bold num-display">{count}</div>
               </div>
             </div>
           </div>
 
-          {/* RIGHT — earnings panel */}
-          <div className="w-[35%] flex-shrink-0 border-l border-dashed border-ink-200 px-3 py-4 flex flex-col justify-center items-center text-center relative">
-            <div className="text-[28px] sm:text-[32px] font-extrabold text-mint-600 num-display leading-none">
+          {/* RIGHT — earnings panel, tinted lavender to spotlight the money */}
+          <div className="w-[35%] flex-shrink-0 border-l border-dashed border-lavender-300/50 px-3 py-4 flex flex-col justify-center items-center text-center relative bg-gradient-to-br from-lavender-50 to-lavender-100/70">
+            <div className="text-[28px] sm:text-[32px] font-extrabold text-lavender-700 num-display leading-none">
               {formatEuros(totalNet)}
             </div>
-            <div className="text-[12px] sm:text-[13px] text-ink-600 font-semibold mt-2 leading-tight px-1">
-              {earningsCaption}
+            <div className="text-[11px] sm:text-[12px] text-lavender-700/80 font-medium mt-1.5 leading-snug px-1">
+              de gains sur ce vol grâce à Jibly ✨
             </div>
             {isCancelable && (
               <button
                 onClick={() => onCancelTrip(trip.id)}
-                className="absolute top-1 right-1 p-1.5 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
+                className="absolute top-1 right-1 p-1.5 rounded-full text-lavender-400/70 hover:text-blush-500 hover:bg-white/60 transition-colors"
                 aria-label="Annuler ce trajet"
                 title="Annuler ce trajet"
               >
