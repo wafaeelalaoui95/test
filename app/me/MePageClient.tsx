@@ -81,17 +81,6 @@ type IncomingIntent = {
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
 
-type MePageClientProps = {
-  initialUser: { id: string; email: string | null };
-  initialProfile: Profile | null;
-  initialRequests: ShippingRequestRow[];
-  initialTrips: TravelerTripRow[];
-  initialMatches: MatchWithRefs[];
-  initialIncomingIntents: IncomingIntent[];
-  initialMyBookings: MyBooking[];
-  initialMyProposals: TravelerProposal[];
-};
-
 export default function MyPage({
   initialProfile,
   initialRequests,
@@ -100,7 +89,16 @@ export default function MyPage({
   initialIncomingIntents,
   initialMyBookings,
   initialMyProposals,
-}: MePageClientProps) {
+}: {
+  initialUser: { id: string; email: string | null };
+  initialProfile: Profile | null;
+  initialRequests: ShippingRequestRow[];
+  initialTrips: TravelerTripRow[];
+  initialMatches: MatchWithRefs[];
+  initialIncomingIntents: IncomingIntent[];
+  initialMyBookings: MyBooking[];
+  initialMyProposals: TravelerProposal[];
+}) {
   const { t } = useI18n();
   // `user` and `profile` still come from useAuth so realtime auth changes
   // (sign-out, etc.) reflect immediately. We have server-fetched fallbacks
