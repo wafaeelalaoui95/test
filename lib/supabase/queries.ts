@@ -1682,3 +1682,16 @@ confirmBookingReceipt: (bookingIntentId: string) =>
     listMyConversations(getBrowserClient(), userId),
   hasUnreadMessages: (userId: string) => hasUnreadMessages(getBrowserClient(), userId),
 };
+ 
+// =============================================================================
+// WRAPPERS À AJOUTER DANS l'objet `browser` (en bas de queries.ts)
+// =============================================================================
+//
+//   listNotifications: (userId: string, limit?: number) =>
+//     listNotifications(getBrowserClient(), userId, limit),
+//   countUnreadNotifications: (userId: string) =>
+//     countUnreadNotifications(getBrowserClient(), userId),
+//   markNotificationRead: (id: string) =>
+//     markNotificationRead(getBrowserClient(), id),
+//   markAllNotificationsRead: (userId: string) =>
+//     markAllNotificationsRead(getBrowserClient(), userId),
