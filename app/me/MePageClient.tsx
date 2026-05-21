@@ -2349,7 +2349,7 @@ function TripGroup({
               {formatEuros(totalNet)}
             </div>
             <div className="text-[11px] sm:text-[12px] text-lavender-700/80 font-medium mt-1.5 leading-snug px-1">
-              de gains sur ce vol ✨
+              De gains sur ce vol grâce à Jibly ✨
             </div>
             {isCancelable && (
               <button
