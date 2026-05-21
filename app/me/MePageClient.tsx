@@ -2605,10 +2605,13 @@ function SendsView({
   );
 
   // The detail panel — shows the selected item's full info + actions.
+  // SendDetailCard puts the OBJECT (category + description + price) at the
+  // top, with route, date, traveler, and actions following — that's how the
+  // sender thinks about their shipment.
   const detail = selected ? (
     selected.kind === 'booking' ? (
-      <div className="p-4">
-        <BookingCard
+      <div className="p-5">
+        <SendDetailCard
           booking={selected.row}
           onAcceptProposal={onAcceptProposal}
           onDeclineProposal={onDeclineProposal}
@@ -2621,7 +2624,7 @@ function SendsView({
         />
       </div>
     ) : (
-      <div className="p-4">
+      <div className="p-5">
         <RequestDetailCard request={selected.row} t={t} />
       </div>
     )
@@ -2725,6 +2728,243 @@ function RequestListRow({
 
 // Detail panel for a request without traveler — simple card with route +
 // budget + link to edit/cancel. Minimal because there's not much to do yet.
+// Detail panel for a single booking_intent in SendsView. The hero is the
+// OBJECT (category icon + label + description), with the price on the side.
+// Below: route + date. Below: traveler info + status + actions/preuve. The
+// user thinks "I'm sending a document" — so the document leads.
+function SendDetailCard({
+  booking,
+  onAcceptProposal,
+  onDeclineProposal,
+  onOpenChat,
+  onConfirmReceipt,
+  onOpenReview,
+  hasReviewed,
+  otherReview,
+  t,
+}: {
+  booking: MyBooking;
+  onAcceptProposal: (b: MyBooking) => void;
+  onDeclineProposal: (id: string) => void;
+  onOpenChat: (b: MyBooking) => void;
+  onConfirmReceipt: (bookingId: string) => void;
+  onOpenReview: (b: MyBooking) => void;
+  hasReviewed: boolean;
+  otherReview: ReviewForBooking | null;
+  t: Translations;
+}) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
+  const catLabel = cat ? t[cat.labelKey] : booking.item_category;
+  const trip = booking.traveler_trip;
+  const traveler = booking.traveler_profile;
+  const travelerName = displayName(traveler?.full_name) || 'Voyageur';
+  const travelerInitial = nameInitial(traveler?.full_name);
+
+  // What we show on the right side as actions depends on status.
+  const isPendingProposalForMe =
+    booking.status === 'pending' && booking.initiated_by === 'traveler';
+  const isAcceptedNotYetDelivered =
+    booking.status === 'confirmed' && !booking.delivery_proof_url;
+  const isDeliveredNotConfirmed =
+    booking.status === 'confirmed' &&
+    !!booking.delivery_proof_url &&
+    !booking.received_confirmed_at;
+  const isFullyDelivered =
+    booking.status === 'confirmed' &&
+    !!booking.delivery_proof_url &&
+    !!booking.received_confirmed_at;
+
+  return (
+    <div className="space-y-5">
+      {/* HERO — the object. Big emoji, category name, optional description,
+          and the price on the right. This is the headline of the card. */}
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-cream-100 flex items-center justify-center text-3xl">
+          {cat?.icon ?? '📦'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em] mb-1">
+            {catLabel}
+          </div>
+          {booking.item_description ? (
+            <p className="text-[14px] text-ink-500 leading-relaxed">
+              « {booking.item_description} »
+            </p>
+          ) : (
+            <p className="text-[13px] text-ink-300 italic">
+              Aucune description
+            </p>
+          )}
+        </div>
+        <div className="flex-shrink-0 text-right">
+          <div className="text-[24px] font-extrabold text-ink-600 tracking-[-0.02em] num-display leading-none">
+            {formatEuros(booking.proposed_price)}
+          </div>
+          <div className="text-[11px] text-ink-400 mt-1">prix total</div>
+        </div>
+      </div>
+
+      {/* ROUTE + DATE — compact, two small data points side by side. The
+          date comes from the trip if set, otherwise from the booking itself. */}
+      <div className="rounded-xl bg-cream-50 px-4 py-3 flex items-center gap-5 flex-wrap">
+        <div>
+          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
+            Itinéraire
+          </div>
+          <div className="text-[14px] font-bold text-ink-600">
+            {booking.pickup_city} → {booking.destination_city}
+          </div>
+        </div>
+        <div className="h-8 w-px bg-ink-100" />
+        <div>
+          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
+            Date du voyage
+          </div>
+          <div className="text-[14px] font-bold text-ink-600 num-display">
+            {trip ? formatShortDate(trip.departure_date) : '—'}
+          </div>
+        </div>
+      </div>
+
+      {/* TRAVELER — only meaningful once a traveler exists (i.e. anything
+          past the open-request stage). For a pending proposal we still show
+          them so the sender knows who's offering. */}
+      {traveler && (
+        <div className="flex items-center gap-3">
+          <Link href={`/u/${traveler.id}`} className="flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[13px] text-lavender-700">
+              {travelerInitial}
+            </div>
+          </Link>
+          <div className="flex-1 min-w-0">
+            <Link
+              href={`/u/${traveler.id}`}
+              className="font-semibold text-ink-600 text-[14px] hover:underline"
+            >
+              {travelerName}
+            </Link>
+            <div className="text-[12px] text-ink-400">
+              {isPendingProposalForMe && 'Vous propose ce transport'}
+              {isAcceptedNotYetDelivered && '✓ Accepté · en cours de transport'}
+              {isDeliveredNotConfirmed && '📸 A livré · en attente de votre confirmation'}
+              {isFullyDelivered && '✓ Livraison confirmée'}
+              {booking.status === 'cancelled' && '❌ Annulé'}
+              {booking.status === 'pending' && booking.initiated_by === 'sender' &&
+                'En attente de sa réponse'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ACTIONS — depends on the status. Inline buttons, never a big banner. */}
+      {isPendingProposalForMe && (
+        <div className="flex gap-2.5">
+          <button
+            onClick={() => onDeclineProposal(booking.id)}
+            className="flex-1 px-4 py-2.5 text-[13px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
+          >
+            Refuser
+          </button>
+          <button
+            onClick={() => onAcceptProposal(booking)}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
+          >
+            Payer {formatEuros(booking.proposed_price)}
+          </button>
+        </div>
+      )}
+
+      {(isAcceptedNotYetDelivered || isDeliveredNotConfirmed || isFullyDelivered) && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => onOpenChat(booking)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+          >
+            💬 Message
+          </button>
+          {isDeliveredNotConfirmed && (
+            <button
+              onClick={() => onConfirmReceipt(booking.id)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
+            >
+              J&apos;ai bien reçu
+            </button>
+          )}
+          {isFullyDelivered && !hasReviewed && (
+            <button
+              onClick={() => onOpenReview(booking)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+            >
+              <Star className="w-3 h-3 fill-white" strokeWidth={0} />
+              Noter {travelerName.split(' ')[0]}
+            </button>
+          )}
+          {isFullyDelivered && hasReviewed && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+              <Star className="w-3 h-3 fill-current" strokeWidth={0} />
+              Vous avez noté
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* DELIVERY PROOF — when uploaded, shown as a section below the actions. */}
+      {booking.delivery_proof_url && (
+        <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3.5">
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className="text-lg">📸</span>
+            <div className="text-[13px] font-bold text-mint-700">
+              Preuve de livraison
+            </div>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={booking.delivery_proof_url}
+            alt="Preuve de livraison"
+            className="w-full max-h-64 object-cover rounded-lg mb-2 border border-mint-200/40"
+          />
+          {booking.delivery_proof_receiver_name && (
+            <div className="text-[12px] text-ink-500 mb-1">
+              <span className="text-ink-400">Remis à :</span>{' '}
+              <strong className="text-ink-600">{booking.delivery_proof_receiver_name}</strong>
+            </div>
+          )}
+          {booking.delivery_proof_notes && (
+            <div className="text-[12px] text-ink-500 leading-relaxed mt-1">
+              <span className="text-ink-400">Note :</span> « {booking.delivery_proof_notes} »
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* REVIEW THE OTHER PARTY WROTE — show inline once received */}
+      {otherReview && (
+        <div className="rounded-xl bg-cream-50 px-4 py-3">
+          <div className="text-[11px] font-semibold text-ink-300 tracking-[0.08em] uppercase mb-1.5">
+            {travelerName.split(' ')[0]} vous a noté
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-4 h-4 ${
+                    i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
+                  }`}
+                  strokeWidth={0}
+                />
+              ))}
+            </span>
+            {otherReview.comment && (
+              <span className="text-[13px] text-ink-500">« {otherReview.comment} »</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Translations }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
   return (
