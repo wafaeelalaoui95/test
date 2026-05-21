@@ -373,9 +373,9 @@ export const translations: Record<Locale, Translations> = {
     nav_send: 'Je cherche un voyageur',
     nav_travel: 'Je peux transporter',
     nav_discover: 'Découvrir',
-    nav_trust: 'FAQ - Sérénité',
+    nav_trust: 'Confiance',
     nav_my_space: 'Mon espace',
-    nav_start: 'Commencer',
+    nav_start: 'S\'inscrire',
 
     hero_badge: 'Communauté de voyageurs vérifiés',
     hero_title_1: 'Quelqu\'un voyage déjà',
@@ -712,7 +712,7 @@ export const translations: Record<Locale, Translations> = {
     nav_discover: 'Discover',
     nav_trust: 'Trust',
     nav_my_space: 'My Space',
-    nav_start: 'Get Started',
+    nav_start: 'Sign up',
 
     hero_badge: 'Verified traveler community',
     hero_title_1: 'Someone is already going',
