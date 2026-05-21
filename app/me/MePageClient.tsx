@@ -2309,20 +2309,29 @@ function TripsView({
   const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
 
   // Active items linked to a trip: incoming bookings + my proposals.
-  // We keep:
-  //   - non-delivered active bookings (in flight)
-  //   - bookings that are delivered AND confirmed by the sender BUT not
-  //     yet reviewed by the traveler (so the "Noter" button is reachable)
-  // Once the traveler reviews, the booking is moved to /historique.
-  const activeIncoming = incomingIntents.filter(
-    (i) =>
-      i.status !== 'cancelled' &&
-      (!i.delivery_proof_url ||
-        (i.received_confirmed_at && !hasReviewed(i.id)))
-  );
-  const activeProposals = myProposals.filter(
-    (p) => p.status !== 'cancelled' && !p.delivery_proof_url
-  );
+  //
+  // What stays visible on /me for a given trip = ALL packages whose flow
+  // isn't fully closed yet, so the traveler keeps seeing every parcel they
+  // committed to carry on that flight (and the total earnings keep adding
+  // up correctly per trip). A package is "fully closed" only when:
+  //   - it's cancelled, OR
+  //   - it's been confirmed received by the sender AND the traveler has
+  //     posted their review (the loop is done from both sides).
+  // Everything else stays here: in-flight, delivered-but-not-yet-confirmed,
+  // confirmed-but-not-yet-reviewed.
+  const activeIncoming = incomingIntents.filter((i) => {
+    if (i.status === 'cancelled') return false;
+    const fullyClosed = !!i.received_confirmed_at && hasReviewed(i.id);
+    return !fullyClosed;
+  });
+  const activeProposals = myProposals.filter((p) => {
+    if (p.status === 'cancelled') return false;
+    // Symmetric for proposals — though most won't reach review since the
+    // sender side rarely loops back. Safe default: hide once delivered &
+    // confirmed & reviewed.
+    const fullyClosed = !!p.received_confirmed_at && hasReviewed(p.id);
+    return !fullyClosed;
+  });
 
   // Build the map: trip_id → list of "packages" (mixed incoming + proposals)
   type TripPackage =
@@ -2648,14 +2657,29 @@ function IntentCardInline({
   const showAccept = intent.status === 'pending';
   const showDeliver = intent.status === 'confirmed' && !intent.delivery_proof_url;
 
-  // Status pill — shown in the middle area where there's space.
-  // pending  → "Nouvelle demande"  (waiting for me to accept)
-  // confirmed (paid) → "💳 Paiement réservé"
-  // confirmed (not paid) → "À livrer"
+  // Status pill — covers every state the package can be in for the traveler.
+  // The flow is sequential, so we check from the latest state backwards.
+  // Once a state matches, we stop — keeps the pill from flickering between
+  // related states (e.g., confirmed + paid + delivered).
+  //
+  //   pending                                   → "Nouvelle demande"
+  //   confirmed + delivered + confirmed receipt → "✓ Livraison confirmée"
+  //   confirmed + delivered (waiting for sender)→ "📸 En attente de confirmation"
+  //   confirmed + paid (still flying)           → "💳 Paiement réservé"
+  //   confirmed (not paid yet)                  → "À livrer"
   let statusText: string | null = null;
   let statusClass = '';
   if (intent.status === 'pending') {
     statusText = 'Nouvelle demande';
+    statusClass = 'text-butter-700 bg-butter-50';
+  } else if (intent.status === 'confirmed' && intent.delivery_proof_url && intent.received_confirmed_at) {
+    statusText = '✓ Livraison confirmée';
+    statusClass = 'text-mint-700 bg-mint-50';
+  } else if (intent.status === 'confirmed' && intent.delivery_proof_url) {
+    // Photo uploaded but the sender hasn't clicked "J'ai bien reçu" yet.
+    // This is the state the user reported missing — they want to keep
+    // seeing this booking with this label.
+    statusText = '📸 En attente de confirmation';
     statusClass = 'text-butter-700 bg-butter-50';
   } else if (intent.status === 'confirmed' && intent.payment_status === 'authorized') {
     statusText = '💳 Paiement réservé';
@@ -2720,6 +2744,32 @@ function IntentCardInline({
             </button>
           </div>
         )}
+
+        {/* Delivered but not yet confirmed by the sender: let the traveler
+            re-open their proof photo (in case they want to double-check)
+            and message the sender (gentle nudge). */}
+        {intent.status === 'confirmed' &&
+          intent.delivery_proof_url &&
+          !intent.received_confirmed_at && (
+            <div className="flex-shrink-0 flex items-center gap-1.5">
+              <a
+                href={intent.delivery_proof_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[12px] font-medium text-ink-400 hover:text-ink-600 underline transition-colors"
+              >
+                Voir la preuve
+              </a>
+              <button
+                onClick={() => onOpenChat(intent)}
+                className="px-2.5 py-1.5 rounded-full bg-cream-100 hover:bg-cream-200 text-ink-500 text-[12px] transition-colors"
+                aria-label="Message"
+                title="Message"
+              >
+                💬
+              </button>
+            </div>
+          )}
 
         {/* Reviews — visible once the booking is delivered AND the sender
             has confirmed receipt. Two states: "Noter" button, then locked. */}
