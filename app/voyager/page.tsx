@@ -103,7 +103,7 @@ export default function VoyagerPage() {
     setPreviewLoading(true);
     const handle = setTimeout(() => {
       browser
-        .listMatchingRequestsForTrip(fromCity, toCity, date)
+        .listMatchingRequestsForTrip(fromCity, toCity, date, user?.id || null)
         .then((requests) => {
           if (cancelled) return;
           setPreviewRequests(requests);
