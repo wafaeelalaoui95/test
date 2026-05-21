@@ -262,7 +262,7 @@ export default function MyPage() {
   };
 
   const TABS: { id: TabId; label: string; icon: typeof Plane }[] = [
-    { id: 'trips', label: 'Mes transports', icon: Plane },
+    { id: 'trips', label: 'Mes voyages', icon: Plane },
     { id: 'sends', label: 'Mes envois', icon: Package },
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
@@ -2173,7 +2173,7 @@ function TripsView({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes transports</h2>
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
           <Link href="/voyager">
             <Button size="sm">
               <Plus className="w-4 h-4" />
@@ -2189,7 +2189,7 @@ function TripsView({
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes transports</h2>
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
         <Link href="/voyager">
           <Button size="sm">
             <Plus className="w-4 h-4" />
@@ -2280,29 +2280,41 @@ function TripGroup({
 
   return (
     <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
-      {/* Trip header */}
-      <div className="px-4 py-3.5 bg-cream-50 border-b border-ink-100 flex items-center justify-between gap-3 flex-wrap">
+      {/* Trip header — route + count on left, date + big earnings on right.
+          The big number is meant to be motivating: "here's how much you stand
+          to make on this flight". */}
+      <div className="px-4 py-3.5 bg-cream-50 border-b border-ink-100 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Plane className="w-4 h-4 text-ink-400 flex-shrink-0" />
           <div className="min-w-0">
             <div className="font-bold text-ink-600 text-[15px] truncate">
               {trip.departure_city} → {trip.arrival_city}
             </div>
-            <div className="text-[12px] text-ink-400 num-display">
-              {formatShortDate(trip.departure_date)} · {count} colis · {formatEuros(totalNet)} potentiels
+            <div className="text-[12px] text-ink-400">
+              {count > 0 ? `${count} ${count === 1 ? 'colis' : 'colis'}` : 'Aucun colis'}
             </div>
           </div>
         </div>
-        {isCancelable && (
-          <button
-            onClick={() => onCancelTrip(trip.id)}
-            className="flex-shrink-0 p-1.5 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
-            aria-label="Annuler ce trajet"
-            title="Annuler ce trajet"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="text-right">
+            <div className="text-[20px] font-extrabold text-mint-600 num-display leading-none">
+              {formatEuros(totalNet)}
+            </div>
+            <div className="text-[11px] text-ink-400 num-display mt-0.5">
+              {formatShortDate(trip.departure_date)}
+            </div>
+          </div>
+          {isCancelable && (
+            <button
+              onClick={() => onCancelTrip(trip.id)}
+              className="p-1.5 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
+              aria-label="Annuler ce trajet"
+              title="Annuler ce trajet"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Packages list */}
@@ -2363,20 +2375,39 @@ function IntentCardInline({
   const showAccept = intent.status === 'pending';
   const showDeliver = intent.status === 'confirmed' && !intent.delivery_proof_url;
 
+  // Status pill — shown in the middle area where there's space.
+  // pending  → "Nouvelle demande"  (waiting for me to accept)
+  // confirmed (paid) → "💳 Paiement réservé"
+  // confirmed (not paid) → "À livrer"
+  let statusText: string | null = null;
+  let statusClass = '';
+  if (intent.status === 'pending') {
+    statusText = 'Nouvelle demande';
+    statusClass = 'text-butter-700 bg-butter-50';
+  } else if (intent.status === 'confirmed' && intent.payment_status === 'authorized') {
+    statusText = '💳 Paiement réservé';
+    statusClass = 'text-mint-700 bg-mint-50';
+  } else if (intent.status === 'confirmed') {
+    statusText = 'À livrer';
+    statusClass = 'text-lavender-700 bg-lavender-50';
+  }
+
   return (
     <>
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[12px] text-lavender-700">
           {senderInitial}
         </div>
-        <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+        <div className="flex-1 min-w-0 flex items-center gap-2 text-[13px] flex-wrap">
           <span className="font-semibold text-ink-600">{senderName}</span>
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-mint-600 num-display">
             {formatEuros(intent.proposed_price / 1.15)}
           </span>
-          {intent.payment_status === 'authorized' && (
-            <span className="text-[11px] text-mint-600 ml-1">💳</span>
+          {statusText && (
+            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${statusClass}`}>
+              {statusText}
+            </span>
           )}
         </div>
         {showAccept && (
@@ -2440,20 +2471,25 @@ function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
   const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
   const accepted = proposal.status === 'confirmed';
 
+  // Status pill style matches IntentCardInline so the visual language is
+  // consistent across the trip's package list.
+  const statusText = accepted ? '✓ Acceptée' : 'En attente de réponse';
+  const statusClass = accepted
+    ? 'text-mint-700 bg-mint-50'
+    : 'text-ink-400 bg-cream-100';
+
   return (
     <div className="flex items-center gap-3">
       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[12px] text-ink-500">
         {initial}
       </div>
-      <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+      <div className="flex-1 min-w-0 flex items-center gap-2 text-[13px] flex-wrap">
         <span className="font-semibold text-ink-600">{senderName}</span>
         <span className="text-ink-300">·</span>
         <span className="font-semibold text-mint-600 num-display">{formatEuros(netTraveler)}</span>
-        {accepted ? (
-          <span className="text-[11px] text-mint-600 ml-1">✓ acceptée</span>
-        ) : (
-          <span className="text-[11px] text-ink-300 ml-1">⏳ ma proposition</span>
-        )}
+        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${statusClass}`}>
+          {statusText}
+        </span>
       </div>
       {accepted && proposal.sender_profile?.phone && (
         <a
