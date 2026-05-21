@@ -262,7 +262,7 @@ export default function MyPage() {
   };
 
   const TABS: { id: TabId; label: string; icon: typeof Plane }[] = [
-    { id: 'trips', label: 'Mes voyages', icon: Plane },
+    { id: 'trips', label: 'Mes transports', icon: Plane },
     { id: 'sends', label: 'Mes envois', icon: Package },
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
@@ -882,7 +882,7 @@ function BookingCard({
               {travelerName.split(' ')[0]} a accepté !
             </div>
             <div className="text-[13px] text-mint-700/80">
-              Vous pouvez maintenant convenir des détails du voyage.
+              Vous pouvez maintenant convenir des détails du transport.
             </div>
           </div>
         </div>
@@ -2150,7 +2150,7 @@ function TripsView({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes transports</h2>
           <Link href="/voyager">
             <Button size="sm">
               <Plus className="w-4 h-4" />
@@ -2163,42 +2163,10 @@ function TripsView({
     );
   }
 
-  // Build history items (mixed, sorted by date desc)
-  const historyItems: React.ReactNode[] = [];
-  historyIncoming.forEach((intent) => {
-    historyItems.push(
-      <IntentCard
-        key={`hi-${intent.id}`}
-        intent={intent}
-        onUpdate={async () => {}}
-        onProofUploaded={() => {}}
-        historic
-      />
-    );
-  });
-  historyProposals.forEach((p) => {
-    historyItems.push(
-      <ProposalCard key={`hp-${p.id}`} proposal={p} accepted={p.status === 'confirmed'} />
-    );
-  });
-  cancelledTrips.forEach((trip) => {
-    historyItems.push(
-      <div key={`ct-${trip.id}`} className="bg-white rounded-xl px-3 py-2.5 border border-ink-50 opacity-70">
-        <div className="flex items-center gap-3 text-[13px]">
-          <Plane className="w-3.5 h-3.5 text-ink-300 flex-shrink-0" />
-          <span className="text-ink-500">{trip.departure_city} → {trip.arrival_city}</span>
-          <span className="text-ink-300">·</span>
-          <span className="text-ink-400 num-display">{formatShortDate(trip.departure_date)}</span>
-          <span className="text-[11px] text-ink-300 ml-auto">✕ annulé</span>
-        </div>
-      </div>
-    );
-  });
-
   return (
     <div className="space-y-10">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes transports</h2>
         <Link href="/voyager">
           <Button size="sm">
             <Plus className="w-4 h-4" />
@@ -2251,10 +2219,14 @@ function TripsView({
       )}
 
       {totalHistory > 0 && (
-        <section>
-          <GroupHeader icon="📜" label="Historique" count={totalHistory} />
-          <CollapsibleList items={historyItems} limit={3} />
-        </section>
+        <div className="pt-2">
+          <Link
+            href="/historique?type=transports"
+            className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
+          >
+            📜 Voir l&apos;historique ({totalHistory})
+          </Link>
+        </div>
       )}
     </div>
   );
@@ -2320,10 +2292,6 @@ function SendsView({
     );
   }
 
-  const historyItems: React.ReactNode[] = historyBookings.map((b) => (
-    <BookingCard key={b.id} booking={b} t={t} />
-  ));
-
   return (
     <div className="space-y-10">
       <div className="flex items-center justify-between">
@@ -2368,10 +2336,14 @@ function SendsView({
       )}
 
       {historyBookings.length > 0 && (
-        <section>
-          <GroupHeader icon="📜" label="Historique" count={historyBookings.length} />
-          <CollapsibleList items={historyItems} limit={3} />
-        </section>
+        <div className="pt-2">
+          <Link
+            href="/historique?type=envois"
+            className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
+          >
+            📜 Voir l&apos;historique ({historyBookings.length})
+          </Link>
+        </div>
       )}
     </div>
   );
