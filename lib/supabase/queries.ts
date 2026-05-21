@@ -307,7 +307,7 @@ export type MatchingTrip = {
   } | null;
 };
 
-xport async function listMatchingTripsForRequest(
+export async function listMatchingTripsForRequest(
   supabase: SB,
   pickupCity: string,
   destinationCity: string,
