@@ -29,6 +29,11 @@ export interface Profile {
   trips_completed: number;
   created_at: string;
   updated_at: string;
+  // Stripe Identity verification — null if never started. Set by the
+  // webhook /api/identity/webhook.
+  identity_verification_id: string | null;
+  identity_verification_status: string | null; // 'processing' | 'verified' | 'requires_input' | 'canceled'
+  identity_verified_at: string | null;
 }
 
 export interface TravelerTripRow {
@@ -45,9 +50,6 @@ export interface TravelerTripRow {
   available_weight_kg: number | null;
   available_space: AvailableSpace;
   flight_time: string | null;
-  flight_number: string | null;
-  departure_airport: string | null;
-  arrival_airport: string | null;
   notes: string | null;
   status: TripStatus;
   created_at: string;
