@@ -1891,6 +1891,12 @@ function ProfileTab({
         </div>
       </form>
 
+      {/* Identity verification widget — drives the Stripe Identity flow.
+          The visible state depends on three cases:
+            - Already verified → green "Identité vérifiée" badge, no button
+            - Pending (session created, waiting for webhook) → "En cours…"
+            - Not started → "Vérifier mon identité" button that POSTs to
+              /api/identity/create-session and redirects to Stripe */}
       <div className="bg-cream-100 rounded-2xl p-7 border border-ink-50">
         <ShieldCheck className="w-6 h-6 text-ink-500 mb-5" strokeWidth={1.75} />
         <h3 className="text-lg font-bold text-ink-600 mb-4 tracking-[-0.015em]">
@@ -1898,12 +1904,16 @@ function ProfileTab({
         </h3>
         <div className="space-y-2.5 mb-6">
           <CheckRow label={t.verif_email} done />
-          <CheckRow label={t.verif_id} done={profile?.verification_level === 'id_verified' || profile?.verification_level === 'trusted'} />
+          <CheckRow
+            label={t.verif_id}
+            done={!!profile?.identity_verified_at}
+          />
           <CheckRow label={t.verif_trusted} done={profile?.verification_level === 'trusted'} />
         </div>
-        <Button size="sm" fullWidth>
-          {t.me_profile_verify_now}
-        </Button>
+        <IdentityVerifyButton
+          status={profile?.identity_verification_status ?? null}
+          verifiedAt={profile?.identity_verified_at ?? null}
+        />
       </div>
 
       {/* Danger zone — full-width, subtle, lives below the form. */}
@@ -2017,6 +2027,88 @@ function ProfileTab({
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// IdentityVerifyButton — drives the Stripe Identity flow from /me profile.
+//
+// Three visual states:
+//   1. Already verified  → mint badge "✓ Identité vérifiée", no button
+//   2. Pending           → disabled button "Vérification en cours…"
+//                           with a small refresh hint
+//   3. Not started / past-failed → primary "Vérifier mon identité" button.
+//                                  Click → POST to our API, redirect to
+//                                  Stripe's hosted flow.
+function IdentityVerifyButton({
+  status,
+  verifiedAt,
+}: {
+  status: string | null;
+  verifiedAt: string | null;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // State 1: verified — show a calm green pill, no action.
+  if (verifiedAt) {
+    return (
+      <div className="inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-mint-50 text-mint-700 text-[13px] font-semibold border border-mint-200">
+        <CheckCircle2 className="w-4 h-4" />
+        Identité vérifiée
+      </div>
+    );
+  }
+
+  // State 2: a Stripe session was created but the webhook hasn't fired yet
+  // (or fired with a non-verified status). Let the user re-launch the flow
+  // — Stripe will reuse the existing session if it's still open.
+  const isPending = status === 'processing' || status === 'requires_input';
+
+  async function start() {
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch('/api/identity/create-session', { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.url) {
+        throw new Error(json?.error ?? 'Could not start verification');
+      }
+      // Hand off to Stripe's hosted UI. They'll bring the user back to
+      // /me?identity=done when finished.
+      window.location.href = json.url;
+    } catch (e: any) {
+      setError(e?.message ?? 'Une erreur est survenue');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={start}
+        disabled={busy}
+        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors disabled:opacity-60"
+      >
+        {busy ? (
+          <>
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Redirection vers Stripe…
+          </>
+        ) : isPending ? (
+          'Reprendre la vérification'
+        ) : (
+          'Vérifier mon identité'
+        )}
+      </button>
+      {error && (
+        <div className="text-[12px] text-blush-500">{error}</div>
+      )}
+      <p className="text-[11px] text-ink-400 leading-relaxed">
+        Une pièce d&apos;identité (carte, passeport ou permis) et un selfie
+        sont demandés. Quelques secondes via Stripe.
+      </p>
     </div>
   );
 }
