@@ -3518,6 +3518,20 @@ function IntentCardInline({
   const showAccept = intent.status === 'pending';
   const showDeliver = intent.status === 'confirmed' && !intent.delivery_proof_url;
 
+  // The traveler can only mark a package as delivered ON OR AFTER their
+  // flight date. Marking earlier doesn't make sense (they haven't flown
+  // yet) and breaks the escrow assumption. We compare yyyy-mm-dd strings
+  // because departure_date is stored as a date — no timezone gotchas.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const departureDateStr = intent.traveler_trip?.departure_date ?? null;
+  // canDeliver: no trip date known (legacy data) OR trip is today/past.
+  // If departureDateStr is null we fall back to allowing, since blocking
+  // on missing data would lock people out for the wrong reason.
+  const canDeliver = !departureDateStr || departureDateStr <= todayStr;
+  const deliveryBlockedMsg = !canDeliver
+    ? `Disponible à partir du ${departureDateStr ? new Date(departureDateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : 'jour du vol'}`
+    : '';
+
   let statusText: string | null = null;
   let statusClass = '';
   if (intent.status === 'pending') {
@@ -3529,6 +3543,14 @@ function IntentCardInline({
   } else if (intent.status === 'confirmed' && intent.delivery_proof_url) {
     statusText = '📸 En attente de confirmation';
     statusClass = 'text-butter-700 bg-butter-50';
+  } else if (intent.status === 'confirmed' && !canDeliver) {
+    // Trip hasn't departed yet — make it clear the traveler is waiting
+    // for their flight, not slacking. Date shown in short form.
+    const shortDate = departureDateStr
+      ? new Date(departureDateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+      : null;
+    statusText = shortDate ? `À livrer le ${shortDate}` : 'À livrer';
+    statusClass = 'text-lavender-700 bg-lavender-50';
   } else if (intent.status === 'confirmed' && intent.payment_status === 'authorized') {
     statusText = '💳 Paiement réservé';
     statusClass = 'text-mint-700 bg-mint-50';
@@ -3584,8 +3606,14 @@ function IntentCardInline({
               💬
             </button>
             <button
-              onClick={() => setShowProofModal(true)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
+              onClick={() => canDeliver && setShowProofModal(true)}
+              disabled={!canDeliver}
+              title={canDeliver ? undefined : deliveryBlockedMsg}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold rounded-full transition-colors ${
+                canDeliver
+                  ? 'text-cream-50 bg-lavender-500 hover:bg-lavender-600 cursor-pointer'
+                  : 'text-ink-300 bg-ink-50 cursor-not-allowed'
+              }`}
             >
               <Camera className="w-3 h-3" />
               J&apos;ai livré
