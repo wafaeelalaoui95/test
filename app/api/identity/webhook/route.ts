@@ -6,100 +6,104 @@ import { createClient } from '@supabase/supabase-js';
 /**
  * POST /api/identity/webhook
  *
- * Listens for Stripe Identity verification events and mirrors the outcome
- * into our `profiles` table. We use the SUPABASE SERVICE ROLE key here
- * because webhooks aren't authenticated as a user — they come from Stripe.
+ * Receives Stripe Identity verification events and updates the user's
+ * profile in Supabase.
  *
- * Events we care about (configure these in your Stripe Dashboard webhook):
- *   - identity.verification_session.verified  → mark profile verified
- *   - identity.verification_session.requires_input → user needs to retry
- *   - identity.verification_session.canceled  → user gave up
- *
- * Mapping back to a user: we read user_id from session.metadata, which
- * was set when we created the session in /api/identity/create-session.
- *
- * Security: every event is signature-checked against STRIPE_WEBHOOK_SECRET.
- * Without that, anyone could POST fake "verified" events to this endpoint.
+ * We deliberately do NOT touch the existing `verification_level` column
+ * here — it has its own check constraint and meaning ('email', 'id_verified',
+ * etc.), and we don't want to entangle two different concepts. Instead,
+ * the UI checks `identity_verified_at IS NOT NULL` to show the verified
+ * state. If you later want to also bump verification_level, do it via a
+ * trigger in Postgres so the logic is in one place.
  */
 
-// Use Node runtime so we can access the raw request body Stripe needs for
-// signature verification — Edge runtime mangles the body bytes.
 export const runtime = 'nodejs';
 
-// Service-role Supabase client. RLS doesn't apply to it, which is what we
-// need because the webhook acts on behalf of any user without auth.
-// IMPORTANT: never expose this key to the browser — server-only route.
 function getAdminSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error(
+      `Missing env vars: NEXT_PUBLIC_SUPABASE_URL=${!!url}, SUPABASE_SERVICE_ROLE_KEY=${!!serviceKey}`
+    );
+  }
   return createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
 
 export async function POST(req: NextRequest) {
+  console.log('[identity/webhook] === START ===');
+
   const sig = req.headers.get('stripe-signature');
   if (!sig) {
     return NextResponse.json({ error: 'No signature' }, { status: 400 });
   }
+
   const secret = process.env.STRIPE_IDENTITY_WEBHOOK_SECRET;
   if (!secret) {
     console.error('[identity/webhook] STRIPE_IDENTITY_WEBHOOK_SECRET missing');
     return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
   }
 
-  // Stripe needs the RAW body for signature verification — text(), not json().
   const rawBody = await req.text();
 
   let event: Stripe.Event;
   try {
     const stripe = getStripe();
     event = stripe.webhooks.constructEvent(rawBody, sig, secret);
+    console.log('[identity/webhook] event:', event.type, event.id);
   } catch (e: any) {
-    console.error('[identity/webhook] signature verification failed:', e?.message);
+    console.error('[identity/webhook] signature verification FAILED:', e?.message);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  // We only care about verification_session lifecycle events.
-  const type = event.type;
-  if (!type.startsWith('identity.verification_session.')) {
+  if (!event.type.startsWith('identity.verification_session.')) {
     return NextResponse.json({ received: true, skipped: true });
   }
 
   const session = event.data.object as Stripe.Identity.VerificationSession;
   const userId = session.metadata?.user_id;
+  console.log('[identity/webhook] session.status:', session.status, 'userId:', userId);
+
   if (!userId) {
-    console.warn('[identity/webhook] session has no user_id in metadata', session.id);
     return NextResponse.json({ received: true, mapped: false });
   }
 
-  const supabase = getAdminSupabase();
+  let supabase;
+  try {
+    supabase = getAdminSupabase();
+  } catch (e: any) {
+    console.error('[identity/webhook] supabase init failed:', e?.message);
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+  }
 
-  // Translate Stripe status into our profile update.
+  // Build the update. We ONLY touch the identity_* columns we added in
+  // 07_identity_verification.sql. verification_level stays untouched —
+  // it has its own check constraint and shouldn't be repurposed here.
   const updates: Record<string, any> = {
     identity_verification_id: session.id,
-    identity_verification_status: session.status, // 'verified' | 'requires_input' | 'canceled' | 'processing'
+    identity_verification_status: session.status,
   };
 
   if (session.status === 'verified') {
-    // Source of truth: mark verified now + bump trust tier
     updates.identity_verified_at = new Date().toISOString();
-    updates.verification_level = 'verified';
-  } else if (session.status === 'canceled' || session.status === 'requires_input') {
-    // Clear any previously-set verified timestamp ONLY if it wasn't already
-    // set — we don't want a user who is already verified to get downgraded
-    // by a stray failed re-attempt.
-    // (Nothing to do here: identity_verified_at stays where it was.)
   }
 
-  const { error } = await supabase
+  console.log('[identity/webhook] updating user', userId, 'with', updates);
+
+  const { error, data } = await supabase
     .from('profiles')
     .update(updates)
-    .eq('id', userId);
+    .eq('id', userId)
+    .select('id, identity_verified_at, identity_verification_status')
+    .maybeSingle();
+
   if (error) {
     console.error('[identity/webhook] DB update failed:', error);
-    return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
+    return NextResponse.json({ error: 'DB update failed', detail: error.message, code: error.code }, { status: 500 });
   }
 
+  console.log('[identity/webhook] DB updated OK:', data);
   return NextResponse.json({ received: true, userId, status: session.status });
 }
