@@ -53,6 +53,12 @@ export interface TravelerTripRow {
   notes: string | null;
   status: TripStatus;
   created_at: string;
+  // Flight details — surfaced on the boarding-pass card in /me and used
+  // by the matching screens. Nullable: flight_number is required at
+  // creation in the new flow, but legacy trips may not have one.
+  flight_number: string | null;
+  departure_airport: string | null;
+  arrival_airport: string | null;
 }
 
 export interface ShippingRequestRow {
