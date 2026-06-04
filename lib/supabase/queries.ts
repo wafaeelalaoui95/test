@@ -671,6 +671,209 @@ export async function markAllNotificationsRead(
 }
 
 // ============================================================================
+// TRUST & SAFETY — confirmation codes, pickup state, disputes
+// ============================================================================
+// Backs the design brief sections 2 (double validation), 3 (confirmation
+// codes), and the dispute flow. See 08_trust_and_safety.sql for the DB
+// scaffolding these queries assume.
+
+/**
+ * Generate a 6-digit confirmation code as a string. Leading zeros allowed.
+ * Called by createBookingIntent below so every new booking comes with both
+ * a pickup code and a delivery code baked in.
+ */
+export function generateConfirmationCode(): string {
+  const n = Math.floor(Math.random() * 1_000_000);
+  return n.toString().padStart(6, '0');
+}
+
+/**
+ * Traveler enters the pickup code shown by the sender. On match, marks
+ * pickup_confirmed_at so the booking can progress to "in transit".
+ *
+ * Doesn't tell the caller WHICH digit is wrong (no partial-match feedback)
+ * — keeps brute-force tedious. The route layer should also rate-limit.
+ */
+export async function confirmPickupWithCode(
+  supabase: SB,
+  bookingId: string,
+  code: string,
+  travelerId: string
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .select('id, pickup_code, traveler_user_id, pickup_confirmed_at, status')
+        .eq('id', bookingId)
+        .maybeSingle()
+    ),
+    8000,
+    'Confirm pickup fetch'
+  );
+  if (error || !data) return { ok: false, reason: 'unknown' };
+
+  if (data.traveler_user_id !== travelerId) {
+    return { ok: false, reason: 'not_traveler' };
+  }
+  if (data.pickup_confirmed_at) {
+    return { ok: false, reason: 'already_confirmed' };
+  }
+  if (data.pickup_code !== code) {
+    return { ok: false, reason: 'invalid_code' };
+  }
+
+  const { error: updateErr } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .update({
+          pickup_confirmed_at: new Date().toISOString(),
+          pickup_confirmed_by: travelerId,
+        })
+        .eq('id', bookingId)
+    ),
+    8000,
+    'Confirm pickup update'
+  );
+  if (updateErr) return { ok: false, reason: 'unknown' };
+  return { ok: true };
+}
+
+/**
+ * Sender enters the delivery code shown by the traveler. We verify the
+ * code matches and proof was uploaded; the actual Stripe capture is done
+ * by the existing /api/booking/confirm-receipt route (called by the UI
+ * after this returns ok:true).
+ */
+export async function confirmDeliveryWithCode(
+  supabase: SB,
+  bookingId: string,
+  code: string,
+  senderId: string
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .select('id, delivery_code, sender_id, received_confirmed_at, delivery_proof_url')
+        .eq('id', bookingId)
+        .maybeSingle()
+    ),
+    8000,
+    'Confirm delivery fetch'
+  );
+  if (error || !data) return { ok: false, reason: 'unknown' };
+
+  if (data.sender_id !== senderId) {
+    return { ok: false, reason: 'not_sender' };
+  }
+  if (data.received_confirmed_at) {
+    return { ok: false, reason: 'already_confirmed' };
+  }
+  if (!data.delivery_proof_url) {
+    return { ok: false, reason: 'no_proof' };
+  }
+  if (data.delivery_code !== code) {
+    return { ok: false, reason: 'invalid_code' };
+  }
+  return { ok: true };
+}
+
+// -----------------------------------------------------------------------------
+// DISPUTES — creation, listing
+// -----------------------------------------------------------------------------
+
+export type Dispute = {
+  id: string;
+  booking_intent_id: string;
+  reporter_id: string;
+  reported_user_id: string;
+  category: 'not_delivered' | 'damaged' | 'wrong_item' | 'late_delivery' | 'other';
+  description: string | null;
+  photos_urls: string[];
+  status: 'open' | 'investigating' | 'resolved_for_reporter' | 'resolved_for_reported' | 'closed';
+  admin_notes: string | null;
+  resolution: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+export async function createDispute(
+  supabase: SB,
+  input: {
+    bookingId: string;
+    reporterId: string;
+    reportedUserId: string;
+    category: Dispute['category'];
+    description?: string;
+    photosUrls?: string[];
+  }
+): Promise<Dispute> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('disputes')
+        .insert({
+          booking_intent_id: input.bookingId,
+          reporter_id: input.reporterId,
+          reported_user_id: input.reportedUserId,
+          category: input.category,
+          description: input.description ?? null,
+          photos_urls: input.photosUrls ?? [],
+        })
+        .select('*')
+        .single()
+    ),
+    8000,
+    'Create dispute'
+  );
+  if (error) throw error;
+  return data as Dispute;
+}
+
+export async function listDisputesForUser(
+  supabase: SB,
+  userId: string
+): Promise<Dispute[]> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('disputes')
+        .select('*')
+        .or(`reporter_id.eq.${userId},reported_user_id.eq.${userId}`)
+        .order('created_at', { ascending: false })
+    ),
+    8000,
+    'List disputes'
+  );
+  if (error) throw error;
+  return (data ?? []) as Dispute[];
+}
+
+export async function getOpenDisputeForBooking(
+  supabase: SB,
+  bookingId: string,
+  reporterId: string
+): Promise<Dispute | null> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('disputes')
+        .select('*')
+        .eq('booking_intent_id', bookingId)
+        .eq('reporter_id', reporterId)
+        .in('status', ['open', 'investigating'])
+        .maybeSingle()
+    ),
+    8000,
+    'Get open dispute'
+  );
+  if (error) throw error;
+  return (data ?? null) as Dispute | null;
+}
+
+// ============================================================================
 // REPORTS
 // ============================================================================
 
@@ -793,6 +996,10 @@ export async function createBookingIntent(
           traveler_message: input.traveler_message ?? null,
           initiated_by: input.initiated_by ?? 'sender',
           traveler_user_id: input.traveler_user_id ?? null,
+          // Trust & safety codes — generated app-side so the response
+          // contains them without an extra round-trip. See 08_trust_and_safety.sql.
+          pickup_code: generateConfirmationCode(),
+          delivery_code: generateConfirmationCode(),
         })
         .select('*')
         .maybeSingle()
@@ -826,6 +1033,12 @@ export type BookingIntentRow = {
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
   traveler_user_id: string | null;
+  // Trust & safety fields (08_trust_and_safety.sql)
+  pickup_code: string | null;
+  delivery_code: string | null;
+  pickup_confirmed_at: string | null;
+  pickup_confirmed_by: string | null;
+  received_confirmed_at: string | null;
 };
 
 /**
@@ -1671,6 +1884,18 @@ export const browser = {
     markNotificationRead(getBrowserClient(), notificationId),
   markAllNotificationsRead: (userId: string) =>
     markAllNotificationsRead(getBrowserClient(), userId),
+
+  // Trust & safety
+  confirmPickupWithCode: (bookingId: string, code: string, travelerId: string) =>
+    confirmPickupWithCode(getBrowserClient(), bookingId, code, travelerId),
+  confirmDeliveryWithCode: (bookingId: string, code: string, senderId: string) =>
+    confirmDeliveryWithCode(getBrowserClient(), bookingId, code, senderId),
+  createDispute: (input: Parameters<typeof createDispute>[1]) =>
+    createDispute(getBrowserClient(), input),
+  listDisputesForUser: (userId: string) =>
+    listDisputesForUser(getBrowserClient(), userId),
+  getOpenDisputeForBooking: (bookingId: string, reporterId: string) =>
+    getOpenDisputeForBooking(getBrowserClient(), bookingId, reporterId),
 
   createReport: (input: Parameters<typeof createReport>[1]) =>
     createReport(getBrowserClient(), input),
