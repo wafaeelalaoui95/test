@@ -14,7 +14,7 @@ import {
   Lock,
   HandCoins,
   PackageCheck,
-  IdCard,
+  BadgeCheck,
   MessageCircleQuestion,
   AlertTriangle,
   ChevronDown,
@@ -93,7 +93,7 @@ const FAQ = [
 
 const PILLARS = [
   {
-    icon: IdCard,
+    icon: BadgeCheck,
     title: 'Identités vérifiées',
     body: 'Pièce d\'identité et selfie biométrique via Stripe Identity. Chaque voyageur est tracé.',
   },
