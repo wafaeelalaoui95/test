@@ -917,7 +917,7 @@ export async function getPublicProfile(
     Promise.resolve(
       supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, verification_level, rating, trips_completed, city, country')
+       .select('id, full_name, avatar_url, verification_level, rating, trips_completed, city, country, identity_verified_at, created_at')
         .eq('id', userId)
         .maybeSingle()
     ),
