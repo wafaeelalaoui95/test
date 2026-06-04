@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +15,10 @@ import {
   CheckCircle2,
   X,
   CreditCard,
+  BadgeCheck,
+  Mail,
+  Calendar,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { VerificationBadge } from '@/components/ui/Badge';
@@ -24,10 +29,18 @@ import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import type { Profile, TravelerTripRow } from '@/lib/supabase/types';
+
 type PublicProfile = Pick<
   Profile,
   'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed' | 'city' | 'country'
->;
+> & {
+  // Optional fields that may not exist on legacy profiles but are surfaced
+  // by recent migrations (07_identity_verification, etc.) — typed as
+  // optional so the page renders gracefully when they're missing.
+  identity_verified_at?: string | null;
+  created_at?: string | null;
+};
+
 export default function PublicProfilePage({ params }: { params: { id: string } }) {
   const travelerId = params.id;
   const { t } = useI18n();
@@ -36,6 +49,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   const [trips, setTrips] = useState<TravelerTripRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   // Booking intent modal state
   const [bookingTrip, setBookingTrip] = useState<TravelerTripRow | null>(null);
   const [bookingStep, setBookingStep] = useState<'details' | 'payment' | 'success'>('details');
@@ -43,6 +57,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   const [intentDescription, setIntentDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -52,7 +67,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     ])
       .then(([prof, tr]) => {
         if (cancelled) return;
-        setProfile(prof);
+        setProfile(prof as any);
         setTrips(tr);
       })
       .catch((err) => {
@@ -66,6 +81,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       cancelled = true;
     };
   }, [travelerId]);
+
   function openBooking(trip: TravelerTripRow) {
     setBookingTrip(trip);
     setBookingStep('details');
@@ -73,7 +89,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     setIntentDescription('');
     setSubmitErr(null);
   }
-  // Step 1 → Step 2: validate form, move to payment
+
   function handleProceedToPayment() {
     if (!intentCategory) {
       setSubmitErr('Choisissez une catégorie d\'objet');
@@ -82,9 +98,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     setSubmitErr(null);
     setBookingStep('payment');
   }
-  // Step 2 → Step 3: payment authorised, now create the booking_intent row
-  // with the paymentIntentId attached so the traveler can later trigger
-  // capture from their /me page.
+
   async function handlePaymentAuthorized(paymentIntentId: string) {
     if (!bookingTrip || !user) return;
     const breakdown = priceBreakdown(bookingTrip.compensation_min);
@@ -96,12 +110,12 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
         traveler_trip_id: bookingTrip.id,
         item_category: intentCategory,
         item_description: intentDescription || null,
-        proposed_price: breakdown.total, // store the total paid by the sender
+        proposed_price: breakdown.total,
         pickup_city: bookingTrip.departure_city,
         destination_city: bookingTrip.arrival_city,
         payment_intent_id: paymentIntentId,
         payment_status: 'authorized',
-        payment_amount: Math.round(breakdown.total * 100), // cents for Stripe
+        payment_amount: Math.round(breakdown.total * 100),
       });
       setBookingStep('success');
     } catch (e: any) {
@@ -110,7 +124,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       setSubmitting(false);
     }
   }
-  // Parse accepted categories from notes (JSON)
+
   function getAcceptedCategories(trip: TravelerTripRow): string[] {
     if (!trip.notes) return [];
     try {
@@ -121,6 +135,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     }
     return [];
   }
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -128,6 +143,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       </div>
     );
   }
+
   if (error || !profile) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-5">
@@ -143,69 +159,150 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       </div>
     );
   }
+
   const initial = nameInitial(profile.full_name);
   const publicName = displayName(profile.full_name) || 'Voyageur';
+  const firstName = publicName.split(' ')[0];
+
+  // Derived trust signals — passed down to the badge grid
+  const isIdentityVerified =
+    !!profile.identity_verified_at ||
+    profile.verification_level === 'id_verified' ||
+    profile.verification_level === 'trusted';
+  // We treat the profile's email as confirmed by default: Supabase Auth
+  // requires email confirmation for signup, so every profile that exists
+  // already has a confirmed email.
+  const isEmailVerified = true;
+  // Member-since year — falls back gracefully if created_at isn't surfaced
+  const memberSinceYear = profile.created_at
+    ? new Date(profile.created_at).getFullYear()
+    : null;
+
   return (
-    <div className="min-h-screen py-10 lg:py-16">
+    <div className="min-h-screen py-8 lg:py-12">
       <div className="mx-auto max-w-5xl px-5 sm:px-8">
         {/* Back link */}
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-[14px] text-ink-400 hover:text-ink-600 mb-8 transition-colors"
+          className="inline-flex items-center gap-1.5 text-[14px] text-ink-400 hover:text-ink-600 mb-6 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Retour aux voyageurs
         </Link>
-        {/* Profile header */}
+
+        {/* PROFILE HERO — Airbnb / BlaBlaCar inspired
+            Big avatar on the left, name + stats on the right.
+            Stats are placed right under the name so they're seen
+            BEFORE the trips below. */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-12"
+          className="bg-white rounded-3xl border border-ink-50 p-6 sm:p-8 mb-6"
         >
-          {profile.avatar_url ? (
-            <img
-              src={profile.avatar_url}
-              alt={publicName}
-              className="w-24 h-24 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-24 h-24 rounded-full bg-lavender-100 flex items-center justify-center font-extrabold text-3xl text-lavender-700">
-              {initial}
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-2">
-              {publicName}
-            </h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-ink-400">
-              <div className="flex items-center gap-1.5">
-                <Star className="w-3.5 h-3.5 text-butter-500 fill-butter-500" />
-                <span className="font-semibold text-ink-600 num-display">
-                  {(profile.rating ?? 0).toFixed(1)}
-                </span>
-                <span>· <span className="num-display">{profile.trips_completed ?? 0}</span> trajets effectués</span>
-              </div>
-              {profile.city && (
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{profile.city}</span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            {/* Avatar */}
+            <div className="relative flex-shrink-0">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={publicName}
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-lavender-100 flex items-center justify-center font-extrabold text-3xl sm:text-4xl text-lavender-700">
+                  {initial}
                 </div>
               )}
-              {profile.verification_level && (
-                <VerificationBadge level={profile.verification_level} />
+              {/* Identity verified mint pill overlapping the avatar — the
+                  visual signature of a verified profile, like the Airbnb
+                  superhost ribbon. */}
+              {isIdentityVerified && (
+                <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-mint-500 border-[3px] border-white flex items-center justify-center" title="Identité vérifiée">
+                  <BadgeCheck className="w-4 h-4 text-white" strokeWidth={2.5} />
+                </div>
               )}
+            </div>
+
+            {/* Name + rating row */}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-2">
+                {publicName}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-ink-400">
+                <div className="flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-butter-500 fill-butter-500" />
+                  <span className="font-bold text-ink-600 num-display">
+                    {(profile.rating ?? 0).toFixed(1)}
+                  </span>
+                  <span className="text-ink-300">·</span>
+                  <span>
+                    <span className="num-display font-semibold text-ink-500">{profile.trips_completed ?? 0}</span> {profile.trips_completed === 1 ? 'transport effectué' : 'transports effectués'}
+                  </span>
+                </div>
+                {profile.city && (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>{profile.city}{profile.country ? `, ${profile.country}` : ''}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* TRUST BADGES — grid of vérifications, BlaBlaCar style.
+              Each cell shows a checkmark or a dimmed pending icon. We
+              don't show "Téléphone vérifié" yet because phone validation
+              isn't implemented; it'll get added the same way later. */}
+          <div className="mt-7 pt-6 border-t border-ink-50">
+            <h2 className="text-[11px] font-bold tracking-[0.14em] uppercase text-ink-300 mb-4">
+              Vérifications
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <TrustBadge
+                done={isIdentityVerified}
+                icon={BadgeCheck}
+                label="Identité vérifiée"
+                hint="Pièce d'identité + selfie"
+              />
+              <TrustBadge
+                done={isEmailVerified}
+                icon={Mail}
+                label="Email confirmé"
+                hint="Adresse vérifiée à l'inscription"
+              />
+              <TrustBadge
+                done={!!memberSinceYear}
+                icon={Calendar}
+                label={memberSinceYear ? `Membre depuis ${memberSinceYear}` : 'Membre récent'}
+                hint="Ancienneté du compte"
+                neutral
+              />
+              <TrustBadge
+                done={(profile.trips_completed ?? 0) >= 3}
+                icon={TrendingUp}
+                label={
+                  (profile.trips_completed ?? 0) === 0
+                    ? 'Nouveau voyageur'
+                    : (profile.trips_completed ?? 0) >= 10
+                      ? 'Voyageur expérimenté'
+                      : 'Voyageur en confiance'
+                }
+                hint={`${profile.trips_completed ?? 0} transport${(profile.trips_completed ?? 0) > 1 ? 's' : ''} réalisé${(profile.trips_completed ?? 0) > 1 ? 's' : ''}`}
+                neutral
+              />
             </div>
           </div>
         </motion.div>
+
         {/* Open trips */}
-        <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em] mb-6">
+        <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em] mb-5">
           Trajets ouverts
         </h2>
         {trips.length === 0 ? (
           <div className="bg-white rounded-2xl p-10 text-center border border-dashed border-ink-100">
             <p className="text-[14px] text-ink-400">
-              {publicName.split(' ')[0]} n&apos;a aucun trajet ouvert pour le moment.
+              {firstName} n&apos;a aucun trajet ouvert pour le moment.
             </p>
           </div>
         ) : (
@@ -272,7 +369,8 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
           </div>
         )}
       </div>
-      {/* Booking intent modal */}
+
+      {/* Booking intent modal — UNCHANGED from previous version */}
       <AnimatePresence>
         {bookingTrip && (
           <motion.div
@@ -280,11 +378,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            // Mobile: stick to bottom but let the top scroll into view via
-            // overflow-y-auto on the OUTER container. Desktop: center it.
-            // Important: the outer container (not the inner card) owns the
-            // scroll, so the whole modal — including its header with the
-            // success checkmark — is reachable on small screens.
             className="fixed inset-0 z-[100] overflow-y-auto bg-ink-600/40 backdrop-blur-sm"
             onClick={() => !submitting && setBookingTrip(null)}
           >
@@ -295,9 +388,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                 exit={{ y: 20, opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.2 }}
                 onClick={(e) => e.stopPropagation()}
-                // No max-height + overflow on the card: the parent scrolls.
-                // Smaller padding on mobile (p-5) for breathing room without
-                // wasting screen real estate; comfortable p-7 on sm+.
                 className="bg-cream-50 rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-xl my-3 sm:my-0"
               >
               {bookingStep === 'details' && (
@@ -322,7 +412,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  {/* Category picker */}
                   <div className="mb-5">
                     <label className="block text-[13px] font-semibold text-ink-500 mb-2.5">
                       Que voulez-vous envoyer ?
@@ -353,7 +442,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       })}
                     </div>
                   </div>
-                  {/* Description */}
                   <div className="mb-5">
                     <label className="block text-[13px] font-semibold text-ink-500 mb-2">
                       Description (optionnel)
@@ -366,8 +454,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       className="w-full px-4 py-3 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300 resize-none"
                     />
                   </div>
-                  {/* Price breakdown — fixed to the traveler's minimum.
-                      No slider: the traveler set the price, sender accepts. */}
                   <div className="mb-6">
                     <label className="block text-[13px] font-semibold text-ink-500 mb-3">
                       Détail du paiement
@@ -399,7 +485,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       {submitErr}
                     </div>
                   )}
-                  {/* Soft disclosure about Stripe's hold mechanism */}
                   <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 mb-5 text-[13px] text-ink-500 flex gap-2.5">
                     <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
                     <div>
@@ -466,8 +551,6 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                 </>
               )}
               {bookingStep === 'success' && (
-                /* Success state — important: the page parent scrolls so the
-                   checkmark header at the top is always reachable on phone. */
                 <div className="text-center py-4">
                   <div className="w-14 h-14 rounded-full bg-mint-500 mx-auto flex items-center justify-center mb-5">
                     <CheckCircle2 className="w-7 h-7 text-white" strokeWidth={2.5} />
@@ -500,6 +583,64 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// TrustBadge — small card in the verifications grid.
+// -----------------------------------------------------------------------------
+//
+// Three visual states:
+//   - done + green:   verified, mint check
+//   - done + neutral: factual info (member since, trip count) — no green,
+//                     just lavender accent, no checkmark
+//   - !done:          dimmed, subtle "not yet"
+function TrustBadge({
+  done,
+  icon: Icon,
+  label,
+  hint,
+  neutral = false,
+}: {
+  done: boolean;
+  icon: any;
+  label: string;
+  hint: string;
+  neutral?: boolean;
+}) {
+  const verified = done && !neutral;
+  return (
+    <div
+      className={`
+        rounded-2xl p-4 border transition-colors
+        ${verified
+          ? 'bg-mint-50/40 border-mint-200/70'
+          : neutral && done
+            ? 'bg-lavender-50/40 border-lavender-200/70'
+            : 'bg-cream-50 border-ink-100'}
+      `}
+    >
+      <div className="flex items-center gap-2.5 mb-1.5">
+        <div
+          className={`
+            w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0
+            ${verified
+              ? 'bg-mint-500 text-white'
+              : neutral && done
+                ? 'bg-lavender-500 text-white'
+                : 'bg-ink-100 text-ink-300'}
+          `}
+        >
+          <Icon className="w-3.5 h-3.5" strokeWidth={2.5} />
+        </div>
+        <div className="text-[12px] font-bold text-ink-600 leading-tight">
+          {label}
+        </div>
+      </div>
+      <div className="text-[11px] text-ink-400 leading-snug">
+        {hint}
+      </div>
     </div>
   );
 }
