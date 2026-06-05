@@ -115,7 +115,7 @@ export function DisputeModal({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-            className="fixed inset-x-4 bottom-4 max-h-[90vh] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:w-[480px] sm:max-h-[85vh] bg-cream-50 rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-2rem)] sm:w-[480px] max-h-[calc(100vh-2rem)] sm:max-h-[85vh] bg-cream-50 rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col"
           >
             <div className="px-6 pt-6 pb-2 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2.5">
