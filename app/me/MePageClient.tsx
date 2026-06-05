@@ -444,7 +444,7 @@ export default function MyPage(
 
   return (
     <div className="min-h-screen py-12 lg:py-20">
-      <div className="mx-auto max-w-4xl px-5 sm:px-8 lg:px-12">
+      <div className="px-6 sm:px-8 lg:px-10">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
