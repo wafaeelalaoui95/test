@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Check, Package } from 'lucide-react';
 import { useState } from 'react';
-
+ 
 /**
  * Code display modal — shown at one of the two trust-handoff moments.
  *
