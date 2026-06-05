@@ -217,15 +217,7 @@ export async function listOpenRequestsWithProfile(
     'List sender profiles'
   );
  
-  const profileMap = new Map<string, Profile>();
-  (profiles ?? []).forEach((p: any) => profileMap.set(p.id, p));
  
-  return requests.map((r: ShippingRequestRow) => ({
-    ...r,
-    profile: (profileMap.get(r.user_id) as any) ?? null,
-  }));
-}
-
   const profileMap = new Map<string, Profile>();
   (profiles ?? []).forEach((p: any) => profileMap.set(p.id, p));
 
