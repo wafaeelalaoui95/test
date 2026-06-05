@@ -90,25 +90,26 @@ type IncomingIntent = {
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
 
-export default function MyPage({
-  initialProfile,
-  initialRequests,
-  initialTrips,
-  initialMatches,
-  initialIncomingIntents,
-  initialMyBookings,
-  initialMyProposals,
-}: {
-  initialUser: { id: string; email: string | null };
-  initialProfile: Profile | null;
-  initialRequests: ShippingRequestRow[];
-  initialTrips: TravelerTripRow[];
-  initialMatches: MatchWithRefs[];
-  initialIncomingIntents: IncomingIntent[];
-  initialMyBookings: MyBooking[];
-  initialMyProposals: TravelerProposal[];
-  initialReviews?: any[];
-}) {
+// Props passed from the server-side `app/me/page.tsx`. They server-fetch
+// the initial data so the dashboard renders fully on first paint. This
+// version of MePageClient doesn't yet wire those props through to local
+// state — it still does a client-side refetch in useEffect — but the
+// signature must match what the server passes for the build to typecheck.
+// A future cleanup will hydrate the useState with the initial* props
+// directly, removing the boot spinner entirely.
+export default function MyPage(
+  _props: {
+    initialUser: { id: string; email: string | null };
+    initialProfile: Profile | null;
+    initialRequests: ShippingRequestRow[];
+    initialTrips: TravelerTripRow[];
+    initialMatches: MatchWithRefs[];
+    initialIncomingIntents: IncomingIntent[];
+    initialMyBookings: MyBooking[];
+    initialMyProposals: TravelerProposal[];
+    initialReviews?: any[];
+  }
+) {
   const { t } = useI18n();
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const [tab, setTab] = useState<TabId>('trips');
