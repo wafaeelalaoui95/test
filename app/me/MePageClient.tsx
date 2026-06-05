@@ -3785,8 +3785,8 @@ function IntentCardInline({
           <DeliveryProofModal
             bookingIntentId={intent.id}
             onClose={() => setShowProofModal(false)}
-            onUploaded={(url, receiverName) => {
-              onProofUploaded(intent.id, url, receiverName);
+            onSuccess={(url) => {
+              onProofUploaded(intent.id, url, '');
               setShowProofModal(false);
             }}
           />
