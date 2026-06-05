@@ -149,15 +149,24 @@ export async function createTrip(
 // ============================================================================
 
 export async function listOpenRequests(supabase: SB): Promise<ShippingRequestRow[]> {
+  // Hide requests whose desired delivery date has already passed.
+  // No traveler can realistically fulfill a same-day-late shipment, and
+  // leaving them visible lets people "propose" against impossible deadlines.
+  // Mirror the cutoff logic used by listOpenTrips (today's ISO date in UTC).
+  const today = new Date().toISOString().slice(0, 10);
+ 
   const { data, error } = await supabase
     .from('shipping_requests')
     .select('*')
     .eq('status', 'pending')
+    .gte('desired_delivery_date', today)
     .order('created_at', { ascending: false })
     .limit(30);
   if (error) throw error;
   return data ?? [];
 }
+ 
+ 
 
 /**
  * Same as listOpenRequests but each row is enriched with its sender profile,
@@ -174,6 +183,10 @@ export type ShippingRequestWithProfile = ShippingRequestRow & {
 export async function listOpenRequestsWithProfile(
   supabase: SB
 ): Promise<ShippingRequestWithProfile[]> {
+  // Same cutoff logic as listOpenRequests above — past-deadline requests
+  // are noise for the traveler discovery feed.
+  const today = new Date().toISOString().slice(0, 10);
+ 
   // 1. Get the requests
   const { data: requests, error: reqErr } = await withTimeout(
     Promise.resolve(
@@ -181,6 +194,7 @@ export async function listOpenRequestsWithProfile(
         .from('shipping_requests')
         .select('*')
         .eq('status', 'pending')
+        .gte('desired_delivery_date', today)  // ← LA SEULE LIGNE AJOUTÉE
         .order('created_at', { ascending: false })
         .limit(50)
     ),
@@ -189,7 +203,7 @@ export async function listOpenRequestsWithProfile(
   );
   if (reqErr) throw reqErr;
   if (!requests || requests.length === 0) return [];
-
+ 
   // 2. Batch-load all the unique senders' profiles
   const senderIds = Array.from(new Set(requests.map((r: ShippingRequestRow) => r.user_id)));
   const { data: profiles } = await withTimeout(
@@ -202,6 +216,15 @@ export async function listOpenRequestsWithProfile(
     8000,
     'List sender profiles'
   );
+ 
+  const profileMap = new Map<string, Profile>();
+  (profiles ?? []).forEach((p: any) => profileMap.set(p.id, p));
+ 
+  return requests.map((r: ShippingRequestRow) => ({
+    ...r,
+    profile: (profileMap.get(r.user_id) as any) ?? null,
+  }));
+}
 
   const profileMap = new Map<string, Profile>();
   (profiles ?? []).forEach((p: any) => profileMap.set(p.id, p));
