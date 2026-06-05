@@ -44,7 +44,7 @@ import { BookingTimeline, deriveTimelineStep } from '@/components/BookingTimelin
 import { ReviewModal } from '@/components/ReviewModal';
 import type { ReviewForBooking } from '@/lib/supabase/queries';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
-import { formatShortDate, formatName, nameInitial, displayName, formatEuros } from '@/lib/utils';
+import { formatShortDate, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
@@ -62,6 +62,40 @@ import type {
 } from '@/lib/supabase/types';
 
 type TabId = 'trips' | 'sends' | 'profile';
+
+// ─── NAME DISPLAY HELPERS ─────────────────────────────────────────────────
+// User-entered names come in unpredictable casing ("wafae el alaoui",
+// "YASSINE", "Marie-Claire"). We don't trust the data layer to normalize
+// (it's free text), so we format AT DISPLAY TIME with these helpers.
+//
+// `titleCaseName` — every word's first letter uppercased, the rest
+// lowercased. Handles compound names ("jean-paul" → "Jean-Paul") and
+// names with apostrophes ("d'arcy" → "D'Arcy"). Falls back to '' if
+// the input is nullish.
+function titleCaseName(name: string | null | undefined): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .split(/(\s|-|')/) // split on space/hyphen/apostrophe AND keep them
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+}
+
+// `shortName` — render a name as "Firstname L." (first name in title
+// case + initial of the last name with a period). Used in notifications
+// and any compact mention of "the other party" in cards so we don't
+// drown the UI in full names. Example: "wafae el alaoui" → "Wafae E.".
+// If the input has only one token, returns just that token title-cased.
+function shortName(name: string | null | undefined): string {
+  if (!name) return '';
+  const tokens = name.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return '';
+  if (tokens.length === 1) return titleCaseName(tokens[0]);
+  const first = titleCaseName(tokens[0]);
+  const lastInitial = tokens[tokens.length - 1].charAt(0).toUpperCase();
+  return `${first} ${lastInitial}.`;
+}
+
 
 type MatchWithRefs = MatchRow & {
   traveler_trip?: TravelerTripRow | null;
@@ -254,7 +288,7 @@ export default function MyPage(
     // (we're the proposer waiting for sender).
     const incoming = incomingIntents.find((i) => i.id === chatBookingId);
     if (incoming) {
-      const otherName = displayName(incoming.sender_profile?.full_name) || 'Expéditeur';
+      const otherName = shortName(incoming.sender_profile?.full_name) || 'Expéditeur';
       setChatTarget({
         bookingIntentId: incoming.id,
         senderId: incoming.sender_id,
@@ -267,7 +301,7 @@ export default function MyPage(
     }
     const booking = myBookings.find((b) => b.id === chatBookingId);
     if (booking && booking.traveler_profile) {
-      const otherName = displayName(booking.traveler_profile.full_name) || 'Voyageur';
+      const otherName = shortName(booking.traveler_profile.full_name) || 'Voyageur';
       setChatTarget({
         bookingIntentId: booking.id,
         senderId: user.id,
@@ -280,7 +314,7 @@ export default function MyPage(
     }
     const proposal = myProposals.find((p) => p.id === chatBookingId);
     if (proposal && proposal.sender_profile) {
-      const otherName = displayName(proposal.sender_profile.full_name) || 'Expéditeur';
+      const otherName = shortName(proposal.sender_profile.full_name) || 'Expéditeur';
       setChatTarget({
         bookingIntentId: proposal.id,
         senderId: proposal.sender_id,
@@ -455,7 +489,7 @@ export default function MyPage(
           </div>
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.03em]">
-              {formatName(profile?.full_name) || t.me_title}
+              {titleCaseName(profile?.full_name) || t.me_title}
             </h1>
             <p className="text-[14px] text-ink-400 mt-1">{user.email}</p>
           </div>
@@ -573,7 +607,7 @@ export default function MyPage(
                       bookingIntentId: intent.id,
                       senderId: intent.sender_id,
                       travelerId: user.id,
-                      otherName: displayName(intent.sender_profile?.full_name) || 'Expéditeur',
+                      otherName: shortName(intent.sender_profile?.full_name) || 'Expéditeur',
                       otherInitial: nameInitial(intent.sender_profile?.full_name),
                       contextLine: `${intent.pickup_city} → ${intent.destination_city}`,
                     });
@@ -585,7 +619,7 @@ export default function MyPage(
                       reporterRole: 'traveler',
                       reportedUserId: intent.sender_id,
                       reportedUserName:
-                        displayName(intent.sender_profile?.full_name) || "l'expéditeur",
+                        shortName(intent.sender_profile?.full_name) || "l'expéditeur",
                     });
                   }}
                   onEnterPickupCode={(intent) => {
@@ -593,7 +627,7 @@ export default function MyPage(
                     setPickupEnteringFor({
                       bookingId: intent.id,
                       senderName:
-                        displayName(intent.sender_profile?.full_name) || "l'expéditeur",
+                        shortName(intent.sender_profile?.full_name) || "l'expéditeur",
                     });
                   }}
                   onShowDeliveryCode={(intent) => {
@@ -610,7 +644,7 @@ export default function MyPage(
                       bookingId: intent.id,
                       code: intent.delivery_code,
                       senderName:
-                        displayName(intent.sender_profile?.full_name) || "l'expéditeur",
+                        shortName(intent.sender_profile?.full_name) || "l'expéditeur",
                     });
                   }}
                   onOpenReview={(intent) => {
@@ -620,7 +654,7 @@ export default function MyPage(
                       bookingIntentId: intent.id,
                       reviewedUserId: intent.sender_id,
                       reviewedUserName:
-                        displayName(intent.sender_profile?.full_name) || "L'expéditeur",
+                        shortName(intent.sender_profile?.full_name) || "L'expéditeur",
                       reviewedRole: 'sender',
                     });
                   }}
@@ -650,7 +684,7 @@ export default function MyPage(
                       bookingIntentId: booking.id,
                       senderId: user.id,
                       travelerId: booking.traveler_profile.id,
-                      otherName: displayName(booking.traveler_profile.full_name) || 'Voyageur',
+                      otherName: shortName(booking.traveler_profile.full_name) || 'Voyageur',
                       otherInitial: nameInitial(booking.traveler_profile.full_name),
                       contextLine: `${booking.pickup_city} → ${booking.destination_city}`,
                     });
@@ -663,7 +697,7 @@ export default function MyPage(
                       reporterRole: 'sender',
                       reportedUserId: booking.traveler_profile.id,
                       reportedUserName:
-                        displayName(booking.traveler_profile.full_name) || 'le voyageur',
+                        shortName(booking.traveler_profile.full_name) || 'le voyageur',
                     });
                   }}
                   onShowPickupCode={(booking) => {
@@ -678,7 +712,7 @@ export default function MyPage(
                       bookingId: booking.id,
                       code: booking.pickup_code,
                       travelerName:
-                        displayName(booking.traveler_profile?.full_name) || 'le voyageur',
+                        shortName(booking.traveler_profile?.full_name) || 'le voyageur',
                     });
                   }}
                   onEnterDeliveryCode={(booking) => {
@@ -687,7 +721,7 @@ export default function MyPage(
                     setDeliveryEnteringFor({
                       bookingId: booking.id,
                       travelerName:
-                        displayName(booking.traveler_profile?.full_name) || 'le voyageur',
+                        shortName(booking.traveler_profile?.full_name) || 'le voyageur',
                     });
                   }}
                   onOpenReview={(booking) => {
@@ -698,7 +732,7 @@ export default function MyPage(
                       bookingIntentId: booking.id,
                       reviewedUserId: booking.traveler_profile.id,
                       reviewedUserName:
-                        displayName(booking.traveler_profile.full_name) || 'le voyageur',
+                        shortName(booking.traveler_profile.full_name) || 'le voyageur',
                       reviewedRole: 'traveler',
                     });
                   }}
@@ -1270,7 +1304,7 @@ function BookingCard({
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
   const trip = booking.traveler_trip;
   const traveler = booking.traveler_profile;
-  const travelerName = displayName(traveler?.full_name) || 'Voyageur';
+  const travelerName = shortName(traveler?.full_name) || 'Voyageur';
   const initial = nameInitial(traveler?.full_name);
 
   // Use Supabase auth.users email — we don't have it on the public profile
@@ -1973,7 +2007,7 @@ function IntentCard({
 }) {
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
   const [showProofModal, setShowProofModal] = useState(false);
-  const senderName = displayName(intent.sender_profile?.full_name) || 'Quelqu\'un';
+  const senderName = shortName(intent.sender_profile?.full_name) || 'Quelqu\'un';
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
 
   async function handle(action: 'confirmed' | 'cancelled') {
@@ -2198,7 +2232,7 @@ function ProfileTab({
           </div>
           <div className="flex-1">
             <div className="text-xl font-bold text-ink-600 tracking-[-0.015em]">
-              {formatName(fullName) || email}
+              {titleCaseName(fullName) || email}
             </div>
             {profile && (
               <div className="mt-1.5">
@@ -2455,7 +2489,7 @@ function ProposalPaymentModal({
   const [err, setErr] = useState<string | null>(null);
 
   const traveler = booking.traveler_profile;
-  const travelerName = displayName(traveler?.full_name) || 'Le voyageur';
+  const travelerName = shortName(traveler?.full_name) || 'Le voyageur';
 
   async function handleAuthorized(paymentIntentId: string) {
     setBusy(true);
@@ -2551,7 +2585,7 @@ function ProposalCard({
   proposal: TravelerProposal;
   accepted?: boolean;
 }) {
-  const senderName = displayName(proposal.sender_profile?.full_name) || 'L\'expéditeur';
+  const senderName = shortName(proposal.sender_profile?.full_name) || 'L\'expéditeur';
   const initial = nameInitial(proposal.sender_profile?.full_name);
   // What I'll actually receive after Jibly's 15% fee
   const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
@@ -3037,7 +3071,7 @@ function SendListRow({
 }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
   const emoji = cat?.icon ?? '📦';
-  const travelerName = displayName(booking.traveler_profile?.full_name) || 'Voyageur';
+  const travelerName = shortName(booking.traveler_profile?.full_name) || 'Voyageur';
   const bucket = bucketForSendBooking(booking);
 
   let subtitle = '';
@@ -3552,7 +3586,7 @@ function IntentCardInline({
 }) {
   const [showProofModal, setShowProofModal] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
-  const senderName = displayName(intent.sender_profile?.full_name) || 'Expéditeur';
+  const senderName = shortName(intent.sender_profile?.full_name) || 'Expéditeur';
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
 
   async function handle(status: 'confirmed' | 'cancelled') {
@@ -3797,7 +3831,7 @@ function IntentCardInline({
 }
 
 function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
-  const senderName = displayName(proposal.sender_profile?.full_name) || 'Expéditeur';
+  const senderName = shortName(proposal.sender_profile?.full_name) || 'Expéditeur';
   const initial = nameInitial(proposal.sender_profile?.full_name);
   const netTraveler = proposal.proposed_price / 1.15;
 
