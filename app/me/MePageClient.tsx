@@ -3827,6 +3827,26 @@ function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
 }
 
 // ---------------------------------------------------------------------------
+// GroupHeader — used by HistoryView for its section headers. The master-
+// detail refactor removed this from the active /me views (those use
+// ListBucketHeader now), but the history page below still uses the older
+// big-section style so we keep it here.
+// ---------------------------------------------------------------------------
+function GroupHeader({ icon, label, count }: { icon: string; label: string; count: number }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <span className="text-lg">{icon}</span>
+      <h3 className="text-[15px] font-bold text-ink-600 tracking-[-0.01em]">{label}</h3>
+      {count > 0 && (
+        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-ink-500 text-cream-50 text-[11px] font-bold">
+          {count}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // HistoryView — combines both sides, completed or cancelled items
 // ---------------------------------------------------------------------------
 function HistoryView({
