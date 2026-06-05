@@ -90,7 +90,25 @@ type IncomingIntent = {
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
 
-export default function MyPage() {
+export default function MyPage({
+  initialProfile,
+  initialRequests,
+  initialTrips,
+  initialMatches,
+  initialIncomingIntents,
+  initialMyBookings,
+  initialMyProposals,
+}: {
+  initialUser: { id: string; email: string | null };
+  initialProfile: Profile | null;
+  initialRequests: ShippingRequestRow[];
+  initialTrips: TravelerTripRow[];
+  initialMatches: MatchWithRefs[];
+  initialIncomingIntents: IncomingIntent[];
+  initialMyBookings: MyBooking[];
+  initialMyProposals: TravelerProposal[];
+  initialReviews?: any[];
+}) {
   const { t } = useI18n();
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const [tab, setTab] = useState<TabId>('trips');
