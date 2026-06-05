@@ -1,4 +1,4 @@
-'use client'; 
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -24,6 +24,10 @@ import {
   X,
   Flag,
   KeyRound,
+  Inbox,
+  ArrowLeft,
+  Sparkles,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
@@ -36,6 +40,9 @@ import { DisputeModal } from '@/components/DisputeModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
 import { BookingTimeline, deriveTimelineStep } from '@/components/BookingTimeline';
+// Reviews — mutual star-rating between sender and traveler once received_confirmed_at is set.
+import { ReviewModal } from '@/components/ReviewModal';
+import type { ReviewForBooking } from '@/lib/supabase/queries';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
 import { formatShortDate, formatName, nameInitial, displayName, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -193,6 +200,45 @@ export default function MyPage(
     travelerName: string;
   } | null>(null);
 
+  // ─── REVIEWS (mutual star ratings) ───────────────────────────────────────
+  // Once received_confirmed_at is set on a booking, both parties can post a
+  // 1-5 star review of the other side. We fetch reviews up-front for the
+  // user's known bookings, then keep them in state so "Noter" buttons can
+  // lock themselves immediately after a successful submit (no refetch).
+  const [reviews, setReviews] = useState<ReviewForBooking[]>([]);
+
+  // Modal control: null when closed, set when an "Noter" button is clicked.
+  // Carries everything the modal needs (the booking and who's being reviewed).
+  const [reviewing, setReviewing] = useState<{
+    bookingIntentId: string;
+    reviewedUserId: string;
+    reviewedUserName: string;
+    reviewedRole: 'sender' | 'traveler';
+  } | null>(null);
+
+  // Has the current user already reviewed this booking? Used to swap the
+  // "Noter" button for a "Vous avez noté" lock badge.
+  function hasReviewed(bookingIntentId: string): boolean {
+    if (!user) return false;
+    return reviews.some(
+      (r) => r.booking_intent_id === bookingIntentId && r.reviewer_id === user.id
+    );
+  }
+
+  // Did the OTHER party already review me on this booking? Used to surface
+  // a small inline preview "X vous a noté ★★★★★" once their review is in.
+  function reviewFromOther(bookingIntentId: string): ReviewForBooking | null {
+    if (!user) return null;
+    return (
+      reviews.find(
+        (r) =>
+          r.booking_intent_id === bookingIntentId &&
+          r.reviewer_id !== user.id &&
+          r.reviewed_user_id === user.id
+      ) ?? null
+    );
+  }
+
   // Deep-link from notification emails: if the URL contains ?chat={id},
   // open the chat modal once data is loaded. Run on every relevant data
   // refresh in case the user lands while loading.
@@ -245,6 +291,48 @@ export default function MyPage(
       });
     }
   }, [dataLoading, user, incomingIntents, myBookings, myProposals, chatTarget]);
+
+  // Fetch reviews for the booking-set the user is involved in. Triggered
+  // whenever the data set changes (initial load, or after refresh). We pull
+  // both directions (reviews the user wrote + reviews received) by querying
+  // on every known booking id; RLS limits what comes back to what's allowed.
+  useEffect(() => {
+    if (dataLoading || !user) return;
+    const allBookingIds = Array.from(
+      new Set<string>([
+        ...incomingIntents.map((i) => i.id),
+        ...myBookings.map((b) => b.id),
+        ...myProposals.map((p) => p.id),
+      ])
+    );
+    if (allBookingIds.length === 0) {
+      setReviews([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await browser.listReviewsByBookingIds(allBookingIds);
+        if (cancelled) return;
+        setReviews(rows);
+      } catch (e) {
+        console.warn('[me] listReviewsByBookingIds failed:', e);
+        if (!cancelled) setReviews([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Stringify the id lists in the dep to avoid useless refetches when the
+    // refs change but content is the same.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dataLoading,
+    user,
+    incomingIntents.map((i) => i.id).join('|'),
+    myBookings.map((b) => b.id).join('|'),
+    myProposals.map((p) => p.id).join('|'),
+  ]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -525,6 +613,19 @@ export default function MyPage(
                         displayName(intent.sender_profile?.full_name) || "l'expéditeur",
                     });
                   }}
+                  onOpenReview={(intent) => {
+                    // Traveler rates the sender. Reviewable only once
+                    // received_confirmed_at is set; the card guards that.
+                    setReviewing({
+                      bookingIntentId: intent.id,
+                      reviewedUserId: intent.sender_id,
+                      reviewedUserName:
+                        displayName(intent.sender_profile?.full_name) || "L'expéditeur",
+                      reviewedRole: 'sender',
+                    });
+                  }}
+                  hasReviewed={hasReviewed}
+                  reviewFromOther={reviewFromOther}
                   t={t}
                 />
               )}
@@ -589,6 +690,20 @@ export default function MyPage(
                         displayName(booking.traveler_profile?.full_name) || 'le voyageur',
                     });
                   }}
+                  onOpenReview={(booking) => {
+                    // Sender rates the traveler. Reviewable only once
+                    // received_confirmed_at is set; the card guards that.
+                    if (!booking.traveler_profile) return;
+                    setReviewing({
+                      bookingIntentId: booking.id,
+                      reviewedUserId: booking.traveler_profile.id,
+                      reviewedUserName:
+                        displayName(booking.traveler_profile.full_name) || 'le voyageur',
+                      reviewedRole: 'traveler',
+                    });
+                  }}
+                  hasReviewed={hasReviewed}
+                  reviewFromOther={reviewFromOther}
                   t={t}
                 />
               )}
@@ -777,6 +892,38 @@ export default function MyPage(
           setDeliveryEnteringFor(null);
         }}
       />
+
+      {/* Review modal — opened from any card once the booking is fully
+          received. Submits a star + optional comment; on success we
+          optimistically insert into local `reviews` state so the calling
+          card's "Noter" button flips to "Vous avez noté" without a
+          refetch. The DB trigger has already recomputed the user's
+          average rating server-side. */}
+      {reviewing && user && (
+        <ReviewModal
+          bookingIntentId={reviewing.bookingIntentId}
+          reviewerId={user.id}
+          reviewedUserId={reviewing.reviewedUserId}
+          reviewedUserName={reviewing.reviewedUserName}
+          reviewedRole={reviewing.reviewedRole}
+          onClose={() => setReviewing(null)}
+          onSuccess={(rating) => {
+            setReviews((prev) => [
+              ...prev,
+              {
+                id: `temp-${Date.now()}`,
+                booking_intent_id: reviewing.bookingIntentId,
+                reviewer_id: user.id,
+                reviewed_user_id: reviewing.reviewedUserId,
+                rating,
+                comment: null,
+                created_at: new Date().toISOString(),
+              },
+            ]);
+            setReviewing(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1103,6 +1250,9 @@ function BookingCard({
   onReportProblem,
   onShowPickupCode,
   onEnterDeliveryCode,
+  onOpenReview,
+  hasReviewed,
+  otherReview,
   t,
 }: {
   booking: MyBooking;
@@ -1112,6 +1262,9 @@ function BookingCard({
   onReportProblem?: (b: MyBooking) => void;
   onShowPickupCode?: (b: MyBooking) => void;
   onEnterDeliveryCode?: (b: MyBooking) => void;
+  onOpenReview?: (b: MyBooking) => void;
+  hasReviewed?: boolean;
+  otherReview?: ReviewForBooking | null;
   t: Translations;
 }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
@@ -1174,7 +1327,49 @@ function BookingCard({
               J&apos;ai bien reçu
             </button>
           )}
+
+          {/* Once reception is confirmed, the sender can rate the
+              traveler. Same 3-state pattern as the traveler side:
+              show "Noter" → optimistic flip to "Vous avez noté" badge. */}
+          {isFullyReceived && onOpenReview && (
+            !hasReviewed ? (
+              <button
+                type="button"
+                onClick={() => onOpenReview(booking)}
+                className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+              >
+                <Star className="w-3 h-3 fill-white" strokeWidth={0} />
+                Noter
+              </button>
+            ) : (
+              <span className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+                <Star className="w-3 h-3 fill-current" strokeWidth={0} />
+                Vous avez noté
+              </span>
+            )
+          )}
         </div>
+
+        {/* The traveler's review of the sender, when posted */}
+        {otherReview && (
+          <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
+            <span>{travelerName.split(' ')[0]} vous a noté</span>
+            <span className="inline-flex items-center gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-3 h-3 ${
+                    i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
+                  }`}
+                  strokeWidth={0}
+                />
+              ))}
+            </span>
+            {otherReview.comment && (
+              <span className="text-ink-500">· « {otherReview.comment} »</span>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -2412,58 +2607,539 @@ function ProposalCard({
 //   - Historique  → everything finished, mixed together
 // ===========================================================================
 
-function GroupHeader({ icon, label, count }: { icon: string; label: string; count: number }) {
+// =============================================================================
+// MASTER-DETAIL views — restored from prior architecture, merged with current
+// trust & safety callbacks (signaler + codes pickup/delivery).
+// =============================================================================
+// Pattern: master-detail like Airbnb / Gmail.
+//   - Desktop: list on the left, detail panel on the right
+//   - Mobile : list takes the full screen; tapping an item slides a
+//     full-screen overlay with the detail; a back button returns to the list
+//
+// This block replaces the older GroupHeader / TripsView / TripGroup /
+// IntentCardInline / ProposalCardInline / SendsView / CollapsibleSection /
+// RequestCardSimple. The pre-master-detail buildout was lost when we
+// rebased on an older uploaded source; this file restores it AND keeps the
+// trust & safety wiring we just shipped (signaler + pickup/delivery codes).
+//
+// Reviews system (Star, ReviewModal, hasReviewed, reviewFromOther) was
+// also lost. Reintroducing it is a separate pass — for now the master-
+// detail does NOT surface "Noter" buttons; we'll add that in a follow-up.
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// SHARED — small components used by both Sends and Trips master-detail views
+// ---------------------------------------------------------------------------
+
+// A bucket header inside the master list. Small caption + count.
+function ListBucketHeader({ label, count, tone = 'default' }: { label: string; count: number; tone?: 'default' | 'urgent' | 'success' }) {
+  const toneClass =
+    tone === 'urgent' ? 'text-butter-700' : tone === 'success' ? 'text-mint-700' : 'text-ink-400';
   return (
-    <div className="flex items-center gap-2 mb-4">
-      <span className="text-lg">{icon}</span>
-      <h3 className="text-[15px] font-bold text-ink-600 tracking-[-0.01em]">{label}</h3>
-      {count > 0 && (
-        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-ink-500 text-cream-50 text-[11px] font-bold">
-          {count}
-        </span>
-      )}
+    <div className="flex items-center gap-2 px-3 pt-4 pb-2">
+      <span className={`text-[10px] font-bold tracking-[0.14em] uppercase ${toneClass}`}>
+        {label}
+      </span>
+      <span className="text-[10px] text-ink-300 num-display">({count})</span>
     </div>
   );
 }
 
-// Renders a list of items with a "Voir tout" toggle. Shows the first `limit`
-// items by default (default 3); click reveals the rest. Used for the
-// History section inside Voyages and Envois so it doesn't dominate the page.
-function CollapsibleList({
-  items,
-  limit = 3,
-  showAllLabel = 'Voir tout',
-  showLessLabel = 'Réduire',
+// A clickable row in the master list. Compact, scannable, with a colored
+// dot on the left to signal status at a glance.
+function ListRow({
+  selected,
+  onClick,
+  emoji,
+  title,
+  subtitle,
+  rightLabel,
+  dotClass,
 }: {
-  items: React.ReactNode[];
-  limit?: number;
-  showAllLabel?: string;
-  showLessLabel?: string;
+  selected: boolean;
+  onClick: () => void;
+  emoji: string;
+  title: string;
+  subtitle: string;
+  rightLabel?: string;
+  dotClass?: string;
 }) {
-  const [showAll, setShowAll] = useState(false);
-  if (items.length === 0) return null;
-  const visible = showAll ? items : items.slice(0, limit);
-  const hidden = items.length - limit;
   return (
-    <div className="space-y-3">
-      {visible.map((item, i) => (
-        <div key={i}>{item}</div>
-      ))}
-      {hidden > 0 && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="text-[13px] font-medium text-ink-400 hover:text-ink-600 transition-colors"
-        >
-          {showAll ? showLessLabel : `${showAllLabel} (${hidden} de plus)`}
-        </button>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition-colors ${
+        selected ? 'bg-lavender-50/80 border-l-2 border-lavender-500' : 'hover:bg-cream-50 border-l-2 border-transparent'
+      }`}
+    >
+      <span className="flex-shrink-0 text-[18px]">{emoji}</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-semibold text-ink-600 truncate">{title}</div>
+        <div className="text-[12px] text-ink-400 truncate">{subtitle}</div>
+      </div>
+      {rightLabel && (
+        <div className="flex-shrink-0 text-[12px] font-semibold text-ink-500 num-display">{rightLabel}</div>
       )}
+      {dotClass && (
+        <span className={`flex-shrink-0 w-2 h-2 rounded-full ${dotClass}`} />
+      )}
+    </button>
+  );
+}
+
+// Empty-state placeholder shown in the detail panel when nothing is selected
+// or the user has no items at all.
+function DetailEmpty({ message }: { message: string }) {
+  return (
+    <div className="h-full flex items-center justify-center px-6 py-16 text-center">
+      <div className="max-w-sm">
+        <div className="w-12 h-12 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-4">
+          <Inbox className="w-5 h-5 text-ink-300" />
+        </div>
+        <p className="text-[14px] text-ink-400 leading-relaxed">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+// Wrapper that lays out master + detail. Desktop: side-by-side. Mobile:
+// only one panel visible at a time, controlled by `detailOpen`.
+function MasterDetailLayout({
+  master,
+  detail,
+  detailOpen,
+  onCloseDetail,
+}: {
+  master: React.ReactNode;
+  detail: React.ReactNode;
+  detailOpen: boolean;
+  onCloseDetail: () => void;
+}) {
+  return (
+    <div className="md:grid md:grid-cols-[320px_1fr] md:gap-4 md:min-h-[600px]">
+      {/* Master list */}
+      <aside className={`bg-white rounded-2xl border border-ink-50 overflow-hidden ${detailOpen ? 'hidden md:block' : 'block'}`}>
+        {master}
+      </aside>
+
+      {/* Detail panel — on desktop sits next to master. On mobile,
+          slides in over the list as a full-screen sheet. */}
+      <section
+        className={`bg-white rounded-2xl border border-ink-50 overflow-hidden ${detailOpen ? 'fixed inset-0 z-40 md:relative md:inset-auto md:z-auto' : 'hidden md:block'}`}
+      >
+        {/* Mobile back bar — only visible when detail is open on mobile */}
+        <div className="md:hidden flex items-center gap-2 px-3 py-3 border-b border-ink-50 bg-cream-50">
+          <button
+            type="button"
+            onClick={onCloseDetail}
+            className="inline-flex items-center gap-1.5 text-[14px] font-medium text-ink-500 hover:text-ink-600"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour
+          </button>
+        </div>
+        <div className="overflow-y-auto md:max-h-[80vh]">
+          {detail}
+        </div>
+      </section>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// TripsView — "Mes voyages" tab
+// SENDS — master list of booking_intents I sent, detail panel for the picked one
 // ---------------------------------------------------------------------------
+// Buckets, in the order they appear:
+//   🔥 À traiter — proposals to accept/pay, OR proof uploaded I need to confirm
+//   ⏳ En cours  — paid + accepted, in transit (no proof yet)
+//   ✓ Livrés   — confirmed received (fully closed)
+//   🔍 En recherche — public requests with no traveler yet
+//   ❌ Annulés
+// ---------------------------------------------------------------------------
+
+type SendItem =
+  | { kind: 'booking'; row: MyBooking }
+  | { kind: 'request'; row: ShippingRequestRow };
+
+function bucketForSendBooking(b: MyBooking): 'todo' | 'inProgress' | 'delivered' | 'cancelled' {
+  if (b.status === 'cancelled') return 'cancelled';
+  // I need to act on it:
+  //  - a traveler proposed and I haven't accepted/paid yet
+  //  - the traveler delivered + uploaded proof, I need to click "I received"
+  if (b.status === 'pending' && b.initiated_by === 'traveler') return 'todo';
+  if (b.status === 'confirmed' && b.delivery_proof_url && !b.received_confirmed_at)
+    return 'todo';
+  // Fully closed
+  if (b.status === 'confirmed' && b.received_confirmed_at) return 'delivered';
+  // In flight / accepted but not yet delivered, OR I'm waiting for accept
+  return 'inProgress';
+}
+
+function SendsView({
+  bookings,
+  requests,
+  onAcceptProposal,
+  onDeclineProposal,
+  onOpenChat,
+  onReportProblem,
+  onShowPickupCode,
+  onEnterDeliveryCode,
+  onOpenReview,
+  hasReviewed,
+  reviewFromOther,
+  t,
+}: {
+  bookings: MyBooking[];
+  requests: ShippingRequestRow[];
+  onAcceptProposal: (b: MyBooking) => void;
+  onDeclineProposal: (id: string) => void;
+  onOpenChat: (b: MyBooking) => void;
+  onReportProblem: (b: MyBooking) => void;
+  onShowPickupCode: (b: MyBooking) => void;
+  onEnterDeliveryCode: (b: MyBooking) => void;
+  onOpenReview: (b: MyBooking) => void;
+  hasReviewed: (bookingIntentId: string) => boolean;
+  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
+  t: Translations;
+}) {
+  const todoBookings = bookings.filter((b) => bucketForSendBooking(b) === 'todo');
+  const inProgressBookings = bookings.filter((b) => bucketForSendBooking(b) === 'inProgress');
+  const deliveredBookings = bookings.filter((b) => bucketForSendBooking(b) === 'delivered');
+  const cancelledBookings = bookings.filter((b) => bucketForSendBooking(b) === 'cancelled');
+  // "En recherche": public requests that don't have a confirmed booking
+  // tied to them yet (so the sender is still actively looking for a traveler).
+  const linkedRequestIds = new Set(
+    bookings
+      .filter((b) => b.status === 'confirmed' || b.status === 'pending')
+      .map((b) => b.shipping_request_id)
+      .filter(Boolean)
+  );
+  const searchingRequests = requests.filter(
+    (r) => r.status === 'pending' && !linkedRequestIds.has(r.id)
+  );
+
+  // Build the flat ordered list of items that will appear in the master list.
+  // Order matters: actionable first, then progress, then closed/searching/cancelled.
+  const orderedItems: SendItem[] = [
+    ...todoBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
+    ...inProgressBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
+    ...searchingRequests.map<SendItem>((row) => ({ kind: 'request', row })),
+    ...deliveredBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
+    ...cancelledBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
+  ];
+
+  // Default selection: first actionable item, else first item, else null.
+  const firstItem = orderedItems[0];
+  const initialId = firstItem
+    ? firstItem.kind === 'booking'
+      ? `b:${firstItem.row.id}`
+      : `r:${firstItem.row.id}`
+    : null;
+  const [selectedId, setSelectedId] = useState<string | null>(initialId);
+  const [detailOpenMobile, setDetailOpenMobile] = useState(false);
+
+  // If the items list changes (e.g. user accepts a proposal → bucket changes),
+  // re-seed selection so it doesn't point at a nonexistent id.
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedId(initialId);
+      return;
+    }
+    const stillThere = orderedItems.some(
+      (it) =>
+        (it.kind === 'booking' ? `b:${it.row.id}` : `r:${it.row.id}`) === selectedId
+    );
+    if (!stillThere) setSelectedId(initialId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderedItems.length, initialId]);
+
+  const selected =
+    orderedItems.find(
+      (it) => (it.kind === 'booking' ? `b:${it.row.id}` : `r:${it.row.id}`) === selectedId
+    ) ?? null;
+
+  const hasContent = orderedItems.length > 0;
+
+  if (!hasContent) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes colis</h2>
+          <Link href="/envoyer">
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              Publier une demande
+            </Button>
+          </Link>
+        </div>
+        <EmptyState message="Aucun envoi pour le moment. Publiez votre première demande." />
+      </div>
+    );
+  }
+
+  function selectItem(id: string) {
+    setSelectedId(id);
+    setDetailOpenMobile(true);
+  }
+
+  // Master list — bucket by bucket
+  const master = (
+    <div className="overflow-y-auto md:max-h-[80vh]">
+      {todoBookings.length > 0 && (
+        <>
+          <ListBucketHeader label="🔥 À traiter" count={todoBookings.length} tone="urgent" />
+          {todoBookings.map((b) => {
+            const id = `b:${b.id}`;
+            return (
+              <SendListRow
+                key={id}
+                booking={b}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+                tone="urgent"
+              />
+            );
+          })}
+        </>
+      )}
+
+      {inProgressBookings.length > 0 && (
+        <>
+          <ListBucketHeader label="⏳ En cours" count={inProgressBookings.length} />
+          {inProgressBookings.map((b) => {
+            const id = `b:${b.id}`;
+            return (
+              <SendListRow
+                key={id}
+                booking={b}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+              />
+            );
+          })}
+        </>
+      )}
+
+      {searchingRequests.length > 0 && (
+        <>
+          <ListBucketHeader label="🔍 En recherche" count={searchingRequests.length} />
+          {searchingRequests.map((r) => {
+            const id = `r:${r.id}`;
+            return (
+              <RequestListRow
+                key={id}
+                request={r}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+              />
+            );
+          })}
+        </>
+      )}
+
+      {deliveredBookings.length > 0 && (
+        <>
+          <ListBucketHeader label="✓ Livrés" count={deliveredBookings.length} tone="success" />
+          {deliveredBookings.map((b) => {
+            const id = `b:${b.id}`;
+            return (
+              <SendListRow
+                key={id}
+                booking={b}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+              />
+            );
+          })}
+        </>
+      )}
+
+      {cancelledBookings.length > 0 && (
+        <>
+          <ListBucketHeader label="Annulés" count={cancelledBookings.length} />
+          {cancelledBookings.map((b) => {
+            const id = `b:${b.id}`;
+            return (
+              <SendListRow
+                key={id}
+                booking={b}
+                selected={selectedId === id}
+                onClick={() => selectItem(id)}
+              />
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+
+  // Detail panel — shows the selected item with all current trust&safety
+  // callbacks passed through to BookingCard.
+  const detail = selected ? (
+    selected.kind === 'booking' ? (
+      <div className="p-4">
+        <BookingCard
+          booking={selected.row}
+          onAcceptProposal={onAcceptProposal}
+          onDeclineProposal={onDeclineProposal}
+          onOpenChat={onOpenChat}
+          onReportProblem={onReportProblem}
+          onShowPickupCode={onShowPickupCode}
+          onEnterDeliveryCode={onEnterDeliveryCode}
+          onOpenReview={onOpenReview}
+          hasReviewed={hasReviewed(selected.row.id)}
+          otherReview={reviewFromOther(selected.row.id)}
+          t={t}
+        />
+      </div>
+    ) : (
+      <div className="p-4">
+        <RequestDetailCard request={selected.row} t={t} />
+      </div>
+    )
+  ) : (
+    <DetailEmpty message="Sélectionnez un envoi pour voir ses détails." />
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes colis</h2>
+        <Link href="/envoyer">
+          <Button size="sm">
+            <Plus className="w-4 h-4" />
+            Publier une demande
+          </Button>
+        </Link>
+      </div>
+
+      <MasterDetailLayout
+        master={master}
+        detail={detail}
+        detailOpen={detailOpenMobile}
+        onCloseDetail={() => setDetailOpenMobile(false)}
+      />
+    </div>
+  );
+}
+
+// One row in the Sends master list. Picks emoji + subtitle based on bucket.
+function SendListRow({
+  booking,
+  selected,
+  onClick,
+  tone,
+}: {
+  booking: MyBooking;
+  selected: boolean;
+  onClick: () => void;
+  tone?: 'urgent';
+}) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
+  const emoji = cat?.icon ?? '📦';
+  const travelerName = displayName(booking.traveler_profile?.full_name) || 'Voyageur';
+  const bucket = bucketForSendBooking(booking);
+
+  let subtitle = '';
+  if (bucket === 'todo' && booking.status === 'pending') {
+    subtitle = `${travelerName} propose · ${booking.pickup_city} → ${booking.destination_city}`;
+  } else if (bucket === 'todo' && booking.delivery_proof_url) {
+    subtitle = `📸 Livré par ${travelerName} · à confirmer`;
+  } else if (bucket === 'inProgress' && booking.status === 'confirmed') {
+    subtitle = `${travelerName} · en transit`;
+  } else if (bucket === 'inProgress') {
+    subtitle = `En attente de ${travelerName}`;
+  } else if (bucket === 'delivered') {
+    subtitle = `Livré par ${travelerName}`;
+  } else {
+    subtitle = `Annulé`;
+  }
+
+  return (
+    <ListRow
+      selected={selected}
+      onClick={onClick}
+      emoji={emoji}
+      title={`${booking.pickup_city} → ${booking.destination_city}`}
+      subtitle={subtitle}
+      rightLabel={formatEuros(booking.proposed_price)}
+      dotClass={tone === 'urgent' ? 'bg-butter-500' : undefined}
+    />
+  );
+}
+
+// One row in the Sends master list for a public request without a traveler.
+function RequestListRow({
+  request,
+  selected,
+  onClick,
+}: {
+  request: ShippingRequestRow;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  return (
+    <ListRow
+      selected={selected}
+      onClick={onClick}
+      emoji={cat?.icon ?? '📦'}
+      title={`${request.pickup_city} → ${request.destination_city}`}
+      subtitle={`Avant le ${formatShortDate(request.desired_delivery_date)}`}
+      rightLabel={formatEuros(request.budget)}
+    />
+  );
+}
+
+// Detail panel for a request without traveler — simple card with route +
+// budget + reassurance message. Minimal because there's not much to do yet.
+function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Translations }) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  return (
+    <div className="bg-white rounded-2xl border border-ink-50 p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-full bg-cream-100 flex items-center justify-center text-xl">
+          {cat?.icon ?? '📦'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[16px] font-bold text-ink-600">
+            {request.pickup_city} → {request.destination_city}
+          </div>
+          <div className="text-[13px] text-ink-400">
+            Avant le {formatShortDate(request.desired_delivery_date)}
+          </div>
+        </div>
+        <div className="text-[16px] font-bold text-ink-600 num-display">
+          {formatEuros(request.budget)}
+        </div>
+      </div>
+
+      {request.item_description && (
+        <div className="rounded-xl bg-cream-50 px-4 py-3 mb-4">
+          <div className="text-[11px] font-semibold text-ink-300 tracking-[0.08em] uppercase mb-1">
+            Description
+          </div>
+          <p className="text-[14px] text-ink-500 leading-relaxed">
+            « {request.item_description} »
+          </p>
+        </div>
+      )}
+
+      <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 text-[13px] text-ink-500 leading-relaxed flex gap-2.5">
+        <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
+        <div>
+          <strong className="text-ink-600">Vous êtes en recherche de voyageur.</strong>{' '}
+          Nous vous notifierons dès qu&apos;une personne accepte votre colis.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TRIPS — master list of my trips, detail panel with boarding-pass + packages
+// ---------------------------------------------------------------------------
+
 function TripsView({
   trips,
   incomingIntents,
@@ -2475,6 +3151,9 @@ function TripsView({
   onReportProblem,
   onEnterPickupCode,
   onShowDeliveryCode,
+  onOpenReview,
+  hasReviewed,
+  reviewFromOther,
   t,
 }: {
   trips: TravelerTripRow[];
@@ -2487,27 +3166,28 @@ function TripsView({
   onReportProblem: (intent: IncomingIntent) => void;
   onEnterPickupCode: (intent: IncomingIntent) => void;
   onShowDeliveryCode: (intent: IncomingIntent) => void;
+  onOpenReview: (intent: IncomingIntent) => void;
+  hasReviewed: (bookingIntentId: string) => boolean;
+  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
   t: Translations;
 }) {
-  // We group the traveler's work by TRIP — the user thinks "what am I
-  // carrying on my Marrakech→Toulouse flight on June 9th". Within each
-  // trip we list every active booking attached to it (pending requests
-  // to decide on, confirmed bookings to deliver, accepted proposals).
-  //
-  // The dashboard shows ACTIVE only (status != 'cancelled', not yet
-  // delivered). Historic items live on /historique.
-
+  // Build the trip → packages map. Keep all active trips & packages (the
+  // /historique page handles closed ones; here we want the live working set).
   const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
+  const activeIncoming = incomingIntents.filter((i) => {
+    if (i.status === 'cancelled') return false;
+    // Keep delivered+confirmed packages visible until the user has
+    // posted their review — that's the real close marker now that
+    // reviews are wired.
+    const fullyClosed = !!i.received_confirmed_at && hasReviewed(i.id);
+    return !fullyClosed;
+  });
+  const activeProposals = myProposals.filter((p) => {
+    if (p.status === 'cancelled') return false;
+    const fullyClosed = !!p.received_confirmed_at && hasReviewed(p.id);
+    return !fullyClosed;
+  });
 
-  // Active items linked to a trip: incoming bookings + my proposals
-  const activeIncoming = incomingIntents.filter(
-    (i) => i.status !== 'cancelled' && !i.delivery_proof_url
-  );
-  const activeProposals = myProposals.filter(
-    (p) => p.status !== 'cancelled' && !p.delivery_proof_url
-  );
-
-  // Build the map: trip_id → list of "packages" (mixed incoming + proposals)
   type TripPackage =
     | { kind: 'incoming'; row: IncomingIntent }
     | { kind: 'proposal'; row: TravelerProposal };
@@ -2527,24 +3207,35 @@ function TripsView({
     packagesByTrip.set(tripId, arr);
   });
 
-  // Sort trips by departure date ascending (next trip first)
-  const sortedTrips = [...activeTrips].sort(
-    (a, b) => new Date(a.departure_date).getTime() - new Date(b.departure_date).getTime()
-  );
+  // Sort: soonest-upcoming first, past trips at the bottom.
+  const today = new Date().toISOString().slice(0, 10);
+  const sortedTrips = [...activeTrips].sort((a, b) => {
+    const aPast = a.departure_date < today;
+    const bPast = b.departure_date < today;
+    if (aPast !== bPast) return aPast ? 1 : -1;
+    return a.departure_date.localeCompare(b.departure_date);
+  });
 
-  // History link counter — same definition as before for the bottom link
-  const historyCount =
-    incomingIntents.filter(
-      (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
-    ).length +
-    myProposals.filter(
-      (p) => p.status === 'cancelled' || (p.status === 'confirmed' && p.delivery_proof_url)
-    ).length +
-    trips.filter((tr) => tr.status === 'cancelled').length;
+  // Pick default selection: first upcoming trip with packages > first trip.
+  const firstWithPackages = sortedTrips.find((tr) => (packagesByTrip.get(tr.id) ?? []).length > 0);
+  const initialId = firstWithPackages?.id ?? sortedTrips[0]?.id ?? null;
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(initialId);
+  const [detailOpenMobile, setDetailOpenMobile] = useState(false);
 
-  const hasContent = activeTrips.length > 0 || historyCount > 0;
+  useEffect(() => {
+    if (!selectedTripId) {
+      setSelectedTripId(initialId);
+      return;
+    }
+    if (!sortedTrips.find((tr) => tr.id === selectedTripId)) {
+      setSelectedTripId(initialId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedTrips.length, initialId]);
 
-  if (!hasContent) {
+  const selectedTrip = sortedTrips.find((tr) => tr.id === selectedTripId) ?? null;
+
+  if (sortedTrips.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -2556,13 +3247,59 @@ function TripsView({
             </Button>
           </Link>
         </div>
-        <EmptyState message="Aucun trajet pour le moment. Publiez votre premier voyage." />
+        <EmptyState message="Aucun voyage planifié. Publiez votre prochain vol pour proposer vos services." />
       </div>
     );
   }
 
+  function selectTrip(id: string) {
+    setSelectedTripId(id);
+    setDetailOpenMobile(true);
+  }
+
+  const master = (
+    <div className="overflow-y-auto md:max-h-[80vh]">
+      <ListBucketHeader label="✈️ Mes voyages" count={sortedTrips.length} />
+      {sortedTrips.map((tr) => {
+        const pkgs = packagesByTrip.get(tr.id) ?? [];
+        const isPast = tr.departure_date < today;
+        return (
+          <TripListRow
+            key={tr.id}
+            trip={tr}
+            packagesCount={pkgs.length}
+            selected={selectedTripId === tr.id}
+            onClick={() => selectTrip(tr.id)}
+            isPast={isPast}
+          />
+        );
+      })}
+    </div>
+  );
+
+  const detail = selectedTrip ? (
+    <div className="p-4">
+      <TripDetailCard
+        trip={selectedTrip}
+        packages={packagesByTrip.get(selectedTrip.id) ?? []}
+        onUpdateIntent={onUpdateIntent}
+        onProofUploaded={onProofUploaded}
+        onCancelTrip={onCancelTrip}
+        onOpenChat={onOpenChat}
+        onReportProblem={onReportProblem}
+        onEnterPickupCode={onEnterPickupCode}
+        onShowDeliveryCode={onShowDeliveryCode}
+        onOpenReview={onOpenReview}
+        hasReviewed={hasReviewed}
+        reviewFromOther={reviewFromOther}
+      />
+    </div>
+  ) : (
+    <DetailEmpty message="Sélectionnez un voyage pour voir ses détails." />
+  );
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
         <Link href="/voyager">
@@ -2573,56 +3310,68 @@ function TripsView({
         </Link>
       </div>
 
-      {sortedTrips.length === 0 ? (
-        <div className="bg-white rounded-2xl p-8 text-center border border-dashed border-ink-100">
-          <p className="text-[14px] text-ink-400 leading-relaxed mb-4">
-            Aucun voyage à venir. Ajoutez votre prochain vol pour commencer à transporter.
-          </p>
-          <Link href="/voyager">
-            <Button size="sm">
-              <Plus className="w-4 h-4" />
-              Publier un trajet
-            </Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {sortedTrips.map((trip) => (
-            <TripGroup
-              key={trip.id}
-              trip={trip}
-              packages={packagesByTrip.get(trip.id) ?? []}
-              onUpdateIntent={onUpdateIntent}
-              onProofUploaded={onProofUploaded}
-              onCancelTrip={onCancelTrip}
-              onOpenChat={onOpenChat}
-              onReportProblem={onReportProblem}
-              onEnterPickupCode={onEnterPickupCode}
-              onShowDeliveryCode={onShowDeliveryCode}
-              t={t}
-            />
-          ))}
-        </div>
-      )}
-
-      {historyCount > 0 && (
-        <div className="pt-2">
-          <Link
-            href="/historique?type=transports"
-            className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
-          >
-            📜 Voir l&apos;historique ({historyCount})
-          </Link>
-        </div>
-      )}
+      <MasterDetailLayout
+        master={master}
+        detail={detail}
+        detailOpen={detailOpenMobile}
+        onCloseDetail={() => setDetailOpenMobile(false)}
+      />
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// TripGroup — one trip with all its packages stacked under it
-// ---------------------------------------------------------------------------
-function TripGroup({
+// One row in the Trips master list. Short, scannable: date, route, count.
+function TripListRow({
+  trip,
+  packagesCount,
+  selected,
+  onClick,
+  isPast,
+}: {
+  trip: TravelerTripRow;
+  packagesCount: number;
+  selected: boolean;
+  onClick: () => void;
+  isPast: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition-colors ${
+        selected
+          ? 'bg-lavender-50/80 border-l-2 border-lavender-500'
+          : 'hover:bg-cream-50 border-l-2 border-transparent'
+      } ${isPast ? 'opacity-60' : ''}`}
+    >
+      <span className="flex-shrink-0 text-[18px]">✈️</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-semibold text-ink-600 truncate">
+          {trip.departure_city} → {trip.arrival_city}
+        </div>
+        <div className="text-[12px] text-ink-400 truncate num-display">
+          {formatShortDate(trip.departure_date)}
+          {trip.flight_number && <span className="ml-1.5 text-ink-300">· {trip.flight_number}</span>}
+        </div>
+      </div>
+      <div className="flex-shrink-0 text-[12px] font-semibold text-ink-500">
+        {packagesCount > 0 ? (
+          <span className="inline-flex items-center gap-1">
+            <span className="num-display">{packagesCount}</span>
+            <span className="text-ink-400">colis</span>
+          </span>
+        ) : (
+          <span className="text-ink-300">—</span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// Detail panel for a trip: boarding-pass header + packages list.
+// Reuses the same boarding-pass visual language (perforation + lavender
+// earnings panel) so the design feels familiar.
+function TripDetailCard({
   trip,
   packages,
   onUpdateIntent,
@@ -2632,7 +3381,9 @@ function TripGroup({
   onReportProblem,
   onEnterPickupCode,
   onShowDeliveryCode,
-  t,
+  onOpenReview,
+  hasReviewed,
+  reviewFromOther,
 }: {
   trip: TravelerTripRow;
   packages: Array<
@@ -2646,43 +3397,36 @@ function TripGroup({
   onReportProblem: (intent: IncomingIntent) => void;
   onEnterPickupCode: (intent: IncomingIntent) => void;
   onShowDeliveryCode: (intent: IncomingIntent) => void;
-  t: Translations;
+  onOpenReview: (intent: IncomingIntent) => void;
+  hasReviewed: (bookingIntentId: string) => boolean;
+  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
 }) {
-  // "Potential earnings" = sum of NET (post-fee) for every package on this
-  // trip, including pending ones. The user wants to see "what I could
-  // make on this flight". We don't differentiate confirmed vs pending in
-  // the headline — they're all things to handle.
   const totalNet = packages.reduce((sum, p) => {
     const ttc = p.row.proposed_price ?? 0;
     return sum + ttc / 1.15;
   }, 0);
-
   const count = packages.length;
-  const isCancelable = packages.every(
-    (p) => p.row.status !== 'confirmed' // only allow trip cancel if no confirmed package
-  );
+  const isCancelable = packages.every((p) => p.row.status !== 'confirmed');
 
-  // Airport-code style — first 3 letters of the city, uppercase. Not IATA
-  // accurate (CAS for Casablanca, not CMN) but gives the right ticket vibe
-  // and works for any city without a lookup table.
-  const departCode = trip.departure_city.slice(0, 3).toUpperCase();
-  const arriveCode = trip.arrival_city.slice(0, 3).toUpperCase();
+  const departCode = trip.departure_airport || trip.departure_city.slice(0, 3).toUpperCase();
+  const arriveCode = trip.arrival_airport || trip.arrival_city.slice(0, 3).toUpperCase();
 
   return (
     <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
-      {/* Boarding-pass-style header. Two zones split by a perforated
-          tear-line. Left = trip info (route, codes). Right = earnings panel
-          tinted lavender so the money pops as the headline reward. */}
+      {/* Boarding-pass-style header */}
       <div className="relative border-b border-ink-100">
-        {/* Perforation notches at the tear line (~63% across) */}
         <div className="absolute top-1/2 -translate-y-1/2 left-[63%] -translate-x-1/2 w-4 h-4 rounded-full bg-white border border-ink-100 z-10 hidden sm:block" />
         <div className="absolute top-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-b-full bg-white border-x border-b border-ink-100 hidden sm:block" />
         <div className="absolute bottom-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-t-full bg-white border-x border-t border-ink-100 hidden sm:block" />
 
         <div className="flex items-stretch">
-          {/* LEFT — trip ticket section, on warm cream paper */}
           <div className="flex-1 px-5 py-4 min-w-0 relative bg-gradient-to-br from-cream-50 to-cream-100">
-            {/* Codes row with a chunkier plane between */}
+            {trip.flight_number && (
+              <div className="text-[10px] text-ink-400 font-bold tracking-[0.14em] uppercase mb-1.5 num-display">
+                Vol {trip.flight_number}
+                {trip.flight_time && <span className="ml-2 text-ink-300">· {trip.flight_time}</span>}
+              </div>
+            )}
             <div className="flex items-center gap-3 mb-1">
               <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
                 {departCode}
@@ -2696,32 +3440,23 @@ function TripGroup({
                 {arriveCode}
               </div>
             </div>
-            {/* City names row */}
             <div className="flex items-center justify-between text-[11px] text-ink-400 mb-3">
               <span className="truncate max-w-[40%]">{trip.departure_city}</span>
               <span className="truncate max-w-[40%] text-right">{trip.arrival_city}</span>
             </div>
-            {/* Departure date + colis count, stamped style */}
             <div className="flex items-center gap-4 text-[11px]">
               <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
-                  Départ
-                </div>
-                <div className="text-ink-600 font-bold num-display">
-                  {formatShortDate(trip.departure_date)}
-                </div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">Départ</div>
+                <div className="text-ink-600 font-bold num-display">{formatShortDate(trip.departure_date)}</div>
               </div>
               <div className="h-7 w-px bg-ink-100" />
               <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
-                  Colis
-                </div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">Colis</div>
                 <div className="text-ink-600 font-bold num-display">{count}</div>
               </div>
             </div>
           </div>
 
-          {/* RIGHT — earnings panel, tinted lavender to spotlight the money */}
           <div className="w-[35%] flex-shrink-0 border-l border-dashed border-lavender-300/50 px-3 py-4 flex flex-col justify-center items-center text-center relative bg-gradient-to-br from-lavender-50 to-lavender-100/70">
             <div className="text-[28px] sm:text-[32px] font-extrabold text-lavender-700 num-display leading-none">
               {formatEuros(totalNet)}
@@ -2745,9 +3480,6 @@ function TripGroup({
 
       {/* Packages list */}
       {count === 0 ? (
-        // Empty state: encourage the traveler to browse open requests on
-        // this route. The link prefills the search via query params so
-        // they land on the matching demands immediately.
         <div className="px-4 py-6 text-center space-y-3">
           <p className="text-[13px] text-ink-400 leading-relaxed">
             Aucun colis sur ce vol pour l&apos;instant.
@@ -2773,6 +3505,9 @@ function TripGroup({
                   onReportProblem={onReportProblem}
                   onEnterPickupCode={onEnterPickupCode}
                   onShowDeliveryCode={onShowDeliveryCode}
+                  onOpenReview={onOpenReview}
+                  hasReviewed={hasReviewed(p.row.id)}
+                  otherReview={reviewFromOther(p.row.id)}
                 />
               ) : (
                 <ProposalCardInline proposal={p.row} />
@@ -2785,9 +3520,13 @@ function TripGroup({
   );
 }
 
-// Stripped-down versions of IntentCard/ProposalCard for use inside a
-// TripGroup — borderless (the group has its own border), single line,
-// dense.
+// ---------------------------------------------------------------------------
+// INLINE PACKAGE CARDS — used inside TripDetailCard. These are the SAME
+// trust&safety-aware cards we built in the recent passes (pickup/delivery
+// codes + signaler). The status pill distinguishes pickup-pending vs in-
+// transit vs delivery-handoff vs done.
+// ---------------------------------------------------------------------------
+
 function IntentCardInline({
   intent,
   onUpdate,
@@ -2796,6 +3535,9 @@ function IntentCardInline({
   onReportProblem,
   onEnterPickupCode,
   onShowDeliveryCode,
+  onOpenReview,
+  hasReviewed,
+  otherReview,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
@@ -2804,6 +3546,9 @@ function IntentCardInline({
   onReportProblem: (intent: IncomingIntent) => void;
   onEnterPickupCode: (intent: IncomingIntent) => void;
   onShowDeliveryCode: (intent: IncomingIntent) => void;
+  onOpenReview: (intent: IncomingIntent) => void;
+  hasReviewed: boolean;
+  otherReview: ReviewForBooking | null;
 }) {
   const [showProofModal, setShowProofModal] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
@@ -2820,11 +3565,11 @@ function IntentCardInline({
   }
 
   const showAccept = intent.status === 'pending';
-  // Three distinct states once accepted:
+  // Three distinct phases once accepted:
   //   - pickup not confirmed → traveler hasn't met the sender yet
-  //   - pickup confirmed but no proof → traveler is in transit / about to deliver
+  //   - pickup confirmed but no proof → traveler is in transit
   //   - proof uploaded but receipt not confirmed → drop-off moment, show
-  //     the delivery code to the sender/recipient so they can type it
+  //     the delivery code to the sender/recipient
   const showPickup =
     intent.status === 'confirmed' &&
     !intent.pickup_confirmed_at &&
@@ -2837,13 +3582,14 @@ function IntentCardInline({
     intent.status === 'confirmed' &&
     !!intent.delivery_proof_url &&
     !intent.received_confirmed_at;
+  // Reviewable phase: sender has confirmed reception. Traveler can rate
+  // the sender now. We keep the package visible in the trips list until
+  // the review is posted (handled by the parent's filter).
+  const showReview =
+    intent.status === 'confirmed' &&
+    !!intent.received_confirmed_at;
 
-  // Status pill — shown in the middle area where there's space.
-  // pending  → "Nouvelle demande"  (waiting for me to accept)
-  // confirmed (paid) → "💳 Paiement réservé"
-  // confirmed + pickup pending → "À récupérer"
-  // confirmed + picked up → "✓ Récupéré · à livrer"
-  // confirmed + proof uploaded → "📸 Livré · en attente confirmation"
+  // Status pill with all phases
   let statusText: string | null = null;
   let statusClass = '';
   if (intent.status === 'pending') {
@@ -2884,6 +3630,7 @@ function IntentCardInline({
             </span>
           )}
         </div>
+
         {showAccept && (
           <div className="flex-shrink-0 flex items-center gap-1.5">
             <button
@@ -2902,11 +3649,8 @@ function IntentCardInline({
             </button>
           </div>
         )}
+
         {showPickup && (
-          // Traveler hasn't met the sender yet → primary CTA is "J'ai
-          // récupéré le colis" which opens the code entry modal. The
-          // chat and signaler are kept as secondary actions so they can
-          // still coordinate or flag a problem before pickup.
           <div className="flex-shrink-0 flex items-center gap-1.5">
             <button
               onClick={() => onOpenChat(intent)}
@@ -2933,6 +3677,7 @@ function IntentCardInline({
             </button>
           </div>
         )}
+
         {showDeliver && (
           <div className="flex-shrink-0 flex items-center gap-1.5">
             <button
@@ -2943,7 +3688,6 @@ function IntentCardInline({
             >
               💬
             </button>
-            {/* Signaler — discreet flag, opens the dispute modal */}
             <button
               onClick={() => onReportProblem(intent)}
               className="px-2.5 py-1.5 rounded-full text-ink-400 hover:text-blush-500 hover:bg-blush-50 transition-colors"
@@ -2961,10 +3705,8 @@ function IntentCardInline({
             </button>
           </div>
         )}
+
         {showDeliveryHandoff && (
-          // Proof uploaded; we're at the drop-off moment. Surface a
-          // primary "Voir code de livraison" button so the traveler can
-          // read the code aloud to the recipient/sender.
           <div className="flex-shrink-0 flex items-center gap-1.5">
             <button
               onClick={() => onOpenChat(intent)}
@@ -2991,17 +3733,62 @@ function IntentCardInline({
             </button>
           </div>
         )}
+
+        {showReview && (
+          // Reception confirmed → traveler can rate the sender. Once
+          // rated, the card stays visible (with a lock badge) until the
+          // parent filter removes it on the next render.
+          <div className="flex-shrink-0">
+            {!hasReviewed ? (
+              <button
+                type="button"
+                onClick={() => onOpenReview(intent)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+              >
+                <Star className="w-3 h-3 fill-white" strokeWidth={0} />
+                Noter
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+                <Star className="w-3 h-3 fill-current" strokeWidth={0} />
+                Vous avez noté
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* When the other party has already posted their review, show it
+          inline below the card so the user sees how they were rated. */}
+      {otherReview && (
+        <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
+          <span>{senderName.split(' ')[0]} vous a noté</span>
+          <span className="inline-flex items-center gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                className={`w-3 h-3 ${
+                  i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
+                }`}
+                strokeWidth={0}
+              />
+            ))}
+          </span>
+          {otherReview.comment && (
+            <span className="text-ink-500">· « {otherReview.comment} »</span>
+          )}
+        </div>
+      )}
 
       <AnimatePresence>
         {showProofModal && (
           <DeliveryProofModal
             bookingIntentId={intent.id}
-            onSuccess={(url) => {
-              onProofUploaded(intent.id, url, '');
+            onClose={() => setShowProofModal(false)}
+            onUploaded={(url, receiverName) => {
+              onProofUploaded(intent.id, url, receiverName);
               setShowProofModal(false);
             }}
-            onClose={() => setShowProofModal(false)}
           />
         )}
       </AnimatePresence>
@@ -3012,15 +3799,15 @@ function IntentCardInline({
 function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
   const senderName = displayName(proposal.sender_profile?.full_name) || 'Expéditeur';
   const initial = nameInitial(proposal.sender_profile?.full_name);
-  const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
-  const accepted = proposal.status === 'confirmed';
+  const netTraveler = proposal.proposed_price / 1.15;
 
-  // Status pill style matches IntentCardInline so the visual language is
-  // consistent across the trip's package list.
-  const statusText = accepted ? '✓ Acceptée' : 'En attente de réponse';
+  const accepted = proposal.status === 'confirmed';
+  const statusText = accepted ? '✓ acceptée' : proposal.status === 'cancelled' ? '✕ refusée' : '⏳ en attente';
   const statusClass = accepted
     ? 'text-mint-700 bg-mint-50'
-    : 'text-ink-400 bg-cream-100';
+    : proposal.status === 'cancelled'
+      ? 'text-ink-400 bg-cream-100'
+      : 'text-butter-700 bg-butter-50';
 
   return (
     <div className="flex items-center gap-3">
@@ -3034,168 +3821,6 @@ function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${statusClass}`}>
           {statusText}
         </span>
-      </div>
-      {accepted && proposal.sender_profile?.phone && (
-        <a
-          href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-shrink-0 inline-flex items-center px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
-        >
-          WhatsApp
-        </a>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// SendsView — "Mes envois" tab
-// ---------------------------------------------------------------------------
-function SendsView({
-  bookings,
-  requests,
-  onAcceptProposal,
-  onDeclineProposal,
-  onOpenChat,
-  onReportProblem,
-  onShowPickupCode,
-  onEnterDeliveryCode,
-  t,
-}: {
-  bookings: MyBooking[];
-  requests: ShippingRequestRow[];
-  onAcceptProposal: (b: MyBooking) => void;
-  onDeclineProposal: (id: string) => void;
-  onOpenChat: (b: MyBooking) => void;
-  onReportProblem: (b: MyBooking) => void;
-  onShowPickupCode: (b: MyBooking) => void;
-  onEnterDeliveryCode: (b: MyBooking) => void;
-  t: Translations;
-}) {
-  // 🔥 À traiter: traveler proposals on my requests (accept and pay)
-  const todoProposals = bookings.filter(
-    (b) => b.status === 'pending' && b.initiated_by === 'traveler'
-  );
-
-  // ⏳ En cours
-  const inProgressBookings = bookings.filter(
-    (b) =>
-      (b.status === 'confirmed' && !b.delivery_proof_url) ||
-      (b.status === 'pending' && b.initiated_by === 'sender')
-  );
-  const activeRequests = requests.filter((r) => r.status === 'pending');
-
-  // 📜 Historique côté sender: bookings cancelled/delivered
-  const historyBookings = bookings.filter(
-    (b) => b.status === 'cancelled' || (b.status === 'confirmed' && b.delivery_proof_url)
-  );
-
-  const totalTodos = todoProposals.length;
-  const hasContent =
-    inProgressBookings.length > 0 ||
-    activeRequests.length > 0 ||
-    totalTodos > 0 ||
-    historyBookings.length > 0;
-
-  if (!hasContent) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
-          <Link href="/envoyer">
-            <Button size="sm">
-              <Plus className="w-4 h-4" />
-              Publier une demande
-            </Button>
-          </Link>
-        </div>
-        <EmptyState message="Aucun envoi pour le moment. Publiez votre première demande." />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-10">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
-        <Link href="/envoyer">
-          <Button size="sm">
-            <Plus className="w-4 h-4" />
-            Publier une demande
-          </Button>
-        </Link>
-      </div>
-
-      {totalTodos > 0 && (
-        <section>
-          <GroupHeader icon="🔥" label="À traiter" count={totalTodos} />
-          <div className="space-y-3">
-            {todoProposals.map((b) => (
-              <BookingCard
-                key={b.id}
-                booking={b}
-                onAcceptProposal={onAcceptProposal}
-                onDeclineProposal={onDeclineProposal}
-                t={t}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {(inProgressBookings.length > 0 || activeRequests.length > 0) && (
-        <section>
-          <GroupHeader icon="⏳" label="En cours" count={inProgressBookings.length + activeRequests.length} />
-          <div className="space-y-3">
-            {inProgressBookings.map((b) => (
-              <BookingCard
-                key={b.id}
-                booking={b}
-                onOpenChat={onOpenChat}
-                onReportProblem={onReportProblem}
-                onShowPickupCode={onShowPickupCode}
-                onEnterDeliveryCode={onEnterDeliveryCode}
-                t={t}
-              />
-            ))}
-            {activeRequests.map((req) => (
-              <RequestCardSimple key={req.id} request={req} t={t} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {historyBookings.length > 0 && (
-        <div className="pt-2">
-          <Link
-            href="/historique?type=envois"
-            className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
-          >
-            📜 Voir l&apos;historique ({historyBookings.length})
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Simple read-only card for an active public request I posted but
-// nobody has responded to yet. Just the route + budget + status.
-function RequestCardSimple({ request, t }: { request: ShippingRequestRow; t: Translations }) {
-  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
-  return (
-    <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
-      <div className="flex items-center gap-3">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
-          {cat?.icon}
-        </div>
-        <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
-          <span className="font-semibold text-ink-600">{request.pickup_city} → {request.destination_city}</span>
-          <span className="text-ink-300">·</span>
-          <span className="text-ink-500 num-display">{formatEuros(request.budget)}</span>
-          <span className="text-[11px] text-ink-300 ml-1">⏳ en attente de propositions</span>
-        </div>
       </div>
     </div>
   );
