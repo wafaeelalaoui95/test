@@ -22,24 +22,21 @@ import {
   Wallet,
   Camera,
   X,
-  Star,
-  Inbox,
-  ArrowLeft,
-  Sparkles,
+  Flag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
 import { DeliveryProofModal } from '@/components/DeliveryProofModal';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { ChatModal } from '@/components/ChatModal';
-import { ReviewModal } from '@/components/ReviewModal';
 import { Input } from '@/components/ui/Form';
+// Trust & safety: dispute reporting from any active booking
+import { DisputeModal } from '@/components/DisputeModal';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
 import { formatShortDate, formatName, nameInitial, displayName, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
-import type { ReviewForBooking } from '@/lib/supabase/queries';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
@@ -80,63 +77,31 @@ type IncomingIntent = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
-  received_confirmed_at: string | null;
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
-  traveler_user_id: string | null;
+  // Trust & safety fields (08_trust_and_safety.sql)
+  pickup_code?: string | null;
+  delivery_code?: string | null;
+  pickup_confirmed_at?: string | null;
+  pickup_confirmed_by?: string | null;
+  received_confirmed_at?: string | null;
   sender_profile: { id: string; full_name: string | null; avatar_url: string | null; rating: number; trips_completed: number; verification_level: VerificationLevel } | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
 
-export default function MyPage({
-  initialProfile,
-  initialRequests,
-  initialTrips,
-  initialMatches,
-  initialIncomingIntents,
-  initialMyBookings,
-  initialMyProposals,
-  initialReviews = [],
-}: {
-  initialUser: { id: string; email: string | null };
-  initialProfile: Profile | null;
-  initialRequests: ShippingRequestRow[];
-  initialTrips: TravelerTripRow[];
-  initialMatches: MatchWithRefs[];
-  initialIncomingIntents: IncomingIntent[];
-  initialMyBookings: MyBooking[];
-  initialMyProposals: TravelerProposal[];
-  initialReviews?: ReviewForBooking[];
-}) {
+export default function MyPage() {
   const { t } = useI18n();
-  // `user` and `profile` still come from useAuth so realtime auth changes
-  // (sign-out, etc.) reflect immediately. We have server-fetched fallbacks
-  // so the page renders fully on first paint — no spinner.
-  const { user, profile: liveProfile, loading: authLoading, refreshProfile } = useAuth();
-  const profile = liveProfile ?? initialProfile;
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const [tab, setTab] = useState<TabId>('trips');
 
-  // Initialize with server-fetched data — no useEffect waterfall on mount.
-  const [requests, setRequests] = useState<ShippingRequestRow[]>(initialRequests);
-  const [trips, setTrips] = useState<TravelerTripRow[]>(initialTrips);
-  const [matches, setMatches] = useState<MatchWithRefs[]>(initialMatches);
-  const [incomingIntents, setIncomingIntents] = useState<IncomingIntent[]>(initialIncomingIntents);
-  const [myBookings, setMyBookings] = useState<MyBooking[]>(initialMyBookings);
-  const [myProposals, setMyProposals] = useState<TravelerProposal[]>(initialMyProposals);
-  // Reviews tied to all the bookings the user is part of. We keep this in
-  // local state so we can optimistically lock the UI after submitting a
-  // review without a roundtrip.
-  const [reviews, setReviews] = useState<ReviewForBooking[]>(initialReviews);
-  // ReviewModal target — set when the user clicks "Noter X", null when closed.
-  const [reviewing, setReviewing] = useState<{
-    bookingIntentId: string;
-    reviewedUserId: string;
-    reviewedUserName: string;
-    reviewedRole: 'sender' | 'traveler';
-  } | null>(null);
-  // Data is already there on first render — no loading state needed at boot.
-  const [dataLoading] = useState(false);
+  const [requests, setRequests] = useState<ShippingRequestRow[]>([]);
+  const [trips, setTrips] = useState<TravelerTripRow[]>([]);
+  const [matches, setMatches] = useState<MatchWithRefs[]>([]);
+  const [incomingIntents, setIncomingIntents] = useState<IncomingIntent[]>([]);
+  const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
+  const [myProposals, setMyProposals] = useState<TravelerProposal[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // When the sender accepts a traveler's proposal, we open a Stripe payment
@@ -154,26 +119,19 @@ export default function MyPage({
     contextLine?: string;
   } | null>(null);
 
-  // Has the current user already reviewed this booking? Used to flip the
-  // "Noter" button into a locked "Vous avez noté" badge.
-  const hasReviewed = (bookingIntentId: string): boolean =>
-    !!user && reviews.some(
-      (r) => r.booking_intent_id === bookingIntentId && r.reviewer_id === user.id
-    );
-
-  // Did the OTHER party review me on this booking? Used to surface a small
-  // "X vous a noté ★★★★★" preview inline on the card.
-  const reviewFromOther = (bookingIntentId: string): ReviewForBooking | null => {
-    if (!user) return null;
-    return (
-      reviews.find(
-        (r) =>
-          r.booking_intent_id === bookingIntentId &&
-          r.reviewer_id !== user.id &&
-          r.reviewed_user_id === user.id
-      ) ?? null
-    );
-  };
+  // ─── DISPUTE MODAL (trust & safety) ──────────────────────────────────────
+  // Either side of a booking can flag a problem (not delivered, damaged,
+  // wrong item, etc.) from the active card. The dispute creation goes
+  // through DisputeModal → browser.createDispute (08_trust_and_safety.sql),
+  // and the DB trigger auto-restricts the reported user for serious
+  // categories. We carry the reporter's role so the modal shows the right
+  // list of categories (sender-side vs traveler-side).
+  const [disputeFor, setDisputeFor] = useState<{
+    bookingId: string;
+    reporterRole: 'sender' | 'traveler';
+    reportedUserId: string;
+    reportedUserName: string;
+  } | null>(null);
 
   // Deep-link from notification emails: if the URL contains ?chat={id},
   // open the chat modal once data is loaded. Run on every relevant data
@@ -228,39 +186,65 @@ export default function MyPage({
     }
   }, [dataLoading, user, incomingIntents, myBookings, myProposals, chatTarget]);
 
-  // Manual refresh helper — call this after a mutation if you really need
-  // to re-pull everything. No longer runs on mount: data is server-fetched
-  // and passed as props. Prefer optimistic local updates (the rest of this
-  // component already does that everywhere) or `router.refresh()` after a
-  // server action — they are both much cheaper than re-running all 6 queries.
-  const refreshAll = async () => {
-    if (!user) return;
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setDataLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setDataLoading(true);
     setError(null);
 
+    // Per-query timeout. We bumped this from 5s to 12s because Supabase
+    // can be slow on cold queries (especially with our RLS policies that
+    // need to evaluate joins). 12s is still well under the user's
+    // patience but covers ~99% of real-world latencies.
     const withTimeout = <T,>(p: Promise<T>, fallback: T, ms = 12000): Promise<T> =>
       Promise.race([
         p.catch((e) => {
-          console.warn('Refresh query failed:', e);
+          console.warn('Query failed:', e);
           return fallback;
         }),
         new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
       ]);
 
-    const [r, tr, m, ii, mb, mp] = await Promise.all([
-      withTimeout(browser.listMyRequests(user.id), [] as ShippingRequestRow[]),
-      withTimeout(browser.listMyTrips(user.id), [] as TravelerTripRow[]),
-      withTimeout(browser.listMyMatches(user.id), [] as MatchRow[]),
-      withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[]),
-      withTimeout(browser.listMyBookings(user.id), [] as MyBooking[]),
-      withTimeout(browser.listMyTravelerProposals(user.id), [] as TravelerProposal[]),
-    ]);
-    setRequests(r);
-    setTrips(tr);
-    setMatches(m as MatchWithRefs[]);
-    setIncomingIntents(ii as IncomingIntent[]);
-    setMyBookings(mb as MyBooking[]);
-    setMyProposals(mp as TravelerProposal[]);
-  };
+    // Progressive loading: each query updates its own state as soon as
+    // it finishes, rather than waiting for the slowest one. The dataLoading
+    // flag flips off once the first one returns — after that, we still
+    // wait for the others but the user already sees something.
+    let firstDone = false;
+    const flipLoadingOnce = () => {
+      if (!cancelled && !firstDone) {
+        firstDone = true;
+        setDataLoading(false);
+      }
+    };
+
+    withTimeout(browser.listMyRequests(user.id), [] as ShippingRequestRow[])
+      .then((v) => { if (!cancelled) { setRequests(v); flipLoadingOnce(); } });
+    withTimeout(browser.listMyTrips(user.id), [] as TravelerTripRow[])
+      .then((v) => { if (!cancelled) { setTrips(v); flipLoadingOnce(); } });
+    withTimeout(browser.listMyMatches(user.id), [] as MatchRow[])
+      .then((v) => { if (!cancelled) { setMatches(v as MatchWithRefs[]); flipLoadingOnce(); } });
+    withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[])
+      .then((v) => { if (!cancelled) { setIncomingIntents(v as IncomingIntent[]); flipLoadingOnce(); } });
+    withTimeout(browser.listMyBookings(user.id), [] as MyBooking[])
+      .then((v) => { if (!cancelled) { setMyBookings(v as MyBooking[]); flipLoadingOnce(); } });
+    withTimeout(browser.listMyTravelerProposals(user.id), [] as TravelerProposal[])
+      .then((v) => { if (!cancelled) { setMyProposals(v as TravelerProposal[]); flipLoadingOnce(); } });
+
+    // Hard ceiling: even if every single query hangs, never leave the
+    // spinner up past 15 seconds. At that point we show whatever we have.
+    const safetyTimeout = setTimeout(() => {
+      if (!cancelled) setDataLoading(false);
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(safetyTimeout);
+    };
+  }, [user, authLoading, t.auth_error_generic]);
 
   if (authLoading) {
     return (
@@ -302,7 +286,7 @@ export default function MyPage({
 
   const TABS: { id: TabId; label: string; icon: typeof Plane }[] = [
     { id: 'trips', label: 'Mes voyages', icon: Plane },
-    { id: 'sends', label: 'Mes colis', icon: Package },
+    { id: 'sends', label: 'Mes envois', icon: Package },
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
 
@@ -312,7 +296,7 @@ export default function MyPage({
 
   return (
     <div className="min-h-screen py-12 lg:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl px-5 sm:px-8 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -394,19 +378,10 @@ export default function MyPage({
                   onUpdateIntent={async (id, status) => {
                     await browser.updateBookingIntentStatus(id, status);
                     const intent = incomingIntents.find((i) => i.id === id);
-                    // Stripe-side handling on accept/decline:
-                    //   - DECLINE (cancelled) → cancel the authorization so
-                    //     the sender's card is released. No money moved.
-                    //   - ACCEPT (confirmed)  → DO NOTHING here. The money
-                    //     stays in escrow (`authorized`) until the sender
-                    //     clicks "J'ai bien reçu" on their /me, which is
-                    //     what now triggers the capture. This gives both
-                    //     parties an actual escrow — the traveler can't
-                    //     pre-collect by just accepting; the sender retains
-                    //     control of the funds until physical delivery.
-                    if (status === 'cancelled' && intent?.payment_intent_id) {
+                    if (intent?.payment_intent_id) {
+                      const endpoint = status === 'confirmed' ? 'capture' : 'cancel';
                       try {
-                        await fetch('/api/stripe/cancel', {
+                        await fetch(`/api/stripe/${endpoint}`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
@@ -415,7 +390,7 @@ export default function MyPage({
                           }),
                         });
                       } catch (e) {
-                        console.warn('Stripe cancel error:', e);
+                        console.warn(`Stripe ${endpoint} error:`, e);
                       }
                     }
                     setIncomingIntents((prev) =>
@@ -455,18 +430,16 @@ export default function MyPage({
                       contextLine: `${intent.pickup_city} → ${intent.destination_city}`,
                     });
                   }}
-                  onOpenReview={(intent) => {
-                    // Traveler reviews the sender of this confirmed booking.
-                    setReviewing({
-                      bookingIntentId: intent.id,
-                      reviewedUserId: intent.sender_id,
-                      reviewedUserName:
-                        displayName(intent.sender_profile?.full_name) || 'L\'expéditeur',
-                      reviewedRole: 'sender',
+                  onReportProblem={(intent) => {
+                    // Traveler reports the sender on this incoming booking.
+                    setDisputeFor({
+                      bookingId: intent.id,
+                      reporterRole: 'traveler',
+                      reportedUserId: intent.sender_id,
+                      reportedUserName:
+                        displayName(intent.sender_profile?.full_name) || "l'expéditeur",
                     });
                   }}
-                  hasReviewed={hasReviewed}
-                  reviewFromOther={reviewFromOther}
                   t={t}
                 />
               )}
@@ -496,91 +469,17 @@ export default function MyPage({
                       contextLine: `${booking.pickup_city} → ${booking.destination_city}`,
                     });
                   }}
-                  onConfirmReceipt={async (bookingId) => {
-                    // Sender confirms they got their package. We call ONE
-                    // server endpoint that atomically:
-                    //   1. Sets received_confirmed_at on the booking
-                    //   2. Captures the Stripe payment authorization
-                    //   3. Sets payment_status='captured' in our DB
-                    //
-                    // Doing all three on the server avoids the previous bug
-                    // where a flaky network or a 403 could leave the booking
-                    // in a "received but not captured" zombie state — the
-                    // traveler's money stuck on Stripe's hold forever.
-                    //
-                    // The endpoint is idempotent: calling it twice on an
-                    // already-confirmed booking is harmless.
-                    const booking = myBookings.find((b) => b.id === bookingId);
-                    try {
-                      const res = await fetch('/api/booking/confirm-receipt', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ bookingIntentId: bookingId }),
-                      });
-                      const json = await res.json().catch(() => ({}));
-
-                      if (!res.ok) {
-                        // If the receipt got recorded but only the capture
-                        // failed (Stripe down, etc.), we still want to
-                        // reflect the receipt in the UI — the user did
-                        // their part. The reconciliation job picks up the
-                        // capture later.
-                        if (json?.receiptRecorded) {
-                          setMyBookings((prev) =>
-                            prev.map((b) =>
-                              b.id === bookingId
-                                ? {
-                                    ...b,
-                                    received_confirmed_at: new Date().toISOString(),
-                                  }
-                                : b
-                            )
-                          );
-                          alert(
-                            'Réception confirmée, mais le transfert au voyageur est en attente. Nous nous en occupons.'
-                          );
-                          return;
-                        }
-                        // Hard failure — nothing recorded.
-                        console.warn('[me] confirm receipt failed:', json);
-                        alert('Impossible de confirmer pour le moment. Réessayez.');
-                        return;
-                      }
-
-                      // Success — update both received_confirmed_at and
-                      // payment_status locally (optimistic). The wallet on
-                      // next render will reflect the new captured balance.
-                      setMyBookings((prev) =>
-                        prev.map((b) =>
-                          b.id === bookingId
-                            ? {
-                                ...b,
-                                received_confirmed_at: new Date().toISOString(),
-                                payment_status: json?.captured
-                                  ? ('captured' as const)
-                                  : b.payment_status,
-                              }
-                            : b
-                        )
-                      );
-                    } catch (e) {
-                      console.warn('[me] confirm receipt network error:', e);
-                      alert('Impossible de confirmer pour le moment. Réessayez.');
-                    }
-                  }}
-                  onOpenReview={(booking) => {
-                    // Sender reviews the traveler of this delivered booking.
+                  onReportProblem={(booking) => {
+                    // Sender reports the traveler on this booking.
                     if (!booking.traveler_profile) return;
-                    setReviewing({
-                      bookingIntentId: booking.id,
-                      reviewedUserId: booking.traveler_profile.id,
-                      reviewedUserName:
-                        displayName(booking.traveler_profile.full_name) || 'Le voyageur',
-                      reviewedRole: 'traveler',
+                    setDisputeFor({
+                      bookingId: booking.id,
+                      reporterRole: 'sender',
+                      reportedUserId: booking.traveler_profile.id,
+                      reportedUserName:
+                        displayName(booking.traveler_profile.full_name) || 'le voyageur',
                     });
                   }}
-                  hasReviewed={hasReviewed}
-                  reviewFromOther={reviewFromOther}
                   t={t}
                 />
               )}
@@ -651,33 +550,24 @@ export default function MyPage({
         )}
       </AnimatePresence>
 
-      {/* Review modal — mutual rating after a booking is confirmed received.
-          Optimistically inserts the new review into local state so the lock
-          (and the "X vous a noté" preview, once the other side reviews) kick
-          in without a refetch. */}
+      {/* Dispute modal — "Signaler un problème" from either side of a
+          booking. Creates a row in `disputes`; a DB trigger auto-restricts
+          the reported user when the category is serious (08_trust_and_safety.sql). */}
       <AnimatePresence>
-        {reviewing && user && (
-          <ReviewModal
-            bookingIntentId={reviewing.bookingIntentId}
-            reviewerId={user.id}
-            reviewedUserId={reviewing.reviewedUserId}
-            reviewedUserName={reviewing.reviewedUserName}
-            reviewedRole={reviewing.reviewedRole}
-            onClose={() => setReviewing(null)}
-            onSuccess={(rating) => {
-              setReviews((prev) => [
-                ...prev,
-                {
-                  id: `temp-${Date.now()}`,
-                  booking_intent_id: reviewing.bookingIntentId,
-                  reviewer_id: user.id,
-                  reviewed_user_id: reviewing.reviewedUserId,
-                  rating,
-                  comment: null,
-                  created_at: new Date().toISOString(),
-                },
-              ]);
-              setReviewing(null);
+        {disputeFor && user && (
+          <DisputeModal
+            open
+            bookingId={disputeFor.bookingId}
+            reporterId={user.id}
+            reporterRole={disputeFor.reporterRole}
+            reportedUserId={disputeFor.reportedUserId}
+            reportedUserName={disputeFor.reportedUserName}
+            onClose={() => setDisputeFor(null)}
+            onSuccess={() => {
+              // We could optimistically reflect the disputed state on the
+              // booking card here, but for the MVP we just close and let
+              // the next refresh pull the latest from DB.
+              setDisputeFor(null);
             }}
           />
         )}
@@ -889,11 +779,16 @@ type TravelerProposal = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
-  received_confirmed_at: string | null;
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
   traveler_user_id: string | null;
+  // Trust & safety fields (08_trust_and_safety.sql)
+  pickup_code?: string | null;
+  delivery_code?: string | null;
+  pickup_confirmed_at?: string | null;
+  pickup_confirmed_by?: string | null;
+  received_confirmed_at?: string | null;
   sender_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: VerificationLevel; rating: number; trips_completed: number } | null;
 };
 
@@ -916,11 +811,15 @@ type MyBooking = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
-  received_confirmed_at: string | null;
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
-  traveler_user_id: string | null;
+  // Trust & safety fields (08_trust_and_safety.sql)
+  pickup_code?: string | null;
+  delivery_code?: string | null;
+  pickup_confirmed_at?: string | null;
+  pickup_confirmed_by?: string | null;
+  received_confirmed_at?: string | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string; user_id: string } | null;
   traveler_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: VerificationLevel; rating: number; trips_completed: number } | null;
 };
@@ -996,22 +895,14 @@ function BookingCard({
   onAcceptProposal,
   onDeclineProposal,
   onOpenChat,
-  onConfirmReceipt,
-  onOpenReview,
-  hasReviewed,
-  otherReview,
+  onReportProblem,
   t,
 }: {
   booking: MyBooking;
   onAcceptProposal?: (b: MyBooking) => void;
   onDeclineProposal?: (id: string) => void;
   onOpenChat?: (b: MyBooking) => void;
-  // The 3 props below are only used in the delivered-card branch — they're
-  // optional so callers from the "todo proposals" section don't need them.
-  onConfirmReceipt?: (bookingId: string) => void;
-  onOpenReview?: (b: MyBooking) => void;
-  hasReviewed?: boolean;
-  otherReview?: ReviewForBooking | null;
+  onReportProblem?: (b: MyBooking) => void;
   t: Translations;
 }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
@@ -1026,17 +917,14 @@ function BookingCard({
   // a server route. We'll show the phone if set, and a generic message
   // otherwise — see the "Contact" block below.
 
-  // Confirmed AND already delivered (proof uploaded) — three sub-states:
-  //   A) sender hasn't confirmed receipt yet → show "J'ai bien reçu" button
-  //   B) confirmed but not yet reviewed → show "Noter" button
-  //   C) reviewed → small "Vous avez noté" badge (+ what the other side wrote)
-  // All three states keep the compact one-line layout from before; the right
-  // side just swaps content based on state.
+  // Confirmed AND already delivered (proof uploaded) → compact "historic"
+  // version. Just one line, with a small "Voir la preuve" link that opens
+  // the photo in a popup. No banner, no contacts, no celebration. The deal
+  // is done.
   if (booking.status === 'confirmed' && booking.delivery_proof_url) {
-    const isReceived = !!booking.received_confirmed_at;
     return (
       <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
             {cat?.icon}
           </div>
@@ -1056,130 +944,146 @@ function BookingCard({
           >
             Voir la preuve
           </a>
-
-          {/* State A: not yet confirmed received */}
-          {!isReceived && onConfirmReceipt && (
-            <button
-              type="button"
-              onClick={() => onConfirmReceipt(booking.id)}
-              className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
-            >
-              J&apos;ai bien reçu
-            </button>
-          )}
-
-          {/* State B: received, not yet reviewed */}
-          {isReceived && !hasReviewed && onOpenReview && (
-            <button
-              type="button"
-              onClick={() => onOpenReview(booking)}
-              className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
-            >
-              <Star className="w-3 h-3 fill-white" strokeWidth={0} />
-              Noter
-            </button>
-          )}
-
-          {/* State C: reviewed — locked badge */}
-          {isReceived && hasReviewed && (
-            <span className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
-              <Star className="w-3 h-3 fill-current" strokeWidth={0} />
-              Vous avez noté
-            </span>
-          )}
         </div>
-
-        {/* If the traveler already reviewed me, show a tiny preview below */}
-        {otherReview && (
-          <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
-            <span>{travelerName.split(' ')[0]} vous a noté</span>
-            <span className="inline-flex items-center gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3 h-3 ${
-                    i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
-                  }`}
-                  strokeWidth={0}
-                />
-              ))}
-            </span>
-            {otherReview.comment && (
-              <span className="text-ink-500">· « {otherReview.comment} »</span>
-            )}
-          </div>
-        )}
       </div>
     );
   }
 
-  // Confirmed BUT not yet delivered → one-line card consistent with the
-  // rest of the list. Just a small "✓ Accepté" badge inline, a Message
-  // button (no WhatsApp, ever), and optionally the delivery proof preview
-  // beneath if it's been uploaded.
+  // Confirmed BUT not yet delivered → rich view. The sender needs the
+  // contact info to coordinate the actual handover, and the celebration
+  // banner signals progress. Once delivered, we collapse it (above).
   if (booking.status === 'confirmed') {
     return (
-      <div className="bg-white rounded-xl px-3 py-2.5 border border-mint-200">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link href={`/u/${traveler?.id}`} className="flex-shrink-0">
-            <div className="w-8 h-8 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[12px] text-lavender-700">
-              {initial}
+      <div className="bg-white rounded-2xl border border-mint-200 overflow-hidden">
+        {/* Celebration banner */}
+        <div className="bg-mint-50 px-5 py-4 flex items-center gap-3 border-b border-mint-200">
+          <span className="text-2xl">🎉</span>
+          <div>
+            <div className="font-bold text-mint-700 text-[15px]">
+              {travelerName.split(' ')[0]} a accepté !
             </div>
-          </Link>
-          <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
-            <Link
-              href={`/u/${traveler?.id}`}
-              className="font-semibold text-ink-600 hover:underline"
-            >
-              {travelerName}
-            </Link>
-            <span className="text-ink-300">·</span>
-            <span className="text-ink-500 truncate">{booking.pickup_city} → {booking.destination_city}</span>
-            <span className="text-ink-300">·</span>
-            <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
-            {/* Compact badge replaces the old celebration banner */}
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
-              ✓ Accepté
-            </span>
+            <div className="text-[13px] text-mint-700/80">
+              Vous pouvez maintenant convenir des détails du transport.
+            </div>
           </div>
-          {/* Message — the ONLY contact path. No WhatsApp, no phone shown. */}
-          {onOpenChat && (
-            <button
-              onClick={() => onOpenChat(booking)}
-              className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
-            >
-              💬 Message
-            </button>
-          )}
         </div>
 
-        {/* Delivery proof — visible only once the traveler has uploaded one.
-            Sits below the row, indented to feel like a child of the booking. */}
-        {booking.delivery_proof_url && (
-          <div className="mt-3 ml-11 rounded-xl bg-mint-50 border border-mint-200/60 px-3 py-2.5">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-base">📸</span>
-              <div className="text-[12px] font-bold text-mint-700">Preuve de livraison</div>
+        <div className="p-5">
+          <div className="flex items-start gap-4 mb-5">
+            <Link href={`/u/${traveler?.id}`} className="flex-shrink-0">
+              <div className="w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[14px] text-lavender-700">
+                {initial}
+              </div>
+            </Link>
+            <div className="flex-1 min-w-0">
+              <Link
+                href={`/u/${traveler?.id}`}
+                className="font-semibold text-ink-600 text-[15px] hover:underline"
+              >
+                {travelerName}
+              </Link>
+              <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap mt-0.5">
+                <span>{booking.pickup_city} → {booking.destination_city}</span>
+                <span>·</span>
+                <span>{trip && formatShortDate(trip.departure_date)}</span>
+                <span>·</span>
+                <span>{cat ? t[cat.labelKey] : booking.item_category}</span>
+                <span>·</span>
+                <span className="font-semibold text-ink-600">{booking.proposed_price}€</span>
+              </div>
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={booking.delivery_proof_url}
-              alt="Preuve de livraison"
-              className="w-full max-h-48 object-cover rounded-lg mb-2 border border-mint-200/40"
-            />
-            {booking.delivery_proof_receiver_name && (
-              <div className="text-[12px] text-ink-500">
-                <span className="text-ink-400">Remis à :</span>{' '}
-                <strong className="text-ink-600">{booking.delivery_proof_receiver_name}</strong>
-              </div>
-            )}
-            {booking.delivery_proof_notes && (
-              <div className="text-[12px] text-ink-500 leading-relaxed mt-1">
-                <span className="text-ink-400">Note :</span> « {booking.delivery_proof_notes} »
-              </div>
-            )}
           </div>
-        )}
+
+          {/* Delivery proof — visible only once the traveler has uploaded one */}
+          {booking.delivery_proof_url && (
+            <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3.5 mb-3">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">📸</span>
+                <div className="text-[13px] font-bold text-mint-700">
+                  Preuve de livraison
+                </div>
+              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={booking.delivery_proof_url}
+                alt="Preuve de livraison"
+                className="w-full max-h-64 object-cover rounded-lg mb-3 border border-mint-200/40"
+              />
+              {booking.delivery_proof_receiver_name && (
+                <div className="text-[13px] text-ink-500 mb-1">
+                  <span className="text-ink-400">Remis à :</span>{' '}
+                  <strong className="text-ink-600">{booking.delivery_proof_receiver_name}</strong>
+                </div>
+              )}
+              {booking.delivery_proof_notes && (
+                <div className="text-[13px] text-ink-500 leading-relaxed mt-1">
+                  <span className="text-ink-400">Note :</span> « {booking.delivery_proof_notes} »
+                </div>
+              )}
+              {booking.delivery_proof_uploaded_at && (
+                <div className="text-[11px] text-ink-300 mt-2">
+                  Téléversée le {formatShortDate(booking.delivery_proof_uploaded_at)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Contact details */}
+          <div className="rounded-xl bg-cream-50 px-4 py-3.5 space-y-2.5">
+            <div className="text-[11px] font-semibold text-ink-300 tracking-[0.12em] uppercase">
+              Comment le contacter
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* In-app messaging — primary, always available */}
+              {onOpenChat && (
+                <button
+                  onClick={() => onOpenChat(booking)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[13px] font-semibold transition-colors"
+                >
+                  💬 Message
+                </button>
+              )}
+              {traveler?.phone ? (
+                <>
+                  <a
+                    href={`https://wa.me/${traveler.phone.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[13px] font-semibold transition-colors"
+                  >
+                    WhatsApp
+                  </a>
+                  <a
+                    href={`tel:${traveler.phone}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
+                  >
+                    Appeler
+                  </a>
+                </>
+              ) : (
+                <span className="text-[12px] text-ink-400">
+                  WhatsApp non renseigné
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Trust & safety — discreet "Signaler un problème" link.
+              Subtle by design: we don't want to encourage misuse, but it
+              must be one click away if something genuinely goes wrong. */}
+          {onReportProblem && (
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => onReportProblem(booking)}
+                className="inline-flex items-center gap-1 text-[12px] text-ink-400 hover:text-blush-500 transition-colors"
+              >
+                <Flag className="w-3 h-3" strokeWidth={1.75} />
+                Signaler un problème
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -1853,7 +1757,7 @@ function ProfileTab({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+33 6 12 34 56 78"
-            hint="Utilisé en interne pour le support — pas partagé avec les autres utilisateurs."
+            hint="Utilisé pour vous joindre par WhatsApp ou téléphone après une réservation."
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -1891,12 +1795,6 @@ function ProfileTab({
         </div>
       </form>
 
-      {/* Identity verification widget — drives the Stripe Identity flow.
-          The visible state depends on three cases:
-            - Already verified → green "Identité vérifiée" badge, no button
-            - Pending (session created, waiting for webhook) → "En cours…"
-            - Not started → "Vérifier mon identité" button that POSTs to
-              /api/identity/create-session and redirects to Stripe */}
       <div className="bg-cream-100 rounded-2xl p-7 border border-ink-50">
         <ShieldCheck className="w-6 h-6 text-ink-500 mb-5" strokeWidth={1.75} />
         <h3 className="text-lg font-bold text-ink-600 mb-4 tracking-[-0.015em]">
@@ -1904,16 +1802,12 @@ function ProfileTab({
         </h3>
         <div className="space-y-2.5 mb-6">
           <CheckRow label={t.verif_email} done />
-          <CheckRow
-            label={t.verif_id}
-            done={!!profile?.identity_verified_at}
-          />
+          <CheckRow label={t.verif_id} done={profile?.verification_level === 'id_verified' || profile?.verification_level === 'trusted'} />
           <CheckRow label={t.verif_trusted} done={profile?.verification_level === 'trusted'} />
         </div>
-        <IdentityVerifyButton
-          status={profile?.identity_verification_status ?? null}
-          verifiedAt={profile?.identity_verified_at ?? null}
-        />
+        <Button size="sm" fullWidth>
+          {t.me_profile_verify_now}
+        </Button>
       </div>
 
       {/* Danger zone — full-width, subtle, lives below the form. */}
@@ -2027,88 +1921,6 @@ function ProfileTab({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-// IdentityVerifyButton — drives the Stripe Identity flow from /me profile.
-//
-// Three visual states:
-//   1. Already verified  → mint badge "✓ Identité vérifiée", no button
-//   2. Pending           → disabled button "Vérification en cours…"
-//                           with a small refresh hint
-//   3. Not started / past-failed → primary "Vérifier mon identité" button.
-//                                  Click → POST to our API, redirect to
-//                                  Stripe's hosted flow.
-function IdentityVerifyButton({
-  status,
-  verifiedAt,
-}: {
-  status: string | null;
-  verifiedAt: string | null;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // State 1: verified — show a calm green pill, no action.
-  if (verifiedAt) {
-    return (
-      <div className="inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-mint-50 text-mint-700 text-[13px] font-semibold border border-mint-200">
-        <CheckCircle2 className="w-4 h-4" />
-        Identité vérifiée
-      </div>
-    );
-  }
-
-  // State 2: a Stripe session was created but the webhook hasn't fired yet
-  // (or fired with a non-verified status). Let the user re-launch the flow
-  // — Stripe will reuse the existing session if it's still open.
-  const isPending = status === 'processing' || status === 'requires_input';
-
-  async function start() {
-    setError(null);
-    setBusy(true);
-    try {
-      const res = await fetch('/api/identity/create-session', { method: 'POST' });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.url) {
-        throw new Error(json?.error ?? 'Could not start verification');
-      }
-      // Hand off to Stripe's hosted UI. They'll bring the user back to
-      // /me?identity=done when finished.
-      window.location.href = json.url;
-    } catch (e: any) {
-      setError(e?.message ?? 'Une erreur est survenue');
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="space-y-2">
-      <button
-        type="button"
-        onClick={start}
-        disabled={busy}
-        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors disabled:opacity-60"
-      >
-        {busy ? (
-          <>
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            Redirection vers Stripe…
-          </>
-        ) : isPending ? (
-          'Reprendre la vérification'
-        ) : (
-          'Vérifier mon identité'
-        )}
-      </button>
-      {error && (
-        <div className="text-[12px] text-blush-500">{error}</div>
-      )}
-      <p className="text-[11px] text-ink-400 leading-relaxed">
-        Une pièce d&apos;identité (carte, passeport ou permis) et un selfie
-        sont demandés. Quelques secondes via Stripe.
-      </p>
     </div>
   );
 }
@@ -2295,6 +2107,18 @@ function ProposalCard({
             <span className="text-[11px] text-ink-300 ml-1">⏳ en attente</span>
           )}
         </div>
+
+        {/* WhatsApp shortcut inline */}
+        {accepted && proposal.sender_profile?.phone && (
+          <a
+            href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
+          >
+            WhatsApp
+          </a>
+        )}
       </div>
     </div>
   );
@@ -2316,7 +2140,6 @@ function ProposalCard({
 //   - Historique  → everything finished, mixed together
 // ===========================================================================
 
-// GroupHeader — small icon + label + count, used in HistoryView sections.
 function GroupHeader({ icon, label, count }: { icon: string; label: string; count: number }) {
   return (
     <div className="flex items-center gap-2 mb-4">
@@ -2331,888 +2154,44 @@ function GroupHeader({ icon, label, count }: { icon: string; label: string; coun
   );
 }
 
-// =============================================================================
-// SECTION COMPLÈTE À INSÉRER ENTRE BookingCard et HistoryView
-// =============================================================================
-// Remplace tout le bloc des anciennes vues (GroupHeader, TripsView,
-// TripGroup, IntentCardInline, ProposalCardInline, SendsView,
-// CollapsibleSection, RequestCardSimple).
-//
-// Pattern: master-detail like Airbnb / Gmail.
-//   - Desktop: list on the left, detail panel on the right
-//   - Mobile : list takes the full screen; tapping an item slides a
-//     full-screen overlay with the detail; a back button returns to the list
-// =============================================================================
-
-// ---------------------------------------------------------------------------
-// SHARED — small components used by both Sends and Trips master-detail views
-// ---------------------------------------------------------------------------
-
-// A bucket header inside the master list. Small caption + count.
-function ListBucketHeader({ label, count, tone = 'default' }: { label: string; count: number; tone?: 'default' | 'urgent' | 'success' }) {
-  const toneClass =
-    tone === 'urgent' ? 'text-butter-700' : tone === 'success' ? 'text-mint-700' : 'text-ink-400';
-  return (
-    <div className="flex items-center gap-2 px-3 pt-4 pb-2">
-      <span className={`text-[10px] font-bold tracking-[0.14em] uppercase ${toneClass}`}>
-        {label}
-      </span>
-      <span className="text-[10px] text-ink-300 num-display">({count})</span>
-    </div>
-  );
-}
-
-// A clickable row in the master list. Compact, scannable, with a colored
-// dot on the left to signal status at a glance.
-function ListRow({
-  selected,
-  onClick,
-  emoji,
-  title,
-  subtitle,
-  subtitleItalic,
-  rightLabel,
-  dotClass,
+// Renders a list of items with a "Voir tout" toggle. Shows the first `limit`
+// items by default (default 3); click reveals the rest. Used for the
+// History section inside Voyages and Envois so it doesn't dominate the page.
+function CollapsibleList({
+  items,
+  limit = 3,
+  showAllLabel = 'Voir tout',
+  showLessLabel = 'Réduire',
 }: {
-  selected: boolean;
-  onClick: () => void;
-  emoji: string;
-  title: string;
-  subtitle: string;
-  subtitleItalic?: boolean;
-  rightLabel?: string;
-  dotClass?: string; // e.g. 'bg-butter-500' for urgent
+  items: React.ReactNode[];
+  limit?: number;
+  showAllLabel?: string;
+  showLessLabel?: string;
 }) {
+  const [showAll, setShowAll] = useState(false);
+  if (items.length === 0) return null;
+  const visible = showAll ? items : items.slice(0, limit);
+  const hidden = items.length - limit;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition-colors ${
-        selected ? 'bg-lavender-50/80 border-l-2 border-lavender-500' : 'hover:bg-cream-50 border-l-2 border-transparent'
-      }`}
-    >
-      <span className="flex-shrink-0 text-[18px]">{emoji}</span>
-      <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-ink-600 truncate">{title}</div>
-        <div className={`text-[12px] text-ink-400 truncate ${subtitleItalic ? 'italic' : ''}`}>{subtitle}</div>
-      </div>
-      {rightLabel && (
-        <div className="flex-shrink-0 text-[12px] font-semibold text-ink-500 num-display">{rightLabel}</div>
+    <div className="space-y-3">
+      {visible.map((item, i) => (
+        <div key={i}>{item}</div>
+      ))}
+      {hidden > 0 && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className="text-[13px] font-medium text-ink-400 hover:text-ink-600 transition-colors"
+        >
+          {showAll ? showLessLabel : `${showAllLabel} (${hidden} de plus)`}
+        </button>
       )}
-      {dotClass && (
-        <span className={`flex-shrink-0 w-2 h-2 rounded-full ${dotClass}`} />
-      )}
-    </button>
-  );
-}
-
-// Empty-state placeholder shown in the detail panel when nothing is selected
-// or the user has no items at all.
-function DetailEmpty({ message }: { message: string }) {
-  return (
-    <div className="h-full flex items-center justify-center px-6 py-16 text-center">
-      <div className="max-w-sm">
-        <div className="w-12 h-12 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-4">
-          <Inbox className="w-5 h-5 text-ink-300" />
-        </div>
-        <p className="text-[14px] text-ink-400 leading-relaxed">{message}</p>
-      </div>
-    </div>
-  );
-}
-
-// Wrapper that lays out master + detail. Desktop: side-by-side. Mobile:
-// only one panel visible at a time, controlled by `detailOpen`. The mobile
-// "open" state is also pushed to the browser history stack so the device
-// back button closes the sheet instead of navigating away — feels native.
-function MasterDetailLayout({
-  master,
-  detail,
-  detailOpen,
-  onCloseDetail,
-}: {
-  master: React.ReactNode;
-  detail: React.ReactNode;
-  detailOpen: boolean;
-  onCloseDetail: () => void;
-}) {
-  // Lock body scroll + integrate with browser history while the mobile
-  // detail sheet is open. iOS Safari otherwise lets the underlying page
-  // scroll behind the sheet (broken feel), and without history integration
-  // the hardware back button takes the user to the previous page in the
-  // browser stack (e.g. home) instead of closing the sheet.
-  useEffect(() => {
-    if (typeof document === 'undefined' || typeof window === 'undefined') return;
-    if (!detailOpen) return;
-
-    // Only apply on mobile widths — desktop has both panels visible, no
-    // sheet concept, so no history hijacking needed.
-    const isMobile = window.matchMedia('(max-width: 767px)').matches;
-    if (!isMobile) return;
-
-    // 1) Stop the body from scrolling behind the sheet.
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    // 2) Push a synthetic history entry. When the user presses the device
-    //    back button, the browser pops THIS entry first (which we catch
-    //    via popstate), and we close the sheet rather than letting the
-    //    browser navigate to the previous URL.
-    const historyMarker = { __jiblyMobileSheet: true, at: Date.now() };
-    window.history.pushState(historyMarker, '');
-
-    const onPop = (e: PopStateEvent) => {
-      // The user hit back. We close the sheet; do NOT push another
-      // history entry here, because the pop already removed ours.
-      onCloseDetail();
-    };
-    window.addEventListener('popstate', onPop);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener('popstate', onPop);
-      // If the sheet was closed by clicking the in-app back button (not
-      // via popstate), we still need to remove the synthetic history
-      // entry — otherwise the user would have to press back twice the
-      // next time to actually go to the previous page. We detect this
-      // by checking if our marker is still the current history.state.
-      if (
-        typeof window !== 'undefined' &&
-        window.history.state &&
-        (window.history.state as any).__jiblyMobileSheet
-      ) {
-        window.history.back();
-      }
-    };
-  }, [detailOpen, onCloseDetail]);
-
-  return (
-    <div className="md:grid md:grid-cols-[360px_1fr] md:gap-5 md:min-h-[600px]">
-      {/* Master list */}
-      <aside className={`bg-white rounded-2xl border border-ink-50 overflow-hidden ${detailOpen ? 'hidden md:block' : 'block'}`}>
-        {master}
-      </aside>
-
-      {/* Detail panel — on desktop sits next to master. On mobile,
-          covers the viewport BELOW the navbar (top-16 ≈ 64px = h-16 of
-          the global header) as a fixed sheet. z-30 sits ABOVE the page
-          content but BELOW the navbar (z-50), so the navbar stays
-          available and the back button isn't hidden underneath it. */}
-      <section
-        className={`bg-white md:rounded-2xl md:border md:border-ink-50 md:overflow-hidden ${
-          detailOpen
-            ? 'fixed inset-x-0 top-16 bottom-0 z-30 flex flex-col md:relative md:inset-auto md:z-auto md:flex-none'
-            : 'hidden md:block'
-        }`}
-      >
-        {/* Mobile back bar — sticky at the top of the sheet so it stays
-            visible while the content scrolls. Generous touch target. */}
-        <div className="md:hidden flex-shrink-0 flex items-center gap-2 px-3 py-3 border-b border-ink-50 bg-cream-50">
-          <button
-            type="button"
-            onClick={onCloseDetail}
-            className="inline-flex items-center gap-1.5 px-2 py-1.5 -ml-1 text-[14px] font-medium text-ink-600 hover:bg-ink-50 rounded-lg"
-            aria-label="Retour à la liste"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Retour
-          </button>
-        </div>
-        {/* Scroll container. On mobile flex-1 + overflow-y-auto bounds the
-            content to the available sheet height. On desktop we cap at
-            80vh as before. */}
-        <div className="flex-1 overflow-y-auto overscroll-contain md:max-h-[80vh] md:flex-none">
-          {detail}
-        </div>
-      </section>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// SENDS — master list of booking_intents I sent, detail panel for the picked one
+// TripsView — "Mes voyages" tab
 // ---------------------------------------------------------------------------
-// Buckets, in the order they appear:
-//   🔥 À traiter — proposals to accept/pay, OR proof uploaded I need to confirm
-//   ⏳ En cours  — paid + accepted, in transit (no proof yet)
-//   ✓ Livrés   — confirmed received (fully closed)
-//   🔍 En recherche — public requests with no traveler yet
-//   ❌ Annulés
-// ---------------------------------------------------------------------------
-
-type SendItem =
-  | { kind: 'booking'; row: MyBooking }
-  | { kind: 'request'; row: ShippingRequestRow };
-
-function bucketForSendBooking(b: MyBooking): 'todo' | 'inProgress' | 'delivered' | 'cancelled' {
-  if (b.status === 'cancelled') return 'cancelled';
-  // I need to act on it:
-  //  - a traveler proposed and I haven't accepted/paid yet
-  //  - the traveler delivered + uploaded proof, I need to click "I received"
-  if (b.status === 'pending' && b.initiated_by === 'traveler') return 'todo';
-  if (b.status === 'confirmed' && b.delivery_proof_url && !b.received_confirmed_at)
-    return 'todo';
-  // Fully closed
-  if (b.status === 'confirmed' && b.received_confirmed_at) return 'delivered';
-  // In flight / accepted but not yet delivered, OR I'm waiting for accept
-  return 'inProgress';
-}
-
-function SendsView({
-  bookings,
-  requests,
-  onAcceptProposal,
-  onDeclineProposal,
-  onOpenChat,
-  onConfirmReceipt,
-  onOpenReview,
-  hasReviewed,
-  reviewFromOther,
-  t,
-}: {
-  bookings: MyBooking[];
-  requests: ShippingRequestRow[];
-  onAcceptProposal: (b: MyBooking) => void;
-  onDeclineProposal: (id: string) => void;
-  onOpenChat: (b: MyBooking) => void;
-  onConfirmReceipt: (bookingId: string) => void;
-  onOpenReview: (b: MyBooking) => void;
-  hasReviewed: (bookingIntentId: string) => boolean;
-  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
-  t: Translations;
-}) {
-  // Partition all bookings into buckets
-  const todoBookings = bookings.filter((b) => bucketForSendBooking(b) === 'todo');
-  const inProgressBookings = bookings.filter((b) => bucketForSendBooking(b) === 'inProgress');
-  const deliveredBookings = bookings.filter((b) => bucketForSendBooking(b) === 'delivered');
-  const cancelledBookings = bookings.filter((b) => bucketForSendBooking(b) === 'cancelled');
-  // "En recherche": public requests that don't have a confirmed booking
-  // tied to them yet (so the sender still actively looking for a traveler).
-  const linkedRequestIds = new Set(
-    bookings
-      .filter((b) => b.status === 'confirmed' || b.status === 'pending')
-      .map((b) => b.shipping_request_id)
-      .filter(Boolean)
-  );
-  const searchingRequests = requests.filter(
-    (r) => r.status === 'pending' && !linkedRequestIds.has(r.id)
-  );
-
-  // Build the flat ordered list of items that will appear in the master list.
-  // Order matters: actionable first, then progress, then closed/searching/cancelled.
-  const orderedItems: SendItem[] = [
-    ...todoBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
-    ...inProgressBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
-    ...searchingRequests.map<SendItem>((row) => ({ kind: 'request', row })),
-    ...deliveredBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
-    ...cancelledBookings.map<SendItem>((row) => ({ kind: 'booking', row })),
-  ];
-
-  // Default selection: first actionable item (todo > inProgress), else first
-  // item, else null. We use the item's id as the selection key.
-  const firstItem = orderedItems[0];
-  const initialId = firstItem
-    ? firstItem.kind === 'booking'
-      ? `b:${firstItem.row.id}`
-      : `r:${firstItem.row.id}`
-    : null;
-  const [selectedId, setSelectedId] = useState<string | null>(initialId);
-  const [detailOpenMobile, setDetailOpenMobile] = useState(false);
-
-  // If the items list changes (e.g. user accepts a proposal → bucket changes),
-  // re-seed selection so it doesn't point at a nonexistent id.
-  useEffect(() => {
-    if (!selectedId) {
-      setSelectedId(initialId);
-      return;
-    }
-    const stillThere = orderedItems.some(
-      (it) =>
-        (it.kind === 'booking' ? `b:${it.row.id}` : `r:${it.row.id}`) === selectedId
-    );
-    if (!stillThere) setSelectedId(initialId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderedItems.length, initialId]);
-
-  const selected =
-    orderedItems.find(
-      (it) => (it.kind === 'booking' ? `b:${it.row.id}` : `r:${it.row.id}`) === selectedId
-    ) ?? null;
-
-  const hasContent = orderedItems.length > 0;
-
-  if (!hasContent) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes colis</h2>
-          <Link href="/envoyer">
-            <Button size="sm">
-              <Plus className="w-4 h-4" />
-              Publier une demande
-            </Button>
-          </Link>
-        </div>
-        <EmptyState message="Aucun colis pour le moment. Publiez votre première demande." />
-      </div>
-    );
-  }
-
-  function selectItem(id: string) {
-    setSelectedId(id);
-    setDetailOpenMobile(true);
-  }
-
-  // The master list, built bucket by bucket.
-  const master = (
-    <div className="overflow-y-auto md:max-h-[80vh]">
-      {todoBookings.length > 0 && (
-        <>
-          <ListBucketHeader label="🔥 À traiter" count={todoBookings.length} tone="urgent" />
-          {todoBookings.map((b) => {
-            const id = `b:${b.id}`;
-            return (
-              <SendListRow
-                key={id}
-                booking={b}
-                selected={selectedId === id}
-                onClick={() => selectItem(id)}
-                tone="urgent"
-                t={t}
-              />
-            );
-          })}
-        </>
-      )}
-
-      {inProgressBookings.length > 0 && (
-        <>
-          <ListBucketHeader label="⏳ En cours" count={inProgressBookings.length} />
-          {inProgressBookings.map((b) => {
-            const id = `b:${b.id}`;
-            return (
-              <SendListRow
-                key={id}
-                booking={b}
-                selected={selectedId === id}
-                onClick={() => selectItem(id)}
-                t={t}
-              />
-            );
-          })}
-        </>
-      )}
-
-      {searchingRequests.length > 0 && (
-        <>
-          <ListBucketHeader label="🔍 En recherche" count={searchingRequests.length} />
-          {searchingRequests.map((r) => {
-            const id = `r:${r.id}`;
-            return (
-              <RequestListRow
-                key={id}
-                request={r}
-                selected={selectedId === id}
-                onClick={() => selectItem(id)}
-                t={t}
-              />
-            );
-          })}
-        </>
-      )}
-
-      {deliveredBookings.length > 0 && (
-        <>
-          <ListBucketHeader label="✓ Livrés" count={deliveredBookings.length} tone="success" />
-          {deliveredBookings.map((b) => {
-            const id = `b:${b.id}`;
-            return (
-              <SendListRow
-                key={id}
-                booking={b}
-                selected={selectedId === id}
-                onClick={() => selectItem(id)}
-                t={t}
-              />
-            );
-          })}
-        </>
-      )}
-
-      {cancelledBookings.length > 0 && (
-        <>
-          <ListBucketHeader label="Annulés" count={cancelledBookings.length} />
-          {cancelledBookings.map((b) => {
-            const id = `b:${b.id}`;
-            return (
-              <SendListRow
-                key={id}
-                booking={b}
-                selected={selectedId === id}
-                onClick={() => selectItem(id)}
-                t={t}
-              />
-            );
-          })}
-        </>
-      )}
-    </div>
-  );
-
-  // The detail panel — shows the selected item's full info + actions.
-  // SendDetailCard puts the OBJECT (category + description + price) at the
-  // top, with route, date, traveler, and actions following — that's how the
-  // sender thinks about their shipment.
-  const detail = selected ? (
-    selected.kind === 'booking' ? (
-      <div className="p-5">
-        <SendDetailCard
-          booking={selected.row}
-          onAcceptProposal={onAcceptProposal}
-          onDeclineProposal={onDeclineProposal}
-          onOpenChat={onOpenChat}
-          onConfirmReceipt={onConfirmReceipt}
-          onOpenReview={onOpenReview}
-          hasReviewed={hasReviewed(selected.row.id)}
-          otherReview={reviewFromOther(selected.row.id)}
-          t={t}
-        />
-      </div>
-    ) : (
-      <div className="p-5">
-        <RequestDetailCard request={selected.row} t={t} />
-      </div>
-    )
-  ) : (
-    <DetailEmpty message="Sélectionnez un colis pour voir ses détails." />
-  );
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes colis</h2>
-        <Link href="/envoyer">
-          <Button size="sm">
-            <Plus className="w-4 h-4" />
-            Publier une demande
-          </Button>
-        </Link>
-      </div>
-
-      <MasterDetailLayout
-        master={master}
-        detail={detail}
-        detailOpen={detailOpenMobile}
-        onCloseDetail={() => setDetailOpenMobile(false)}
-      />
-    </div>
-  );
-}
-
-// One row in the Sends master list. The hero is the OBJECT being sent
-// (icon + category label + → destination). The subtitle is the description
-// in italic if there is one, else the contextual status. Right side shows
-// the price as the only number that matters at a glance.
-function SendListRow({
-  booking,
-  selected,
-  onClick,
-  tone,
-  t,
-}: {
-  booking: MyBooking;
-  selected: boolean;
-  onClick: () => void;
-  tone?: 'urgent';
-  t: Translations;
-}) {
-  const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
-  const emoji = cat?.icon ?? '📦';
-  const categoryLabel = cat ? t[cat.labelKey] : 'Colis';
-  const travelerName = displayName(booking.traveler_profile?.full_name) || 'Voyageur';
-  const bucket = bucketForSendBooking(booking);
-
-  // Title = the object, with destination so the user can tell apart two
-  // similar packages going to different places (e.g. two "Documents").
-  const title = `${categoryLabel} → ${booking.destination_city}`;
-
-  // Subtitle: prefer the user's own description (their wording wins). Fall
-  // back to a status line that explains WHERE in the flow this booking is.
-  const description = booking.item_description?.trim();
-  let subtitle = '';
-  if (description) {
-    subtitle = description;
-  } else if (bucket === 'todo' && booking.status === 'pending') {
-    subtitle = `${travelerName} propose`;
-  } else if (bucket === 'todo' && booking.delivery_proof_url) {
-    subtitle = `📸 Livré · à confirmer`;
-  } else if (bucket === 'inProgress' && booking.status === 'confirmed') {
-    subtitle = `${travelerName} · en transit`;
-  } else if (bucket === 'inProgress') {
-    subtitle = `En attente de ${travelerName}`;
-  } else if (bucket === 'delivered') {
-    subtitle = `Livré par ${travelerName}`;
-  } else {
-    subtitle = `Annulé`;
-  }
-
-  return (
-    <ListRow
-      selected={selected}
-      onClick={onClick}
-      emoji={emoji}
-      title={title}
-      subtitle={subtitle}
-      subtitleItalic={!!description}
-      rightLabel={formatEuros(booking.proposed_price)}
-      dotClass={tone === 'urgent' ? 'bg-butter-500' : undefined}
-    />
-  );
-}
-
-// One row in the Sends master list for a public request without a traveler.
-// Same pattern: object as the headline, description (or "Avant le …") below.
-function RequestListRow({
-  request,
-  selected,
-  onClick,
-  t,
-}: {
-  request: ShippingRequestRow;
-  selected: boolean;
-  onClick: () => void;
-  t: Translations;
-}) {
-  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
-  const categoryLabel = cat ? t[cat.labelKey] : 'Colis';
-  const description = request.item_description?.trim();
-  return (
-    <ListRow
-      selected={selected}
-      onClick={onClick}
-      emoji={cat?.icon ?? '📦'}
-      title={`${categoryLabel} → ${request.destination_city}`}
-      subtitle={description ?? `Avant le ${formatShortDate(request.desired_delivery_date)}`}
-      subtitleItalic={!!description}
-      rightLabel={formatEuros(request.budget)}
-    />
-  );
-}
-
-// Detail panel for a request without traveler — simple card with route +
-// budget + link to edit/cancel. Minimal because there's not much to do yet.
-// Detail panel for a single booking_intent in SendsView. The hero is the
-// OBJECT (category icon + label + description), with the price on the side.
-// Below: route + date. Below: traveler info + status + actions/preuve. The
-// user thinks "I'm sending a document" — so the document leads.
-function SendDetailCard({
-  booking,
-  onAcceptProposal,
-  onDeclineProposal,
-  onOpenChat,
-  onConfirmReceipt,
-  onOpenReview,
-  hasReviewed,
-  otherReview,
-  t,
-}: {
-  booking: MyBooking;
-  onAcceptProposal: (b: MyBooking) => void;
-  onDeclineProposal: (id: string) => void;
-  onOpenChat: (b: MyBooking) => void;
-  onConfirmReceipt: (bookingId: string) => void;
-  onOpenReview: (b: MyBooking) => void;
-  hasReviewed: boolean;
-  otherReview: ReviewForBooking | null;
-  t: Translations;
-}) {
-  const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
-  const catLabel = cat ? t[cat.labelKey] : booking.item_category;
-  const trip = booking.traveler_trip;
-  const traveler = booking.traveler_profile;
-  const travelerName = displayName(traveler?.full_name) || 'Voyageur';
-  const travelerInitial = nameInitial(traveler?.full_name);
-
-  // What we show on the right side as actions depends on status.
-  const isPendingProposalForMe =
-    booking.status === 'pending' && booking.initiated_by === 'traveler';
-  const isAcceptedNotYetDelivered =
-    booking.status === 'confirmed' && !booking.delivery_proof_url;
-  const isDeliveredNotConfirmed =
-    booking.status === 'confirmed' &&
-    !!booking.delivery_proof_url &&
-    !booking.received_confirmed_at;
-  const isFullyDelivered =
-    booking.status === 'confirmed' &&
-    !!booking.delivery_proof_url &&
-    !!booking.received_confirmed_at;
-
-  return (
-    <div className="space-y-5">
-      {/* HERO — the object. Big emoji, category name, optional description,
-          and the price on the right. This is the headline of the card. */}
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-cream-100 flex items-center justify-center text-3xl">
-          {cat?.icon ?? '📦'}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em] mb-1">
-            {catLabel}
-          </div>
-          {booking.item_description ? (
-            <p className="text-[14px] text-ink-500 italic leading-relaxed">
-              {booking.item_description}
-            </p>
-          ) : (
-            <p className="text-[13px] text-ink-300 italic">
-              Aucune description
-            </p>
-          )}
-        </div>
-        <div className="flex-shrink-0 text-right">
-          <div className="text-[24px] font-extrabold text-ink-600 tracking-[-0.02em] num-display leading-none">
-            {formatEuros(booking.proposed_price)}
-          </div>
-          <div className="text-[11px] text-ink-400 mt-1">prix total</div>
-        </div>
-      </div>
-
-      {/* ROUTE + DATE — boxed meta panel with the two key facts side by
-          side. The cream background makes the panel feel like a labelled
-          chip set, distinct from the hero. */}
-      <div className="rounded-xl bg-cream-50 px-4 py-3 flex items-center gap-5 flex-wrap">
-        <div>
-          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
-            Itinéraire
-          </div>
-          <div className="text-[14px] font-bold text-ink-600">
-            {booking.pickup_city} → {booking.destination_city}
-          </div>
-        </div>
-        <div className="h-8 w-px bg-ink-100" />
-        <div>
-          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
-            Date du voyage
-          </div>
-          <div className="text-[14px] font-bold text-ink-600 num-display">
-            {trip ? formatShortDate(trip.departure_date) : '—'}
-          </div>
-        </div>
-      </div>
-
-      {/* TRAVELER — only meaningful once a traveler exists (i.e. anything
-          past the open-request stage). For a pending proposal we still show
-          them so the sender knows who's offering. */}
-      {traveler && (
-        <div className="flex items-center gap-3">
-          <Link href={`/u/${traveler.id}`} className="flex-shrink-0">
-            <div className="w-10 h-10 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[13px] text-lavender-700">
-              {travelerInitial}
-            </div>
-          </Link>
-          <div className="flex-1 min-w-0">
-            <Link
-              href={`/u/${traveler.id}`}
-              className="font-semibold text-ink-600 text-[14px] hover:underline"
-            >
-              {travelerName}
-            </Link>
-            <div className="text-[12px] text-ink-400">
-              {isPendingProposalForMe && 'Vous propose ce transport'}
-              {isAcceptedNotYetDelivered && '✓ Accepté · en cours de transport'}
-              {isDeliveredNotConfirmed && '📸 A livré · en attente de votre confirmation'}
-              {isFullyDelivered && '✓ Livraison confirmée'}
-              {booking.status === 'cancelled' && '❌ Annulé'}
-              {booking.status === 'pending' && booking.initiated_by === 'sender' &&
-                'En attente de sa réponse'}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ACTIONS — depends on the status. Inline buttons, never a big banner. */}
-      {isPendingProposalForMe && (
-        <div className="flex gap-2.5">
-          <button
-            onClick={() => onDeclineProposal(booking.id)}
-            className="flex-1 px-4 py-2.5 text-[13px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
-          >
-            Refuser
-          </button>
-          <button
-            onClick={() => onAcceptProposal(booking)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
-          >
-            Payer {formatEuros(booking.proposed_price)}
-          </button>
-        </div>
-      )}
-
-      {(isAcceptedNotYetDelivered || isDeliveredNotConfirmed || isFullyDelivered) && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => onOpenChat(booking)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
-          >
-            💬 Message
-          </button>
-          {isDeliveredNotConfirmed && (
-            <button
-              onClick={() => onConfirmReceipt(booking.id)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
-            >
-              J&apos;ai bien reçu
-            </button>
-          )}
-          {isFullyDelivered && !hasReviewed && (
-            <button
-              onClick={() => onOpenReview(booking)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
-            >
-              <Star className="w-3 h-3 fill-white" strokeWidth={0} />
-              Noter {travelerName.split(' ')[0]}
-            </button>
-          )}
-          {isFullyDelivered && hasReviewed && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
-              <Star className="w-3 h-3 fill-current" strokeWidth={0} />
-              Vous avez noté
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* DELIVERY PROOF — when uploaded, shown as a section below the actions. */}
-      {booking.delivery_proof_url && (
-        <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3.5">
-          <div className="flex items-center gap-2 mb-2.5">
-            <span className="text-lg">📸</span>
-            <div className="text-[13px] font-bold text-mint-700">
-              Preuve de livraison
-            </div>
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={booking.delivery_proof_url}
-            alt="Preuve de livraison"
-            className="w-full max-h-64 object-cover rounded-lg mb-2 border border-mint-200/40"
-          />
-          {booking.delivery_proof_receiver_name && (
-            <div className="text-[12px] text-ink-500 mb-1">
-              <span className="text-ink-400">Remis à :</span>{' '}
-              <strong className="text-ink-600">{booking.delivery_proof_receiver_name}</strong>
-            </div>
-          )}
-          {booking.delivery_proof_notes && (
-            <div className="text-[12px] text-ink-500 leading-relaxed mt-1">
-              <span className="text-ink-400">Note :</span> « {booking.delivery_proof_notes} »
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* REVIEW THE OTHER PARTY WROTE — show inline once received */}
-      {otherReview && (
-        <div className="rounded-xl bg-cream-50 px-4 py-3">
-          <div className="text-[11px] font-semibold text-ink-300 tracking-[0.08em] uppercase mb-1.5">
-            {travelerName.split(' ')[0]} vous a noté
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-4 h-4 ${
-                    i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
-                  }`}
-                  strokeWidth={0}
-                />
-              ))}
-            </span>
-            {otherReview.comment && (
-              <span className="text-[13px] text-ink-500">« {otherReview.comment} »</span>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Translations }) {
-  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
-  const categoryLabel = cat ? t[cat.labelKey] : 'Colis';
-  const description = request.item_description?.trim();
-  return (
-    <div className="space-y-5">
-      {/* HERO — same shape as BookingCard: object on the left, description
-          underneath, big price on the right with a "budget" label. */}
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-cream-100 flex items-center justify-center text-3xl">
-          {cat?.icon ?? '📦'}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[20px] font-extrabold text-ink-600 tracking-[-0.015em] mb-1">
-            {categoryLabel}
-          </div>
-          {description ? (
-            <p className="text-[14px] text-ink-500 italic leading-relaxed">
-              {description}
-            </p>
-          ) : (
-            <p className="text-[13px] text-ink-300 italic">
-              Aucune description
-            </p>
-          )}
-        </div>
-        <div className="flex-shrink-0 text-right">
-          <div className="text-[24px] font-extrabold text-ink-600 tracking-[-0.02em] num-display leading-none">
-            {formatEuros(request.budget)}
-          </div>
-          <div className="text-[11px] text-ink-400 mt-1">budget</div>
-        </div>
-      </div>
-
-      {/* ROUTE + DATE — same boxed meta panel as BookingCard for visual
-          consistency. The two states are the same colis at different
-          stages, so the layout language should be identical. */}
-      <div className="rounded-xl bg-cream-50 px-4 py-3 flex items-center gap-5 flex-wrap">
-        <div>
-          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
-            Itinéraire
-          </div>
-          <div className="text-[14px] font-bold text-ink-600">
-            {request.pickup_city} → {request.destination_city}
-          </div>
-        </div>
-        <div className="h-8 w-px bg-ink-100" />
-        <div>
-          <div className="text-[10px] font-semibold text-ink-300 tracking-[0.1em] uppercase mb-0.5">
-            Avant le
-          </div>
-          <div className="text-[14px] font-bold text-ink-600 num-display">
-            {formatShortDate(request.desired_delivery_date)}
-          </div>
-        </div>
-      </div>
-
-      {/* Status banner — kept compact, sits at the bottom as the only
-          non-data element. */}
-      <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 text-[13px] text-ink-500 leading-relaxed flex gap-2.5">
-        <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
-        <div>
-          <strong className="text-ink-600">Vous êtes en recherche de voyageur.</strong>{' '}
-          Nous vous notifierons dès qu&apos;une personne accepte votre colis.
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// TRIPS — master list of my trips, detail panel with boarding-pass + packages
-// ---------------------------------------------------------------------------
-
 function TripsView({
   trips,
   incomingIntents,
@@ -3221,9 +2200,7 @@ function TripsView({
   onProofUploaded,
   onCancelTrip,
   onOpenChat,
-  onOpenReview,
-  hasReviewed,
-  reviewFromOther,
+  onReportProblem,
   t,
 }: {
   trips: TravelerTripRow[];
@@ -3233,25 +2210,28 @@ function TripsView({
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onCancelTrip: (tripId: string) => Promise<void>;
   onOpenChat: (intent: IncomingIntent) => void;
-  onOpenReview: (intent: IncomingIntent) => void;
-  hasReviewed: (bookingIntentId: string) => boolean;
-  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
+  onReportProblem: (intent: IncomingIntent) => void;
   t: Translations;
 }) {
-  // Build the trip → packages map. Only keep active trips & packages
-  // (cancelled and fully-closed packages don't show — they go to /historique).
-  const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
-  const activeIncoming = incomingIntents.filter((i) => {
-    if (i.status === 'cancelled') return false;
-    const fullyClosed = !!i.received_confirmed_at && hasReviewed(i.id);
-    return !fullyClosed;
-  });
-  const activeProposals = myProposals.filter((p) => {
-    if (p.status === 'cancelled') return false;
-    const fullyClosed = !!p.received_confirmed_at && hasReviewed(p.id);
-    return !fullyClosed;
-  });
+  // We group the traveler's work by TRIP — the user thinks "what am I
+  // carrying on my Marrakech→Toulouse flight on June 9th". Within each
+  // trip we list every active booking attached to it (pending requests
+  // to decide on, confirmed bookings to deliver, accepted proposals).
+  //
+  // The dashboard shows ACTIVE only (status != 'cancelled', not yet
+  // delivered). Historic items live on /historique.
 
+  const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
+
+  // Active items linked to a trip: incoming bookings + my proposals
+  const activeIncoming = incomingIntents.filter(
+    (i) => i.status !== 'cancelled' && !i.delivery_proof_url
+  );
+  const activeProposals = myProposals.filter(
+    (p) => p.status !== 'cancelled' && !p.delivery_proof_url
+  );
+
+  // Build the map: trip_id → list of "packages" (mixed incoming + proposals)
   type TripPackage =
     | { kind: 'incoming'; row: IncomingIntent }
     | { kind: 'proposal'; row: TravelerProposal };
@@ -3271,38 +2251,24 @@ function TripsView({
     packagesByTrip.set(tripId, arr);
   });
 
-  // Sort: soonest-upcoming first, but past trips (already departed) at the
-  // bottom. Within each group, ascending by date.
-  const today = new Date().toISOString().slice(0, 10);
-  const sortedTrips = [...activeTrips].sort((a, b) => {
-    const aPast = a.departure_date < today;
-    const bPast = b.departure_date < today;
-    if (aPast !== bPast) return aPast ? 1 : -1;
-    return a.departure_date.localeCompare(b.departure_date);
-  });
+  // Sort trips by departure date ascending (next trip first)
+  const sortedTrips = [...activeTrips].sort(
+    (a, b) => new Date(a.departure_date).getTime() - new Date(b.departure_date).getTime()
+  );
 
-  // Pick default selection: first upcoming trip with packages > first
-  // upcoming trip > first trip overall.
-  const firstWithPackages = sortedTrips.find((tr) => (packagesByTrip.get(tr.id) ?? []).length > 0);
-  const initialId = firstWithPackages?.id ?? sortedTrips[0]?.id ?? null;
-  const [selectedTripId, setSelectedTripId] = useState<string | null>(initialId);
-  const [detailOpenMobile, setDetailOpenMobile] = useState(false);
+  // History link counter — same definition as before for the bottom link
+  const historyCount =
+    incomingIntents.filter(
+      (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
+    ).length +
+    myProposals.filter(
+      (p) => p.status === 'cancelled' || (p.status === 'confirmed' && p.delivery_proof_url)
+    ).length +
+    trips.filter((tr) => tr.status === 'cancelled').length;
 
-  // Re-seed selection if the trip list changes.
-  useEffect(() => {
-    if (!selectedTripId) {
-      setSelectedTripId(initialId);
-      return;
-    }
-    if (!sortedTrips.find((tr) => tr.id === selectedTripId)) {
-      setSelectedTripId(initialId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedTrips.length, initialId]);
+  const hasContent = activeTrips.length > 0 || historyCount > 0;
 
-  const selectedTrip = sortedTrips.find((tr) => tr.id === selectedTripId) ?? null;
-
-  if (sortedTrips.length === 0) {
+  if (!hasContent) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -3314,59 +2280,13 @@ function TripsView({
             </Button>
           </Link>
         </div>
-        <EmptyState message="Aucun voyage planifié. Publiez votre prochain vol pour proposer vos services." />
+        <EmptyState message="Aucun trajet pour le moment. Publiez votre premier voyage." />
       </div>
     );
   }
 
-  function selectTrip(id: string) {
-    setSelectedTripId(id);
-    setDetailOpenMobile(true);
-  }
-
-  // Master list — trips by chronological order
-  const master = (
-    <div className="overflow-y-auto md:max-h-[80vh]">
-      <ListBucketHeader label="✈️ Mes voyages" count={sortedTrips.length} />
-      {sortedTrips.map((tr) => {
-        const pkgs = packagesByTrip.get(tr.id) ?? [];
-        const isPast = tr.departure_date < today;
-        return (
-          <TripListRow
-            key={tr.id}
-            trip={tr}
-            packagesCount={pkgs.length}
-            selected={selectedTripId === tr.id}
-            onClick={() => selectTrip(tr.id)}
-            isPast={isPast}
-          />
-        );
-      })}
-    </div>
-  );
-
-  // Detail panel — boarding pass + packages list, just like the old TripGroup
-  const detail = selectedTrip ? (
-    <div className="p-4">
-      <TripDetailCard
-        trip={selectedTrip}
-        packages={packagesByTrip.get(selectedTrip.id) ?? []}
-        onUpdateIntent={onUpdateIntent}
-        onProofUploaded={onProofUploaded}
-        onCancelTrip={onCancelTrip}
-        onOpenChat={onOpenChat}
-        onOpenReview={onOpenReview}
-        hasReviewed={hasReviewed}
-        reviewFromOther={reviewFromOther}
-        t={t}
-      />
-    </div>
-  ) : (
-    <DetailEmpty message="Sélectionnez un voyage pour voir ses détails." />
-  );
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
         <Link href="/voyager">
@@ -3377,77 +2297,61 @@ function TripsView({
         </Link>
       </div>
 
-      <MasterDetailLayout
-        master={master}
-        detail={detail}
-        detailOpen={detailOpenMobile}
-        onCloseDetail={() => setDetailOpenMobile(false)}
-      />
+      {sortedTrips.length === 0 ? (
+        <div className="bg-white rounded-2xl p-8 text-center border border-dashed border-ink-100">
+          <p className="text-[14px] text-ink-400 leading-relaxed mb-4">
+            Aucun voyage à venir. Ajoutez votre prochain vol pour commencer à transporter.
+          </p>
+          <Link href="/voyager">
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              Publier un trajet
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {sortedTrips.map((trip) => (
+            <TripGroup
+              key={trip.id}
+              trip={trip}
+              packages={packagesByTrip.get(trip.id) ?? []}
+              onUpdateIntent={onUpdateIntent}
+              onProofUploaded={onProofUploaded}
+              onCancelTrip={onCancelTrip}
+              onOpenChat={onOpenChat}
+              onReportProblem={onReportProblem}
+              t={t}
+            />
+          ))}
+        </div>
+      )}
+
+      {historyCount > 0 && (
+        <div className="pt-2">
+          <Link
+            href="/historique?type=transports"
+            className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
+          >
+            📜 Voir l&apos;historique ({historyCount})
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
 
-// One row in the Trips master list. Short, scannable: date, route, count.
-function TripListRow({
-  trip,
-  packagesCount,
-  selected,
-  onClick,
-  isPast,
-}: {
-  trip: TravelerTripRow;
-  packagesCount: number;
-  selected: boolean;
-  onClick: () => void;
-  isPast: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition-colors ${
-        selected
-          ? 'bg-lavender-50/80 border-l-2 border-lavender-500'
-          : 'hover:bg-cream-50 border-l-2 border-transparent'
-      } ${isPast ? 'opacity-60' : ''}`}
-    >
-      <span className="flex-shrink-0 text-[18px]">✈️</span>
-      <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-ink-600 truncate">
-          {trip.departure_city} → {trip.arrival_city}
-        </div>
-        <div className="text-[12px] text-ink-400 truncate num-display">
-          {formatShortDate(trip.departure_date)}
-          {trip.flight_number && <span className="ml-1.5 text-ink-300">· {trip.flight_number}</span>}
-        </div>
-      </div>
-      <div className="flex-shrink-0 text-[12px] font-semibold text-ink-500">
-        {packagesCount > 0 ? (
-          <span className="inline-flex items-center gap-1">
-            <span className="num-display">{packagesCount}</span>
-            <span className="text-ink-400">colis</span>
-          </span>
-        ) : (
-          <span className="text-ink-300">—</span>
-        )}
-      </div>
-    </button>
-  );
-}
-
-// Detail panel for a trip: boarding-pass header + packages list.
-// Reuses the same visual language as the old TripGroup so the design
-// language stays consistent (perforation, lavender earnings panel).
-function TripDetailCard({
+// ---------------------------------------------------------------------------
+// TripGroup — one trip with all its packages stacked under it
+// ---------------------------------------------------------------------------
+function TripGroup({
   trip,
   packages,
   onUpdateIntent,
   onProofUploaded,
   onCancelTrip,
   onOpenChat,
-  onOpenReview,
-  hasReviewed,
-  reviewFromOther,
+  onReportProblem,
   t,
 }: {
   trip: TravelerTripRow;
@@ -3459,58 +2363,83 @@ function TripDetailCard({
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onCancelTrip: (tripId: string) => Promise<void>;
   onOpenChat: (intent: IncomingIntent) => void;
-  onOpenReview: (intent: IncomingIntent) => void;
-  hasReviewed: (bookingIntentId: string) => boolean;
-  reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
+  onReportProblem: (intent: IncomingIntent) => void;
   t: Translations;
 }) {
+  // "Potential earnings" = sum of NET (post-fee) for every package on this
+  // trip, including pending ones. The user wants to see "what I could
+  // make on this flight". We don't differentiate confirmed vs pending in
+  // the headline — they're all things to handle.
   const totalNet = packages.reduce((sum, p) => {
     const ttc = p.row.proposed_price ?? 0;
     return sum + ttc / 1.15;
   }, 0);
+
   const count = packages.length;
-  const isCancelable = packages.every((p) => p.row.status !== 'confirmed');
+  const isCancelable = packages.every(
+    (p) => p.row.status !== 'confirmed' // only allow trip cancel if no confirmed package
+  );
+
+  // Airport-code style — first 3 letters of the city, uppercase. Not IATA
+  // accurate (CAS for Casablanca, not CMN) but gives the right ticket vibe
+  // and works for any city without a lookup table.
+  const departCode = trip.departure_city.slice(0, 3).toUpperCase();
+  const arriveCode = trip.arrival_city.slice(0, 3).toUpperCase();
 
   return (
     <section className="rounded-2xl border border-ink-100 bg-white overflow-hidden">
-      {/* Boarding-pass-style header */}
+      {/* Boarding-pass-style header. Two zones split by a perforated
+          tear-line. Left = trip info (route, codes). Right = earnings panel
+          tinted lavender so the money pops as the headline reward. */}
       <div className="relative border-b border-ink-100">
+        {/* Perforation notches at the tear line (~63% across) */}
         <div className="absolute top-1/2 -translate-y-1/2 left-[63%] -translate-x-1/2 w-4 h-4 rounded-full bg-white border border-ink-100 z-10 hidden sm:block" />
         <div className="absolute top-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-b-full bg-white border-x border-b border-ink-100 hidden sm:block" />
         <div className="absolute bottom-0 left-[63%] -translate-x-1/2 w-3 h-1.5 rounded-t-full bg-white border-x border-t border-ink-100 hidden sm:block" />
 
         <div className="flex items-stretch">
+          {/* LEFT — trip ticket section, on warm cream paper */}
           <div className="flex-1 px-5 py-4 min-w-0 relative bg-gradient-to-br from-cream-50 to-cream-100">
-            {trip.flight_number && (
-              <div className="text-[10px] text-ink-400 font-bold tracking-[0.14em] uppercase mb-1.5 num-display">
-                Vol {trip.flight_number}
-                {trip.flight_time && <span className="ml-2 text-ink-300">· {trip.flight_time}</span>}
+            {/* Codes row with a chunkier plane between */}
+            <div className="flex items-center gap-3 mb-1">
+              <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
+                {departCode}
               </div>
-            )}
-            {/* City names as the headline — full names look better than
-                3-letter slices of non-IATA cities (CAS, PAR aren't real). */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="text-[18px] sm:text-[22px] font-extrabold text-ink-600 tracking-tight leading-tight truncate flex-1 min-w-0">
-                {trip.departure_city}
+              <div className="flex-1 flex items-center min-w-0 px-1">
+                <div className="h-px bg-ink-200 flex-1" />
+                <Plane className="w-6 h-6 sm:w-7 sm:h-7 mx-2 text-ink-400 -rotate-12 flex-shrink-0" />
+                <div className="h-px bg-ink-200 flex-1" />
               </div>
-              <Plane className="w-5 h-5 sm:w-6 sm:h-6 text-ink-400 -rotate-12 flex-shrink-0" />
-              <div className="text-[18px] sm:text-[22px] font-extrabold text-ink-600 tracking-tight leading-tight truncate flex-1 min-w-0 text-right">
-                {trip.arrival_city}
+              <div className="text-[28px] sm:text-[32px] font-extrabold text-ink-600 tracking-tight leading-none num-display">
+                {arriveCode}
               </div>
             </div>
+            {/* City names row */}
+            <div className="flex items-center justify-between text-[11px] text-ink-400 mb-3">
+              <span className="truncate max-w-[40%]">{trip.departure_city}</span>
+              <span className="truncate max-w-[40%] text-right">{trip.arrival_city}</span>
+            </div>
+            {/* Departure date + colis count, stamped style */}
             <div className="flex items-center gap-4 text-[11px]">
               <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">Départ</div>
-                <div className="text-ink-600 font-bold num-display">{formatShortDate(trip.departure_date)}</div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
+                  Départ
+                </div>
+                <div className="text-ink-600 font-bold num-display">
+                  {formatShortDate(trip.departure_date)}
+                </div>
               </div>
               <div className="h-7 w-px bg-ink-100" />
               <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">Colis</div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">
+                  Colis
+                </div>
                 <div className="text-ink-600 font-bold num-display">{count}</div>
               </div>
             </div>
           </div>
 
+          {/* RIGHT — earnings panel, tinted lavender to spotlight the money */}
           <div className="w-[35%] flex-shrink-0 border-l border-dashed border-lavender-300/50 px-3 py-4 flex flex-col justify-center items-center text-center relative bg-gradient-to-br from-lavender-50 to-lavender-100/70">
             <div className="text-[28px] sm:text-[32px] font-extrabold text-lavender-700 num-display leading-none">
               {formatEuros(totalNet)}
@@ -3534,6 +2463,9 @@ function TripDetailCard({
 
       {/* Packages list */}
       {count === 0 ? (
+        // Empty state: encourage the traveler to browse open requests on
+        // this route. The link prefills the search via query params so
+        // they land on the matching demands immediately.
         <div className="px-4 py-6 text-center space-y-3">
           <p className="text-[13px] text-ink-400 leading-relaxed">
             Aucun colis sur ce vol pour l&apos;instant.
@@ -3556,9 +2488,7 @@ function TripDetailCard({
                   onUpdate={onUpdateIntent}
                   onProofUploaded={onProofUploaded}
                   onOpenChat={onOpenChat}
-                  onOpenReview={onOpenReview}
-                  hasReviewed={hasReviewed(p.row.id)}
-                  otherReview={reviewFromOther(p.row.id)}
+                  onReportProblem={onReportProblem}
                 />
               ) : (
                 <ProposalCardInline proposal={p.row} />
@@ -3571,27 +2501,21 @@ function TripDetailCard({
   );
 }
 
-// ---------------------------------------------------------------------------
-// INLINE PACKAGE CARDS — used inside TripDetailCard. Unchanged from before
-// except they now live here for clarity.
-// ---------------------------------------------------------------------------
-
+// Stripped-down versions of IntentCard/ProposalCard for use inside a
+// TripGroup — borderless (the group has its own border), single line,
+// dense.
 function IntentCardInline({
   intent,
   onUpdate,
   onProofUploaded,
   onOpenChat,
-  onOpenReview,
-  hasReviewed,
-  otherReview,
+  onReportProblem,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onOpenChat: (intent: IncomingIntent) => void;
-  onOpenReview: (intent: IncomingIntent) => void;
-  hasReviewed: boolean;
-  otherReview: ReviewForBooking | null;
+  onReportProblem: (intent: IncomingIntent) => void;
 }) {
   const [showProofModal, setShowProofModal] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
@@ -3610,39 +2534,15 @@ function IntentCardInline({
   const showAccept = intent.status === 'pending';
   const showDeliver = intent.status === 'confirmed' && !intent.delivery_proof_url;
 
-  // The traveler can only mark a package as delivered ON OR AFTER their
-  // flight date. Marking earlier doesn't make sense (they haven't flown
-  // yet) and breaks the escrow assumption. We compare yyyy-mm-dd strings
-  // because departure_date is stored as a date — no timezone gotchas.
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const departureDateStr = intent.traveler_trip?.departure_date ?? null;
-  // canDeliver: no trip date known (legacy data) OR trip is today/past.
-  // If departureDateStr is null we fall back to allowing, since blocking
-  // on missing data would lock people out for the wrong reason.
-  const canDeliver = !departureDateStr || departureDateStr <= todayStr;
-  const deliveryBlockedMsg = !canDeliver
-    ? `Disponible à partir du ${departureDateStr ? new Date(departureDateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : 'jour du vol'}`
-    : '';
-
+  // Status pill — shown in the middle area where there's space.
+  // pending  → "Nouvelle demande"  (waiting for me to accept)
+  // confirmed (paid) → "💳 Paiement réservé"
+  // confirmed (not paid) → "À livrer"
   let statusText: string | null = null;
   let statusClass = '';
   if (intent.status === 'pending') {
     statusText = 'Nouvelle demande';
     statusClass = 'text-butter-700 bg-butter-50';
-  } else if (intent.status === 'confirmed' && intent.delivery_proof_url && intent.received_confirmed_at) {
-    statusText = '✓ Livraison confirmée';
-    statusClass = 'text-mint-700 bg-mint-50';
-  } else if (intent.status === 'confirmed' && intent.delivery_proof_url) {
-    statusText = '📸 En attente de confirmation';
-    statusClass = 'text-butter-700 bg-butter-50';
-  } else if (intent.status === 'confirmed' && !canDeliver) {
-    // Trip hasn't departed yet — make it clear the traveler is waiting
-    // for their flight, not slacking. Date shown in short form.
-    const shortDate = departureDateStr
-      ? new Date(departureDateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-      : null;
-    statusText = shortDate ? `À livrer le ${shortDate}` : 'À livrer';
-    statusClass = 'text-lavender-700 bg-lavender-50';
   } else if (intent.status === 'confirmed' && intent.payment_status === 'authorized') {
     statusText = '💳 Paiement réservé';
     statusClass = 'text-mint-700 bg-mint-50';
@@ -3697,83 +2597,25 @@ function IntentCardInline({
             >
               💬
             </button>
+            {/* Signaler — discreet flag, opens the dispute modal */}
             <button
-              onClick={() => canDeliver && setShowProofModal(true)}
-              disabled={!canDeliver}
-              title={canDeliver ? undefined : deliveryBlockedMsg}
-              className={`inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold rounded-full transition-colors ${
-                canDeliver
-                  ? 'text-cream-50 bg-lavender-500 hover:bg-lavender-600 cursor-pointer'
-                  : 'text-ink-300 bg-ink-50 cursor-not-allowed'
-              }`}
+              onClick={() => onReportProblem(intent)}
+              className="px-2.5 py-1.5 rounded-full text-ink-400 hover:text-blush-500 hover:bg-blush-50 transition-colors"
+              aria-label="Signaler un problème"
+              title="Signaler un problème"
+            >
+              <Flag className="w-3.5 h-3.5" strokeWidth={1.75} />
+            </button>
+            <button
+              onClick={() => setShowProofModal(true)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
             >
               <Camera className="w-3 h-3" />
               J&apos;ai livré
             </button>
           </div>
         )}
-        {intent.status === 'confirmed' &&
-          intent.delivery_proof_url &&
-          !intent.received_confirmed_at && (
-            <div className="flex-shrink-0 flex items-center gap-1.5">
-              <a
-                href={intent.delivery_proof_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12px] font-medium text-ink-400 hover:text-ink-600 underline transition-colors"
-              >
-                Voir la preuve
-              </a>
-              <button
-                onClick={() => onOpenChat(intent)}
-                className="px-2.5 py-1.5 rounded-full bg-cream-100 hover:bg-cream-200 text-ink-500 text-[12px] transition-colors"
-                aria-label="Message"
-                title="Message"
-              >
-                💬
-              </button>
-            </div>
-          )}
-        {intent.delivery_proof_url && intent.received_confirmed_at && (
-          <div className="flex-shrink-0">
-            {!hasReviewed ? (
-              <button
-                type="button"
-                onClick={() => onOpenReview(intent)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
-              >
-                <Star className="w-3 h-3 fill-white" strokeWidth={0} />
-                Noter
-              </button>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
-                <Star className="w-3 h-3 fill-current" strokeWidth={0} />
-                Vous avez noté
-              </span>
-            )}
-          </div>
-        )}
       </div>
-
-      {otherReview && (
-        <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
-          <span>{senderName.split(' ')[0]} vous a noté</span>
-          <span className="inline-flex items-center gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className={`w-3 h-3 ${
-                  i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
-                }`}
-                strokeWidth={0}
-              />
-            ))}
-          </span>
-          {otherReview.comment && (
-            <span className="text-ink-500">· « {otherReview.comment} »</span>
-          )}
-        </div>
-      )}
 
       <AnimatePresence>
         {showProofModal && (
@@ -3794,15 +2636,15 @@ function IntentCardInline({
 function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
   const senderName = displayName(proposal.sender_profile?.full_name) || 'Expéditeur';
   const initial = nameInitial(proposal.sender_profile?.full_name);
-  const netTraveler = proposal.proposed_price / 1.15;
-
+  const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
   const accepted = proposal.status === 'confirmed';
-  const statusText = accepted ? '✓ acceptée' : proposal.status === 'cancelled' ? '✕ refusée' : '⏳ en attente';
+
+  // Status pill style matches IntentCardInline so the visual language is
+  // consistent across the trip's package list.
+  const statusText = accepted ? '✓ Acceptée' : 'En attente de réponse';
   const statusClass = accepted
     ? 'text-mint-700 bg-mint-50'
-    : proposal.status === 'cancelled'
-      ? 'text-ink-400 bg-cream-100'
-      : 'text-butter-700 bg-butter-50';
+    : 'text-ink-400 bg-cream-100';
 
   return (
     <div className="flex items-center gap-3">
@@ -3817,9 +2659,169 @@ function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
           {statusText}
         </span>
       </div>
+      {accepted && proposal.sender_profile?.phone && (
+        <a
+          href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-shrink-0 inline-flex items-center px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
+        >
+          WhatsApp
+        </a>
+      )}
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// SendsView — "Mes envois" tab
+// ---------------------------------------------------------------------------
+function SendsView({
+  bookings,
+  requests,
+  onAcceptProposal,
+  onDeclineProposal,
+  onOpenChat,
+  onReportProblem,
+  t,
+}: {
+  bookings: MyBooking[];
+  requests: ShippingRequestRow[];
+  onAcceptProposal: (b: MyBooking) => void;
+  onDeclineProposal: (id: string) => void;
+  onOpenChat: (b: MyBooking) => void;
+  onReportProblem: (b: MyBooking) => void;
+  t: Translations;
+}) {
+  // 🔥 À traiter: traveler proposals on my requests (accept and pay)
+  const todoProposals = bookings.filter(
+    (b) => b.status === 'pending' && b.initiated_by === 'traveler'
+  );
+
+  // ⏳ En cours
+  const inProgressBookings = bookings.filter(
+    (b) =>
+      (b.status === 'confirmed' && !b.delivery_proof_url) ||
+      (b.status === 'pending' && b.initiated_by === 'sender')
+  );
+  const activeRequests = requests.filter((r) => r.status === 'pending');
+
+  // 📜 Historique côté sender: bookings cancelled/delivered
+  const historyBookings = bookings.filter(
+    (b) => b.status === 'cancelled' || (b.status === 'confirmed' && b.delivery_proof_url)
+  );
+
+  const totalTodos = todoProposals.length;
+  const hasContent =
+    inProgressBookings.length > 0 ||
+    activeRequests.length > 0 ||
+    totalTodos > 0 ||
+    historyBookings.length > 0;
+
+  if (!hasContent) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
+          <Link href="/envoyer">
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              Publier une demande
+            </Button>
+          </Link>
+        </div>
+        <EmptyState message="Aucun envoi pour le moment. Publiez votre première demande." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-10">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes envois</h2>
+        <Link href="/envoyer">
+          <Button size="sm">
+            <Plus className="w-4 h-4" />
+            Publier une demande
+          </Button>
+        </Link>
+      </div>
+
+      {totalTodos > 0 && (
+        <section>
+          <GroupHeader icon="🔥" label="À traiter" count={totalTodos} />
+          <div className="space-y-3">
+            {todoProposals.map((b) => (
+              <BookingCard
+                key={b.id}
+                booking={b}
+                onAcceptProposal={onAcceptProposal}
+                onDeclineProposal={onDeclineProposal}
+                t={t}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {(inProgressBookings.length > 0 || activeRequests.length > 0) && (
+        <section>
+          <GroupHeader icon="⏳" label="En cours" count={inProgressBookings.length + activeRequests.length} />
+          <div className="space-y-3">
+            {inProgressBookings.map((b) => (
+              <BookingCard
+                key={b.id}
+                booking={b}
+                onOpenChat={onOpenChat}
+                onReportProblem={onReportProblem}
+                t={t}
+              />
+            ))}
+            {activeRequests.map((req) => (
+              <RequestCardSimple key={req.id} request={req} t={t} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {historyBookings.length > 0 && (
+        <div className="pt-2">
+          <Link
+            href="/historique?type=envois"
+            className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
+          >
+            📜 Voir l&apos;historique ({historyBookings.length})
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Simple read-only card for an active public request I posted but
+// nobody has responded to yet. Just the route + budget + status.
+function RequestCardSimple({ request, t }: { request: ShippingRequestRow; t: Translations }) {
+  const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  return (
+    <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
+          {cat?.icon}
+        </div>
+        <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
+          <span className="font-semibold text-ink-600">{request.pickup_city} → {request.destination_city}</span>
+          <span className="text-ink-300">·</span>
+          <span className="text-ink-500 num-display">{formatEuros(request.budget)}</span>
+          <span className="text-[11px] text-ink-300 ml-1">⏳ en attente de propositions</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// HistoryView — combines both sides, completed or cancelled items
+// ---------------------------------------------------------------------------
 function HistoryView({
   incomingIntents,
   myBookings,
