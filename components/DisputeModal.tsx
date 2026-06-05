@@ -115,7 +115,7 @@ export function DisputeModal({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-            className="fixed inset-x-4 bottom-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:w-[480px] sm:max-h-[85vh] bg-cream-50 rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col"
+            className="fixed inset-x-4 bottom-4 max-h-[90vh] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:w-[480px] sm:max-h-[85vh] bg-cream-50 rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col"
           >
             <div className="px-6 pt-6 pb-2 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2.5">
@@ -137,7 +137,7 @@ export function DisputeModal({
               </button>
             </div>
 
-            <div className="px-6 pb-6 overflow-y-auto">
+            <div className="px-6 pb-2 overflow-y-auto flex-1 min-h-0">
               <p className="text-[13px] text-ink-500 leading-relaxed mb-5">
                 Cette action signale un problème concernant{' '}
                 <strong className="text-ink-600">{reportedUserName}</strong>.
@@ -182,17 +182,23 @@ export function DisputeModal({
                 />
               </label>
 
-              {error && (
+             {error && (
                 <div className="text-[12px] text-blush-600 font-medium mt-3">
                   {error}
                 </div>
               )}
+            </div>
 
+            {/* Sticky footer — always visible regardless of scroll position.
+                Critical on mobile where the modal can become taller than
+                the viewport and the action button would otherwise hide
+                below the fold. */}
+            <div className="flex-shrink-0 px-6 py-4 border-t border-ink-100 bg-cream-50">
               <button
                 type="button"
                 onClick={submit}
                 disabled={busy}
-                className="mt-5 w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-blush-500 hover:bg-blush-600 text-cream-50 text-[14px] font-bold transition-colors disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-blush-500 hover:bg-blush-600 text-cream-50 text-[14px] font-bold transition-colors disabled:opacity-50"
               >
                 {busy ? (
                   <>
@@ -204,10 +210,10 @@ export function DisputeModal({
                 )}
               </button>
 
-              <p className="text-[10px] text-ink-300 text-center mt-3 leading-relaxed">
+              <p className="text-[10px] text-ink-300 text-center mt-2 leading-relaxed">
                 Les signalements abusifs peuvent entraîner la suspension de votre propre compte.
               </p>
-            </div>
+              </div>   
           </motion.div>
         </>
       )}
