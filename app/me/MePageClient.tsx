@@ -23,6 +23,7 @@ import {
   Camera,
   X,
   Flag,
+  KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
@@ -30,8 +31,11 @@ import { DeliveryProofModal } from '@/components/DeliveryProofModal';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { ChatModal } from '@/components/ChatModal';
 import { Input } from '@/components/ui/Form';
-// Trust & safety: dispute reporting from any active booking
+// Trust & safety: dispute reporting + code-based handoff verification
 import { DisputeModal } from '@/components/DisputeModal';
+import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
+import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
+import { BookingTimeline, deriveTimelineStep } from '@/components/BookingTimeline';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
 import { formatShortDate, formatName, nameInitial, displayName, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -150,6 +154,43 @@ export default function MyPage(
     reporterRole: 'sender' | 'traveler';
     reportedUserId: string;
     reportedUserName: string;
+  } | null>(null);
+
+  // ─── CODE-BASED HANDOFF MODALS (trust & safety) ──────────────────────────
+  // Two pairs of code-driven moments in the lifecycle of every booking:
+  //   PICKUP — sender shows a 6-digit code at handoff; traveler types it
+  //            to mark `pickup_confirmed_at`.
+  //   DELIVERY — traveler shows a 6-digit code at drop-off; sender types
+  //              it on their side, which we use as the gate before calling
+  //              the existing /api/booking/confirm-receipt route.
+  // Each modal stays open until the user closes it or the code verifies.
+
+  // Sender opens this to SEE the pickup code and read it aloud to the traveler.
+  const [pickupShowingFor, setPickupShowingFor] = useState<{
+    bookingId: string;
+    code: string;
+    travelerName: string;
+  } | null>(null);
+
+  // Traveler opens this to TYPE the pickup code spoken by the sender.
+  const [pickupEnteringFor, setPickupEnteringFor] = useState<{
+    bookingId: string;
+    senderName: string;
+  } | null>(null);
+
+  // Traveler opens this AFTER uploading delivery proof — shows the
+  // delivery code, which they read aloud to the recipient/sender on arrival.
+  const [deliveryShowingFor, setDeliveryShowingFor] = useState<{
+    bookingId: string;
+    code: string;
+    senderName: string;
+  } | null>(null);
+
+  // Sender opens this to TYPE the delivery code spoken at drop-off.
+  // On verify → call existing onConfirmReceipt to capture the payment.
+  const [deliveryEnteringFor, setDeliveryEnteringFor] = useState<{
+    bookingId: string;
+    travelerName: string;
   } | null>(null);
 
   // Deep-link from notification emails: if the URL contains ?chat={id},
@@ -459,6 +500,14 @@ export default function MyPage(
                         displayName(intent.sender_profile?.full_name) || "l'expéditeur",
                     });
                   }}
+                  onEnterPickupCode={(intent) => {
+                    // Traveler types the pickup code the sender just told them.
+                    setPickupEnteringFor({
+                      bookingId: intent.id,
+                      senderName:
+                        displayName(intent.sender_profile?.full_name) || "l'expéditeur",
+                    });
+                  }}
                   t={t}
                 />
               )}
@@ -497,6 +546,21 @@ export default function MyPage(
                       reportedUserId: booking.traveler_profile.id,
                       reportedUserName:
                         displayName(booking.traveler_profile.full_name) || 'le voyageur',
+                    });
+                  }}
+                  onShowPickupCode={(booking) => {
+                    // Sender wants to see the pickup code (to speak aloud
+                    // to the traveler at handoff). The code is on the
+                    // booking row — RLS lets the sender read their own.
+                    if (!booking.pickup_code) {
+                      alert("Code indisponible. Rechargez la page ou contactez le support.");
+                      return;
+                    }
+                    setPickupShowingFor({
+                      bookingId: booking.id,
+                      code: booking.pickup_code,
+                      travelerName:
+                        displayName(booking.traveler_profile?.full_name) || 'le voyageur',
                     });
                   }}
                   t={t}
@@ -591,6 +655,46 @@ export default function MyPage(
           />
         )}
       </AnimatePresence>
+
+      {/* PICKUP code — SHOW side (sender reads the code aloud) */}
+      <PickupShowCodeModal
+        open={!!pickupShowingFor}
+        code={pickupShowingFor?.code ?? ''}
+        travelerName={pickupShowingFor?.travelerName ?? ''}
+        onClose={() => setPickupShowingFor(null)}
+      />
+
+      {/* PICKUP code — ENTER side (traveler types it). On success, the
+          modal sets pickup_confirmed_at via browser.confirmPickupWithCode,
+          then we optimistically update local state so the UI flips out of
+          the "in progress" view. */}
+      <PickupEnterCodeModal
+        open={!!pickupEnteringFor}
+        bookingId={pickupEnteringFor?.bookingId ?? ''}
+        travelerId={user?.id ?? ''}
+        senderName={pickupEnteringFor?.senderName ?? ''}
+        onClose={() => setPickupEnteringFor(null)}
+        onSuccess={() => {
+          if (!pickupEnteringFor || !user) return;
+          const stamp = new Date().toISOString();
+          setIncomingIntents((prev) =>
+            prev.map((it) =>
+              it.id === pickupEnteringFor.bookingId
+                ? { ...it, pickup_confirmed_at: stamp, pickup_confirmed_by: user.id }
+                : it
+            )
+          );
+          setPickupEnteringFor(null);
+        }}
+      />
+
+      {/* NOTE: delivery_code flow not wired yet — the existing
+          PickupEnterCodeModal validates against pickup_code, so we can't
+          reuse it for delivery without a `mode` prop. For this iteration
+          we ship the pickup-code half only; the sender still confirms
+          reception via the existing "J'ai bien reçu" button (no code).
+          Next pass: extend the enter-code modal with a `mode: 'pickup'
+          | 'delivery'` prop and wire the delivery half. */}
     </div>
   );
 }
@@ -915,6 +1019,7 @@ function BookingCard({
   onDeclineProposal,
   onOpenChat,
   onReportProblem,
+  onShowPickupCode,
   t,
 }: {
   booking: MyBooking;
@@ -922,6 +1027,7 @@ function BookingCard({
   onDeclineProposal?: (id: string) => void;
   onOpenChat?: (b: MyBooking) => void;
   onReportProblem?: (b: MyBooking) => void;
+  onShowPickupCode?: (b: MyBooking) => void;
   t: Translations;
 }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
@@ -1086,6 +1192,48 @@ function BookingCard({
               )}
             </div>
           </div>
+
+          {/* Pickup code block — sender's side of the trust handoff.
+              Visible only BEFORE the traveler has confirmed pickup. Once
+              they have, the code has no use anymore and we hide the block
+              to declutter the card. */}
+          {onShowPickupCode && !booking.pickup_confirmed_at && (
+            <div className="rounded-xl bg-lavender-50/60 border border-lavender-200/60 px-4 py-3 mt-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-9 h-9 rounded-full bg-lavender-100 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4 text-lavender-700" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-bold text-ink-600 leading-tight">
+                    Code de remise du colis
+                  </div>
+                  <div className="text-[12px] text-ink-500 leading-snug mt-0.5">
+                    À donner à {travelerName.split(' ')[0]} sur place. Il l&apos;entrera dans son
+                    application pour confirmer la remise.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onShowPickupCode(booking)}
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+                >
+                  Voir le code
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* "Remis ✓" status — once the traveler has typed the code on
+              their side, we surface that visually so the sender knows
+              the package is now on its way. */}
+          {booking.pickup_confirmed_at && !booking.delivery_proof_url && (
+            <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 mt-3 flex items-center gap-2.5">
+              <KeyRound className="w-4 h-4 text-mint-700 flex-shrink-0" />
+              <div className="text-[13px] font-semibold text-mint-700">
+                Colis remis à {travelerName.split(' ')[0]} ✓
+              </div>
+            </div>
+          )}
 
           {/* Trust & safety — discreet "Signaler un problème" link.
               Subtle by design: we don't want to encourage misuse, but it
@@ -2220,6 +2368,7 @@ function TripsView({
   onCancelTrip,
   onOpenChat,
   onReportProblem,
+  onEnterPickupCode,
   t,
 }: {
   trips: TravelerTripRow[];
@@ -2230,6 +2379,7 @@ function TripsView({
   onCancelTrip: (tripId: string) => Promise<void>;
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
+  onEnterPickupCode: (intent: IncomingIntent) => void;
   t: Translations;
 }) {
   // We group the traveler's work by TRIP — the user thinks "what am I
@@ -2340,6 +2490,7 @@ function TripsView({
               onCancelTrip={onCancelTrip}
               onOpenChat={onOpenChat}
               onReportProblem={onReportProblem}
+              onEnterPickupCode={onEnterPickupCode}
               t={t}
             />
           ))}
@@ -2371,6 +2522,7 @@ function TripGroup({
   onCancelTrip,
   onOpenChat,
   onReportProblem,
+  onEnterPickupCode,
   t,
 }: {
   trip: TravelerTripRow;
@@ -2383,6 +2535,7 @@ function TripGroup({
   onCancelTrip: (tripId: string) => Promise<void>;
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
+  onEnterPickupCode: (intent: IncomingIntent) => void;
   t: Translations;
 }) {
   // "Potential earnings" = sum of NET (post-fee) for every package on this
@@ -2508,6 +2661,7 @@ function TripGroup({
                   onProofUploaded={onProofUploaded}
                   onOpenChat={onOpenChat}
                   onReportProblem={onReportProblem}
+                  onEnterPickupCode={onEnterPickupCode}
                 />
               ) : (
                 <ProposalCardInline proposal={p.row} />
@@ -2529,12 +2683,14 @@ function IntentCardInline({
   onProofUploaded,
   onOpenChat,
   onReportProblem,
+  onEnterPickupCode,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
+  onEnterPickupCode: (intent: IncomingIntent) => void;
 }) {
   const [showProofModal, setShowProofModal] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
@@ -2551,20 +2707,34 @@ function IntentCardInline({
   }
 
   const showAccept = intent.status === 'pending';
-  const showDeliver = intent.status === 'confirmed' && !intent.delivery_proof_url;
+  // Two distinct states once accepted:
+  //   - pickup not confirmed → traveler hasn't met the sender yet
+  //   - pickup confirmed but no proof → traveler is in transit / about to deliver
+  const showPickup =
+    intent.status === 'confirmed' &&
+    !intent.pickup_confirmed_at &&
+    !intent.delivery_proof_url;
+  const showDeliver =
+    intent.status === 'confirmed' &&
+    !!intent.pickup_confirmed_at &&
+    !intent.delivery_proof_url;
 
   // Status pill — shown in the middle area where there's space.
   // pending  → "Nouvelle demande"  (waiting for me to accept)
   // confirmed (paid) → "💳 Paiement réservé"
-  // confirmed (not paid) → "À livrer"
+  // confirmed + pickup pending → "À récupérer"
+  // confirmed + picked up → "✓ Récupéré · à livrer"
   let statusText: string | null = null;
   let statusClass = '';
   if (intent.status === 'pending') {
     statusText = 'Nouvelle demande';
     statusClass = 'text-butter-700 bg-butter-50';
-  } else if (intent.status === 'confirmed' && intent.payment_status === 'authorized') {
-    statusText = '💳 Paiement réservé';
+  } else if (intent.status === 'confirmed' && intent.pickup_confirmed_at && !intent.delivery_proof_url) {
+    statusText = '✓ Récupéré · à livrer';
     statusClass = 'text-mint-700 bg-mint-50';
+  } else if (intent.status === 'confirmed' && !intent.pickup_confirmed_at && intent.payment_status === 'authorized') {
+    statusText = '💳 Paiement réservé · à récupérer';
+    statusClass = 'text-lavender-700 bg-lavender-50';
   } else if (intent.status === 'confirmed') {
     statusText = 'À livrer';
     statusClass = 'text-lavender-700 bg-lavender-50';
@@ -2603,6 +2773,37 @@ function IntentCardInline({
               className="px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
             >
               {busy === 'confirm' ? '...' : 'Accepter'}
+            </button>
+          </div>
+        )}
+        {showPickup && (
+          // Traveler hasn't met the sender yet → primary CTA is "J'ai
+          // récupéré le colis" which opens the code entry modal. The
+          // chat and signaler are kept as secondary actions so they can
+          // still coordinate or flag a problem before pickup.
+          <div className="flex-shrink-0 flex items-center gap-1.5">
+            <button
+              onClick={() => onOpenChat(intent)}
+              className="px-2.5 py-1.5 rounded-full bg-cream-100 hover:bg-cream-200 text-ink-500 text-[12px] transition-colors"
+              aria-label="Message"
+              title="Message"
+            >
+              💬
+            </button>
+            <button
+              onClick={() => onReportProblem(intent)}
+              className="px-2.5 py-1.5 rounded-full text-ink-400 hover:text-blush-500 hover:bg-blush-50 transition-colors"
+              aria-label="Signaler un problème"
+              title="Signaler un problème"
+            >
+              <Flag className="w-3.5 h-3.5" strokeWidth={1.75} />
+            </button>
+            <button
+              onClick={() => onEnterPickupCode(intent)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-mint-500 hover:bg-mint-600 rounded-full transition-colors"
+            >
+              <KeyRound className="w-3 h-3" />
+              J&apos;ai récupéré
             </button>
           </div>
         )}
@@ -2702,6 +2903,7 @@ function SendsView({
   onDeclineProposal,
   onOpenChat,
   onReportProblem,
+  onShowPickupCode,
   t,
 }: {
   bookings: MyBooking[];
@@ -2710,6 +2912,7 @@ function SendsView({
   onDeclineProposal: (id: string) => void;
   onOpenChat: (b: MyBooking) => void;
   onReportProblem: (b: MyBooking) => void;
+  onShowPickupCode: (b: MyBooking) => void;
   t: Translations;
 }) {
   // 🔥 À traiter: traveler proposals on my requests (accept and pay)
@@ -2793,6 +2996,7 @@ function SendsView({
                 booking={b}
                 onOpenChat={onOpenChat}
                 onReportProblem={onReportProblem}
+                onShowPickupCode={onShowPickupCode}
                 t={t}
               />
             ))}
