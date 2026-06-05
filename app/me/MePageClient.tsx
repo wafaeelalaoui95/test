@@ -508,6 +508,23 @@ export default function MyPage(
                         displayName(intent.sender_profile?.full_name) || "l'expéditeur",
                     });
                   }}
+                  onShowDeliveryCode={(intent) => {
+                    // Traveler reveals the delivery code at drop-off
+                    // (after proof has been uploaded). Read it aloud
+                    // to the sender so they can type it on their side.
+                    if (!intent.delivery_code) {
+                      alert(
+                        'Code de livraison indisponible. Rechargez la page ou contactez le support.'
+                      );
+                      return;
+                    }
+                    setDeliveryShowingFor({
+                      bookingId: intent.id,
+                      code: intent.delivery_code,
+                      senderName:
+                        displayName(intent.sender_profile?.full_name) || "l'expéditeur",
+                    });
+                  }}
                   t={t}
                 />
               )}
@@ -559,6 +576,15 @@ export default function MyPage(
                     setPickupShowingFor({
                       bookingId: booking.id,
                       code: booking.pickup_code,
+                      travelerName:
+                        displayName(booking.traveler_profile?.full_name) || 'le voyageur',
+                    });
+                  }}
+                  onEnterDeliveryCode={(booking) => {
+                    // Sender confirms reception by typing the delivery
+                    // code the traveler just read aloud at drop-off.
+                    setDeliveryEnteringFor({
+                      bookingId: booking.id,
                       travelerName:
                         displayName(booking.traveler_profile?.full_name) || 'le voyageur',
                     });
@@ -688,13 +714,69 @@ export default function MyPage(
         }}
       />
 
-      {/* NOTE: delivery_code flow not wired yet — the existing
-          PickupEnterCodeModal validates against pickup_code, so we can't
-          reuse it for delivery without a `mode` prop. For this iteration
-          we ship the pickup-code half only; the sender still confirms
-          reception via the existing "J'ai bien reçu" button (no code).
-          Next pass: extend the enter-code modal with a `mode: 'pickup'
-          | 'delivery'` prop and wire the delivery half. */}
+      {/* DELIVERY code — SHOW side (traveler reads it aloud at drop-off) */}
+      <PickupShowCodeModal
+        open={!!deliveryShowingFor}
+        code={deliveryShowingFor?.code ?? ''}
+        travelerName={deliveryShowingFor?.senderName ?? ''}
+        mode="delivery"
+        onClose={() => setDeliveryShowingFor(null)}
+      />
+
+      {/* DELIVERY code — ENTER side (sender types it).
+          We pass mode='delivery' so the modal calls confirmDeliveryWithCode
+          instead of confirmPickupWithCode. On success → call the existing
+          /api/booking/confirm-receipt route which captures the Stripe
+          authorization and sets received_confirmed_at server-side. We
+          ALSO optimistically update local state so the UI doesn't wait
+          for a refetch. */}
+      <PickupEnterCodeModal
+        open={!!deliveryEnteringFor}
+        bookingId={deliveryEnteringFor?.bookingId ?? ''}
+        travelerId={user?.id ?? ''}
+        senderName={deliveryEnteringFor?.travelerName ?? ''}
+        mode="delivery"
+        onClose={() => setDeliveryEnteringFor(null)}
+        onSuccess={async () => {
+          if (!deliveryEnteringFor) return;
+          // Code matched. Now capture the Stripe payment via our API.
+          // The route is idempotent — safe to call.
+          try {
+            const res = await fetch('/api/booking/confirm-receipt', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bookingIntentId: deliveryEnteringFor.bookingId }),
+            });
+            if (!res.ok) {
+              const json = await res.json().catch(() => ({}));
+              if (json?.receiptRecorded) {
+                // Receipt landed but capture didn't — keep going,
+                // reconciliation will pick it up.
+                console.warn('[me] confirm-receipt partial:', json);
+              } else {
+                alert(
+                  "La réception a été enregistrée mais le transfert au voyageur est en attente. Nous nous en occupons."
+                );
+              }
+            }
+          } catch (e) {
+            console.warn('[me] confirm-receipt error after code:', e);
+          }
+          const stamp = new Date().toISOString();
+          setMyBookings((prev) =>
+            prev.map((b) =>
+              b.id === deliveryEnteringFor.bookingId
+                ? {
+                    ...b,
+                    received_confirmed_at: stamp,
+                    payment_status: 'captured' as const,
+                  }
+                : b
+            )
+          );
+          setDeliveryEnteringFor(null);
+        }}
+      />
     </div>
   );
 }
@@ -1020,6 +1102,7 @@ function BookingCard({
   onOpenChat,
   onReportProblem,
   onShowPickupCode,
+  onEnterDeliveryCode,
   t,
 }: {
   booking: MyBooking;
@@ -1028,6 +1111,7 @@ function BookingCard({
   onOpenChat?: (b: MyBooking) => void;
   onReportProblem?: (b: MyBooking) => void;
   onShowPickupCode?: (b: MyBooking) => void;
+  onEnterDeliveryCode?: (b: MyBooking) => void;
   t: Translations;
 }) {
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
@@ -1043,13 +1127,17 @@ function BookingCard({
   // otherwise — see the "Contact" block below.
 
   // Confirmed AND already delivered (proof uploaded) → compact "historic"
+  // Booking confirmed AND proof of delivery uploaded → compact "done"
   // version. Just one line, with a small "Voir la preuve" link that opens
-  // the photo in a popup. No banner, no contacts, no celebration. The deal
-  // is done.
+  // the photo in a popup. PLUS: if the sender hasn't yet confirmed
+  // reception, surface a primary "J'ai bien reçu" button that opens the
+  // delivery-code entry modal. Once received_confirmed_at is set, this
+  // collapses back to the read-only view.
   if (booking.status === 'confirmed' && booking.delivery_proof_url) {
+    const isFullyReceived = !!booking.received_confirmed_at;
     return (
-      <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
-        <div className="flex items-center gap-3">
+      <div className={`bg-white rounded-xl px-3 py-2.5 border ${isFullyReceived ? 'border-ink-50' : 'border-mint-200'}`}>
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
             {cat?.icon}
           </div>
@@ -1059,7 +1147,11 @@ function BookingCard({
             <span className="text-ink-500 truncate">{booking.pickup_city} → {booking.destination_city}</span>
             <span className="text-ink-300">·</span>
             <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
-            <span className="text-[11px] text-mint-600 ml-1">📸 livré</span>
+            {isFullyReceived ? (
+              <span className="text-[11px] text-mint-600 ml-1">✓ livré et confirmé</span>
+            ) : (
+              <span className="text-[11px] text-butter-700 ml-1">📸 livré · à confirmer</span>
+            )}
           </div>
           <a
             href={booking.delivery_proof_url}
@@ -1069,6 +1161,19 @@ function BookingCard({
           >
             Voir la preuve
           </a>
+          {/* Reception confirmation by code — sender enters the delivery
+              code the traveler/recipient just gave them. Once confirmed,
+              Stripe captures the payment via /api/booking/confirm-receipt. */}
+          {!isFullyReceived && onEnterDeliveryCode && (
+            <button
+              type="button"
+              onClick={() => onEnterDeliveryCode(booking)}
+              className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
+            >
+              <KeyRound className="w-3 h-3" />
+              J&apos;ai bien reçu
+            </button>
+          )}
         </div>
       </div>
     );
@@ -2369,6 +2474,7 @@ function TripsView({
   onOpenChat,
   onReportProblem,
   onEnterPickupCode,
+  onShowDeliveryCode,
   t,
 }: {
   trips: TravelerTripRow[];
@@ -2380,6 +2486,7 @@ function TripsView({
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
   onEnterPickupCode: (intent: IncomingIntent) => void;
+  onShowDeliveryCode: (intent: IncomingIntent) => void;
   t: Translations;
 }) {
   // We group the traveler's work by TRIP — the user thinks "what am I
@@ -2491,6 +2598,7 @@ function TripsView({
               onOpenChat={onOpenChat}
               onReportProblem={onReportProblem}
               onEnterPickupCode={onEnterPickupCode}
+              onShowDeliveryCode={onShowDeliveryCode}
               t={t}
             />
           ))}
@@ -2523,6 +2631,7 @@ function TripGroup({
   onOpenChat,
   onReportProblem,
   onEnterPickupCode,
+  onShowDeliveryCode,
   t,
 }: {
   trip: TravelerTripRow;
@@ -2536,6 +2645,7 @@ function TripGroup({
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
   onEnterPickupCode: (intent: IncomingIntent) => void;
+  onShowDeliveryCode: (intent: IncomingIntent) => void;
   t: Translations;
 }) {
   // "Potential earnings" = sum of NET (post-fee) for every package on this
@@ -2662,6 +2772,7 @@ function TripGroup({
                   onOpenChat={onOpenChat}
                   onReportProblem={onReportProblem}
                   onEnterPickupCode={onEnterPickupCode}
+                  onShowDeliveryCode={onShowDeliveryCode}
                 />
               ) : (
                 <ProposalCardInline proposal={p.row} />
@@ -2684,6 +2795,7 @@ function IntentCardInline({
   onOpenChat,
   onReportProblem,
   onEnterPickupCode,
+  onShowDeliveryCode,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
@@ -2691,6 +2803,7 @@ function IntentCardInline({
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
   onEnterPickupCode: (intent: IncomingIntent) => void;
+  onShowDeliveryCode: (intent: IncomingIntent) => void;
 }) {
   const [showProofModal, setShowProofModal] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
@@ -2707,9 +2820,11 @@ function IntentCardInline({
   }
 
   const showAccept = intent.status === 'pending';
-  // Two distinct states once accepted:
+  // Three distinct states once accepted:
   //   - pickup not confirmed → traveler hasn't met the sender yet
   //   - pickup confirmed but no proof → traveler is in transit / about to deliver
+  //   - proof uploaded but receipt not confirmed → drop-off moment, show
+  //     the delivery code to the sender/recipient so they can type it
   const showPickup =
     intent.status === 'confirmed' &&
     !intent.pickup_confirmed_at &&
@@ -2718,16 +2833,27 @@ function IntentCardInline({
     intent.status === 'confirmed' &&
     !!intent.pickup_confirmed_at &&
     !intent.delivery_proof_url;
+  const showDeliveryHandoff =
+    intent.status === 'confirmed' &&
+    !!intent.delivery_proof_url &&
+    !intent.received_confirmed_at;
 
   // Status pill — shown in the middle area where there's space.
   // pending  → "Nouvelle demande"  (waiting for me to accept)
   // confirmed (paid) → "💳 Paiement réservé"
   // confirmed + pickup pending → "À récupérer"
   // confirmed + picked up → "✓ Récupéré · à livrer"
+  // confirmed + proof uploaded → "📸 Livré · en attente confirmation"
   let statusText: string | null = null;
   let statusClass = '';
   if (intent.status === 'pending') {
     statusText = 'Nouvelle demande';
+    statusClass = 'text-butter-700 bg-butter-50';
+  } else if (intent.status === 'confirmed' && intent.delivery_proof_url && intent.received_confirmed_at) {
+    statusText = '✓ Livraison confirmée';
+    statusClass = 'text-mint-700 bg-mint-50';
+  } else if (intent.status === 'confirmed' && intent.delivery_proof_url) {
+    statusText = '📸 Livré · code à donner';
     statusClass = 'text-butter-700 bg-butter-50';
   } else if (intent.status === 'confirmed' && intent.pickup_confirmed_at && !intent.delivery_proof_url) {
     statusText = '✓ Récupéré · à livrer';
@@ -2835,6 +2961,36 @@ function IntentCardInline({
             </button>
           </div>
         )}
+        {showDeliveryHandoff && (
+          // Proof uploaded; we're at the drop-off moment. Surface a
+          // primary "Voir code de livraison" button so the traveler can
+          // read the code aloud to the recipient/sender.
+          <div className="flex-shrink-0 flex items-center gap-1.5">
+            <button
+              onClick={() => onOpenChat(intent)}
+              className="px-2.5 py-1.5 rounded-full bg-cream-100 hover:bg-cream-200 text-ink-500 text-[12px] transition-colors"
+              aria-label="Message"
+              title="Message"
+            >
+              💬
+            </button>
+            <button
+              onClick={() => onReportProblem(intent)}
+              className="px-2.5 py-1.5 rounded-full text-ink-400 hover:text-blush-500 hover:bg-blush-50 transition-colors"
+              aria-label="Signaler un problème"
+              title="Signaler un problème"
+            >
+              <Flag className="w-3.5 h-3.5" strokeWidth={1.75} />
+            </button>
+            <button
+              onClick={() => onShowDeliveryCode(intent)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
+            >
+              <KeyRound className="w-3 h-3" />
+              Voir code livraison
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -2904,6 +3060,7 @@ function SendsView({
   onOpenChat,
   onReportProblem,
   onShowPickupCode,
+  onEnterDeliveryCode,
   t,
 }: {
   bookings: MyBooking[];
@@ -2913,6 +3070,7 @@ function SendsView({
   onOpenChat: (b: MyBooking) => void;
   onReportProblem: (b: MyBooking) => void;
   onShowPickupCode: (b: MyBooking) => void;
+  onEnterDeliveryCode: (b: MyBooking) => void;
   t: Translations;
 }) {
   // 🔥 À traiter: traveler proposals on my requests (accept and pay)
@@ -2997,6 +3155,7 @@ function SendsView({
                 onOpenChat={onOpenChat}
                 onReportProblem={onReportProblem}
                 onShowPickupCode={onShowPickupCode}
+                onEnterDeliveryCode={onEnterDeliveryCode}
                 t={t}
               />
             ))}
