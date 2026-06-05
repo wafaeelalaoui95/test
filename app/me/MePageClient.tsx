@@ -3205,9 +3205,20 @@ function TripsView({
   reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
   t: Translations;
 }) {
-  // Build the trip → packages map. Keep all active trips & packages (the
-  // /historique page handles closed ones; here we want the live working set).
-  const activeTrips = trips.filter((tr) => tr.status !== 'cancelled');
+  // Split trips into "upcoming" (today's date and onward, non-cancelled)
+  // and "past" (departure date in the past, or cancelled). The upcoming
+  // set is the working surface — that's where senders can still propose
+  // packages and that's what we show in the master list by default. The
+  // past set is shown in a collapsible "Anciens voyages" section at the
+  // bottom so the user can still see their history (for earnings,
+  // ratings received, etc.) without it cluttering the active view.
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingTrips = trips.filter(
+    (tr) => tr.status !== 'cancelled' && tr.departure_date >= today
+  );
+  const pastTrips = trips.filter(
+    (tr) => tr.status === 'cancelled' || tr.departure_date < today
+  );
   const activeIncoming = incomingIntents.filter((i) => {
     if (i.status === 'cancelled') return false;
     // Keep delivered+confirmed packages visible until the user has
@@ -3241,20 +3252,24 @@ function TripsView({
     packagesByTrip.set(tripId, arr);
   });
 
-  // Sort: soonest-upcoming first, past trips at the bottom.
-  const today = new Date().toISOString().slice(0, 10);
-  const sortedTrips = [...activeTrips].sort((a, b) => {
-    const aPast = a.departure_date < today;
-    const bPast = b.departure_date < today;
-    if (aPast !== bPast) return aPast ? 1 : -1;
-    return a.departure_date.localeCompare(b.departure_date);
-  });
+  // Sort upcoming: soonest-departure first
+  const sortedTrips = [...upcomingTrips].sort((a, b) =>
+    a.departure_date.localeCompare(b.departure_date)
+  );
+  // Sort past: most recent first (you usually want last week's trip
+  // before last year's)
+  const sortedPastTrips = [...pastTrips].sort((a, b) =>
+    b.departure_date.localeCompare(a.departure_date)
+  );
 
   // Pick default selection: first upcoming trip with packages > first trip.
   const firstWithPackages = sortedTrips.find((tr) => (packagesByTrip.get(tr.id) ?? []).length > 0);
   const initialId = firstWithPackages?.id ?? sortedTrips[0]?.id ?? null;
   const [selectedTripId, setSelectedTripId] = useState<string | null>(initialId);
   const [detailOpenMobile, setDetailOpenMobile] = useState(false);
+  // Past trips are collapsed by default — they're informational
+  // (earnings history, ratings received) but rarely actionable.
+  const [showPastTrips, setShowPastTrips] = useState(false);
 
   useEffect(() => {
     if (!selectedTripId) {
@@ -3267,9 +3282,12 @@ function TripsView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortedTrips.length, initialId]);
 
-  const selectedTrip = sortedTrips.find((tr) => tr.id === selectedTripId) ?? null;
+  const selectedTrip =
+    sortedTrips.find((tr) => tr.id === selectedTripId) ??
+    sortedPastTrips.find((tr) => tr.id === selectedTripId) ??
+    null;
 
-  if (sortedTrips.length === 0) {
+  if (sortedTrips.length === 0 && sortedPastTrips.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -3308,6 +3326,49 @@ function TripsView({
           />
         );
       })}
+
+      {/* Collapsible "Anciens voyages" — past or cancelled trips. Kept
+          out of the way by default since they're not actionable (senders
+          can't book them anymore), but still accessible so the user can
+          audit their history and earnings. */}
+      {sortedPastTrips.length > 0 && (
+        <div className="mt-4 border-t border-ink-50">
+          <button
+            type="button"
+            onClick={() => setShowPastTrips((v) => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between text-[12px] font-semibold text-ink-400 hover:text-ink-600 hover:bg-cream-50 transition-colors uppercase tracking-[0.08em]"
+            aria-expanded={showPastTrips}
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-base">🗂️</span>
+              Anciens voyages
+              <span className="text-ink-300 normal-case font-medium tracking-normal">
+                · {sortedPastTrips.length}
+              </span>
+            </span>
+            <span className={`transition-transform ${showPastTrips ? 'rotate-180' : ''}`}>
+              ▾
+            </span>
+          </button>
+          {showPastTrips && (
+            <div className="opacity-70">
+              {sortedPastTrips.map((tr) => {
+                const pkgs = packagesByTrip.get(tr.id) ?? [];
+                return (
+                  <TripListRow
+                    key={tr.id}
+                    trip={tr}
+                    packagesCount={pkgs.length}
+                    selected={selectedTripId === tr.id}
+                    onClick={() => selectTrip(tr.id)}
+                    isPast={true}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
