@@ -243,16 +243,24 @@ export type Translations = {
   common_no_results: string;
   common_clear: string;
 
-  // Item categories
+ // Item categories (whitelist MVP)
   cat_documents: string;
   cat_documents_desc: string;
   cat_keys: string;
   cat_keys_desc: string;
-  cat_medication: string;
-  cat_medication_desc: string;
   cat_small: string;
   cat_small_desc: string;
-
+  cat_clothes: string;
+  cat_clothes_desc: string;
+  cat_electronics: string;
+  cat_electronics_desc: string;
+  cat_otc: string;
+  cat_otc_desc: string;
+  // Sender/traveler content declarations
+  send_certify_label: string;
+  send_certify_otc_disclaimer: string;
+  trip_verify_content_label: string;
+  
   // Urgency
   urgency_standard: string;
   urgency_standard_hint: string;
@@ -588,15 +596,21 @@ export const translations: Record<Locale, Translations> = {
     common_no_results: 'Aucune ville trouvée',
     common_clear: 'Effacer',
 
-    cat_documents: 'Documents',
+   cat_documents: 'Documents',
     cat_documents_desc: 'Papiers, contrats, attestations',
     cat_keys: 'Clés',
     cat_keys_desc: 'Logement, voiture',
-    cat_medication: 'Médicaments',
-    cat_medication_desc: 'Sur ordonnance uniquement',
     cat_small: 'Petits objets',
     cat_small_desc: 'Lunettes, livre, souvenirs',
-
+    cat_clothes: 'Vêtements',
+    cat_clothes_desc: 'Habits, accessoires, chaussures',
+    cat_electronics: 'Électronique légère',
+    cat_electronics_desc: 'Chargeurs, câbles, écouteurs',
+    cat_otc: 'Médicaments en vente libre',
+    cat_otc_desc: 'Doliprane, vitamines (sans ordonnance)',
+    send_certify_label: 'Je certifie que le contenu décrit est exact et qu\'il ne contient aucun produit interdit.',
+    send_certify_otc_disclaimer: 'Les médicaments doivent être SANS ordonnance, dans leur emballage d\'origine fermé, max 2 unités. J\'assume la responsabilité légale du contenu.',
+    trip_verify_content_label: 'J\'ai vérifié le contenu avant d\'accepter de le transporter.',
     urgency_standard: 'Standard',
     urgency_standard_hint: '2 semaines',
     urgency_fast: 'Rapide',
