@@ -6,10 +6,14 @@
 export type City = string;
 export type CountryCode = string;
 
+// Note: 'medicaments' has been removed for legal reasons. Cross-border
+// transport of medications by individuals (even with a prescription
+// upload) is not legally compliant — prescriptions are nominative and
+// don't transfer to the carrier or recipient. We instead direct users
+// to certified online pharmacies for medical needs.
 export type ItemCategory =
   | 'documents'
   | 'cles'
-  | 'medicaments'
   | 'petits_objets';
 
 export type Urgency = 'standard' | 'rapide' | 'urgent';
