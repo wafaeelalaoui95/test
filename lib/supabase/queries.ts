@@ -374,6 +374,78 @@ export async function listMatchingTripsForRequest(
     user: (profileById.get(t.user_id) as any) ?? null,
   }));
 }
+/**
+ * Broader matching fallback — same idea as listMatchingTripsForRequest,
+ * but relaxes the city filter to country-level. Used when the strict
+ * city-level search returns nothing, so we can still surface viable
+ * options (a Rabat→Lyon traveler when the user wanted Casa→Paris).
+ *
+ * We exclude trips that ALREADY match the exact city pair (so the user
+ * doesn't see the same options twice), and we sort by departure_date
+ * ascending so the closest-leaving trips show first.
+ *
+ * The caller decides how to label these in the UI — typically as
+ * "voyageurs sur des routes proches" rather than direct matches.
+ */
+export async function listMatchingTripsForRequestBroadened(
+  supabase: SB,
+  pickupCountry: string,
+  destinationCountry: string,
+  pickupCity: string,         // we exclude this city to avoid duplicates with strict matches
+  destinationCity: string,    // same
+  desiredDeliveryDate: string,
+  excludeUserId?: string | null
+): Promise<MatchingTrip[]> {
+  let query = supabase
+    .from('traveler_trips')
+    .select(
+      'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
+    )
+    .eq('departure_country', pickupCountry)
+    .eq('arrival_country', destinationCountry)
+    .lte('departure_date', desiredDeliveryDate)
+    .eq('status', 'open')
+    .order('departure_date', { ascending: true })
+    .limit(20);
+
+  // Don't re-surface the exact-city matches that the strict query
+  // already shows. We filter by NOT (both cities match the user's input).
+  if (pickupCity && destinationCity) {
+    query = query.or(
+      `departure_city.neq.${pickupCity},arrival_city.neq.${destinationCity}`
+    );
+  }
+  if (excludeUserId) {
+    query = query.neq('user_id', excludeUserId);
+  }
+
+  const { data: trips, error } = await withTimeout(
+    Promise.resolve(query),
+    6000,
+    'Broadened matching trips'
+  );
+  if (error) throw error;
+  if (!trips || trips.length === 0) return [];
+
+  // Same profile hydration pattern as the strict query.
+  const userIds = Array.from(new Set(trips.map((t: any) => t.user_id)));
+  const { data: profiles } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, rating, trips_completed, verification_level')
+        .in('id', userIds)
+    ),
+    6000,
+    'Broadened matching traveler profiles'
+  );
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  return trips.map((t: any) => ({
+    ...t,
+    user: (profileById.get(t.user_id) as any) ?? null,
+  }));
+}
 
 // =============================================================================
 // MATCHING (mirror) — list shipping requests that fit a freshly-planned trip
@@ -1880,7 +1952,23 @@ export const browser = {
       departureDate,
       excludeUserId
     ),
-
+listMatchingTripsForRequestBroadened: (
+    pickupCountry: string,
+    destinationCountry: string,
+    pickupCity: string,
+    destinationCity: string,
+    desiredDeliveryDate: string,
+    excludeUserId?: string | null
+  ) =>
+    listMatchingTripsForRequestBroadened(
+      getBrowserClient(),
+      pickupCountry,
+      destinationCountry,
+      pickupCity,
+      destinationCity,
+      desiredDeliveryDate,
+      excludeUserId
+    ),
   listReviewsForUser: (userId: string) =>
     listReviewsForUser(getBrowserClient(), userId),
   confirmBookingReceipt: (bookingIntentId: string) =>
