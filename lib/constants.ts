@@ -6,7 +6,7 @@ import type { Translations } from '@/lib/i18n/translations';
 // translations.ts for now (they don't bloat anything) — they'll be cleaned
 // up in a later pass if we never re-introduce medication transport.
 export const ITEM_CATEGORIES: {
-  value: ItemCategory;
+  value: ItemCategory; 
   labelKey: keyof Translations;
   descKey: keyof Translations;
   icon: string;
