@@ -6,29 +6,29 @@ import type { Translations } from '@/lib/i18n/translations';
 // translations.ts for now (they don't bloat anything) — they'll be cleaned
 // up in a later pass if we never re-introduce medication transport.
 export const ITEM_CATEGORIES: {
-  value: ItemCategory; 
+  value: ItemCategory;
   labelKey: keyof Translations;
   descKey: keyof Translations;
   icon: string;
 }[] = [
   { value: 'documents', labelKey: 'cat_documents', descKey: 'cat_documents_desc', icon: '📄' },
   { value: 'cles', labelKey: 'cat_keys', descKey: 'cat_keys_desc', icon: '🔑' },
+  { value: 'vetements', labelKey: 'cat_clothes', descKey: 'cat_clothes_desc', icon: '👕' },
+  { value: 'electronique', labelKey: 'cat_electronics', descKey: 'cat_electronics_desc', icon: '🔌' },
   { value: 'petits_objets', labelKey: 'cat_small', descKey: 'cat_small_desc', icon: '🎁' },
+  { value: 'otc', labelKey: 'cat_otc', descKey: 'cat_otc_desc', icon: '💊' },
 ];
 
 export const FORBIDDEN_CATEGORIES = [
-  'Nourriture',
-  'Alcool',
-  'Luxe',
-  'Cash',
-  'Bijoux',
-  'Électronique',
-  'Substances illégales',
+  'Espèces',
+  'Médicaments sur ordonnance',
+  'Drogues et stupéfiants',
   'Armes',
   'Contrefaçons',
-  'Commerce',
+  'Bijoux de grande valeur',
+  'Produits dangereux',
+  'Alcool, tabac et produits réglementés',
 ];
-
 export const URGENCY_LEVELS: {
   value: Urgency;
   labelKey: keyof Translations;
