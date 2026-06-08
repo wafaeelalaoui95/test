@@ -6,16 +6,16 @@
 export type City = string; 
 export type CountryCode = string;
 
-// Note: 'medicaments' has been removed for legal reasons. Cross-border
-// transport of medications by individuals (even with a prescription
-// upload) is not legally compliant — prescriptions are nominative and
-// don't transfer to the carrier or recipient. We instead direct users
-// to certified online pharmacies for medical needs.
+// Whitelist-based MVP. Anything not in this list is forbidden by default.
+// 'otc' = over-the-counter medications (Doliprane, vitamins, parapharmacy).
+// Prescription medications remain forbidden — see /objets-autorises.
 export type ItemCategory =
   | 'documents'
   | 'cles'
-  | 'petits_objets';
-
+  | 'petits_objets'
+  | 'vetements'
+  | 'electronique'
+  | 'otc';
 export type Urgency = 'standard' | 'rapide' | 'urgent';
 
 export type AvailableSpace = 'enveloppe' | 'pochette' | 'petit_sac';
