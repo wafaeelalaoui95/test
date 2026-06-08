@@ -21,16 +21,21 @@ import { COUNTRIES } from '@/lib/countries';
 type Props = {
   value: string;
   onChange: (city: string) => void;
+  // Optional sibling callback: fires with the country name of the picked
+  // city when the user selects from the dropdown. Lets callers track the
+  // country alongside the city (e.g. for country-level fallback search)
+  // without a separate lookup. Not fired when the user types freeform
+  // (we can't know the country in that case).
+  onCountryChange?: (country: string) => void;
   placeholder?: string;
 };
-
 type Row = {
   city: string;
   countryName: string;
   countryFlag: string;
 };
 
-export function CityCombobox({ value, onChange, placeholder }: Props) {
+export function CityCombobox({ value, onChange, onCountryChange, placeholder }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -78,8 +83,9 @@ export function CityCombobox({ value, onChange, placeholder }: Props) {
     }).filter((g) => g.cities.length > 0);
   }, [query]);
 
-  function pickCity(row: Row) {
+function pickCity(row: Row) {
     onChange(row.city);
+    onCountryChange?.(row.countryName);
     setQuery(row.city);
     setOpen(false);
   }
