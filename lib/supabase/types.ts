@@ -9,7 +9,15 @@
  */
 
 export type VerificationLevel = 'none' | 'email' | 'id_verified' | 'trusted';
-export type ItemCategory = 'documents' | 'cles' | 'medicaments' | 'petits_objets';
+// Keep in sync with lib/types/index.ts. The Supabase typings layer needs
+// the same union or the createShippingRequest call site won't compile.
+export type ItemCategory =
+  | 'documents'
+  | 'cles'
+  | 'petits_objets'
+  | 'vetements'
+  | 'electronique'
+  | 'otc';
 export type Urgency = 'standard' | 'rapide' | 'urgent';
 export type AvailableSpace = 'enveloppe' | 'pochette' | 'petit_sac';
 
