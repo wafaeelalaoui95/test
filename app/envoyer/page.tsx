@@ -428,31 +428,7 @@ export default function EnvoyerPage() {
                     ))}
                   </div>
 
-                  {category === 'medicaments' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-butter-50 rounded-2xl p-4"
-                    >
-                      <p className="text-[14px] text-ink-500 font-semibold mb-2 flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-butter-600" />
-                        {t.send_prescription_required}
-                      </p>
-                      <label className="inline-block cursor-pointer">
-                        <input
-                          type="file"
-                          accept="image/*,.pdf"
-                          onChange={(e) => setPrescription(e.target.files?.[0] || null)}
-                          className="hidden"
-                        />
-                        <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-butter-200 text-[14px] font-semibold text-ink-600 hover:bg-butter-100 transition-colors">
-                          <Upload className="w-4 h-4" />
-                          {prescription ? prescription.name : t.send_upload_prescription}
-                        </span>
-                      </label>
-                    </motion.div>
-                  )}
-
+            
                   <Textarea
                     label={t.send_label_description}
                     placeholder={t.send_placeholder_description}
