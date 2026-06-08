@@ -497,7 +497,21 @@ export default function EnvoyerPage() {
                     ))}
                   </div>
 
+                  {category === 'otc' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-butter-50 border border-butter-200 rounded-2xl p-4"
+                    >
+                      <p className="text-[13px] text-ink-600 leading-relaxed flex items-start gap-2">
+                        <span className="text-base flex-shrink-0">⚠️</span>
+                        <span>{t.send_certify_otc_disclaimer}</span>
+                      </p>
+                    </motion.div>
+                  )}
+
                   <Textarea
+                
                     label={t.send_label_description}
                     placeholder={t.send_placeholder_description}
                     value={description}
@@ -553,7 +567,16 @@ export default function EnvoyerPage() {
                     <Row label={t.send_recap_budget} value={`${budget}${t.common_eur}`} />
                   </div>
 
-                  <Checkbox name="terms" checked={terms} onChange={(e) => setTerms(e.target.checked)} label={<span>{t.send_terms}</span>} />
+              <Checkbox
+                    name="certify"
+                    checked={terms}
+                    onChange={(e) => setTerms(e.target.checked)}
+                    label={
+                      <span className="text-[13px] text-ink-600 leading-relaxed">
+                        {t.send_certify_label}
+                      </span>
+                    }
+                  />
                 </div>
               )}
             </motion.div>
@@ -673,6 +696,7 @@ function TripBookableCard({
 // On success: creates a shipping_request + a booking_intent linking the trip.
 // =============================================================================
 function InstantBookModal({
+function InstantBookModal({
   trip,
   senderId,
   pickupCity,
@@ -691,13 +715,14 @@ function InstantBookModal({
   const [phase, setPhase] = useState<'describe' | 'pay'>('describe');
   const [category, setCategory] = useState<ItemCategory | null>(null);
   const [description, setDescription] = useState('');
+  const [certified, setCertified] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const travelerName = displayName(trip.user?.full_name) || 'Le voyageur';
   // Price is fixed by the traveler — sender doesn't negotiate here.
   const price = trip.compensation_min;
-  const canPay = !!category && description.trim().length > 0;
+ const canPay = !!category && description.trim().length > 0 && certified;
 
   async function handleAuthorized(paymentIntentId: string) {
     if (!category) return;
@@ -828,12 +853,41 @@ function InstantBookModal({
                 </div>
               </div>
 
-              <Textarea
+            <Textarea
                 label="Description"
                 placeholder="Que souhaitez-vous envoyer ?"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+
+              {category === 'otc' && (
+                <div className="bg-butter-50 border border-butter-200 rounded-xl px-4 py-3">
+                  <p className="text-[12px] text-ink-600 leading-relaxed flex items-start gap-2">
+                    <span className="text-base flex-shrink-0">⚠️</span>
+                    <span>{t.send_certify_otc_disclaimer}</span>
+                  </p>
+                </div>
+              )}
+
+              <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 text-[12px] text-ink-500 leading-relaxed">
+                <div className="font-bold text-mint-700 mb-1 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Protection Jibly incluse
+                </div>
+                Votre paiement est bloqué et ne sera versé au voyageur qu&apos;une fois la livraison confirmée.
+              </div>
+
+              <label className="flex items-start gap-2.5 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={certified}
+                  onChange={(e) => setCertified(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-ink-300 text-ink-500 focus:ring-2 focus:ring-lavender-500/30 cursor-pointer"
+                />
+                <span className="text-[12px] text-ink-600 leading-relaxed">
+                  {t.send_certify_label}
+                </span>
+              </label>
 
               <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 text-[12px] text-ink-500 leading-relaxed">
                 <div className="font-bold text-mint-700 mb-1 flex items-center gap-1.5">
