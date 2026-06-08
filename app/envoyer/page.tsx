@@ -63,7 +63,6 @@ export default function EnvoyerPage() {
   const [step, setStep] = useState(0);
   const [category, setCategory] = useState<ItemCategory | null>(null);
   const [description, setDescription] = useState('');
-  const [prescription, setPrescription] = useState<File | null>(null);
   const [budget, setBudget] = useState(30);
   const [terms, setTerms] = useState(false);
   const [submitted, setSubmitted] = useState(false);
