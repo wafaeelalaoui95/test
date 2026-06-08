@@ -696,7 +696,6 @@ function TripBookableCard({
 // On success: creates a shipping_request + a booking_intent linking the trip.
 // =============================================================================
 function InstantBookModal({
-function InstantBookModal({
   trip,
   senderId,
   pickupCity,
