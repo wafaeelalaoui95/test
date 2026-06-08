@@ -1,6 +1,5 @@
 import type { ItemCategory, Urgency, AvailableSpace } from '@/lib/types';
-import type { Translations } from '@/lib/i18n/translations';
-
+import type { Translations } from '@/lib/i18n/translations'; 
 // Note: 'medicaments' category removed. See lib/types/index.ts for rationale.
 // The i18n keys cat_medication and cat_medication_desc are kept in
 // translations.ts for now (they don't bloat anything) — they'll be cleaned
