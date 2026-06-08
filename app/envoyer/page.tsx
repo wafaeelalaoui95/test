@@ -48,13 +48,19 @@ export default function EnvoyerPage() {
   const [mode, setMode] = useState<Mode>('choose');
 
   // ---- Shared form data (used by both modes) ----
+
   const [fromCity, setFromCity] = useState('');
+  const [fromCountry, setFromCountry] = useState('');
   const [toCity, setToCity] = useState('');
+  const [toCountry, setToCountry] = useState('');
   const [date, setDate] = useState('');
 
-  // ---- Live preview of matching trips ----
+ // ---- Live preview of matching trips ----
   const [previewTrips, setPreviewTrips] = useState<MatchingTrip[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
+  // Country-level fallback: shown only when strict city search returns nothing.
+  // These are trips on the same Maroc→France corridor but different cities.
+  const [broadenedTrips, setBroadenedTrips] = useState<MatchingTrip[]>([]);
 
   // ---- Instant-booking modal state ----
   const [tripToBook, setTripToBook] = useState<MatchingTrip | null>(null);
@@ -69,36 +75,54 @@ export default function EnvoyerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Live search for travelers — debounced. Fires while in 'choose' mode only.
+// Live search for travelers — debounced. Fires while in 'choose' mode only.
+  // Two-stage: strict city-level match first; if zero results, fall back to
+  // country-level so we can still surface viable nearby routes (Rabat→Lyon
+  // when the user asked for Casa→Paris).
   useEffect(() => {
     if (mode !== 'choose') return;
     if (!fromCity || !toCity || !date) {
       setPreviewTrips([]);
+      setBroadenedTrips([]);
       return;
     }
     let cancelled = false;
     setPreviewLoading(true);
-    const handle = setTimeout(() => {
-      browser
-        .listMatchingTripsForRequest(fromCity, toCity, date, user?.id || null)
-        .then((trips) => {
+    const handle = setTimeout(async () => {
+      try {
+        const strict = await browser.listMatchingTripsForRequest(
+          fromCity, toCity, date, user?.id || null
+        );
+        if (cancelled) return;
+        setPreviewTrips(strict);
+
+        // Only do the broader lookup if (a) strict search came back empty
+        // AND (b) we know both countries (which we do only if the user
+        // picked the cities via the dropdown, not typed freeform).
+        if (strict.length === 0 && fromCountry && toCountry) {
+          const broad = await browser.listMatchingTripsForRequestBroadened(
+            fromCountry, toCountry, fromCity, toCity, date, user?.id || null
+          );
           if (cancelled) return;
-          setPreviewTrips(trips);
-        })
-        .catch((e) => {
-          console.warn('[envoyer] preview failed:', e);
-          if (!cancelled) setPreviewTrips([]);
-        })
-        .finally(() => {
-          if (!cancelled) setPreviewLoading(false);
-        });
+          setBroadenedTrips(broad);
+        } else {
+          setBroadenedTrips([]);
+        }
+      } catch (e) {
+        console.warn('[envoyer] preview failed:', e);
+        if (!cancelled) {
+          setPreviewTrips([]);
+          setBroadenedTrips([]);
+        }
+      } finally {
+        if (!cancelled) setPreviewLoading(false);
+      }
     }, 400);
     return () => {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [fromCity, toCity, date, mode]);
-
+  }, [fromCity, toCity, fromCountry, toCountry, date, mode, user?.id]);
   // ---- WIZARD canNext (public mode only) ----
   const canNext = () => {
     if (step === 0) return fromCity && toCity && date;
@@ -211,11 +235,13 @@ export default function EnvoyerPage() {
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                   Départ
                 </label>
-                <CityCombobox
+               <CityCombobox
                   value={fromCity}
                   onChange={setFromCity}
+                  onCountryChange={setFromCountry}
                   placeholder="Paris, Casablanca…"
                 />
+                
               </div>
 
               <div className="hidden md:block w-px bg-ink-50 my-3 flex-shrink-0" />
@@ -224,9 +250,10 @@ export default function EnvoyerPage() {
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                   Arrivée
                 </label>
-                <CityCombobox
+               <CityCombobox
                   value={toCity}
                   onChange={setToCity}
+                  onCountryChange={setToCountry}
                   placeholder="Londres, Marrakech…"
                 />
               </div>
@@ -306,7 +333,116 @@ export default function EnvoyerPage() {
                 </div>
               </div>
             ) : (
-              // No match found — guide the user straight into the public flow.
+      ) : broadenedTrips.length > 0 ? (
+              // No exact-city match, but we found trips on the same corridor
+              // (different cities). Surface them clearly as "nearby routes"
+              // so users understand we relaxed the city constraint.
+              <div>
+                <div className="text-center mb-5">
+                  <h3 className="text-[15px] font-semibold text-ink-600 mb-1">
+                    Aucun voyageur sur {fromCity} → {toCity}
+                  </h3>
+                  <p className="text-[13px] text-ink-400">
+                    Mais voici les voyageurs sur des routes proches :
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-4 h-4 text-lavender-500" />
+                  <p className="text-[14px] font-semibold text-ink-600">
+                    {fromCountry} → {toCountry}
+                  </p>
+                  <span className="text-[13px] text-ink-400">
+                    · {broadenedTrips.length} voyageur{broadenedTrips.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {broadenedTrips.slice(0, 8).map((trip) => (
+                    <TripBookableCard
+                      key={trip.id}
+                      trip={trip}
+                      onBook={() => setTripToBook(trip)}
+                    />
+                  ))}
+                  {broadenedTrips.length > 8 && (
+                    <p className="text-[12px] text-ink-400 text-center pt-2">
+                      Et {broadenedTrips.length - 8} autres voyageurs…
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-ink-100">
+                  <button
+                    onClick={switchToPublic}
+                    className="w-full text-center text-[14px] text-ink-500 hover:text-ink-600 transition-colors group"
+                  >
+                    Aucun ne me convient ?{' '}
+                    <span className="font-semibold underline underline-offset-2 group-hover:text-lavender-600">
+                      Publier une demande publique
+                    </span>{' '}
+                    <ArrowRight className="inline w-3.5 h-3.5 -mt-0.5 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Truly no match — neither city nor country level. Push the
+              // user into the public-request wizard.
+            ) : broadenedTrips.length > 0 ? (
+              // No exact-city match, but we found trips on the same corridor
+              // (different cities). Surface them clearly as "nearby routes"
+              // so users understand we relaxed the city constraint.
+              <div>
+                <div className="text-center mb-5">
+                  <h3 className="text-[15px] font-semibold text-ink-600 mb-1">
+                    Aucun voyageur sur {fromCity} → {toCity}
+                  </h3>
+                  <p className="text-[13px] text-ink-400">
+                    Mais voici les voyageurs sur des routes proches :
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-4 h-4 text-lavender-500" />
+                  <p className="text-[14px] font-semibold text-ink-600">
+                    {fromCountry} → {toCountry}
+                  </p>
+                  <span className="text-[13px] text-ink-400">
+                    · {broadenedTrips.length} voyageur{broadenedTrips.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {broadenedTrips.slice(0, 8).map((trip) => (
+                    <TripBookableCard
+                      key={trip.id}
+                      trip={trip}
+                      onBook={() => setTripToBook(trip)}
+                    />
+                  ))}
+                  {broadenedTrips.length > 8 && (
+                    <p className="text-[12px] text-ink-400 text-center pt-2">
+                      Et {broadenedTrips.length - 8} autres voyageurs…
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-ink-100">
+                  <button
+                    onClick={switchToPublic}
+                    className="w-full text-center text-[14px] text-ink-500 hover:text-ink-600 transition-colors group"
+                  >
+                    Aucun ne me convient ?{' '}
+                    <span className="font-semibold underline underline-offset-2 group-hover:text-lavender-600">
+                      Publier une demande publique
+                    </span>{' '}
+                    <ArrowRight className="inline w-3.5 h-3.5 -mt-0.5 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Truly no match — neither city nor country level. Push the
+              // user into the public-request wizard.
               <div className="text-center py-10">
                 <div className="w-14 h-14 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-5">
                   <Plane className="w-6 h-6 text-ink-400" />
