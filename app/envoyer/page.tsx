@@ -105,7 +105,6 @@ export default function EnvoyerPage() {
     if (step === 0) return fromCity && toCity && date;
     if (step === 1) {
       if (!category || !description) return false;
-      if (category === 'medicaments' && !prescription) return false;
       return true;
     }
     if (step === 2) return budget > 0;
