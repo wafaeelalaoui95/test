@@ -1,6 +1,10 @@
 import type { ItemCategory, Urgency, AvailableSpace } from '@/lib/types';
 import type { Translations } from '@/lib/i18n/translations';
 
+// Note: 'medicaments' category removed. See lib/types/index.ts for rationale.
+// The i18n keys cat_medication and cat_medication_desc are kept in
+// translations.ts for now (they don't bloat anything) — they'll be cleaned
+// up in a later pass if we never re-introduce medication transport.
 export const ITEM_CATEGORIES: {
   value: ItemCategory;
   labelKey: keyof Translations;
@@ -9,7 +13,6 @@ export const ITEM_CATEGORIES: {
 }[] = [
   { value: 'documents', labelKey: 'cat_documents', descKey: 'cat_documents_desc', icon: '📄' },
   { value: 'cles', labelKey: 'cat_keys', descKey: 'cat_keys_desc', icon: '🔑' },
-  { value: 'medicaments', labelKey: 'cat_medication', descKey: 'cat_medication_desc', icon: '💊' },
   { value: 'petits_objets', labelKey: 'cat_small', descKey: 'cat_small_desc', icon: '🎁' },
 ];
 
