@@ -55,7 +55,6 @@ export interface SenderRequest {
   description: string;
   urgency: Urgency;
   compensation_budget: number; // in EUR
-  prescription_url?: string;
   terms_accepted: boolean;
   status: RequestStatus;
   created_at: string;
