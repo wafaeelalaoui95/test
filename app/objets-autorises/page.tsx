@@ -1,13 +1,19 @@
 // app/objets-autorises/page.tsx
 //
 // Authoritative policy page for what can and can't be transported via Jibly.
-// Linked from /trust, the navbar (added in Navbar.tsx), and referenced from
-// the CGU. Designed to be the canonical URL we can point users to AND quote
-// in compliance docs.
+// MVP policy is whitelist-based: only items in the ALLOWED list are
+// transportable. Anything else is forbidden by default. This is much
+// stronger legally than "everything except X" and aligns with the
+// double-declaration flow (sender certifies content, traveler verifies).
 //
-// Style: visual cards with big emoji + short label rather than dense text —
-// per the design brief ("présenter cette liste sous forme de cartes ou
-// d'icônes plutôt que d'un bloc de texte").
+// Medication policy:
+//   - OTC (over-the-counter): allowed under strict disclaimer. Doliprane,
+//     vitamins, cosmetics — items legally purchasable without prescription
+//     in both France and Morocco. The sender takes legal responsibility.
+//   - Prescription medication: STRICTLY forbidden. Prescriptions are
+//     nominative; cross-border transport by a third party is illegal
+//     regardless of intent (Code de la santé publique L4223-1 in FR;
+//     equivalent in MA).
 
 'use client';
 
@@ -23,14 +29,14 @@ import {
 } from 'lucide-react';
 
 // -----------------------------------------------------------------------------
-// AUTHORIZED items — what Jibly is built for
+// AUTHORIZED items — the EXCLUSIVE whitelist for the MVP
 // -----------------------------------------------------------------------------
 
 const ALLOWED = [
   {
     emoji: '📄',
     label: 'Documents',
-    examples: 'Papiers administratifs, courriers, certificats',
+    examples: 'Papiers administratifs, courriers, certificats, contrats',
   },
   {
     emoji: '🔑',
@@ -40,49 +46,44 @@ const ALLOWED = [
   {
     emoji: '🎁',
     label: 'Objets personnels',
-    examples: 'Vêtements, livres, souvenirs, petits cadeaux',
+    examples: 'Souvenirs, livres, petits cadeaux non précieux',
+  },
+  {
+    emoji: '👕',
+    label: 'Vêtements',
+    examples: 'Habits, accessoires textiles, chaussures',
+  },
+  {
+    emoji: '🔌',
+    label: 'Électronique légère',
+    examples: 'Chargeurs, câbles, écouteurs, petits accessoires',
   },
   {
     emoji: '💊',
-    label: 'Médicaments sur ordonnance',
-    examples: 'Sous réserve de la réglementation du pays d\'arrivée',
-  },
-  {
-    emoji: '📦',
-    label: 'Petits colis',
-    examples: 'Échantillons, accessoires, produits non périssables',
+    label: 'Médicaments en vente libre',
+    examples: 'Doliprane, vitamines, parapharmacie — voir conditions ci-dessous',
   },
 ];
 
 // -----------------------------------------------------------------------------
-// FORBIDDEN items — hard list, no exceptions
+// FORBIDDEN items — non-exhaustive, illustrative
 // -----------------------------------------------------------------------------
 
 const FORBIDDEN = [
   {
     emoji: '💵',
-    label: 'Argent liquide',
+    label: 'Espèces',
     reason: 'Aucun montant, en aucune devise.',
   },
   {
-    emoji: '💍',
-    label: 'Bijoux et montres',
-    reason: 'Y compris ceux à valeur sentimentale.',
+    emoji: '💊',
+    label: 'Médicaments sur ordonnance',
+    reason: 'Une ordonnance est nominative. Transport interdit par la loi.',
   },
   {
-    emoji: '💎',
-    label: 'Objets de luxe',
-    reason: 'Sacs de marque, accessoires de créateurs.',
-  },
-  {
-    emoji: '💰',
-    label: 'Valeur > 500 €',
-    reason: 'Tout objet d\'une valeur supérieure à 500 €.',
-  },
-  {
-    emoji: '⚠️',
-    label: 'Produits dangereux',
-    reason: 'Liquides inflammables, gaz, batteries lithium non protégées.',
+    emoji: '🚫',
+    label: 'Drogues et stupéfiants',
+    reason: 'Toute substance illicite, sans exception.',
   },
   {
     emoji: '🔫',
@@ -90,14 +91,24 @@ const FORBIDDEN = [
     reason: 'Toutes catégories, y compris répliques et armes blanches.',
   },
   {
-    emoji: '🚫',
-    label: 'Produits illicites',
-    reason: 'Drogues, médicaments sans ordonnance, contrefaçons.',
+    emoji: '🏷️',
+    label: 'Contrefaçons',
+    reason: 'Produits portant atteinte à des droits de propriété intellectuelle.',
+  },
+  {
+    emoji: '💎',
+    label: 'Bijoux et objets de luxe',
+    reason: 'Bijoux, montres, sacs de marque, objets > 500 €.',
+  },
+  {
+    emoji: '⚠️',
+    label: 'Produits dangereux',
+    reason: 'Liquides inflammables, gaz, batteries lithium non protégées.',
   },
   {
     emoji: '🛂',
-    label: 'Objets interdits localement',
-    reason: 'Tout objet interdit dans le pays de départ ou d\'arrivée.',
+    label: 'Produits réglementés',
+    reason: 'Alcool, tabac, denrées soumises à restriction douanière.',
   },
 ];
 
@@ -125,8 +136,8 @@ export default function ObjetsAutorisesPage() {
               Que peut-on<br />transporter sur Jibly ?
             </h1>
             <p className="text-[16px] text-ink-500 leading-relaxed max-w-2xl mx-auto">
-              Jibly est pensé pour les petits objets du quotidien.
-              Pour la sécurité de tous, certaines catégories sont strictement interdites.
+              Pour la sécurité de tous, Jibly limite les envois à une liste précise
+              de catégories. Tout autre type d&apos;objet est interdit.
             </p>
           </motion.div>
         </div>
@@ -141,10 +152,10 @@ export default function ObjetsAutorisesPage() {
             </div>
             <div>
               <p className="text-[12px] font-bold tracking-[0.18em] text-mint-700 uppercase">
-                Autorisés
+                Autorisés — Liste exhaustive
               </p>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.02em]">
-                Ce que Jibly transporte
+                Les seules catégories transportables
               </h2>
             </div>
           </div>
@@ -173,6 +184,31 @@ export default function ObjetsAutorisesPage() {
               </motion.div>
             ))}
           </div>
+
+          {/* OTC clarification — distinct callout below the grid */}
+          <div className="mt-8 rounded-2xl bg-butter-50 border border-butter-200/70 p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl flex-shrink-0">💊</div>
+              <div>
+                <h3 className="text-[14px] font-bold text-ink-600 mb-2">
+                  Médicaments en vente libre — conditions strictes
+                </h3>
+                <p className="text-[13px] text-ink-500 leading-relaxed mb-2">
+                  Seuls les médicaments <strong>sans ordonnance</strong> légalement
+                  disponibles dans les deux pays sont acceptés (Doliprane,
+                  Efferalgan, vitamines, parapharmacie).
+                </p>
+                <p className="text-[13px] text-ink-500 leading-relaxed">
+                  <strong>Quantité maximum :</strong> 2 unités par produit, dans
+                  leur emballage d&apos;origine fermé. L&apos;expéditeur déclare et assume
+                  la responsabilité légale du contenu.{' '}
+                  <strong className="text-blush-600">
+                    Les médicaments sur ordonnance restent strictement interdits.
+                  </strong>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -188,8 +224,12 @@ export default function ObjetsAutorisesPage() {
                 Interdits
               </p>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.02em]">
-                Ce que Jibly ne transporte pas
+                Exemples d&apos;objets interdits
               </h2>
+              <p className="text-[13px] text-ink-400 mt-1">
+                Liste non exhaustive. Par défaut, tout ce qui n&apos;est pas dans la
+                liste des catégories autorisées est interdit.
+              </p>
             </div>
           </div>
 
@@ -203,7 +243,6 @@ export default function ObjetsAutorisesPage() {
                 transition={{ delay: i * 0.04, duration: 0.3 }}
                 className="bg-white rounded-2xl p-5 border border-blush-100/80 relative overflow-hidden"
               >
-                {/* Diagonal "INTERDIT" stripe in the corner — subtle visual cue */}
                 <div className="absolute top-2 right-2 text-[9px] font-bold tracking-wider text-blush-400 uppercase">
                   Interdit
                 </div>
@@ -226,26 +265,33 @@ export default function ObjetsAutorisesPage() {
                 Conséquences en cas d&apos;infraction
               </h3>
               <p className="text-[13px] text-ink-500 leading-relaxed">
-                Tout colis contenant un objet interdit peut entraîner la
-                <strong className="text-ink-600"> suspension immédiate </strong>
-                du compte de l&apos;expéditeur et du voyageur. Jibly se réserve
-                le droit de signaler aux autorités tout transport d&apos;objet illicite.
+                Tout colis contenant un objet interdit entraîne la{' '}
+                <strong className="text-ink-600">suspension permanente</strong>{' '}
+                du compte de l&apos;expéditeur et du voyageur, la{' '}
+                <strong className="text-ink-600">conservation des preuves</strong>{' '}
+                à des fins légales, et la{' '}
+                <strong className="text-ink-600">transmission aux autorités</strong>{' '}
+                compétentes si nécessaire.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* RESPONSABILITÉS */}
+      {/* DOUBLE DÉCLARATION */}
       <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-5 sm:px-8 lg:px-12">
           <div className="text-center mb-10">
             <p className="text-[12px] font-bold tracking-[0.18em] text-ink-300 uppercase mb-2">
-              Vos responsabilités
+              Double déclaration
             </p>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em]">
-              Ce que vous devez savoir
+              Une vérification en deux temps
             </h2>
+            <p className="text-[14px] text-ink-400 mt-3 max-w-xl mx-auto">
+              Pour qu&apos;un envoi soit accepté, l&apos;expéditeur et le voyageur
+              doivent chacun confirmer le contenu.
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -253,36 +299,22 @@ export default function ObjetsAutorisesPage() {
               <span className="text-2xl flex-shrink-0">📋</span>
               <div>
                 <h3 className="text-[14px] font-bold text-ink-600 mb-1">
-                  Déclarez le contenu honnêtement
+                  L&apos;expéditeur certifie le contenu
                 </h3>
-                <p className="text-[13px] text-ink-500 leading-relaxed">
-                  Une description précise protège tout le monde. Une fausse
-                  déclaration peut entraîner la suspension de votre compte.
+                <p className="text-[13px] text-ink-500 leading-relaxed italic">
+                  « Je certifie que le contenu décrit est exact et qu&apos;il ne
+                  contient aucun produit interdit. »
                 </p>
               </div>
             </div>
             <div className="bg-cream-50 rounded-2xl p-5 border border-ink-50 flex gap-4 items-start">
-              <span className="text-2xl flex-shrink-0">🌍</span>
+              <span className="text-2xl flex-shrink-0">👁️</span>
               <div>
                 <h3 className="text-[14px] font-bold text-ink-600 mb-1">
-                  Renseignez-vous sur la réglementation locale
+                  Le voyageur vérifie avant d&apos;accepter
                 </h3>
-                <p className="text-[13px] text-ink-500 leading-relaxed">
-                  Ce qui est autorisé dans un pays peut être interdit ailleurs.
-                  Vérifiez les règles douanières du pays d&apos;arrivée.
-                </p>
-              </div>
-            </div>
-            <div className="bg-cream-50 rounded-2xl p-5 border border-ink-50 flex gap-4 items-start">
-              <span className="text-2xl flex-shrink-0">📸</span>
-              <div>
-                <h3 className="text-[14px] font-bold text-ink-600 mb-1">
-                  Le voyageur peut refuser un colis
-                </h3>
-                <p className="text-[13px] text-ink-500 leading-relaxed">
-                  Si le colis présenté ne correspond pas à la description ou
-                  semble suspect, le voyageur a le droit de refuser sans
-                  pénalité.
+                <p className="text-[13px] text-ink-500 leading-relaxed italic">
+                  « J&apos;ai vérifié le contenu avant d&apos;accepter de le transporter. »
                 </p>
               </div>
             </div>
@@ -290,11 +322,12 @@ export default function ObjetsAutorisesPage() {
               <span className="text-2xl flex-shrink-0">🚨</span>
               <div>
                 <h3 className="text-[14px] font-bold text-ink-600 mb-1">
-                  Signalez les abus
+                  Signalement et droit d&apos;exclusion
                 </h3>
                 <p className="text-[13px] text-ink-500 leading-relaxed">
-                  Si on vous demande de transporter un objet interdit,
-                  signalez-le immédiatement. Vous protégez la communauté.
+                  Tout utilisateur peut signaler un colis suspect. Le voyageur
+                  peut refuser sans pénalité. Jibly se réserve le droit de
+                  suspendre tout compte en cas d&apos;infraction.
                 </p>
               </div>
             </div>
