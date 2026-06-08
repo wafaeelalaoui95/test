@@ -8,8 +8,6 @@ import {
   Check,
   ArrowLeft,
   ArrowRight,
-  Upload,
-  AlertCircle,
   Loader2,
   Sparkles,
   Plane,
@@ -48,14 +46,13 @@ export default function EnvoyerPage() {
   const [mode, setMode] = useState<Mode>('choose');
 
   // ---- Shared form data (used by both modes) ----
-
   const [fromCity, setFromCity] = useState('');
   const [fromCountry, setFromCountry] = useState('');
   const [toCity, setToCity] = useState('');
   const [toCountry, setToCountry] = useState('');
   const [date, setDate] = useState('');
 
- // ---- Live preview of matching trips ----
+  // ---- Live preview of matching trips ----
   const [previewTrips, setPreviewTrips] = useState<MatchingTrip[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   // Country-level fallback: shown only when strict city search returns nothing.
@@ -75,7 +72,7 @@ export default function EnvoyerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-// Live search for travelers — debounced. Fires while in 'choose' mode only.
+  // Live search for travelers — debounced. Fires while in 'choose' mode only.
   // Two-stage: strict city-level match first; if zero results, fall back to
   // country-level so we can still surface viable nearby routes (Rabat→Lyon
   // when the user asked for Casa→Paris).
@@ -123,6 +120,7 @@ export default function EnvoyerPage() {
       clearTimeout(handle);
     };
   }, [fromCity, toCity, fromCountry, toCountry, date, mode, user?.id]);
+
   // ---- WIZARD canNext (public mode only) ----
   const canNext = () => {
     if (step === 0) return fromCity && toCity && date;
@@ -235,13 +233,12 @@ export default function EnvoyerPage() {
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                   Départ
                 </label>
-               <CityCombobox
+                <CityCombobox
                   value={fromCity}
                   onChange={setFromCity}
                   onCountryChange={setFromCountry}
                   placeholder="Paris, Casablanca…"
                 />
-                
               </div>
 
               <div className="hidden md:block w-px bg-ink-50 my-3 flex-shrink-0" />
@@ -250,7 +247,7 @@ export default function EnvoyerPage() {
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                   Arrivée
                 </label>
-               <CityCombobox
+                <CityCombobox
                   value={toCity}
                   onChange={setToCity}
                   onCountryChange={setToCountry}
@@ -317,8 +314,6 @@ export default function EnvoyerPage() {
                   )}
                 </div>
 
-                {/* Fallback always visible: if none of the matches fit, the
-                    user can still publish a public request. */}
                 <div className="mt-6 pt-6 border-t border-ink-100">
                   <button
                     onClick={switchToPublic}
@@ -332,66 +327,7 @@ export default function EnvoyerPage() {
                   </button>
                 </div>
               </div>
-            ) : (
-      ) : broadenedTrips.length > 0 ? (
-              // No exact-city match, but we found trips on the same corridor
-              // (different cities). Surface them clearly as "nearby routes"
-              // so users understand we relaxed the city constraint.
-              <div>
-                <div className="text-center mb-5">
-                  <h3 className="text-[15px] font-semibold text-ink-600 mb-1">
-                    Aucun voyageur sur {fromCity} → {toCity}
-                  </h3>
-                  <p className="text-[13px] text-ink-400">
-                    Mais voici les voyageurs sur des routes proches :
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="w-4 h-4 text-lavender-500" />
-                  <p className="text-[14px] font-semibold text-ink-600">
-                    {fromCountry} → {toCountry}
-                  </p>
-                  <span className="text-[13px] text-ink-400">
-                    · {broadenedTrips.length} voyageur{broadenedTrips.length > 1 ? 's' : ''}
-                  </span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {broadenedTrips.slice(0, 8).map((trip) => (
-                    <TripBookableCard
-                      key={trip.id}
-                      trip={trip}
-                      onBook={() => setTripToBook(trip)}
-                    />
-                  ))}
-                  {broadenedTrips.length > 8 && (
-                    <p className="text-[12px] text-ink-400 text-center pt-2">
-                      Et {broadenedTrips.length - 8} autres voyageurs…
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-ink-100">
-                  <button
-                    onClick={switchToPublic}
-                    className="w-full text-center text-[14px] text-ink-500 hover:text-ink-600 transition-colors group"
-                  >
-                    Aucun ne me convient ?{' '}
-                    <span className="font-semibold underline underline-offset-2 group-hover:text-lavender-600">
-                      Publier une demande publique
-                    </span>{' '}
-                    <ArrowRight className="inline w-3.5 h-3.5 -mt-0.5 transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              // Truly no match — neither city nor country level. Push the
-              // user into the public-request wizard.
             ) : broadenedTrips.length > 0 ? (
-              // No exact-city match, but we found trips on the same corridor
-              // (different cities). Surface them clearly as "nearby routes"
-              // so users understand we relaxed the city constraint.
               <div>
                 <div className="text-center mb-5">
                   <h3 className="text-[15px] font-semibold text-ink-600 mb-1">
@@ -441,8 +377,6 @@ export default function EnvoyerPage() {
                 </div>
               </div>
             ) : (
-              // Truly no match — neither city nor country level. Push the
-              // user into the public-request wizard.
               <div className="text-center py-10">
                 <div className="w-14 h-14 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-5">
                   <Plane className="w-6 h-6 text-ink-400" />
@@ -563,7 +497,6 @@ export default function EnvoyerPage() {
                     ))}
                   </div>
 
-            
                   <Textarea
                     label={t.send_label_description}
                     placeholder={t.send_placeholder_description}
@@ -718,6 +651,9 @@ function TripBookableCard({
               {formatEuros(trip.compensation_min)}
             </span>
           </div>
+          <div className="text-[11px] text-ink-300 mt-0.5">
+            {trip.departure_city} → {trip.arrival_city}
+          </div>
         </div>
         <button
           type="button"
@@ -768,10 +704,6 @@ function InstantBookModal({
     setBusy(true);
     setErr(null);
     try {
-      // 1. Create a minimal shipping_request for traceability so the booking
-      //    has a parent record in the sender's history. Marked 'matched'
-      //    because we're booking a specific traveler — no need to be in
-      //    the public pool.
       const req = await browser.createShippingRequest({
         user_id: senderId,
         item_title: null,
@@ -781,7 +713,6 @@ function InstantBookModal({
         pickup_city: pickupCity,
         destination_country: '',
         destination_city: destinationCity,
-        // The trip's departure date IS the delivery date in this flow.
         desired_delivery_date: trip.departure_date,
         budget: price,
         weight_kg: null,
@@ -790,8 +721,6 @@ function InstantBookModal({
         status: 'matched',
       });
 
-      // 2. Create the booking_intent pointing at the trip, payment already
-      //    authorized. The traveler sees a "new request" with money held.
       await browser.createBookingIntent({
         sender_id: senderId,
         traveler_trip_id: trip.id,
