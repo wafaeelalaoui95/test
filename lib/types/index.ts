@@ -3,7 +3,7 @@
 
 // City and country are flexible strings to support any worldwide location.
 // The COUNTRIES dataset in lib/countries.ts provides the curated selection.
-export type City = string;
+export type City = string; 
 export type CountryCode = string;
 
 // Note: 'medicaments' has been removed for legal reasons. Cross-border
