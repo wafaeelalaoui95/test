@@ -1015,8 +1015,8 @@ export type BookingIntentRow = {
 export async function listIncomingBookingIntents(
   supabase: SB,
   travelerId: string
-): Promise
-  Array
+): Promise<
+  Array<
     BookingIntentRow & {
       sender_profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'rating' | 'trips_completed' | 'verification_level'> | null;
       traveler_trip: Pick<TravelerTripRow, 'id' | 'departure_city' | 'arrival_city' | 'departure_date'> | null;
@@ -1111,8 +1111,8 @@ export async function updateBookingIntentStatus(
 export async function listMyBookings(
   supabase: SB,
   senderId: string
-): Promise
-  Array
+): Promise<
+  Array<
     BookingIntentRow & {
       traveler_trip: Pick<TravelerTripRow, 'id' | 'departure_city' | 'arrival_city' | 'departure_date' | 'user_id'> | null;
       traveler_profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'phone' | 'verification_level' | 'rating' | 'trips_completed'> | null;
@@ -1184,8 +1184,8 @@ export async function listMyBookings(
 export async function listMyTravelerProposals(
   supabase: SB,
   travelerId: string
-): Promise
-  Array
+): Promise<
+  Array<
     BookingIntentRow & {
       sender_profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'phone' | 'verification_level' | 'rating' | 'trips_completed'> | null;
     }
@@ -1230,7 +1230,7 @@ export async function listMyTravelerProposals(
 // ============================================================================
 
 export type WalletTransaction = BookingIntentRow & {
-  sender_profile: Pick
+  sender_profile: Pick<
     Profile,
     'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating'
   > | null;
