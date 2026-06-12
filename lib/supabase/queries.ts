@@ -1083,8 +1083,6 @@ export async function createBookingIntent(
           traveler_message: input.traveler_message ?? null,
           initiated_by: input.initiated_by ?? 'sender',
           traveler_user_id: input.traveler_user_id ?? null,
-          // Trust & safety codes — generated app-side so the response
-          // contains them without an extra round-trip. See 08_trust_and_safety.sql.
           pickup_code: generateConfirmationCode(),
           delivery_code: generateConfirmationCode(),
         })
@@ -1095,9 +1093,31 @@ export async function createBookingIntent(
     'Create booking intent'
   );
   if (error) throw error;
+
+  // Fire-and-forget email. Whichever event fires depends on who
+  // initiated the booking:
+  //   - sender initiated (instant book on a trip) → email the traveler
+  //   - traveler initiated (proposal on a request) → email the sender
+  // We don't await the fetch on purpose — we don't want a slow Resend
+  // call to delay the redirect to /me, and we don't want an email
+  // failure to block the booking. The in-app notification still works
+  // either way (triggered by DB).
+  if (data?.id) {
+    const event =
+      (input.initiated_by ?? 'sender') === 'sender'
+        ? 'traveler-got-booking'
+        : 'sender-got-proposal';
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event, bookingId: data.id }),
+    }).catch((err) => {
+      console.warn('[createBookingIntent] notify call failed:', err);
+    });
+  }
+
   return data ?? input;
 }
-
 export type BookingIntentRow = {
   id: string;
   sender_id: string;
