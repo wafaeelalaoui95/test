@@ -1023,6 +1023,16 @@ export async function listIncomingBookingIntents(
     }
   >
 > {
+  const { data: trips, error: tripsErr } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('traveler_trips')
+        .select('id, departure_city, arrival_city, departure_date')
+        .eq('user_id', travelerId)
+    ),
+    8000,
+    'Traveler trips'
+  );
 
  if (tripsErr) throw tripsErr;
   if (!trips || trips.length === 0) return [];
