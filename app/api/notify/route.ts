@@ -1,4 +1,4 @@
-// app/api/notify/route.ts
+// app/api/notify/route.ts 
 //
 // Server-only endpoint for transactional emails. Resend can't be called
 // directly from browser code (the API key would leak), so the client
