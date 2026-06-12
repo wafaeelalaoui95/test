@@ -1024,7 +1024,7 @@ export async function listIncomingBookingIntents(
   >
 > {
 
-  if (tripsErr) throw tripsErr;
+ if (tripsErr) throw tripsErr;
   if (!trips || trips.length === 0) return [];
 
   const tripIds = trips.map((t) => t.id);
@@ -1035,6 +1035,7 @@ export async function listIncomingBookingIntents(
       supabase
         .from('booking_intents')
         .select('*')
+        .eq('initiated_by', 'sender')
         .in('traveler_trip_id', tripIds)
         .order('created_at', { ascending: false })
     ),
