@@ -152,12 +152,7 @@ export async function listOpenRequests(supabase: SB): Promise<ShippingRequestRow
   return data ?? [];
 }
 
-export type ShippingRequestWithProfile = ShippingRequestRow & {
-  profile: Pick
-    Profile,
-    'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'
-  > | null;
-};
+export type ShippingRequestWithProfile = ShippingRequestRow & { profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'> | null; };
 
 export async function listOpenRequestsWithProfile(
   supabase: SB
