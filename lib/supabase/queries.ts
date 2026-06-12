@@ -1,5 +1,5 @@
 /**
- * Query helpers for the Jibly app.
+ * Query helpers for the Jibly app. 
  *
  * Two flavors are exported for each query:
  *   - <name>(supabase, ...args)       — accepts a pre-built client, works on both server & browser
