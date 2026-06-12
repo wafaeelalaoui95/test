@@ -1023,15 +1023,21 @@ export async function listIncomingBookingIntents(
     }
   >
 > {
-  const { data: trips, error: tripsErr } = await withTimeout(
+const { data: intents, error: intentsErr } = await withTimeout(
     Promise.resolve(
       supabase
-        .from('traveler_trips')
-        .select('id, departure_city, arrival_city, departure_date')
-        .eq('user_id', travelerId)
+        .from('booking_intents')
+        .select('*')
+        // Exclude bookings the traveler initiated themselves — those are
+        // proposals the traveler made on a public request, not incoming
+        // requests from a sender. They surface separately in
+        // listMyTravelerProposals and shouldn't appear in both lists.
+        .eq('initiated_by', 'sender')
+        .in('traveler_trip_id', tripIds)
+        .order('created_at', { ascending: false })
     ),
     8000,
-    'Traveler trips'
+    'Incoming intents'
   );
   if (tripsErr) throw tripsErr;
   if (!trips || trips.length === 0) return [];
