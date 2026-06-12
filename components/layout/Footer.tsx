@@ -29,13 +29,15 @@ export function Footer() {
             </ul>
           </div>
 
-          <div className="md:col-span-2">
+         <div className="md:col-span-2">
             <h4 className="text-[12px] font-semibold text-ink-500 mb-5 uppercase tracking-[0.1em]">
               {t.footer_trust}
             </h4>
             <ul className="space-y-3 text-[14px] text-ink-400">
               <li><Link href="/trust" className="hover:text-ink-600 transition-colors">{t.trust_eyebrow}</Link></li>
               <li><Link href="/trust#faq" className="hover:text-ink-600 transition-colors">FAQ</Link></li>
+              <li><Link href="/objets-autorises" className="hover:text-ink-600 transition-colors">Objets autorisés</Link></li>
+              <li><Link href="/cgu" className="hover:text-ink-600 transition-colors">CGU</Link></li>
             </ul>
           </div>
 
