@@ -1,0 +1,148 @@
+// app/api/notify/route.ts
+//
+// Server-only endpoint for transactional emails. Resend can't be called
+// directly from browser code (the API key would leak), so the client
+// fetches this route which holds the key safely in environment vars.
+//
+// Two event types are supported via the `event` field:
+//   - 'sender-got-proposal' : sent to the sender when a traveler proposes
+//   - 'traveler-got-booking': sent to the traveler when a sender books
+//
+// Failures are intentionally NON-FATAL: the response is always 200 with
+// `{ok: false, reason}` on failure. The booking shouldn't be rolled back
+// just because an email failed to send — the in-app notification still
+// works and the user will see it when they next open the app.
+
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { getResend, FROM_EMAIL } from '@/lib/email/resend';
+import {
+  senderGotProposalEmail,
+  travelerGotBookingEmail,
+} from '@/lib/email/templates';
+
+export const dynamic = 'force-dynamic';
+
+type NotifyPayload = {
+  event: 'sender-got-proposal' | 'traveler-got-booking';
+  bookingId: string;
+};
+
+export async function POST(req: Request) {
+  try {
+    const body = (await req.json()) as NotifyPayload;
+    if (!body?.event || !body?.bookingId) {
+      return NextResponse.json({ ok: false, reason: 'missing_fields' });
+    }
+
+    // Use the service-role key for this internal call. The API key is
+    // never exposed to the browser — only the Vercel serverless runtime
+    // ever sees it. RLS is bypassed so we can read both parties' emails.
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+
+    // Fetch the booking to figure out who to email
+    const { data: booking, error: bookingErr } = await supabase
+      .from('booking_intents')
+      .select(
+        'id, sender_id, traveler_user_id, traveler_trip_id, pickup_city, destination_city, proposed_price, item_description, initiated_by'
+      )
+      .eq('id', body.bookingId)
+      .maybeSingle();
+
+    if (bookingErr || !booking) {
+      return NextResponse.json({ ok: false, reason: 'booking_not_found' });
+    }
+
+    // If traveler_user_id isn't set directly, look it up via the trip
+    let travelerId = booking.traveler_user_id;
+    if (!travelerId && booking.traveler_trip_id) {
+      const { data: trip } = await supabase
+        .from('traveler_trips')
+        .select('user_id')
+        .eq('id', booking.traveler_trip_id)
+        .maybeSingle();
+      travelerId = trip?.user_id ?? null;
+    }
+
+    if (!travelerId) {
+      return NextResponse.json({ ok: false, reason: 'no_traveler' });
+    }
+
+    // Fetch both profiles + auth.users emails in one go
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', [booking.sender_id, travelerId]);
+
+    const senderProfile = profiles?.find((p) => p.id === booking.sender_id);
+    const travelerProfile = profiles?.find((p) => p.id === travelerId);
+
+    // Helper: extract the first name (or null if we can't)
+    const firstName = (full?: string | null) =>
+      full ? full.split(' ')[0] : null;
+
+    // Look up the recipient's auth email (only the service role can read
+    // auth.users; that's why we use the service-role client above).
+    const recipientId =
+      body.event === 'sender-got-proposal'
+        ? booking.sender_id
+        : travelerId;
+
+    const { data: userRes, error: userErr } =
+      await supabase.auth.admin.getUserById(recipientId);
+
+    if (userErr || !userRes?.user?.email) {
+      return NextResponse.json({ ok: false, reason: 'no_email' });
+    }
+    const toEmail = userRes.user.email;
+
+    // Build the template based on the event
+    let template: { subject: string; html: string; text: string };
+    if (body.event === 'sender-got-proposal') {
+      template = senderGotProposalEmail({
+        senderFirstName: firstName(senderProfile?.full_name),
+        travelerFirstName: firstName(travelerProfile?.full_name),
+        pickupCity: booking.pickup_city,
+        destinationCity: booking.destination_city,
+        proposedPrice: booking.proposed_price,
+        bookingId: booking.id,
+      });
+    } else if (body.event === 'traveler-got-booking') {
+      template = travelerGotBookingEmail({
+        travelerFirstName: firstName(travelerProfile?.full_name),
+        senderFirstName: firstName(senderProfile?.full_name),
+        pickupCity: booking.pickup_city,
+        destinationCity: booking.destination_city,
+        proposedPrice: booking.proposed_price,
+        itemDescription: booking.item_description,
+        bookingId: booking.id,
+      });
+    } else {
+      return NextResponse.json({ ok: false, reason: 'unknown_event' });
+    }
+
+    // Fire the email. Resend errors are non-fatal — log them and return ok.
+    try {
+      const resend = getResend();
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: toEmail,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      });
+    } catch (e) {
+      console.error('[notify] resend send failed:', e);
+      return NextResponse.json({ ok: false, reason: 'resend_failed' });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error('[notify] handler error:', e);
+    return NextResponse.json({ ok: false, reason: 'handler_error' });
+  }
+}
