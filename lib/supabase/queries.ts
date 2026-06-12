@@ -1241,6 +1241,27 @@ export async function updateBookingIntentStatus(
     'Update intent status'
   );
   if (error) throw error;
+
+  // Fire-and-forget: when a booking flips to 'confirmed' both parties get
+  // an email with their respective code (pickup for the sender, delivery
+  // for the traveler). We never await — slow Resend shouldn't delay the
+  // UI, and a failed email shouldn't roll back the status change.
+  if (status === 'confirmed') {
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'booking-confirmed-sender', bookingId: intentId }),
+    }).catch((err) => {
+      console.warn('[updateBookingIntentStatus] notify sender failed:', err);
+    });
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'booking-confirmed-traveler', bookingId: intentId }),
+    }).catch((err) => {
+      console.warn('[updateBookingIntentStatus] notify traveler failed:', err);
+    });
+  }
 }
 
 /**
