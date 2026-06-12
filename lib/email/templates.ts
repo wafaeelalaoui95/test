@@ -134,4 +134,64 @@ export function travelerGotBookingEmail(input: {
 }) {
   const travelerName = input.travelerFirstName || 'Bonjour';
   const senderName = input.senderFirstName || 'Un expéditeur';
-  const route =
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+  const url = `${BASE_URL}/me`;
+
+  const itemBlock = input.itemDescription
+    ? `<p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Contenu</p>
+       <p style="margin:0;font-size:14px;color:${BRAND.ink};line-height:1.5;">${escapeHtml(input.itemDescription)}</p>`
+    : '';
+
+  const priceMarginBottom = input.itemDescription ? '14px' : '0';
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Nouvelle réservation</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+      ${senderName} a réservé votre trajet
+    </h1>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${travelerName}, ${senderName} souhaite vous confier un colis sur votre trajet.
+      Le paiement est déjà sécurisé — il sera versé après la livraison.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#E6F5EE;border-radius:12px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:18px 20px;">
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Trajet</p>
+          <p style="margin:0 0 14px;font-size:17px;font-weight:600;color:${BRAND.ink};">${route}</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Compensation</p>
+          <p style="margin:0 0 ${priceMarginBottom};font-size:17px;font-weight:600;color:${BRAND.ink};">${input.proposedPrice}€</p>
+          ${itemBlock}
+        </td>
+      </tr>
+    </table>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+            Voir la réservation
+          </a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
+      Vous pourrez contacter ${senderName} via la messagerie pour convenir du point de récupération.
+    </p>
+  `;
+
+  return {
+    subject: `${senderName} a réservé votre trajet ${route}`,
+    html: wrapHtml(content, `Nouvelle réservation sur votre trajet ${route}`),
+    text: `${travelerName},\n\n${senderName} a réservé votre trajet ${route} pour ${input.proposedPrice}€.\n\nVoir la réservation : ${url}\n\n— L'équipe Jibly`,
+  };
+}
+
+// Tiny HTML escape — used only on user-controlled fields (item descriptions).
+// Keeps the templates safe from senders injecting markup. Not exhaustive,
+// but enough for Gmail/Outlook rendering.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
