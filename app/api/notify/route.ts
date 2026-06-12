@@ -19,12 +19,17 @@ import { getResend, FROM_EMAIL } from '@/lib/email/resend';
 import {
   senderGotProposalEmail,
   travelerGotBookingEmail,
+  bookingConfirmedSenderEmail,
+  bookingConfirmedTravelerEmail,
 } from '@/lib/email/templates';
-
 export const dynamic = 'force-dynamic';
 
 type NotifyPayload = {
-  event: 'sender-got-proposal' | 'traveler-got-booking';
+  event:
+    | 'sender-got-proposal'
+    | 'traveler-got-booking'
+    | 'booking-confirmed-sender'
+    | 'booking-confirmed-traveler';
   bookingId: string;
 };
 
@@ -45,14 +50,13 @@ export async function POST(req: Request) {
     );
 
     // Fetch the booking to figure out who to email
-    const { data: booking, error: bookingErr } = await supabase
+   const { data: booking, error: bookingErr } = await supabase
       .from('booking_intents')
       .select(
-        'id, sender_id, traveler_user_id, traveler_trip_id, pickup_city, destination_city, proposed_price, item_description, initiated_by'
+        'id, sender_id, traveler_user_id, traveler_trip_id, pickup_city, destination_city, proposed_price, item_description, initiated_by, pickup_code, delivery_code'
       )
       .eq('id', body.bookingId)
       .maybeSingle();
-
     if (bookingErr || !booking) {
       return NextResponse.json({ ok: false, reason: 'booking_not_found' });
     }
@@ -87,8 +91,9 @@ export async function POST(req: Request) {
 
     // Look up the recipient's auth email (only the service role can read
     // auth.users; that's why we use the service-role client above).
+    // Decide who receives this email based on the event
     const recipientId =
-      body.event === 'sender-got-proposal'
+      body.event === 'sender-got-proposal' || body.event === 'booking-confirmed-sender'
         ? booking.sender_id
         : travelerId;
 
@@ -100,6 +105,7 @@ export async function POST(req: Request) {
     }
     const toEmail = userRes.user.email;
 
+    // Build the template based on the event
     // Build the template based on the event
     let template: { subject: string; html: string; text: string };
     if (body.event === 'sender-got-proposal') {
@@ -119,6 +125,32 @@ export async function POST(req: Request) {
         destinationCity: booking.destination_city,
         proposedPrice: booking.proposed_price,
         itemDescription: booking.item_description,
+        bookingId: booking.id,
+      });
+    } else if (body.event === 'booking-confirmed-sender') {
+      if (!booking.pickup_code) {
+        return NextResponse.json({ ok: false, reason: 'no_pickup_code' });
+      }
+      template = bookingConfirmedSenderEmail({
+        senderFirstName: firstName(senderProfile?.full_name),
+        travelerFirstName: firstName(travelerProfile?.full_name),
+        pickupCity: booking.pickup_city,
+        destinationCity: booking.destination_city,
+        proposedPrice: booking.proposed_price,
+        pickupCode: booking.pickup_code,
+        bookingId: booking.id,
+      });
+    } else if (body.event === 'booking-confirmed-traveler') {
+      if (!booking.delivery_code) {
+        return NextResponse.json({ ok: false, reason: 'no_delivery_code' });
+      }
+      template = bookingConfirmedTravelerEmail({
+        travelerFirstName: firstName(travelerProfile?.full_name),
+        senderFirstName: firstName(senderProfile?.full_name),
+        pickupCity: booking.pickup_city,
+        destinationCity: booking.destination_city,
+        proposedPrice: booking.proposed_price,
+        deliveryCode: booking.delivery_code,
         bookingId: booking.id,
       });
     } else {
