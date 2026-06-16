@@ -57,7 +57,7 @@ export function PickupShowCodeModal({
       {open && (
         <>
           <motion.div
-            Name="fixed inset-0 bg-ink-900/40 z-50"
+            className="fixed inset-0 bg-ink-900/40 z-50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
