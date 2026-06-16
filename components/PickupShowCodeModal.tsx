@@ -5,7 +5,7 @@ import { X, Copy, Check, Package } from 'lucide-react';
 import { useState } from 'react';
  
 /**
- * Code display modal — shown at one of the two trust-handoff moments.
+ * Code display modal — shown at one of the two trust-handoff moments. 
  *
  * MODE `'pickup'` (default) — SENDER at the pickup meeting:
  *   1. Sender opens this modal, sees the 6-digit code
