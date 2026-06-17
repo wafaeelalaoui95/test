@@ -2296,21 +2296,30 @@ function ProfileTab({
         </div>
       </form>
 
-      <div className="bg-cream-100 rounded-2xl p-7 border border-ink-50">
+    <div className="bg-cream-100 rounded-2xl p-7 border border-ink-50">
         <ShieldCheck className="w-6 h-6 text-ink-500 mb-5" strokeWidth={1.75} />
         <h3 className="text-lg font-bold text-ink-600 mb-4 tracking-[-0.015em]">
-          {t.me_profile_verification}
+          Vérifier votre identité
         </h3>
+        <p className="text-[13px] text-ink-400 leading-relaxed mb-5">
+          <strong className="text-ink-600">Obligatoire</strong> pour publier un trajet ou réserver un colis. Vérification gratuite et chiffrée par Stripe.
+        </p>
         <div className="space-y-2.5 mb-6">
           <CheckRow label={t.verif_email} done />
-          <CheckRow label={t.verif_id} done={profile?.verification_level === 'id_verified' || profile?.verification_level === 'trusted'} />
-          <CheckRow label={t.verif_trusted} done={profile?.verification_level === 'trusted'} />
+          <CheckRow
+            label="Pièce d'identité vérifiée"
+            done={!!profile?.identity_verified_at}
+          />
         </div>
-        <Button size="sm" fullWidth>
-          {t.me_profile_verify_now}
-        </Button>
+        {profile?.identity_verified_at ? (
+          <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-mint-50 text-mint-700 text-[13px] font-semibold w-full justify-center">
+            <CheckCircle2 className="w-4 h-4" strokeWidth={2.5} />
+            Identité vérifiée
+          </div>
+        ) : (
+          <VerifyIdentityButton />
+        )}
       </div>
-
       {/* Danger zone — full-width, subtle, lives below the form. */}
       <div className="lg:col-span-3 mt-4">
         <div className="bg-blush-50/40 border border-blush-200/60 rounded-2xl p-7">
@@ -2425,7 +2434,50 @@ function ProfileTab({
     </div>
   );
 }
+// =============================================================================
+// VerifyIdentityButton — calls /api/identity/create-session and redirects
+// =============================================================================
+// Reusable button that kicks off Stripe Identity. It POSTs to our API
+// route, which creates a VerificationSession server-side and returns the
+// hosted-flow URL. The user is redirected there; Stripe sends them back
+// to /me?identity=done after completion.
+function VerifyIdentityButton({ label = 'Vérifier mon identité' }: { label?: string }) {
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
+  async function start() {
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await fetch('/api/identity/create-session', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? 'Échec du démarrage');
+      }
+      // Redirect to Stripe's hosted flow
+      window.location.href = data.url;
+    } catch (e: any) {
+      setErr(e.message ?? 'Erreur — réessayez.');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <Button onClick={start} disabled={loading} size="sm" fullWidth>
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <ShieldCheck className="w-4 h-4" />
+        )}
+        {label}
+      </Button>
+      {err && (
+        <p className="mt-2 text-[12px] text-blush-500 text-center">{err}</p>
+      )}
+    </>
+  );
+}
 function CheckRow({ label, done }: { label: string; done: boolean }) {
   return (
     <div className="flex items-center gap-2.5 text-[14px]">
