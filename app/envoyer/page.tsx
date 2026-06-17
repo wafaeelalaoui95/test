@@ -28,7 +28,7 @@ import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
 import type { ItemCategory } from '@/lib/types';
-import type { MatchingTrip } from '@/lib/supabase/queries';
+import type { MatchingTrip, TieredMatchingTrip } from '@/lib/supabase/queries';
 
 // The flow now has TWO modes:
 //   - "choose" : search bar + travelers → instant book via modal (default)
@@ -55,11 +55,11 @@ export default function EnvoyerPage() {
   const [date, setDate] = useState('');
 
   // ---- Live preview of matching trips ----
-  const [previewTrips, setPreviewTrips] = useState<MatchingTrip[]>([]);
+  // Tiered results: exact city→city first, then country-level alternatives
+  // (départ ailleurs dans le pays, arrivée ailleurs dans le pays, …). Each
+  // trip carries a `tier` so we can group them in the UI.
+  const [tieredTrips, setTieredTrips] = useState<TieredMatchingTrip[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
-  // Country-level fallback: shown only when strict city search returns nothing.
-  // These are trips on the same Maroc→France corridor but different cities.
-  const [broadenedTrips, setBroadenedTrips] = useState<MatchingTrip[]>([]);
 
   // ---- Instant-booking modal state ----
   const [tripToBook, setTripToBook] = useState<MatchingTrip | null>(null);
@@ -75,44 +75,36 @@ export default function EnvoyerPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Live search for travelers — debounced. Fires while in 'choose' mode only.
-  // Two-stage: strict city-level match first; if zero results, fall back to
-  // country-level so we can still surface viable nearby routes (Rabat→Lyon
-  // when the user asked for Casa→Paris).
+  // Tiered match: one country→country query, classified into exact /
+  // pays→ville / ville→pays / pays→pays. If we don't know both countries
+  // (cities typed freeform rather than picked), fall back to an exact-only
+  // city match.
   useEffect(() => {
     if (mode !== 'choose') return;
     if (!fromCity || !toCity || !date) {
-      setPreviewTrips([]);
-      setBroadenedTrips([]);
+      setTieredTrips([]);
       return;
     }
     let cancelled = false;
     setPreviewLoading(true);
     const handle = setTimeout(async () => {
       try {
-        const strict = await browser.listMatchingTripsForRequest(
-          fromCity, toCity, date, user?.id || null
-        );
-        if (cancelled) return;
-        setPreviewTrips(strict);
-
-        // Only do the broader lookup if (a) strict search came back empty
-        // AND (b) we know both countries (which we do only if the user
-        // picked the cities via the dropdown, not typed freeform).
-        if (strict.length === 0 && fromCountry && toCountry) {
-          const broad = await browser.listMatchingTripsForRequestBroadened(
+        let results: TieredMatchingTrip[];
+        if (fromCountry && toCountry) {
+          results = await browser.listMatchingTripsTiered(
             fromCountry, toCountry, fromCity, toCity, date, user?.id || null
           );
-          if (cancelled) return;
-          setBroadenedTrips(broad);
         } else {
-          setBroadenedTrips([]);
+          const strict = await browser.listMatchingTripsForRequest(
+            fromCity, toCity, date, user?.id || null
+          );
+          results = strict.map((t) => ({ ...t, tier: 'exact' as const }));
         }
+        if (cancelled) return;
+        setTieredTrips(results);
       } catch (e) {
         console.warn('[envoyer] preview failed:', e);
-        if (!cancelled) {
-          setPreviewTrips([]);
-          setBroadenedTrips([]);
-        }
+        if (!cancelled) setTieredTrips([]);
       } finally {
         if (!cancelled) setPreviewLoading(false);
       }
@@ -223,7 +215,46 @@ export default function EnvoyerPage() {
   // =========================================================================
   if (mode === 'choose') {
     const hasRouteAndDate = fromCity && toCity && date;
-    const hasResults = previewTrips.length > 0;
+
+    // Split tiered results into their groups (already ordered closest-first).
+    const exactTrips = tieredTrips.filter((t) => t.tier === 'exact');
+    const fromCountryTrips = tieredTrips.filter((t) => t.tier === 'from_country');
+    const toCountryTrips = tieredTrips.filter((t) => t.tier === 'to_country');
+    const bothCountryTrips = tieredTrips.filter((t) => t.tier === 'both_country');
+    const hasResults = tieredTrips.length > 0;
+    const hasAlternatives =
+      fromCountryTrips.length + toCountryTrips.length + bothCountryTrips.length > 0;
+
+    // One group block: heading + count + up-to-8 bookable cards.
+    const renderGroup = (trips: TieredMatchingTrip[], label: string) => (
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-4 h-4 text-lavender-500" />
+          <p className="text-[14px] font-semibold text-ink-600">{label}</p>
+          <span className="text-[13px] text-ink-400">
+            {trips.length === 1
+              ? t.env_traveler_count_one
+              : t.env_traveler_count_other.replace('{count}', String(trips.length))}
+          </span>
+        </div>
+        <div className="space-y-2.5">
+          {trips.slice(0, 8).map((trip) => (
+            <TripBookableCard
+              key={trip.id}
+              trip={trip}
+              onBook={() => {
+                if (gate.ensureVerified()) setTripToBook(trip);
+              }}
+            />
+          ))}
+          {trips.length > 8 && (
+            <p className="text-[12px] text-ink-400 text-center pt-2">
+              {t.env_more_travelers.replace('{count}', String(trips.length - 8))}
+            </p>
+          )}
+        </div>
+      </div>
+    );
 
     return (
       <div className="min-h-screen py-12 lg:py-20">
@@ -303,89 +334,76 @@ export default function EnvoyerPage() {
                 <span>{t.env_searching_travelers}</span>
               </div>
             ) : hasResults ? (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="w-4 h-4 text-lavender-500" />
-                  <p className="text-[14px] font-semibold text-ink-600">
-                    {previewTrips.length === 1
-                      ? t.env_travelers_available_one
-                      : t.env_travelers_available_other.replace('{count}', String(previewTrips.length))}
-                  </p>
-                  <span className="text-[13px] text-ink-400">
-                    {t.env_before_date.replace('{date}', formatShortDate(date))}
-                  </span>
-                </div>
-                <div className="space-y-2.5">
-                  {previewTrips.slice(0, 8).map((trip) => (
-                    <TripBookableCard
-                      key={trip.id}
-                      trip={trip}
-                      onBook={() => {
-                        // Block booking + payment until identity is verified.
-                        if (gate.ensureVerified()) setTripToBook(trip);
-                      }}
-                    />
-                  ))}
-                  {previewTrips.length > 8 && (
-                    <p className="text-[12px] text-ink-400 text-center pt-2">
-                      {t.env_more_travelers.replace('{count}', String(previewTrips.length - 8))}
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-8">
+                {/* Exact city→city matches — the primary, instantly-bookable list */}
+                {exactTrips.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Sparkles className="w-4 h-4 text-lavender-500" />
+                      <p className="text-[14px] font-semibold text-ink-600">
+                        {exactTrips.length === 1
+                          ? t.env_travelers_available_one
+                          : t.env_travelers_available_other.replace('{count}', String(exactTrips.length))}
+                      </p>
+                      <span className="text-[13px] text-ink-400">
+                        {t.env_before_date.replace('{date}', formatShortDate(date))}
+                      </span>
+                    </div>
+                    <div className="space-y-2.5">
+                      {exactTrips.slice(0, 8).map((trip) => (
+                        <TripBookableCard
+                          key={trip.id}
+                          trip={trip}
+                          onBook={() => {
+                            // Block booking + payment until identity is verified.
+                            if (gate.ensureVerified()) setTripToBook(trip);
+                          }}
+                        />
+                      ))}
+                      {exactTrips.length > 8 && (
+                        <p className="text-[12px] text-ink-400 text-center pt-2">
+                          {t.env_more_travelers.replace('{count}', String(exactTrips.length - 8))}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-                <div className="mt-6 pt-6 border-t border-ink-100">
-                  <button
-                    onClick={switchToPublic}
-                    className="w-full text-center text-[14px] text-ink-500 hover:text-ink-600 transition-colors group"
-                  >
-                    {t.env_none_suitable}{' '}
-                    <span className="font-semibold underline underline-offset-2 group-hover:text-lavender-600">
-                      {t.env_publish_public_request}
-                    </span>{' '}
-                    <ArrowRight className="inline w-3.5 h-3.5 -mt-0.5 transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                </div>
-              </div>
-            ) : broadenedTrips.length > 0 ? (
-              <div>
-                <div className="text-center mb-5">
-                  <h3 className="text-[15px] font-semibold text-ink-600 mb-1">
-                    {t.env_no_traveler_on_route.replace('{from}', fromCity).replace('{to}', toCity)}
-                  </h3>
-                  <p className="text-[13px] text-ink-400">
-                    {t.env_nearby_routes_intro}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="w-4 h-4 text-lavender-500" />
-                  <p className="text-[14px] font-semibold text-ink-600">
-                    {fromCountry} → {toCountry}
-                  </p>
-                  <span className="text-[13px] text-ink-400">
-                    {(broadenedTrips.length === 1
-                      ? t.env_traveler_count_one
-                      : t.env_traveler_count_other.replace('{count}', String(broadenedTrips.length)))}
-                  </span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {broadenedTrips.slice(0, 8).map((trip) => (
-                    <TripBookableCard
-                      key={trip.id}
-                      trip={trip}
-                      onBook={() => {
-                        // Block booking + payment until identity is verified.
-                        if (gate.ensureVerified()) setTripToBook(trip);
-                      }}
-                    />
-                  ))}
-                  {broadenedTrips.length > 8 && (
-                    <p className="text-[12px] text-ink-400 text-center pt-2">
-                      {t.env_more_travelers.replace('{count}', String(broadenedTrips.length - 8))}
-                    </p>
-                  )}
-                </div>
+                {/* Country-level alternatives, grouped closest-first */}
+                {hasAlternatives && (
+                  <div className="space-y-6">
+                    {exactTrips.length > 0 && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-ink-100" />
+                        <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-400">
+                          {t.env_alternatives_title}
+                        </span>
+                        <div className="h-px flex-1 bg-ink-100" />
+                      </div>
+                    )}
+                    {fromCountryTrips.length > 0 &&
+                      renderGroup(
+                        fromCountryTrips,
+                        t.env_tier_from_country
+                          .replace('{country}', fromCountry)
+                          .replace('{city}', toCity)
+                      )}
+                    {toCountryTrips.length > 0 &&
+                      renderGroup(
+                        toCountryTrips,
+                        t.env_tier_to_country
+                          .replace('{city}', fromCity)
+                          .replace('{country}', toCountry)
+                      )}
+                    {bothCountryTrips.length > 0 &&
+                      renderGroup(
+                        bothCountryTrips,
+                        t.env_tier_both_country
+                          .replace('{from}', fromCountry)
+                          .replace('{to}', toCountry)
+                      )}
+                  </div>
+                )}
 
                 <div className="mt-6 pt-6 border-t border-ink-100">
                   <button
@@ -426,8 +444,12 @@ export default function EnvoyerPage() {
             <InstantBookModal
               trip={tripToBook}
               senderId={user.id}
-              pickupCity={fromCity}
-              destinationCity={toCity}
+              // Use the trip's real route, not the search query — for an
+              // alternative-tier match (e.g. Paris→Tunis booked from a
+              // Marseille→Tunis search) the handoff happens on the traveler's
+              // actual route, so the booking must record that.
+              pickupCity={tripToBook.departure_city}
+              destinationCity={tripToBook.arrival_city}
               onClose={() => setTripToBook(null)}
               onSuccess={() => router.push('/me')}
             />

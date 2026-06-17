@@ -142,6 +142,10 @@ export type Translations = {
   env_publish_public_request: string;
   env_no_traveler_on_route: string;
   env_nearby_routes_intro: string;
+  env_alternatives_title: string;
+  env_tier_from_country: string;
+  env_tier_to_country: string;
+  env_tier_both_country: string;
   env_traveler_count_one: string;
   env_traveler_count_other: string;
   env_no_traveler_this_route: string;
@@ -1242,6 +1246,10 @@ export const translations: Record<Locale, Translations> = {
     env_publish_public_request: 'Publier une demande publique',
     env_no_traveler_on_route: 'Aucun voyageur sur {from} → {to}',
     env_nearby_routes_intro: 'Mais voici les voyageurs sur des routes proches :',
+    env_alternatives_title: 'Alternatives proches',
+    env_tier_from_country: 'Départ ailleurs en {country}, arrivée à {city}',
+    env_tier_to_country: 'Départ de {city}, arrivée ailleurs en {country}',
+    env_tier_both_country: 'Ailleurs en {from} → ailleurs en {to}',
     env_traveler_count_one: '· 1 voyageur',
     env_traveler_count_other: '· {count} voyageurs',
     env_no_traveler_this_route: 'Aucun voyageur sur cette route',
@@ -2322,6 +2330,10 @@ export const translations: Record<Locale, Translations> = {
     env_publish_public_request: 'Post a public request',
     env_no_traveler_on_route: 'No traveler on {from} → {to}',
     env_nearby_routes_intro: 'But here are travelers on nearby routes:',
+    env_alternatives_title: 'Close alternatives',
+    env_tier_from_country: 'Departing elsewhere in {country}, arriving in {city}',
+    env_tier_to_country: 'Departing from {city}, arriving elsewhere in {country}',
+    env_tier_both_country: 'Elsewhere in {from} → elsewhere in {to}',
     env_traveler_count_one: '· 1 traveler',
     env_traveler_count_other: '· {count} travelers',
     env_no_traveler_this_route: 'No traveler on this route',

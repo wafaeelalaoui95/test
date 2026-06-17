@@ -333,6 +333,93 @@ export async function listMatchingTripsForRequest(
   }));
 }
 
+// TIERED matching: a single country->country query, then each trip is
+// classified in JS into a proximity tier (closest first):
+//   exact         city A -> city B
+//   from_country  pays A -> city B   (same arrival city, departure elsewhere in the country)
+//   to_country    city A -> pays B   (same departure city, arrival elsewhere in the country)
+//   both_country  pays A -> pays B
+// All four tiers are subsets of "departure_country = A AND arrival_country = B",
+// so one query returns the full candidate set; we tag & order them here.
+export type MatchTier = 'exact' | 'from_country' | 'to_country' | 'both_country';
+export type TieredMatchingTrip = MatchingTrip & { tier: MatchTier };
+
+export async function listMatchingTripsTiered(
+  supabase: SB,
+  pickupCountry: string,
+  destinationCountry: string,
+  pickupCity: string,
+  destinationCity: string,
+  desiredDeliveryDate: string,
+  excludeUserId?: string | null
+): Promise<TieredMatchingTrip[]> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  let query = supabase
+    .from('traveler_trips')
+    .select(
+      'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
+    )
+    .eq('departure_country', pickupCountry)
+    .eq('arrival_country', destinationCountry)
+    .gte('departure_date', today)
+    .lte('departure_date', desiredDeliveryDate)
+    .eq('status', 'open')
+    .order('departure_date', { ascending: true })
+    .limit(40);
+  if (excludeUserId) {
+    query = query.neq('user_id', excludeUserId);
+  }
+
+  const { data: trips, error } = await withTimeout(
+    Promise.resolve(query),
+    6000,
+    'Tiered matching trips'
+  );
+  if (error) throw error;
+  if (!trips || trips.length === 0) return [];
+
+  const userIds = Array.from(new Set(trips.map((t: any) => t.user_id)));
+  const { data: profiles } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, rating, trips_completed, verification_level')
+        .in('id', userIds)
+    ),
+    6000,
+    'Tiered matching traveler profiles'
+  );
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  const norm = (s: string) => s.trim().toLowerCase();
+  const pc = norm(pickupCity);
+  const dc = norm(destinationCity);
+  const rank: Record<MatchTier, number> = {
+    exact: 0,
+    from_country: 1,
+    to_country: 2,
+    both_country: 3,
+  };
+
+  return trips
+    .map((t: any): TieredMatchingTrip => {
+      const dep = norm(t.departure_city);
+      const arr = norm(t.arrival_city);
+      let tier: MatchTier;
+      if (dep === pc && arr === dc) tier = 'exact';
+      else if (arr === dc) tier = 'from_country';
+      else if (dep === pc) tier = 'to_country';
+      else tier = 'both_country';
+      return {
+        ...(t as MatchingTrip),
+        user: (profileById.get(t.user_id) as any) ?? null,
+        tier,
+      };
+    })
+    .sort((a, b) => rank[a.tier] - rank[b.tier]);
+}
+
 // BROADENED matching: country-level fallback when strict returns nothing
 export async function listMatchingTripsForRequestBroadened(
   supabase: SB,
@@ -1713,6 +1800,23 @@ export const browser = {
     excludeUserId?: string | null
   ) =>
     listMatchingTripsForRequestBroadened(
+      getBrowserClient(),
+      pickupCountry,
+      destinationCountry,
+      pickupCity,
+      destinationCity,
+      desiredDeliveryDate,
+      excludeUserId
+    ),
+  listMatchingTripsTiered: (
+    pickupCountry: string,
+    destinationCountry: string,
+    pickupCity: string,
+    destinationCity: string,
+    desiredDeliveryDate: string,
+    excludeUserId?: string | null
+  ) =>
+    listMatchingTripsTiered(
       getBrowserClient(),
       pickupCountry,
       destinationCountry,
