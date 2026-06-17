@@ -5,20 +5,7 @@ import { motion } from 'framer-motion';
 import { X, Send, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { browser, type MessageRowChat } from '@/lib/supabase/queries';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
-
-/**
- * Quick replies steer the conversation toward the two things we actually
- * want users discussing in-app: the address and the parcel. Tapping one
- * drops the text into the input (rather than sending immediately) so the
- * user can complete it — e.g. fill in the actual address after "Voici
- * l'adresse :" — and review before sending.
- */
-const QUICK_REPLIES: { label: string; text: string }[] = [
-  { label: '📍 Adresse', text: 'Voici l\'adresse : ' },
-  { label: '📦 Le colis', text: 'À propos du colis : ' },
-  { label: '🕐 J\'arrive bientôt', text: 'J\'arrive bientôt 🙂' },
-  { label: '🔑 Code de récupération', text: 'Quel est le code de récupération ?' },
-];
+import { useI18n } from '@/lib/i18n/context';
 
 const TRACEABILITY_NOTICE_KEY = 'jibly:chat:traceability-dismissed';
 
@@ -58,6 +45,20 @@ export function ChatModal({
   onClose,
   onMessagesRead,
 }: ChatModalProps) {
+  const { t } = useI18n();
+
+  // Quick replies steer the conversation toward the two things we actually
+  // want users discussing in-app: the address and the parcel. Tapping one
+  // drops the text into the input (rather than sending immediately) so the
+  // user can complete it — e.g. fill in the actual address — and review
+  // before sending.
+  const quickReplies: { label: string; text: string }[] = [
+    { label: t.chat_qr_address_label, text: t.chat_qr_address_text },
+    { label: t.chat_qr_parcel_label, text: t.chat_qr_parcel_text },
+    { label: t.chat_qr_arriving_label, text: t.chat_qr_arriving_text },
+    { label: t.chat_qr_code_label, text: t.chat_qr_code_text },
+  ];
+
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageRowChat[]>([]);
   const [draft, setDraft] = useState('');
@@ -129,7 +130,7 @@ export function ChatModal({
           if (!cancelled) onMessagesReadRef.current?.();
         });
       } catch (e: any) {
-        if (!cancelled) setErr(e?.message ?? 'Échec du chargement');
+        if (!cancelled) setErr(e?.message ?? t.chat_load_error);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -187,7 +188,7 @@ export function ChatModal({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? 'Échec de l\'envoi');
+        throw new Error(data.error ?? t.chat_send_error);
       }
       const data = await res.json();
       // Replace the optimistic message with the real one
@@ -198,7 +199,7 @@ export function ChatModal({
       // Rollback: remove the optimistic message
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       setDraft(body);
-      setErr(e?.message ?? 'Échec de l\'envoi. Réessayez.');
+      setErr(e?.message ?? t.chat_send_error_retry);
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -236,7 +237,7 @@ export function ChatModal({
           <button
             onClick={onClose}
             className="p-1.5 -ml-1.5 rounded-full hover:bg-ink-50 text-ink-400 transition-colors sm:hidden"
-            aria-label="Fermer"
+            aria-label={t.chat_close}
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -252,7 +253,7 @@ export function ChatModal({
           <button
             onClick={onClose}
             className="p-1.5 -mr-1.5 rounded-full hover:bg-ink-50 text-ink-400 transition-colors hidden sm:block"
-            aria-label="Fermer"
+            aria-label={t.chat_close}
           >
             <X className="w-4 h-4" />
           </button>
@@ -264,13 +265,12 @@ export function ChatModal({
           <div className="flex items-start gap-2.5 px-4 py-2.5 bg-lavender-50 border-b border-lavender-100">
             <ShieldCheck className="w-4 h-4 text-lavender-400 flex-shrink-0 mt-0.5" />
             <p className="flex-1 text-[12px] leading-relaxed text-ink-500">
-              Gardez vos échanges sur Jibly : c'est ce qui nous permet d'assurer
-              le suivi du colis et de vous protéger en cas de litige.
+              {t.chat_traceability_notice}
             </p>
             <button
               onClick={dismissNotice}
               className="p-0.5 -mr-1 rounded-full hover:bg-lavender-100 text-ink-300 transition-colors flex-shrink-0"
-              aria-label="Masquer"
+              aria-label={t.chat_hide}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -285,8 +285,8 @@ export function ChatModal({
             </div>
           ) : messages.length === 0 ? (
             <div className="text-center text-[13px] text-ink-400 py-12 leading-relaxed max-w-xs mx-auto">
-              Pas encore de message.<br />
-              Dites bonjour à {otherName.split(' ')[0]} 👋
+              {t.chat_empty_line1}<br />
+              {t.chat_empty_line2.replace('{name}', otherName.split(' ')[0])}
             </div>
           ) : (
             messages.map((m, i) => {
@@ -334,7 +334,7 @@ export function ChatModal({
           {/* Quick replies — steer toward address & parcel topics. Tapping
               fills the input so the user can complete/edit before sending. */}
           <div className="flex gap-1.5 overflow-x-auto pb-2.5 -mx-0.5 px-0.5 scrollbar-hide">
-            {QUICK_REPLIES.map((qr) => (
+            {quickReplies.map((qr) => (
               <button
                 key={qr.label}
                 onClick={() => applyQuickReply(qr.text)}
@@ -351,7 +351,7 @@ export function ChatModal({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={`Écrire à ${otherName.split(' ')[0]}…`}
+              placeholder={t.chat_input_placeholder.replace('{name}', otherName.split(' ')[0])}
               rows={1}
               maxLength={4000}
               disabled={loading || sending}
@@ -362,7 +362,7 @@ export function ChatModal({
               onClick={handleSend}
               disabled={!draft.trim() || sending || loading}
               className="flex-shrink-0 w-10 h-10 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 inline-flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="Envoyer"
+              aria-label={t.chat_send}
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>

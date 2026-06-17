@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, X, User, LogOut, Wallet, Bell } from 'lucide-react';
 import { Logo } from '@/components/illustrations/Logo';
 import { NotificationsDropdown } from '@/components/NotificationsDropdown';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { nameInitial, formatName, formatEuros } from '@/lib/utils';
@@ -80,6 +81,8 @@ export function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-2">
+            <LanguageSwitcher />
+
             {/* Notifications bell — replaces the previous Inbox icon.
                 Inbox messages are still reachable, but as a secondary
                 entry from inside the notifications dropdown. */}
@@ -110,7 +113,7 @@ export function Navbar() {
                 <Link
                   href="/wallet"
                   className="ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 transition-colors"
-                  title="Mon portefeuille"
+                  title={t.nav_wallet_title}
                 >
                   <Wallet className="w-3.5 h-3.5" />
                   <span className="text-[13px] font-bold num-display">
@@ -165,8 +168,8 @@ export function Navbar() {
               <Link
                 href="/wallet"
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-ink-500 text-cream-50"
-                aria-label="Mon portefeuille"
-                title="Mon portefeuille"
+                aria-label={t.nav_wallet_title}
+                title={t.nav_wallet_title}
               >
                 <Wallet className="w-3.5 h-3.5" />
                 <span className="text-[12px] font-bold num-display">
@@ -178,7 +181,7 @@ export function Navbar() {
               <Link
                 href="/notifications"
                 className="relative p-2 text-ink-500"
-                aria-label="Notifications"
+                aria-label={t.nav_notifications}
               >
                 <Bell className="h-5 w-5" />
                 {mobileUnread > 0 && (
@@ -191,7 +194,7 @@ export function Navbar() {
             <button
               className="p-2 text-ink-500"
               onClick={() => setOpen(!open)}
-              aria-label="Menu"
+              aria-label={t.nav_menu}
             >
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -220,6 +223,10 @@ export function Navbar() {
                 </Link>
               ))}
 
+              <div className="py-3 border-t border-ink-50 mt-1">
+                <LanguageSwitcher />
+              </div>
+
               {user ? (
                 <>
                   <Link
@@ -236,7 +243,7 @@ export function Navbar() {
                     onClick={() => setOpen(false)}
                   >
                     <Wallet className="w-4 h-4" />
-                    <span>Portefeuille</span>
+                    <span>{t.nav_wallet_label}</span>
                     <span className="ml-auto text-[14px] font-bold text-ink-600 num-display">
                       {walletBalance !== null ? formatEuros(walletBalance) : '—'}
                     </span>
@@ -247,7 +254,7 @@ export function Navbar() {
                     onClick={() => setOpen(false)}
                   >
                     <Bell className="w-4 h-4" />
-                    <span>Notifications</span>
+                    <span>{t.nav_notifications}</span>
                     {mobileUnread > 0 && (
                       <span className="ml-auto min-w-[18px] h-5 px-1.5 rounded-full bg-blush-500 text-white text-[11px] font-bold flex items-center justify-center num-display">
                         {mobileUnread > 9 ? '9+' : mobileUnread}

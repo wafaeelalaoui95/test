@@ -19,6 +19,10 @@ export type Translations = {
   nav_trust: string;
   nav_my_space: string;
   nav_start: string;
+  nav_wallet_title: string;
+  nav_wallet_label: string;
+  nav_notifications: string;
+  nav_menu: string;
 
   // Hero / Landing
   hero_badge: string;
@@ -374,6 +378,36 @@ export type Translations = {
   empty_my_requests: string;
   empty_my_trips: string;
   empty_open_trips: string;
+
+  // Notifications dropdown
+  notif_mark_all_read: string;
+  notif_empty: string;
+  notif_see_all: string;
+  notif_my_messages: string;
+  notif_time_now: string;
+  notif_time_min: string;
+  notif_time_hour: string;
+  notif_time_day: string;
+
+  // Chat
+  chat_qr_address_label: string;
+  chat_qr_address_text: string;
+  chat_qr_parcel_label: string;
+  chat_qr_parcel_text: string;
+  chat_qr_arriving_label: string;
+  chat_qr_arriving_text: string;
+  chat_qr_code_label: string;
+  chat_qr_code_text: string;
+  chat_traceability_notice: string;
+  chat_empty_line1: string;
+  chat_empty_line2: string;
+  chat_input_placeholder: string;
+  chat_load_error: string;
+  chat_send_error: string;
+  chat_send_error_retry: string;
+  chat_close: string;
+  chat_send: string;
+  chat_hide: string;
 };
 
 export const translations: Record<Locale, Translations> = {
@@ -384,6 +418,10 @@ export const translations: Record<Locale, Translations> = {
     nav_trust: 'FAQ - Sérénité',
     nav_my_space: 'Mon espace',
     nav_start: 'S\'inscrire',
+    nav_wallet_title: 'Mon portefeuille',
+    nav_wallet_label: 'Portefeuille',
+    nav_notifications: 'Notifications',
+    nav_menu: 'Menu',
 
     hero_badge: 'Communauté de voyageurs vérifiés',
     hero_title_1: 'Quelqu\'un voyage déjà',
@@ -718,6 +756,37 @@ export const translations: Record<Locale, Translations> = {
     empty_my_requests: 'Aucun envoi pour le moment.',
     empty_my_trips: 'Aucun trajet pour le moment.',
     empty_open_trips: 'Aucun voyageur disponible pour cet itinéraire.',
+
+    // Notifications dropdown
+    notif_mark_all_read: 'Tout marquer lu',
+    notif_empty: 'Aucune notification pour le moment.',
+    notif_see_all: 'Voir toutes les notifications',
+    notif_my_messages: 'Mes messages',
+    notif_time_now: 'à l\'instant',
+    notif_time_min: 'il y a {n} min',
+    notif_time_hour: 'il y a {n} h',
+    notif_time_day: 'il y a {n} j',
+
+    // Chat
+    chat_qr_address_label: '📍 Adresse',
+    chat_qr_address_text: 'Voici l\'adresse : ',
+    chat_qr_parcel_label: '📦 Le colis',
+    chat_qr_parcel_text: 'À propos du colis : ',
+    chat_qr_arriving_label: '🕐 J\'arrive bientôt',
+    chat_qr_arriving_text: 'J\'arrive bientôt 🙂',
+    chat_qr_code_label: '🔑 Code de récupération',
+    chat_qr_code_text: 'Quel est le code de récupération ?',
+    chat_traceability_notice:
+      'Gardez vos échanges sur Jibly : c\'est ce qui nous permet d\'assurer le suivi du colis et de vous protéger en cas de litige.',
+    chat_empty_line1: 'Pas encore de message.',
+    chat_empty_line2: 'Dites bonjour à {name} 👋',
+    chat_input_placeholder: 'Écrire à {name}…',
+    chat_load_error: 'Échec du chargement',
+    chat_send_error: 'Échec de l\'envoi',
+    chat_send_error_retry: 'Échec de l\'envoi. Réessayez.',
+    chat_close: 'Fermer',
+    chat_send: 'Envoyer',
+    chat_hide: 'Masquer',
   },
 
   en: {
@@ -727,6 +796,10 @@ export const translations: Record<Locale, Translations> = {
     nav_trust: 'Trust',
     nav_my_space: 'My Space',
     nav_start: 'Sign up',
+    nav_wallet_title: 'My wallet',
+    nav_wallet_label: 'Wallet',
+    nav_notifications: 'Notifications',
+    nav_menu: 'Menu',
 
     hero_badge: 'Verified traveler community',
     hero_title_1: 'Someone is already going',
@@ -1061,5 +1134,36 @@ export const translations: Record<Locale, Translations> = {
     empty_my_requests: 'No shipments yet.',
     empty_my_trips: 'No trips yet.',
     empty_open_trips: 'No travelers available for this route.',
+
+    // Notifications dropdown
+    notif_mark_all_read: 'Mark all read',
+    notif_empty: 'No notifications yet.',
+    notif_see_all: 'See all notifications',
+    notif_my_messages: 'My messages',
+    notif_time_now: 'just now',
+    notif_time_min: '{n} min ago',
+    notif_time_hour: '{n}h ago',
+    notif_time_day: '{n}d ago',
+
+    // Chat
+    chat_qr_address_label: '📍 Address',
+    chat_qr_address_text: 'Here is the address: ',
+    chat_qr_parcel_label: '📦 The parcel',
+    chat_qr_parcel_text: 'About the parcel: ',
+    chat_qr_arriving_label: '🕐 Almost there',
+    chat_qr_arriving_text: 'Almost there 🙂',
+    chat_qr_code_label: '🔑 Pickup code',
+    chat_qr_code_text: 'What is the pickup code?',
+    chat_traceability_notice:
+      'Keep your exchanges on Jibly: it lets us track the parcel and protect you in case of a dispute.',
+    chat_empty_line1: 'No messages yet.',
+    chat_empty_line2: 'Say hi to {name} 👋',
+    chat_input_placeholder: 'Message {name}…',
+    chat_load_error: 'Failed to load',
+    chat_send_error: 'Failed to send',
+    chat_send_error_retry: 'Failed to send. Try again.',
+    chat_close: 'Close',
+    chat_send: 'Send',
+    chat_hide: 'Hide',
   },
 };

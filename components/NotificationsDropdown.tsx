@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, Check, Inbox, Loader2 } from 'lucide-react';
 import { browser, type Notification } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
+import { useI18n } from '@/lib/i18n/context';
 
 /**
  * Bell icon in the navbar that opens a small dropdown panel with the 5
@@ -25,6 +26,7 @@ import { useAuth } from '@/lib/supabase/auth-provider';
  */
 export function NotificationsDropdown() {
   const { user } = useAuth();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
@@ -165,14 +167,14 @@ export function NotificationsDropdown() {
     const now = Date.now();
     const then = new Date(iso).getTime();
     const sec = Math.max(0, Math.floor((now - then) / 1000));
-    if (sec < 60) return 'à l\'instant';
+    if (sec < 60) return t.notif_time_now;
     const min = Math.floor(sec / 60);
-    if (min < 60) return `il y a ${min} min`;
+    if (min < 60) return t.notif_time_min.replace('{n}', String(min));
     const hr = Math.floor(min / 60);
-    if (hr < 24) return `il y a ${hr} h`;
+    if (hr < 24) return t.notif_time_hour.replace('{n}', String(hr));
     const days = Math.floor(hr / 24);
-    if (days < 7) return `il y a ${days} j`;
-    return new Date(iso).toLocaleDateString('fr-FR', {
+    if (days < 7) return t.notif_time_day.replace('{n}', String(days));
+    return new Date(iso).toLocaleDateString(locale === 'en' ? 'en-GB' : 'fr-FR', {
       day: 'numeric',
       month: 'short',
     });
@@ -184,8 +186,8 @@ export function NotificationsDropdown() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="relative p-2 rounded-full hover:bg-ink-50 text-ink-400 hover:text-ink-600 transition-colors"
-        aria-label="Notifications"
-        title="Notifications"
+        aria-label={t.nav_notifications}
+        title={t.nav_notifications}
       >
         <Bell className="w-[18px] h-[18px]" />
         {unread > 0 && (
@@ -209,7 +211,7 @@ export function NotificationsDropdown() {
           >
             {/* Header */}
             <div className="px-4 py-3 flex items-center justify-between border-b border-ink-50">
-              <h3 className="text-[14px] font-bold text-ink-600">Notifications</h3>
+              <h3 className="text-[14px] font-bold text-ink-600">{t.nav_notifications}</h3>
               {unread > 0 && (
                 <button
                   type="button"
@@ -217,7 +219,7 @@ export function NotificationsDropdown() {
                   className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-400 hover:text-ink-600 transition-colors"
                 >
                   <Check className="w-3 h-3" />
-                  Tout marquer lu
+                  {t.notif_mark_all_read}
                 </button>
               )}
             </div>
@@ -234,7 +236,7 @@ export function NotificationsDropdown() {
                     <Bell className="w-4 h-4 text-ink-300" />
                   </div>
                   <p className="text-[13px] text-ink-400">
-                    Aucune notification pour le moment.
+                    {t.notif_empty}
                   </p>
                 </div>
               ) : (
@@ -293,7 +295,7 @@ export function NotificationsDropdown() {
                 onClick={() => setOpen(false)}
                 className="block px-4 py-2.5 text-[13px] font-medium text-ink-500 hover:text-ink-600 hover:bg-cream-50 text-center transition-colors"
               >
-                Voir toutes les notifications
+                {t.notif_see_all}
               </Link>
               <Link
                 href="/messages"
@@ -301,7 +303,7 @@ export function NotificationsDropdown() {
                 className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-medium text-ink-400 hover:text-ink-600 hover:bg-cream-50 transition-colors"
               >
                 <Inbox className="w-3.5 h-3.5" />
-                Mes messages
+                {t.notif_my_messages}
               </Link>
             </div>
           </motion.div>
