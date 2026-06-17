@@ -33,6 +33,13 @@ export type Translations = {
   hero_search_to: string;
   hero_search_button: string;
   hero_social_proof: string;
+  search_label_from: string;
+  search_label_to: string;
+  search_label_before: string;
+  search_button: string;
+  search_filters_show: string;
+  search_filters_hide: string;
+  search_label_flight_date: string;
 
   // How it works
   how_title: string;
@@ -946,6 +953,13 @@ export const translations: Record<Locale, Translations> = {
     hero_search_to: 'Ville d\'arrivée',
     hero_search_button: 'Trouver un voyageur',
     hero_social_proof: '+2 000 voyageurs',
+    search_label_from: 'Départ',
+    search_label_to: 'Arrivée',
+    search_label_before: 'Avant le',
+    search_button: 'Rechercher',
+    search_filters_show: 'Filtres avancés',
+    search_filters_hide: 'Masquer les filtres',
+    search_label_flight_date: 'Date du vol',
 
     how_title: 'Comment ça marche',
     how_subtitle: 'Trois étapes, c\'est tout.',
@@ -1838,6 +1852,13 @@ export const translations: Record<Locale, Translations> = {
     hero_search_to: 'Arrival city',
     hero_search_button: 'Find a traveler',
     hero_social_proof: '+2,000 travelers',
+    search_label_from: 'From',
+    search_label_to: 'To',
+    search_label_before: 'Before',
+    search_button: 'Search',
+    search_filters_show: 'Advanced filters',
+    search_filters_hide: 'Hide filters',
+    search_label_flight_date: 'Flight date',
 
     how_title: 'How it works',
     how_subtitle: 'Three steps, that\'s it.',

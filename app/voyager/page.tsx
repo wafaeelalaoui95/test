@@ -270,7 +270,7 @@ export default function VoyagerPage() {
             <div className="flex flex-col md:flex-row md:items-stretch">
               <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
-                  Départ
+                  {t.search_label_from}
                 </label>
                 <CountryCityPicker
                   country={fromCountry}
@@ -287,7 +287,7 @@ export default function VoyagerPage() {
 
               <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
-                  Arrivée
+                  {t.search_label_to}
                 </label>
                 <CountryCityPicker
                   country={toCountry}
@@ -303,7 +303,7 @@ export default function VoyagerPage() {
 
               <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
-                  Date du vol
+                  {t.search_label_flight_date}
                 </label>
                 <div className="relative">
                   <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />

@@ -217,7 +217,7 @@ export default function HomePage() {
                   <div className="flex flex-col md:flex-row md:items-stretch">
                     <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                       <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
-                        Départ
+                        {t.search_label_from}
                       </label>
                       <CountryCityPicker
                         country={searchFromCountry}
@@ -234,7 +234,7 @@ export default function HomePage() {
 
                     <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                       <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
-                        Arrivée
+                        {t.search_label_to}
                       </label>
                       <CountryCityPicker
                         country={searchToCountry}
@@ -250,7 +250,7 @@ export default function HomePage() {
 
                     <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                       <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
-                        Avant le
+                        {t.search_label_before}
                       </label>
                       <div className="relative">
                         <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />
@@ -267,11 +267,11 @@ export default function HomePage() {
                     <div className="flex items-center justify-center md:justify-end px-2 pt-2 md:pt-0 md:ps-1">
                       <button
                         onClick={handleSearch}
-                        aria-label="Rechercher"
+                        aria-label={t.search_button}
                         className="inline-flex items-center justify-center gap-2 px-5 py-3 md:py-2.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 font-semibold text-[14px] transition-colors w-full md:w-auto"
                       >
                         <Search className="w-4 h-4" strokeWidth={2.5} />
-                        <span>Rechercher</span>
+                        <span>{t.search_button}</span>
                       </button>
                     </div>
                   </div>
@@ -284,7 +284,7 @@ export default function HomePage() {
                     className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-400 hover:text-ink-600 transition-colors"
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5" />
-                    {showAdvanced ? 'Masquer les filtres' : 'Filtres avancés'}
+                    {showAdvanced ? t.search_filters_hide : t.search_filters_show}
                     {(maxBudget !== '' || verifiedOnly) && (
                       <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-lavender-500 text-cream-50 text-[10px] font-bold ms-1">
                         {[maxBudget !== '' ? '1' : '', verifiedOnly ? '1' : ''].filter(Boolean).length}
@@ -752,7 +752,7 @@ function RequestCard({
         </div>
         <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
           <Calendar className="w-3 h-3" />
-          <span>Avant le </span>
+          <span>{t.search_label_before} </span>
           <span className="num-display">{formatShortDate(request.desired_delivery_date)}</span>
         </div>
       </div>
