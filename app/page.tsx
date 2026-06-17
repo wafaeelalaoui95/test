@@ -89,7 +89,7 @@ export default function HomePage() {
           setRequests(requestsRes.value as RequestWithProfile[]);
         }
         if (tripsRes.status === 'rejected' && requestsRes.status === 'rejected') {
-          setError('Erreur de chargement');
+          setError(t.sec_load_error);
         }
       })
       .finally(() => {

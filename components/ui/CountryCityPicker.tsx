@@ -15,6 +15,7 @@ import {
   findCountryByName,
   nearestCountry,
 } from '@/lib/countries';
+import { useI18n } from '@/lib/i18n/context';
 
 /**
  * Country-first location picker. Two fields side by side:
@@ -42,10 +43,11 @@ export function CountryCityPicker({
   country,
   city,
   onChange,
-  cityPlaceholder = 'Ville…',
-  countryPlaceholder = 'Pays…',
+  cityPlaceholder,
+  countryPlaceholder,
   enableNearby = false,
 }: Props) {
+  const { t } = useI18n();
   const [panel, setPanel] = useState<null | 'country' | 'city'>(null);
   const [countryQuery, setCountryQuery] = useState('');
   const [cityQuery, setCityQuery] = useState('');
@@ -130,7 +132,7 @@ export function CountryCityPicker({
 
   function locate() {
     if (!('geolocation' in navigator)) {
-      setGeoError('Géolocalisation indisponible.');
+      setGeoError(t.picker_geo_unavailable);
       return;
     }
     setLocating(true);
@@ -143,7 +145,7 @@ export function CountryCityPicker({
       },
       () => {
         setLocating(false);
-        setGeoError('Position refusée. Choisis ton pays manuellement.');
+        setGeoError(t.picker_geo_denied);
       },
       { timeout: 8000 },
     );
@@ -177,7 +179,7 @@ export function CountryCityPicker({
                 type="text"
                 value={country}
                 onChange={(e) => onChange({ country: e.target.value, city })}
-                placeholder="Tapez le pays…"
+                placeholder={t.picker_country_input_placeholder}
                 className="w-full ps-5 pe-6 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none"
               />
               <button
@@ -187,7 +189,7 @@ export function CountryCityPicker({
                   backToCountryList();
                 }}
                 className="absolute right-0 top-0.5 p-0.5 rounded-full hover:bg-ink-50 text-ink-300 hover:text-ink-500 transition-colors"
-                aria-label="Revenir à la liste des pays"
+                aria-label={t.picker_back_countries}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
               </button>
@@ -204,7 +206,9 @@ export function CountryCityPicker({
                   knownCountry ? 'text-ink-600' : 'text-ink-300'
                 }`}
               >
-                {knownCountry ? `${knownCountry.flag} ${knownCountry.name_fr}` : countryPlaceholder}
+                {knownCountry
+                  ? `${knownCountry.flag} ${knownCountry.name_fr}`
+                  : countryPlaceholder ?? t.picker_country_placeholder}
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-ink-300 flex-shrink-0" />
             </button>
@@ -220,7 +224,7 @@ export function CountryCityPicker({
                     type="text"
                     value={countryQuery}
                     onChange={(e) => setCountryQuery(e.target.value)}
-                    placeholder="Rechercher un pays…"
+                    placeholder={t.picker_search_country}
                     className="w-full pl-8 pr-3 py-2 bg-cream-100 rounded-lg text-[13px] text-ink-600 placeholder:text-ink-300 focus:outline-none focus:bg-white focus:ring-1 focus:ring-ink-200"
                   />
                 </div>
@@ -232,7 +236,7 @@ export function CountryCityPicker({
                     className="mt-2 w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium text-lavender-700 hover:bg-lavender-50 transition-colors disabled:opacity-60"
                   >
                     <Navigation className="w-3.5 h-3.5" />
-                    {locating ? 'Localisation…' : 'Me localiser'}
+                    {locating ? t.picker_locating : t.picker_locate}
                   </button>
                 )}
                 {geoError && (
@@ -264,7 +268,7 @@ export function CountryCityPicker({
                 className="w-full text-start px-4 py-2.5 text-[14px] text-ink-500 hover:bg-cream-50 transition-colors flex items-center gap-2 border-t border-ink-50"
               >
                 <Pencil className="w-3.5 h-3.5 text-ink-300" />
-                <span>Autre pays — saisir manuellement</span>
+                <span>{t.picker_other_country}</span>
               </button>
             </div>
           )}
@@ -282,7 +286,7 @@ export function CountryCityPicker({
                 type="text"
                 value={city}
                 onChange={(e) => onChange({ country, city: e.target.value })}
-                placeholder="Tapez la ville…"
+                placeholder={t.picker_city_input_placeholder}
                 className="w-full ps-5 pe-6 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none"
               />
               {!isCustomCountry && (
@@ -293,7 +297,7 @@ export function CountryCityPicker({
                     backToCityList();
                   }}
                   className="absolute right-0 top-0.5 p-0.5 rounded-full hover:bg-ink-50 text-ink-300 hover:text-ink-500 transition-colors"
-                  aria-label="Revenir à la liste des villes"
+                  aria-label={t.picker_back_cities}
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                 </button>

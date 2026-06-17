@@ -288,7 +288,7 @@ export default function MyPage(
     // (we're the proposer waiting for sender).
     const incoming = incomingIntents.find((i) => i.id === chatBookingId);
     if (incoming) {
-      const otherName = shortName(incoming.sender_profile?.full_name) || 'Expéditeur';
+      const otherName = shortName(incoming.sender_profile?.full_name) || t.me2_role_sender;
       setChatTarget({
         bookingIntentId: incoming.id,
         senderId: incoming.sender_id,
@@ -301,7 +301,7 @@ export default function MyPage(
     }
     const booking = myBookings.find((b) => b.id === chatBookingId);
     if (booking && booking.traveler_profile) {
-      const otherName = shortName(booking.traveler_profile.full_name) || 'Voyageur';
+      const otherName = shortName(booking.traveler_profile.full_name) || t.me2_role_traveler;
       setChatTarget({
         bookingIntentId: booking.id,
         senderId: user.id,
@@ -314,7 +314,7 @@ export default function MyPage(
     }
     const proposal = myProposals.find((p) => p.id === chatBookingId);
     if (proposal && proposal.sender_profile) {
-      const otherName = shortName(proposal.sender_profile.full_name) || 'Expéditeur';
+      const otherName = shortName(proposal.sender_profile.full_name) || t.me2_role_sender;
       setChatTarget({
         bookingIntentId: proposal.id,
         senderId: proposal.sender_id,
@@ -467,8 +467,8 @@ export default function MyPage(
   };
 
   const TABS: { id: TabId; label: string; icon: typeof Plane }[] = [
-    { id: 'trips', label: 'Mes voyages', icon: Plane },
-    { id: 'sends', label: 'Mes envois', icon: Package },
+    { id: 'trips', label: t.me2_tab_trips, icon: Plane },
+    { id: 'sends', label: t.me2_tab_sends, icon: Package },
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
 
@@ -607,7 +607,7 @@ export default function MyPage(
                       bookingIntentId: intent.id,
                       senderId: intent.sender_id,
                       travelerId: user.id,
-                      otherName: shortName(intent.sender_profile?.full_name) || 'Expéditeur',
+                      otherName: shortName(intent.sender_profile?.full_name) || t.me2_role_sender,
                       otherInitial: nameInitial(intent.sender_profile?.full_name),
                       contextLine: `${intent.pickup_city} → ${intent.destination_city}`,
                     });
@@ -619,7 +619,7 @@ export default function MyPage(
                       reporterRole: 'traveler',
                       reportedUserId: intent.sender_id,
                       reportedUserName:
-                        shortName(intent.sender_profile?.full_name) || "l'expéditeur",
+                        shortName(intent.sender_profile?.full_name) || t.me2_role_sender_lc,
                     });
                   }}
                   onEnterPickupCode={(intent) => {
@@ -627,7 +627,7 @@ export default function MyPage(
                     setPickupEnteringFor({
                       bookingId: intent.id,
                       senderName:
-                        shortName(intent.sender_profile?.full_name) || "l'expéditeur",
+                        shortName(intent.sender_profile?.full_name) || t.me2_role_sender_lc,
                     });
                   }}
                   onShowDeliveryCode={(intent) => {
@@ -636,7 +636,7 @@ export default function MyPage(
                     // to the sender so they can type it on their side.
                     if (!intent.delivery_code) {
                       alert(
-                        'Code de livraison indisponible. Rechargez la page ou contactez le support.'
+                        t.me2_delivery_code_unavailable
                       );
                       return;
                     }
@@ -644,7 +644,7 @@ export default function MyPage(
                       bookingId: intent.id,
                       code: intent.delivery_code,
                       senderName:
-                        shortName(intent.sender_profile?.full_name) || "l'expéditeur",
+                        shortName(intent.sender_profile?.full_name) || t.me2_role_sender_lc,
                     });
                   }}
                   onOpenReview={(intent) => {
@@ -654,7 +654,7 @@ export default function MyPage(
                       bookingIntentId: intent.id,
                       reviewedUserId: intent.sender_id,
                       reviewedUserName:
-                        shortName(intent.sender_profile?.full_name) || "L'expéditeur",
+                        shortName(intent.sender_profile?.full_name) || t.me2_role_sender,
                       reviewedRole: 'sender',
                     });
                   }}
@@ -684,7 +684,7 @@ export default function MyPage(
                       bookingIntentId: booking.id,
                       senderId: user.id,
                       travelerId: booking.traveler_profile.id,
-                      otherName: shortName(booking.traveler_profile.full_name) || 'Voyageur',
+                      otherName: shortName(booking.traveler_profile.full_name) || t.me2_role_traveler,
                       otherInitial: nameInitial(booking.traveler_profile.full_name),
                       contextLine: `${booking.pickup_city} → ${booking.destination_city}`,
                     });
@@ -697,7 +697,7 @@ export default function MyPage(
                       reporterRole: 'sender',
                       reportedUserId: booking.traveler_profile.id,
                       reportedUserName:
-                        shortName(booking.traveler_profile.full_name) || 'le voyageur',
+                        shortName(booking.traveler_profile.full_name) || t.me2_role_traveler_lc,
                     });
                   }}
                   onShowPickupCode={(booking) => {
@@ -705,14 +705,14 @@ export default function MyPage(
                     // to the traveler at handoff). The code is on the
                     // booking row — RLS lets the sender read their own.
                     if (!booking.pickup_code) {
-                      alert("Code indisponible. Rechargez la page ou contactez le support.");
+                      alert(t.me2_pickup_code_unavailable);
                       return;
                     }
                     setPickupShowingFor({
                       bookingId: booking.id,
                       code: booking.pickup_code,
                       travelerName:
-                        shortName(booking.traveler_profile?.full_name) || 'le voyageur',
+                        shortName(booking.traveler_profile?.full_name) || t.me2_role_traveler_lc,
                     });
                   }}
                   onEnterDeliveryCode={(booking) => {
@@ -721,7 +721,7 @@ export default function MyPage(
                     setDeliveryEnteringFor({
                       bookingId: booking.id,
                       travelerName:
-                        shortName(booking.traveler_profile?.full_name) || 'le voyageur',
+                        shortName(booking.traveler_profile?.full_name) || t.me2_role_traveler_lc,
                     });
                   }}
                   onOpenReview={(booking) => {
@@ -732,7 +732,7 @@ export default function MyPage(
                       bookingIntentId: booking.id,
                       reviewedUserId: booking.traveler_profile.id,
                       reviewedUserName:
-                        shortName(booking.traveler_profile.full_name) || 'le voyageur',
+                        shortName(booking.traveler_profile.full_name) || t.me2_role_traveler_lc,
                       reviewedRole: 'traveler',
                     });
                   }}
@@ -904,7 +904,7 @@ export default function MyPage(
                 console.warn('[me] confirm-receipt partial:', json);
               } else {
                 alert(
-                  "La réception a été enregistrée mais le transfert au voyageur est en attente. Nous nous en occupons."
+                  t.me2_receipt_recorded_transfer_pending
                 );
               }
             }
@@ -997,7 +997,7 @@ function OverviewTab({
         <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div>
             <div className="text-[11px] font-semibold text-cream-200/80 tracking-[0.12em] uppercase mb-3">
-              Mon portefeuille
+              {t.me2_wallet_label}
             </div>
             <div className="flex items-baseline gap-3">
               <span className="text-5xl lg:text-6xl font-extrabold tracking-[-0.025em] num-display">
@@ -1007,8 +1007,8 @@ function OverviewTab({
             </div>
             <p className="text-[14px] text-cream-200/70 mt-3 max-w-md leading-relaxed">
               {walletEuros > 0
-                ? 'Total des paiements reçus pour les colis acheminés.'
-                : 'Vos gains s\'afficheront ici dès que vous accepterez votre première demande.'}
+                ? t.me2_wallet_total_received
+                : t.me2_wallet_empty_hint}
             </p>
           </div>
 
@@ -1018,10 +1018,10 @@ function OverviewTab({
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-cream-50 hover:bg-cream-100 text-ink-600 font-semibold text-[14px] transition-colors"
             >
               <Wallet className="w-4 h-4" />
-              Retirer mes gains
+              {t.me2_withdraw_earnings}
             </button>
             <span className="text-[11px] text-cream-200/60 italic">
-              🔧 Bientôt disponible
+              🔧 {t.me2_coming_soon}
             </span>
           </div>
         </div>
@@ -1080,22 +1080,21 @@ function OverviewTab({
                 <Wallet className="w-7 h-7 text-butter-500" strokeWidth={2} />
               </div>
               <h3 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em] mb-3">
-                Le retrait arrive bientôt
+                {t.me2_withdraw_modal_title}
               </h3>
               <p className="text-[15px] text-ink-400 leading-relaxed mb-6">
-                Nous mettons en place les virements bancaires sécurisés.
-                En attendant, vos gains sont conservés sur Jibly et nous vous contactons directement pour vous les transmettre.
+                {t.me2_withdraw_modal_text}
               </p>
               <div className="rounded-xl bg-white border border-ink-50 px-4 py-3 mb-6 text-[14px] text-ink-500">
                 <div className="text-[11px] font-semibold text-ink-300 tracking-[0.06em] uppercase mb-1">
-                  Votre solde
+                  {t.me2_your_balance}
                 </div>
                 <div className="text-3xl font-extrabold text-ink-600 num-display tracking-[-0.02em]">
                   {walletEuros.toFixed(2)}€
                 </div>
               </div>
               <p className="text-[13px] text-ink-400 mb-6">
-                Une question ? Écrivez-nous à{' '}
+                {t.me2_withdraw_question}{' '}
                 <a href="mailto:hello@jibly.com" className="font-semibold text-ink-600 underline">
                   hello@jibly.com
                 </a>
@@ -1104,7 +1103,7 @@ function OverviewTab({
                 onClick={() => setShowWithdrawModal(false)}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 font-semibold text-[14px] transition-colors"
               >
-                Compris
+                {t.me2_got_it}
               </button>
             </motion.div>
           </motion.div>
@@ -1229,10 +1228,10 @@ function RequestsTab({
       {bookings.length > 0 && (
         <div>
           <h2 className="text-2xl font-bold text-ink-600 mb-2 tracking-[-0.02em]">
-            Mes réservations
+            {t.me2_my_reservations}
           </h2>
           <p className="text-[14px] text-ink-400 mb-6">
-            Trajets que vous avez réservés directement avec un voyageur.
+            {t.me2_my_reservations_subtitle}
           </p>
           <div className="space-y-3">
             {bookings.map((b) => (
@@ -1304,7 +1303,7 @@ function BookingCard({
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
   const trip = booking.traveler_trip;
   const traveler = booking.traveler_profile;
-  const travelerName = shortName(traveler?.full_name) || 'Voyageur';
+  const travelerName = shortName(traveler?.full_name) || t.me2_role_traveler;
   const initial = nameInitial(traveler?.full_name);
 
   // Use Supabase auth.users email — we don't have it on the public profile
@@ -1335,9 +1334,9 @@ function BookingCard({
             <span className="text-ink-300">·</span>
             <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
             {isFullyReceived ? (
-              <span className="text-[11px] text-mint-600 ml-1">✓ livré et confirmé</span>
+              <span className="text-[11px] text-mint-600 ml-1">✓ {t.me2_delivered_confirmed}</span>
             ) : (
-              <span className="text-[11px] text-butter-700 ml-1">📸 livré · à confirmer</span>
+              <span className="text-[11px] text-butter-700 ml-1">📸 {t.me2_delivered_to_confirm}</span>
             )}
           </div>
           <a
@@ -1346,7 +1345,7 @@ function BookingCard({
             rel="noopener noreferrer"
             className="flex-shrink-0 text-[12px] font-medium text-ink-400 hover:text-ink-600 underline transition-colors"
           >
-            Voir la preuve
+            {t.me2_view_proof}
           </a>
           {/* Reception confirmation by code — sender enters the delivery
               code the traveler/recipient just gave them. Once confirmed,
@@ -1358,7 +1357,7 @@ function BookingCard({
               className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
             >
               <KeyRound className="w-3 h-3" />
-              J&apos;ai bien reçu
+              {t.me2_i_received}
             </button>
           )}
 
@@ -1373,12 +1372,12 @@ function BookingCard({
                 className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
               >
                 <Star className="w-3 h-3 fill-white" strokeWidth={0} />
-                Noter
+                {t.me2_rate}
               </button>
             ) : (
               <span className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
                 <Star className="w-3 h-3 fill-current" strokeWidth={0} />
-                Vous avez noté
+                {t.me2_you_rated}
               </span>
             )
           )}
@@ -1387,7 +1386,7 @@ function BookingCard({
         {/* The traveler's review of the sender, when posted */}
         {otherReview && (
           <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
-            <span>{travelerName.split(' ')[0]} vous a noté</span>
+            <span>{t.me2_x_rated_you.replace('{name}', travelerName.split(' ')[0])}</span>
             <span className="inline-flex items-center gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star
@@ -1419,10 +1418,10 @@ function BookingCard({
           <span className="text-2xl">🎉</span>
           <div>
             <div className="font-bold text-mint-700 text-[15px]">
-              {travelerName.split(' ')[0]} a accepté !
+              {t.me2_x_accepted.replace('{name}', travelerName.split(' ')[0])}
             </div>
             <div className="text-[13px] text-mint-700/80">
-              Vous pouvez maintenant convenir des détails du transport.
+              {t.me2_arrange_transport_details}
             </div>
           </div>
         </div>
@@ -1459,29 +1458,29 @@ function BookingCard({
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-lg">📸</span>
                 <div className="text-[13px] font-bold text-mint-700">
-                  Preuve de livraison
+                  {t.me2_delivery_proof}
                 </div>
               </div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={booking.delivery_proof_url}
-                alt="Preuve de livraison"
+                alt={t.me2_delivery_proof}
                 className="w-full max-h-64 object-cover rounded-lg mb-3 border border-mint-200/40"
               />
               {booking.delivery_proof_receiver_name && (
                 <div className="text-[13px] text-ink-500 mb-1">
-                  <span className="text-ink-400">Remis à :</span>{' '}
+                  <span className="text-ink-400">{t.me2_handed_to}</span>{' '}
                   <strong className="text-ink-600">{booking.delivery_proof_receiver_name}</strong>
                 </div>
               )}
               {booking.delivery_proof_notes && (
                 <div className="text-[13px] text-ink-500 leading-relaxed mt-1">
-                  <span className="text-ink-400">Note :</span> « {booking.delivery_proof_notes} »
+                  <span className="text-ink-400">{t.me2_note_label}</span> « {booking.delivery_proof_notes} »
                 </div>
               )}
               {booking.delivery_proof_uploaded_at && (
                 <div className="text-[11px] text-ink-300 mt-2">
-                  Téléversée le {formatShortDate(booking.delivery_proof_uploaded_at)}
+                  {t.me2_uploaded_on.replace('{date}', formatShortDate(booking.delivery_proof_uploaded_at))}
                 </div>
               )}
             </div>
@@ -1490,7 +1489,7 @@ function BookingCard({
           {/* Contact details */}
           <div className="rounded-xl bg-cream-50 px-4 py-3.5 space-y-2.5">
             <div className="text-[11px] font-semibold text-ink-300 tracking-[0.12em] uppercase">
-              Comment le contacter
+              {t.me2_how_to_contact}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {/* In-app messaging — primary, always available */}
@@ -1499,7 +1498,7 @@ function BookingCard({
                   onClick={() => onOpenChat(booking)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[13px] font-semibold transition-colors"
                 >
-                  💬 Message
+                  💬 {t.me2_message}
                 </button>
               )}
               {traveler?.phone ? (
@@ -1516,12 +1515,12 @@ function BookingCard({
                     href={`tel:${traveler.phone}`}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
                   >
-                    Appeler
+                    {t.me2_call}
                   </a>
                 </>
               ) : (
                 <span className="text-[12px] text-ink-400">
-                  WhatsApp non renseigné
+                  {t.me2_whatsapp_not_provided}
                 </span>
               )}
             </div>
@@ -1539,11 +1538,10 @@ function BookingCard({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-bold text-ink-600 leading-tight">
-                    Code de remise du colis
+                    {t.me2_handoff_code_title}
                   </div>
                   <div className="text-[12px] text-ink-500 leading-snug mt-0.5">
-                    À donner à {travelerName.split(' ')[0]} sur place. Il l&apos;entrera dans son
-                    application pour confirmer la remise.
+                    {t.me2_handoff_code_desc.replace('{name}', travelerName.split(' ')[0])}
                   </div>
                 </div>
                 <button
@@ -1551,7 +1549,7 @@ function BookingCard({
                   onClick={() => onShowPickupCode(booking)}
                   className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
                 >
-                  Voir le code
+                  {t.me2_view_code}
                 </button>
               </div>
             </div>
@@ -1564,7 +1562,7 @@ function BookingCard({
             <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 mt-3 flex items-center gap-2.5">
               <KeyRound className="w-4 h-4 text-mint-700 flex-shrink-0" />
               <div className="text-[13px] font-semibold text-mint-700">
-                Colis remis à {travelerName.split(' ')[0]} ✓
+                {t.me2_package_handed_to.replace('{name}', travelerName.split(' ')[0])} ✓
               </div>
             </div>
           )}
@@ -1580,7 +1578,7 @@ function BookingCard({
                 className="inline-flex items-center gap-1 text-[12px] text-ink-400 hover:text-blush-500 transition-colors"
               >
                 <Flag className="w-3 h-3" strokeWidth={1.75} />
-                Signaler un problème
+                {t.me2_report_problem}
               </button>
             </div>
           )}
@@ -1610,13 +1608,13 @@ function BookingCard({
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
           {isTravelerProposal && (
-            <span className="text-[11px] text-lavender-600 ml-1">✨ nouveau</span>
+            <span className="text-[11px] text-lavender-600 ml-1">✨ {t.me2_status_new}</span>
           )}
           {booking.status === 'pending' && !isTravelerProposal && (
-            <span className="text-[11px] text-ink-300 ml-1">⏳ en attente</span>
+            <span className="text-[11px] text-ink-300 ml-1">⏳ {t.me2_status_pending}</span>
           )}
           {booking.status === 'cancelled' && (
-            <span className="text-[11px] text-ink-300 ml-1">✕ refusée</span>
+            <span className="text-[11px] text-ink-300 ml-1">✕ {t.me2_status_declined}</span>
           )}
         </div>
 
@@ -1627,13 +1625,13 @@ function BookingCard({
               onClick={() => onDeclineProposal(booking.id)}
               className="px-3 py-1.5 text-[12px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
             >
-              Refuser
+              {t.me2_decline}
             </button>
             <button
               onClick={() => onAcceptProposal(booking)}
               className="px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
             >
-              Payer {formatEuros(booking.proposed_price)}
+              {t.me2_pay.replace('{amount}', formatEuros(booking.proposed_price))}
             </button>
           </div>
         )}
@@ -1752,7 +1750,7 @@ function TripCard({
       await onCancel(trip.id);
       setShowCancelModal(false);
     } catch (e: any) {
-      setErr(e?.message ?? 'Échec de l\'annulation. Réessayez.');
+      setErr(e?.message ?? t.me2_cancel_failed);
     } finally {
       setCancelling(false);
     }
@@ -1770,14 +1768,14 @@ function TripCard({
             <span className="text-ink-300">·</span>
             <span className="text-ink-500 num-display">{formatShortDate(trip.departure_date)}</span>
             <span className="text-ink-300">·</span>
-            <span className="text-ink-500">à partir de {trip.compensation_min}€</span>
+            <span className="text-ink-500">{t.me2_from_price.replace('{amount}', String(trip.compensation_min))}</span>
           </div>
           <button
             type="button"
             onClick={openCancelModal}
             className="flex-shrink-0 p-1.5 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
-            aria-label="Annuler ce trajet"
-            title="Annuler ce trajet"
+            aria-label={t.me2_cancel_trip}
+            title={t.me2_cancel_trip}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -1809,7 +1807,7 @@ function TripCard({
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
-                    Annuler ce trajet ?
+                    {t.me2_cancel_trip_q}
                   </h3>
                   <p className="text-[14px] text-ink-500 leading-relaxed">
                     {trip.departure_city} → {trip.arrival_city} · {formatShortDate(trip.departure_date)}
@@ -1821,21 +1819,21 @@ function TripCard({
               {loadingBookings ? (
                 <div className="rounded-xl bg-cream-100 px-4 py-3 mb-5 text-[13px] text-ink-400 flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Vérification des réservations…
+                  {t.me2_checking_bookings}
                 </div>
               ) : activeBookings && activeBookings > 0 ? (
                 <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 mb-5 text-[13px] text-ink-500 leading-relaxed">
                   <strong className="text-ink-600">
                     {activeBookings === 1
-                      ? '1 réservation est en cours sur ce trajet.'
-                      : `${activeBookings} réservations sont en cours sur ce trajet.`}
+                      ? t.me2_one_booking_in_progress
+                      : t.me2_n_bookings_in_progress.replace('{n}', String(activeBookings))}
                   </strong>
                   <br />
-                  Elles seront <strong>automatiquement annulées</strong> et les paiements autorisés seront libérés. Aucun débit ne sera effectué.
+                  {t.me2_bookings_auto_cancel_before}<strong>{t.me2_bookings_auto_cancel_bold}</strong>{t.me2_bookings_auto_cancel_after}
                 </div>
               ) : (
                 <p className="text-[14px] text-ink-400 mb-5 leading-relaxed">
-                  Cette action est définitive. Le trajet ne sera plus visible par les expéditeurs.
+                  {t.me2_cancel_trip_final}
                 </p>
               )}
 
@@ -1851,7 +1849,7 @@ function TripCard({
                   disabled={cancelling}
                   className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
                 >
-                  Garder le trajet
+                  {t.me2_keep_trip}
                 </button>
                 <button
                   onClick={confirmCancel}
@@ -1859,7 +1857,7 @@ function TripCard({
                   className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-blush-500 hover:bg-blush-600 disabled:opacity-50 rounded-full transition-colors"
                 >
                   {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  {cancelling ? 'Annulation…' : 'Confirmer l\'annulation'}
+                  {cancelling ? t.me2_cancelling : t.me2_confirm_cancel}
                 </button>
               </div>
             </motion.div>
@@ -1910,10 +1908,10 @@ function MatchesTab({
       {(activeProposals.length > 0 || confirmedProposals.length > 0) && (
         <div>
           <h2 className="text-2xl font-bold text-ink-600 mb-2 tracking-[-0.02em]">
-            Mes propositions envoyées
+            {t.me2_my_proposals_sent}
           </h2>
           <p className="text-[14px] text-ink-400 mb-7">
-            Demandes publiques sur lesquelles vous avez offert votre aide.
+            {t.me2_my_proposals_sent_subtitle}
           </p>
           <div className="space-y-3">
             {confirmedProposals.map((p) => (
@@ -1928,13 +1926,13 @@ function MatchesTab({
 
       <div>
         <h2 className="text-2xl font-bold text-ink-600 mb-2 tracking-[-0.02em]">
-          Demandes reçues
+          {t.me2_requests_received}
         </h2>
         <p className="text-[14px] text-ink-400 mb-7">
-          Des expéditeurs aimeraient confier un objet à un de vos trajets.
+          {t.me2_requests_received_subtitle}
         </p>
         {pending.length === 0 ? (
-          <EmptyState message="Aucune demande en attente pour le moment." />
+          <EmptyState message={t.me2_no_pending_requests} />
         ) : (
           <div className="space-y-3">
             {pending.map((intent) => (
@@ -1952,7 +1950,7 @@ function MatchesTab({
       {toDeliver.length > 0 && (
         <div>
           <h3 className="text-[12px] font-semibold text-ink-300 tracking-[0.12em] uppercase mb-4">
-            À livrer
+            {t.me2_to_deliver}
           </h3>
           <div className="space-y-3">
             {toDeliver.map((intent) => (
@@ -1971,7 +1969,7 @@ function MatchesTab({
       {history.length > 0 && (
         <div>
           <h3 className="text-[12px] font-semibold text-ink-300 tracking-[0.12em] uppercase mb-4">
-            Historique
+            {t.me2_history}
           </h3>
           <div className="space-y-3 opacity-70">
             {history.map((intent) => (
@@ -2005,9 +2003,10 @@ function IntentCard({
   historic?: boolean;
   showDeliverButton?: boolean;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
   const [showProofModal, setShowProofModal] = useState(false);
-  const senderName = shortName(intent.sender_profile?.full_name) || 'Quelqu\'un';
+  const senderName = shortName(intent.sender_profile?.full_name) || t.me2_role_someone;
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
 
   async function handle(action: 'confirmed' | 'cancelled') {
@@ -2036,16 +2035,16 @@ function IntentCard({
             <span className="text-[11px] text-mint-600 ml-1">💳</span>
           )}
           {intent.payment_status === 'captured' && historic && (
-            <span className="text-[11px] text-mint-600 ml-1">✓ encaissé</span>
+            <span className="text-[11px] text-mint-600 ml-1">✓ {t.me2_status_cashed_in}</span>
           )}
           {historic && intent.delivery_proof_url && (
-            <span className="text-[11px] text-mint-600 ml-1">📸 livré</span>
+            <span className="text-[11px] text-mint-600 ml-1">📸 {t.me2_status_delivered}</span>
           )}
           {historic && !intent.delivery_proof_url && intent.status === 'confirmed' && (
-            <span className="text-[11px] text-mint-500 ml-1">✓ acceptée</span>
+            <span className="text-[11px] text-mint-500 ml-1">✓ {t.me2_status_accepted}</span>
           )}
           {historic && !intent.delivery_proof_url && intent.status === 'cancelled' && (
-            <span className="text-[11px] text-ink-300 ml-1">✕ refusée</span>
+            <span className="text-[11px] text-ink-300 ml-1">✕ {t.me2_status_declined}</span>
           )}
         </div>
 
@@ -2057,14 +2056,14 @@ function IntentCard({
               disabled={!!busy}
               className="px-3 py-1.5 text-[12px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
             >
-              {busy === 'cancel' ? '...' : 'Refuser'}
+              {busy === 'cancel' ? '...' : t.me2_decline}
             </button>
             <button
               onClick={() => handle('confirmed')}
               disabled={!!busy}
               className="px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
             >
-              {busy === 'confirm' ? '...' : 'Accepter'}
+              {busy === 'confirm' ? '...' : t.me2_accept}
             </button>
           </div>
         )}
@@ -2075,8 +2074,8 @@ function IntentCard({
               <button
                 onClick={() => onOpenChat(intent)}
                 className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
-                aria-label="Ouvrir la conversation"
-                title="Messages"
+                aria-label={t.me2_open_conversation}
+                title={t.me2_messages}
               >
                 💬
               </button>
@@ -2086,7 +2085,7 @@ function IntentCard({
               className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
             >
               <Camera className="w-3 h-3" />
-              J&apos;ai livré
+              {t.me2_i_delivered}
             </button>
           </>
         )}
@@ -2258,17 +2257,17 @@ function ProfileTab({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+33 6 12 34 56 78"
-            hint="Utilisé pour vous joindre par WhatsApp ou téléphone après une réservation."
+            hint={t.me2_phone_hint}
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Ville"
+              label={t.me2_city}
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="Paris"
             />
             <Input
-              label="Pays"
+              label={t.me2_country}
               value={country}
               onChange={(e) => setCountry(e.target.value)}
               placeholder="France"
@@ -2290,7 +2289,7 @@ function ProfileTab({
           {saved && (
             <span className="text-[14px] text-mint-500 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
-              Sauvegardé
+              {t.me2_saved}
             </span>
           )}
         </div>
@@ -2299,22 +2298,22 @@ function ProfileTab({
     <div className="bg-cream-100 rounded-2xl p-7 border border-ink-50">
         <ShieldCheck className="w-6 h-6 text-ink-500 mb-5" strokeWidth={1.75} />
         <h3 className="text-lg font-bold text-ink-600 mb-4 tracking-[-0.015em]">
-          Vérifier votre identité
+          {t.me2_verify_identity_title}
         </h3>
         <p className="text-[13px] text-ink-400 leading-relaxed mb-5">
-          <strong className="text-ink-600">Obligatoire</strong> pour publier un trajet ou réserver un colis. Vérification gratuite et chiffrée par Stripe.
+          <strong className="text-ink-600">{t.me2_mandatory}</strong> {t.me2_verify_identity_desc}
         </p>
         <div className="space-y-2.5 mb-6">
           <CheckRow label={t.verif_email} done />
           <CheckRow
-            label="Pièce d'identité vérifiée"
+            label={t.me2_id_verified_label}
             done={!!profile?.identity_verified_at}
           />
         </div>
         {profile?.identity_verified_at ? (
           <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-mint-50 text-mint-700 text-[13px] font-semibold w-full justify-center">
             <CheckCircle2 className="w-4 h-4" strokeWidth={2.5} />
-            Identité vérifiée
+            {t.me2_identity_verified}
           </div>
         ) : (
           <VerifyIdentityButton />
@@ -2441,7 +2440,8 @@ function ProfileTab({
 // route, which creates a VerificationSession server-side and returns the
 // hosted-flow URL. The user is redirected there; Stripe sends them back
 // to /me?identity=done after completion.
-function VerifyIdentityButton({ label = 'Vérifier mon identité' }: { label?: string }) {
+function VerifyIdentityButton({ label }: { label?: string }) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -2452,12 +2452,12 @@ function VerifyIdentityButton({ label = 'Vérifier mon identité' }: { label?: s
       const res = await fetch('/api/identity/create-session', { method: 'POST' });
       const data = await res.json();
       if (!res.ok || !data.url) {
-        throw new Error(data.error ?? 'Échec du démarrage');
+        throw new Error(data.error ?? t.me2_verify_start_failed);
       }
       // Redirect to Stripe's hosted flow
       window.location.href = data.url;
     } catch (e: any) {
-      setErr(e.message ?? 'Erreur — réessayez.');
+      setErr(e.message ?? t.me2_error_retry);
       setLoading(false);
     }
   }
@@ -2470,7 +2470,7 @@ function VerifyIdentityButton({ label = 'Vérifier mon identité' }: { label?: s
         ) : (
           <ShieldCheck className="w-4 h-4" />
         )}
-        {label}
+        {label ?? t.me2_verify_my_identity}
       </Button>
       {err && (
         <p className="mt-2 text-[12px] text-blush-500 text-center">{err}</p>
@@ -2537,11 +2537,12 @@ function ProposalPaymentModal({
   onClose: () => void;
   onSuccess: (paymentIntentId: string) => void;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const traveler = booking.traveler_profile;
-  const travelerName = shortName(traveler?.full_name) || 'Le voyageur';
+  const travelerName = shortName(traveler?.full_name) || t.me2_role_traveler;
 
   async function handleAuthorized(paymentIntentId: string) {
     setBusy(true);
@@ -2560,7 +2561,7 @@ function ProposalPaymentModal({
       if (updErr) throw updErr;
       onSuccess(paymentIntentId);
     } catch (e: any) {
-      setErr(e?.message ?? 'Échec de la mise à jour. Contactez le support.');
+      setErr(e?.message ?? t.me2_update_failed);
     } finally {
       setBusy(false);
     }
@@ -2586,13 +2587,13 @@ function ProposalPaymentModal({
         <div className="flex items-start justify-between mb-5">
           <div>
             <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-              Confirmer et payer
+              {t.me2_confirm_and_pay}
             </div>
             <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
               {formatEuros(booking.proposed_price)}
             </h2>
             <div className="text-[13px] text-ink-400 mt-1.5">
-              Avec {travelerName} · {booking.pickup_city} → {booking.destination_city}
+              {t.me2_with_traveler.replace('{name}', travelerName)} · {booking.pickup_city} → {booking.destination_city}
             </div>
           </div>
           <button
@@ -2637,7 +2638,8 @@ function ProposalCard({
   proposal: TravelerProposal;
   accepted?: boolean;
 }) {
-  const senderName = shortName(proposal.sender_profile?.full_name) || 'L\'expéditeur';
+  const { t } = useI18n();
+  const senderName = shortName(proposal.sender_profile?.full_name) || t.me2_role_sender;
   const initial = nameInitial(proposal.sender_profile?.full_name);
   // What I'll actually receive after Jibly's 15% fee
   const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
@@ -2655,9 +2657,9 @@ function ProposalCard({
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-mint-600 num-display">{formatEuros(netTraveler)}</span>
           {accepted ? (
-            <span className="text-[11px] text-mint-600 ml-1">✓ acceptée</span>
+            <span className="text-[11px] text-mint-600 ml-1">✓ {t.me2_status_accepted}</span>
           ) : (
-            <span className="text-[11px] text-ink-300 ml-1">⏳ en attente</span>
+            <span className="text-[11px] text-ink-300 ml-1">⏳ {t.me2_status_pending}</span>
           )}
         </div>
 
@@ -2801,6 +2803,7 @@ function MasterDetailLayout({
   detailOpen: boolean;
   onCloseDetail: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="md:grid md:grid-cols-[320px_1fr] md:gap-4 md:min-h-[600px]">
       {/* Master list */}
@@ -2821,7 +2824,7 @@ function MasterDetailLayout({
             className="inline-flex items-center gap-1.5 text-[14px] font-medium text-ink-500 hover:text-ink-600"
           >
             <ArrowLeft className="w-4 h-4" />
-            Retour
+            {t.me2_back}
           </button>
         </div>
         <div className="overflow-y-auto md:max-h-[80vh]">
@@ -2950,15 +2953,15 @@ function SendsView({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes colis</h2>
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">{t.me2_my_packages}</h2>
           <Link href="/envoyer">
             <Button size="sm">
               <Plus className="w-4 h-4" />
-              Publier une demande
+              {t.me2_publish_request}
             </Button>
           </Link>
         </div>
-        <EmptyState message="Aucun envoi pour le moment. Publiez votre première demande." />
+        <EmptyState message={t.me2_no_sends} />
       </div>
     );
   }
@@ -2973,7 +2976,7 @@ function SendsView({
     <div className="overflow-y-auto md:max-h-[80vh]">
       {todoBookings.length > 0 && (
         <>
-          <ListBucketHeader label="🔥 À traiter" count={todoBookings.length} tone="urgent" />
+          <ListBucketHeader label={`🔥 ${t.me2_bucket_todo}`} count={todoBookings.length} tone="urgent" />
           {todoBookings.map((b) => {
             const id = `b:${b.id}`;
             return (
@@ -2991,7 +2994,7 @@ function SendsView({
 
       {inProgressBookings.length > 0 && (
         <>
-          <ListBucketHeader label="⏳ En cours" count={inProgressBookings.length} />
+          <ListBucketHeader label={`⏳ ${t.me2_bucket_in_progress}`} count={inProgressBookings.length} />
           {inProgressBookings.map((b) => {
             const id = `b:${b.id}`;
             return (
@@ -3008,7 +3011,7 @@ function SendsView({
 
       {searchingRequests.length > 0 && (
         <>
-          <ListBucketHeader label="🔍 En recherche" count={searchingRequests.length} />
+          <ListBucketHeader label={`🔍 ${t.me2_bucket_searching}`} count={searchingRequests.length} />
           {searchingRequests.map((r) => {
             const id = `r:${r.id}`;
             return (
@@ -3025,7 +3028,7 @@ function SendsView({
 
       {deliveredBookings.length > 0 && (
         <>
-          <ListBucketHeader label="✓ Livrés" count={deliveredBookings.length} tone="success" />
+          <ListBucketHeader label={`✓ ${t.me2_bucket_delivered}`} count={deliveredBookings.length} tone="success" />
           {deliveredBookings.map((b) => {
             const id = `b:${b.id}`;
             return (
@@ -3042,7 +3045,7 @@ function SendsView({
 
       {cancelledBookings.length > 0 && (
         <>
-          <ListBucketHeader label="Annulés" count={cancelledBookings.length} />
+          <ListBucketHeader label={t.me2_bucket_cancelled} count={cancelledBookings.length} />
           {cancelledBookings.map((b) => {
             const id = `b:${b.id}`;
             return (
@@ -3084,17 +3087,17 @@ function SendsView({
       </div>
     )
   ) : (
-    <DetailEmpty message="Sélectionnez un envoi pour voir ses détails." />
+    <DetailEmpty message={t.me2_select_send} />
   );
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes colis</h2>
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">{t.me2_my_packages}</h2>
         <Link href="/envoyer">
           <Button size="sm">
             <Plus className="w-4 h-4" />
-            Publier une demande
+            {t.me2_publish_request}
           </Button>
         </Link>
       </div>
@@ -3121,24 +3124,25 @@ function SendListRow({
   onClick: () => void;
   tone?: 'urgent';
 }) {
+  const { t } = useI18n();
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
   const emoji = cat?.icon ?? '📦';
-  const travelerName = shortName(booking.traveler_profile?.full_name) || 'Voyageur';
+  const travelerName = shortName(booking.traveler_profile?.full_name) || t.me2_role_traveler;
   const bucket = bucketForSendBooking(booking);
 
   let subtitle = '';
   if (bucket === 'todo' && booking.status === 'pending') {
-    subtitle = `${travelerName} propose · ${booking.pickup_city} → ${booking.destination_city}`;
+    subtitle = `${t.me2_sub_proposes.replace('{name}', travelerName)} · ${booking.pickup_city} → ${booking.destination_city}`;
   } else if (bucket === 'todo' && booking.delivery_proof_url) {
-    subtitle = `📸 Livré par ${travelerName} · à confirmer`;
+    subtitle = `📸 ${t.me2_sub_delivered_by.replace('{name}', travelerName)} · ${t.me2_sub_to_confirm}`;
   } else if (bucket === 'inProgress' && booking.status === 'confirmed') {
-    subtitle = `${travelerName} · en transit`;
+    subtitle = `${travelerName} · ${t.me2_sub_in_transit}`;
   } else if (bucket === 'inProgress') {
-    subtitle = `En attente de ${travelerName}`;
+    subtitle = t.me2_sub_waiting_for.replace('{name}', travelerName);
   } else if (bucket === 'delivered') {
-    subtitle = `Livré par ${travelerName}`;
+    subtitle = t.me2_sub_delivered_by.replace('{name}', travelerName);
   } else {
-    subtitle = `Annulé`;
+    subtitle = t.me2_sub_cancelled;
   }
 
   return (
@@ -3164,6 +3168,7 @@ function RequestListRow({
   selected: boolean;
   onClick: () => void;
 }) {
+  const { t } = useI18n();
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
   return (
     <ListRow
@@ -3171,7 +3176,7 @@ function RequestListRow({
       onClick={onClick}
       emoji={cat?.icon ?? '📦'}
       title={`${request.pickup_city} → ${request.destination_city}`}
-      subtitle={`Avant le ${formatShortDate(request.desired_delivery_date)}`}
+      subtitle={t.me2_before_date.replace('{date}', formatShortDate(request.desired_delivery_date))}
       rightLabel={formatEuros(request.budget)}
     />
   );
@@ -3192,7 +3197,7 @@ function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Tra
             {request.pickup_city} → {request.destination_city}
           </div>
           <div className="text-[13px] text-ink-400">
-            Avant le {formatShortDate(request.desired_delivery_date)}
+            {t.me2_before_date.replace('{date}', formatShortDate(request.desired_delivery_date))}
           </div>
         </div>
         <div className="text-[16px] font-bold text-ink-600 num-display">
@@ -3203,7 +3208,7 @@ function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Tra
       {request.item_description && (
         <div className="rounded-xl bg-cream-50 px-4 py-3 mb-4">
           <div className="text-[11px] font-semibold text-ink-300 tracking-[0.08em] uppercase mb-1">
-            Description
+            {t.me2_description}
           </div>
           <p className="text-[14px] text-ink-500 leading-relaxed">
             « {request.item_description} »
@@ -3214,8 +3219,8 @@ function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Tra
       <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 text-[13px] text-ink-500 leading-relaxed flex gap-2.5">
         <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
         <div>
-          <strong className="text-ink-600">Vous êtes en recherche de voyageur.</strong>{' '}
-          Nous vous notifierons dès qu&apos;une personne accepte votre colis.
+          <strong className="text-ink-600">{t.me2_searching_traveler_title}</strong>{' '}
+          {t.me2_searching_traveler_text}
         </div>
       </div>
     </div>
@@ -3343,15 +3348,15 @@ function TripsView({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
+          <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">{t.me2_my_trips}</h2>
           <Link href="/voyager">
             <Button size="sm">
               <Plus className="w-4 h-4" />
-              Publier un trajet
+              {t.me2_publish_trip}
             </Button>
           </Link>
         </div>
-        <EmptyState message="Aucun voyage planifié. Publiez votre prochain vol pour proposer vos services." />
+        <EmptyState message={t.me2_no_trips} />
       </div>
     );
   }
@@ -3363,7 +3368,7 @@ function TripsView({
 
   const master = (
     <div className="overflow-y-auto md:max-h-[80vh]">
-      <ListBucketHeader label="✈️ Mes voyages" count={sortedTrips.length} />
+      <ListBucketHeader label={`✈️ ${t.me2_my_trips}`} count={sortedTrips.length} />
       {sortedTrips.map((tr) => {
         const pkgs = packagesByTrip.get(tr.id) ?? [];
         const isPast = tr.departure_date < today;
@@ -3393,7 +3398,7 @@ function TripsView({
           >
             <span className="flex items-center gap-2">
               <span className="text-base">🗂️</span>
-              Anciens voyages
+              {t.me2_past_trips}
               <span className="text-ink-300 normal-case font-medium tracking-normal">
                 · {sortedPastTrips.length}
               </span>
@@ -3442,17 +3447,17 @@ function TripsView({
       />
     </div>
   ) : (
-    <DetailEmpty message="Sélectionnez un voyage pour voir ses détails." />
+    <DetailEmpty message={t.me2_select_trip} />
   );
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">Mes voyages</h2>
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">{t.me2_my_trips}</h2>
         <Link href="/voyager">
           <Button size="sm">
             <Plus className="w-4 h-4" />
-            Publier un trajet
+            {t.me2_publish_trip}
           </Button>
         </Link>
       </div>
@@ -3481,6 +3486,7 @@ function TripListRow({
   onClick: () => void;
   isPast: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -3505,7 +3511,7 @@ function TripListRow({
         {packagesCount > 0 ? (
           <span className="inline-flex items-center gap-1">
             <span className="num-display">{packagesCount}</span>
-            <span className="text-ink-400">colis</span>
+            <span className="text-ink-400">{t.me2_packages_unit}</span>
           </span>
         ) : (
           <span className="text-ink-300">—</span>
@@ -3548,6 +3554,7 @@ function TripDetailCard({
   hasReviewed: (bookingIntentId: string) => boolean;
   reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
 }) {
+  const { t } = useI18n();
   const totalNet = packages.reduce((sum, p) => {
     const ttc = p.row.proposed_price ?? 0;
     return sum + ttc / 1.15;
@@ -3570,7 +3577,7 @@ function TripDetailCard({
           <div className="flex-1 px-5 py-4 min-w-0 relative bg-gradient-to-br from-cream-50 to-cream-100">
             {trip.flight_number && (
               <div className="text-[10px] text-ink-400 font-bold tracking-[0.14em] uppercase mb-1.5 num-display">
-                Vol {trip.flight_number}
+                {t.me2_flight.replace('{number}', trip.flight_number)}
                 {trip.flight_time && <span className="ml-2 text-ink-300">· {trip.flight_time}</span>}
               </div>
             )}
@@ -3593,12 +3600,12 @@ function TripDetailCard({
             </div>
             <div className="flex items-center gap-4 text-[11px]">
               <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">Départ</div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">{t.me2_departure}</div>
                 <div className="text-ink-600 font-bold num-display">{formatShortDate(trip.departure_date)}</div>
               </div>
               <div className="h-7 w-px bg-ink-100" />
               <div>
-                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">Colis</div>
+                <div className="text-ink-300 font-semibold tracking-[0.12em] uppercase mb-0.5">{t.me2_packages_unit_caps}</div>
                 <div className="text-ink-600 font-bold num-display">{count}</div>
               </div>
             </div>
@@ -3609,14 +3616,14 @@ function TripDetailCard({
               {formatEuros(totalNet)}
             </div>
             <div className="text-[11px] sm:text-[12px] text-lavender-700/80 font-medium mt-1.5 leading-snug px-1">
-              de gains sur ce vol ✨
+              {t.me2_earnings_on_flight} ✨
             </div>
             {isCancelable && (
               <button
                 onClick={() => onCancelTrip(trip.id)}
                 className="absolute top-1 right-1 p-1.5 rounded-full text-lavender-400/70 hover:text-blush-500 hover:bg-white/60 transition-colors"
-                aria-label="Annuler ce trajet"
-                title="Annuler ce trajet"
+                aria-label={t.me2_cancel_trip}
+                title={t.me2_cancel_trip}
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -3629,14 +3636,14 @@ function TripDetailCard({
       {count === 0 ? (
         <div className="px-4 py-6 text-center space-y-3">
           <p className="text-[13px] text-ink-400 leading-relaxed">
-            Aucun colis sur ce vol pour l&apos;instant.
+            {t.me2_no_packages_on_flight}
           </p>
           <Link
             href={`/?type=demandes&from=${encodeURIComponent(trip.departure_city)}&to=${encodeURIComponent(trip.arrival_city)}`}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            Trouver des colis sur mon trajet
+            {t.me2_find_packages_on_route}
           </Link>
         </div>
       ) : (
@@ -3697,9 +3704,10 @@ function IntentCardInline({
   hasReviewed: boolean;
   otherReview: ReviewForBooking | null;
 }) {
+  const { t } = useI18n();
   const [showProofModal, setShowProofModal] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
-  const senderName = shortName(intent.sender_profile?.full_name) || 'Expéditeur';
+  const senderName = shortName(intent.sender_profile?.full_name) || t.me2_role_sender;
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
 
   async function handle(status: 'confirmed' | 'cancelled') {
@@ -3740,22 +3748,22 @@ function IntentCardInline({
   let statusText: string | null = null;
   let statusClass = '';
   if (intent.status === 'pending') {
-    statusText = 'Nouvelle demande';
+    statusText = t.me2_pill_new_request;
     statusClass = 'text-butter-700 bg-butter-50';
   } else if (intent.status === 'confirmed' && intent.delivery_proof_url && intent.received_confirmed_at) {
-    statusText = '✓ Livraison confirmée';
+    statusText = `✓ ${t.me2_pill_delivery_confirmed}`;
     statusClass = 'text-mint-700 bg-mint-50';
   } else if (intent.status === 'confirmed' && intent.delivery_proof_url) {
-    statusText = '📸 Livré · code à donner';
+    statusText = `📸 ${t.me2_pill_delivered_give_code}`;
     statusClass = 'text-butter-700 bg-butter-50';
   } else if (intent.status === 'confirmed' && intent.pickup_confirmed_at && !intent.delivery_proof_url) {
-    statusText = '✓ Récupéré · à livrer';
+    statusText = `✓ ${t.me2_pill_picked_up_to_deliver}`;
     statusClass = 'text-mint-700 bg-mint-50';
   } else if (intent.status === 'confirmed' && !intent.pickup_confirmed_at && intent.payment_status === 'authorized') {
-    statusText = '💳 Paiement réservé · à récupérer';
+    statusText = `💳 ${t.me2_pill_payment_held_to_pickup}`;
     statusClass = 'text-lavender-700 bg-lavender-50';
   } else if (intent.status === 'confirmed') {
-    statusText = 'À livrer';
+    statusText = t.me2_pill_to_deliver;
     statusClass = 'text-lavender-700 bg-lavender-50';
   }
 
@@ -3785,14 +3793,14 @@ function IntentCardInline({
               disabled={!!busy}
               className="px-3 py-1.5 text-[12px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
             >
-              {busy === 'cancel' ? '...' : 'Refuser'}
+              {busy === 'cancel' ? '...' : t.me2_decline}
             </button>
             <button
               onClick={() => handle('confirmed')}
               disabled={!!busy}
               className="px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
             >
-              {busy === 'confirm' ? '...' : 'Accepter'}
+              {busy === 'confirm' ? '...' : t.me2_accept}
             </button>
           </div>
         )}
@@ -3802,16 +3810,16 @@ function IntentCardInline({
             <button
               onClick={() => onOpenChat(intent)}
               className="px-2.5 py-1.5 rounded-full bg-cream-100 hover:bg-cream-200 text-ink-500 text-[12px] transition-colors"
-              aria-label="Message"
-              title="Message"
+              aria-label={t.me2_message}
+              title={t.me2_message}
             >
               💬
             </button>
             <button
               onClick={() => onReportProblem(intent)}
               className="px-2.5 py-1.5 rounded-full text-ink-400 hover:text-blush-500 hover:bg-blush-50 transition-colors"
-              aria-label="Signaler un problème"
-              title="Signaler un problème"
+              aria-label={t.me2_report_problem}
+              title={t.me2_report_problem}
             >
               <Flag className="w-3.5 h-3.5" strokeWidth={1.75} />
             </button>
@@ -3820,7 +3828,7 @@ function IntentCardInline({
               className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-mint-500 hover:bg-mint-600 rounded-full transition-colors"
             >
               <KeyRound className="w-3 h-3" />
-              J&apos;ai récupéré
+              {t.me2_i_picked_up}
             </button>
           </div>
         )}
@@ -3830,16 +3838,16 @@ function IntentCardInline({
             <button
               onClick={() => onOpenChat(intent)}
               className="px-2.5 py-1.5 rounded-full bg-cream-100 hover:bg-cream-200 text-ink-500 text-[12px] transition-colors"
-              aria-label="Message"
-              title="Message"
+              aria-label={t.me2_message}
+              title={t.me2_message}
             >
               💬
             </button>
             <button
               onClick={() => onReportProblem(intent)}
               className="px-2.5 py-1.5 rounded-full text-ink-400 hover:text-blush-500 hover:bg-blush-50 transition-colors"
-              aria-label="Signaler un problème"
-              title="Signaler un problème"
+              aria-label={t.me2_report_problem}
+              title={t.me2_report_problem}
             >
               <Flag className="w-3.5 h-3.5" strokeWidth={1.75} />
             </button>
@@ -3848,7 +3856,7 @@ function IntentCardInline({
               className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
             >
               <Camera className="w-3 h-3" />
-              J&apos;ai livré
+              {t.me2_i_delivered}
             </button>
           </div>
         )}
@@ -3858,16 +3866,16 @@ function IntentCardInline({
             <button
               onClick={() => onOpenChat(intent)}
               className="px-2.5 py-1.5 rounded-full bg-cream-100 hover:bg-cream-200 text-ink-500 text-[12px] transition-colors"
-              aria-label="Message"
-              title="Message"
+              aria-label={t.me2_message}
+              title={t.me2_message}
             >
               💬
             </button>
             <button
               onClick={() => onReportProblem(intent)}
               className="px-2.5 py-1.5 rounded-full text-ink-400 hover:text-blush-500 hover:bg-blush-50 transition-colors"
-              aria-label="Signaler un problème"
-              title="Signaler un problème"
+              aria-label={t.me2_report_problem}
+              title={t.me2_report_problem}
             >
               <Flag className="w-3.5 h-3.5" strokeWidth={1.75} />
             </button>
@@ -3876,7 +3884,7 @@ function IntentCardInline({
               className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
             >
               <KeyRound className="w-3 h-3" />
-              Voir code livraison
+              {t.me2_view_delivery_code}
             </button>
           </div>
         )}
@@ -3893,12 +3901,12 @@ function IntentCardInline({
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
               >
                 <Star className="w-3 h-3 fill-white" strokeWidth={0} />
-                Noter
+                {t.me2_rate}
               </button>
             ) : (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
                 <Star className="w-3 h-3 fill-current" strokeWidth={0} />
-                Vous avez noté
+                {t.me2_you_rated}
               </span>
             )}
           </div>
@@ -3909,7 +3917,7 @@ function IntentCardInline({
           inline below the card so the user sees how they were rated. */}
       {otherReview && (
         <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
-          <span>{senderName.split(' ')[0]} vous a noté</span>
+          <span>{t.me2_x_rated_you.replace('{name}', senderName.split(' ')[0])}</span>
           <span className="inline-flex items-center gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star
@@ -3944,12 +3952,13 @@ function IntentCardInline({
 }
 
 function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
-  const senderName = shortName(proposal.sender_profile?.full_name) || 'Expéditeur';
+  const { t } = useI18n();
+  const senderName = shortName(proposal.sender_profile?.full_name) || t.me2_role_sender;
   const initial = nameInitial(proposal.sender_profile?.full_name);
   const netTraveler = proposal.proposed_price / 1.15;
 
   const accepted = proposal.status === 'confirmed';
-  const statusText = accepted ? '✓ acceptée' : proposal.status === 'cancelled' ? '✕ refusée' : '⏳ en attente';
+  const statusText = accepted ? `✓ ${t.me2_status_accepted}` : proposal.status === 'cancelled' ? `✕ ${t.me2_status_declined}` : `⏳ ${t.me2_status_pending}`;
   const statusClass = accepted
     ? 'text-mint-700 bg-mint-50'
     : proposal.status === 'cancelled'
@@ -4030,8 +4039,8 @@ function HistoryView({
   if (totalCount === 0) {
     return (
       <div>
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em] mb-6">Historique</h2>
-        <EmptyState message="Votre historique est vide. Acceptez votre première mission pour commencer." />
+        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em] mb-6">{t.me2_history}</h2>
+        <EmptyState message={t.me2_history_empty} />
       </div>
     );
   }
@@ -4039,12 +4048,12 @@ function HistoryView({
   return (
     <div className="space-y-10">
       <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">
-        Historique <span className="text-ink-300 font-normal text-[15px]">· {totalCount}</span>
+        {t.me2_history} <span className="text-ink-300 font-normal text-[15px]">· {totalCount}</span>
       </h2>
 
       {incomingHistory.length > 0 && (
         <section>
-          <GroupHeader icon="✈️" label="Missions livrées ou refusées" count={incomingHistory.length} />
+          <GroupHeader icon="✈️" label={t.me2_history_missions} count={incomingHistory.length} />
           <div className="space-y-3 opacity-80">
             {incomingHistory.map((intent) => (
               <IntentCard
@@ -4061,7 +4070,7 @@ function HistoryView({
 
       {sendsHistory.length > 0 && (
         <section>
-          <GroupHeader icon="📦" label="Envois terminés" count={sendsHistory.length} />
+          <GroupHeader icon="📦" label={t.me2_history_sends} count={sendsHistory.length} />
           <div className="space-y-3 opacity-80">
             {sendsHistory.map((b) => (
               <BookingCard key={b.id} booking={b} t={t} />
@@ -4072,7 +4081,7 @@ function HistoryView({
 
       {proposalsHistory.length > 0 && (
         <section>
-          <GroupHeader icon="💌" label="Propositions terminées" count={proposalsHistory.length} />
+          <GroupHeader icon="💌" label={t.me2_history_proposals} count={proposalsHistory.length} />
           <div className="space-y-3 opacity-80">
             {proposalsHistory.map((p) => (
               <ProposalCard key={p.id} proposal={p} accepted={p.status === 'confirmed'} />
@@ -4083,7 +4092,7 @@ function HistoryView({
 
       {cancelledTrips.length > 0 && (
         <section>
-          <GroupHeader icon="🚫" label="Trajets annulés" count={cancelledTrips.length} />
+          <GroupHeader icon="🚫" label={t.me2_history_cancelled_trips} count={cancelledTrips.length} />
           <div className="space-y-3 opacity-60">
             {cancelledTrips.map((trip) => (
               <div key={trip.id} className="bg-white rounded-2xl p-5 border border-ink-50">
@@ -4094,7 +4103,7 @@ function HistoryView({
                       {trip.departure_city} → {trip.arrival_city}
                     </div>
                     <div className="text-[12px] text-ink-400">
-                      {formatShortDate(trip.departure_date)} · Annulé
+                      {formatShortDate(trip.departure_date)} · {t.me2_cancelled_label}
                     </div>
                   </div>
                 </div>

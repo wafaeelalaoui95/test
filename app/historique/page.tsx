@@ -79,7 +79,7 @@ function HistoriqueContent() {
         if (pRes.status === 'fulfilled') setMyProposals(pRes.value);
         if (tRes.status === 'fulfilled') setTrips(tRes.value);
         if ([iRes, bRes, pRes, tRes].every((r) => r.status === 'rejected')) {
-          setError('Erreur de chargement');
+          setError(t.sec_load_error);
         }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -141,12 +141,12 @@ function HistoriqueContent() {
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-5 gap-4">
-        <p className="text-ink-500">Connectez-vous pour voir votre historique.</p>
+        <p className="text-ink-500">{t.sec_hist_login_prompt}</p>
         <Link
           href="/login?next=/historique"
           className="px-5 py-2.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[14px] font-semibold transition-colors"
         >
-          Se connecter
+          {t.sec_login}
         </Link>
       </div>
     );
@@ -160,7 +160,7 @@ function HistoriqueContent() {
           className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-6"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Retour à mon espace
+          {t.sec_back_to_space}
         </Link>
 
         <motion.div
@@ -169,10 +169,10 @@ function HistoriqueContent() {
           transition={{ duration: 0.3 }}
         >
           <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-2">
-            Historique
+            {t.sec_hist_title}
           </h1>
           <p className="text-[14px] text-ink-400 mb-8">
-            Vos missions et envois terminés ou annulés.
+            {t.sec_hist_subtitle}
           </p>
 
           {/* Tabs */}
@@ -186,7 +186,7 @@ function HistoriqueContent() {
               }`}
             >
               <Plane className="w-4 h-4" />
-              <span>Transports</span>
+              <span>{t.sec_hist_tab_transports}</span>
             </button>
             <button
               onClick={() => setTab('envois')}
@@ -197,7 +197,7 @@ function HistoriqueContent() {
               }`}
             >
               <Package className="w-4 h-4" />
-              <span>Envois</span>
+              <span>{t.sec_hist_tab_envois}</span>
             </button>
           </div>
 
@@ -210,12 +210,12 @@ function HistoriqueContent() {
           {items.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-ink-100">
               <h3 className="text-lg font-bold text-ink-600 mb-2">
-                Rien dans l&apos;historique
+                {t.sec_hist_empty_title}
               </h3>
               <p className="text-[14px] text-ink-400 max-w-sm mx-auto leading-relaxed">
                 {tab === 'transports'
-                  ? 'Vos missions terminées apparaîtront ici.'
-                  : 'Vos envois terminés apparaîtront ici.'}
+                  ? t.sec_hist_empty_transports
+                  : t.sec_hist_empty_envois}
               </p>
             </div>
           ) : (
@@ -242,6 +242,7 @@ function HistoryRow({
   kind: 'incoming' | 'proposal' | 'trip' | 'booking';
   row: any;
 }) {
+  const { t } = useI18n();
   // Cancelled trip — special compact row
   if (kind === 'trip') {
     return (
@@ -255,7 +256,7 @@ function HistoryRow({
           <span className="text-ink-400 num-display">
             {formatShortDate(row.departure_date)}
           </span>
-          <span className="text-[11px] text-ink-300 ml-auto">✕ annulé</span>
+          <span className="text-[11px] text-ink-300 ml-auto">{t.sec_hist_status_cancelled_trip}</span>
         </div>
       </div>
     );
@@ -280,9 +281,9 @@ function HistoryRow({
       : formatEuros((row.proposed_price ?? 0) / 1.15);
 
   const statusLabel = (() => {
-    if (row.status === 'cancelled') return { text: '✕ refusée', tone: 'text-ink-300' };
-    if (row.delivery_proof_url) return { text: '📸 livré', tone: 'text-mint-600' };
-    return { text: '✓ confirmé', tone: 'text-mint-500' };
+    if (row.status === 'cancelled') return { text: t.sec_hist_status_declined, tone: 'text-ink-300' };
+    if (row.delivery_proof_url) return { text: t.sec_hist_status_delivered, tone: 'text-mint-600' };
+    return { text: t.sec_hist_status_confirmed, tone: 'text-mint-500' };
   })();
 
   return (
@@ -308,7 +309,7 @@ function HistoryRow({
             rel="noopener noreferrer"
             className="flex-shrink-0 text-[12px] font-medium text-ink-400 hover:text-ink-600 underline transition-colors"
           >
-            Voir la preuve
+            {t.sec_hist_view_proof}
           </a>
         )}
       </div>

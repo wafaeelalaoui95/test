@@ -27,94 +27,39 @@ import {
   Sparkles,
   ArrowRight,
 } from 'lucide-react';
-
-// -----------------------------------------------------------------------------
-// AUTHORIZED items — the EXCLUSIVE whitelist for the MVP
-// -----------------------------------------------------------------------------
-
-const ALLOWED = [
-  {
-    emoji: '📄',
-    label: 'Documents',
-    examples: 'Papiers administratifs, courriers, certificats, contrats',
-  },
-  {
-    emoji: '🔑',
-    label: 'Clés',
-    examples: 'Clés oubliées, doubles, clés professionnelles',
-  },
-  {
-    emoji: '🎁',
-    label: 'Objets personnels',
-    examples: 'Souvenirs, livres, petits cadeaux non précieux',
-  },
-  {
-    emoji: '👕',
-    label: 'Vêtements',
-    examples: 'Habits, accessoires textiles, chaussures',
-  },
-  {
-    emoji: '🔌',
-    label: 'Électronique légère',
-    examples: 'Chargeurs, câbles, écouteurs, petits accessoires',
-  },
-  {
-    emoji: '💊',
-    label: 'Médicaments en vente libre',
-    examples: 'Doliprane, vitamines, parapharmacie — voir conditions ci-dessous',
-  },
-];
-
-// -----------------------------------------------------------------------------
-// FORBIDDEN items — non-exhaustive, illustrative
-// -----------------------------------------------------------------------------
-
-const FORBIDDEN = [
-  {
-    emoji: '💵',
-    label: 'Espèces',
-    reason: 'Aucun montant, en aucune devise.',
-  },
-  {
-    emoji: '💊',
-    label: 'Médicaments sur ordonnance',
-    reason: 'Une ordonnance est nominative. Transport interdit par la loi.',
-  },
-  {
-    emoji: '🚫',
-    label: 'Drogues et stupéfiants',
-    reason: 'Toute substance illicite, sans exception.',
-  },
-  {
-    emoji: '🔫',
-    label: 'Armes',
-    reason: 'Toutes catégories, y compris répliques et armes blanches.',
-  },
-  {
-    emoji: '🏷️',
-    label: 'Contrefaçons',
-    reason: 'Produits portant atteinte à des droits de propriété intellectuelle.',
-  },
-  {
-    emoji: '💎',
-    label: 'Bijoux et objets de luxe',
-    reason: 'Bijoux, montres, sacs de marque, objets > 500 €.',
-  },
-  {
-    emoji: '⚠️',
-    label: 'Produits dangereux',
-    reason: 'Liquides inflammables, gaz, batteries lithium non protégées.',
-  },
-  {
-    emoji: '🛂',
-    label: 'Produits réglementés',
-    reason: 'Alcool, tabac, denrées soumises à restriction douanière.',
-  },
-];
+import { useI18n } from '@/lib/i18n/context';
 
 // =============================================================================
 
 export default function ObjetsAutorisesPage() {
+  const { t } = useI18n();
+
+  // ---------------------------------------------------------------------------
+  // AUTHORIZED items — the EXCLUSIVE whitelist for the MVP
+  // ---------------------------------------------------------------------------
+  const ALLOWED = [
+    { emoji: '📄', label: t.oa_allowed1_label, examples: t.oa_allowed1_examples },
+    { emoji: '🔑', label: t.oa_allowed2_label, examples: t.oa_allowed2_examples },
+    { emoji: '🎁', label: t.oa_allowed3_label, examples: t.oa_allowed3_examples },
+    { emoji: '👕', label: t.oa_allowed4_label, examples: t.oa_allowed4_examples },
+    { emoji: '🔌', label: t.oa_allowed5_label, examples: t.oa_allowed5_examples },
+    { emoji: '💊', label: t.oa_allowed6_label, examples: t.oa_allowed6_examples },
+  ];
+
+  // ---------------------------------------------------------------------------
+  // FORBIDDEN items — non-exhaustive, illustrative
+  // ---------------------------------------------------------------------------
+  const FORBIDDEN = [
+    { emoji: '💵', label: t.oa_forbidden1_label, reason: t.oa_forbidden1_reason },
+    { emoji: '💊', label: t.oa_forbidden2_label, reason: t.oa_forbidden2_reason },
+    { emoji: '🚫', label: t.oa_forbidden3_label, reason: t.oa_forbidden3_reason },
+    { emoji: '🔫', label: t.oa_forbidden4_label, reason: t.oa_forbidden4_reason },
+    { emoji: '🏷️', label: t.oa_forbidden5_label, reason: t.oa_forbidden5_reason },
+    { emoji: '💎', label: t.oa_forbidden6_label, reason: t.oa_forbidden6_reason },
+    { emoji: '⚠️', label: t.oa_forbidden7_label, reason: t.oa_forbidden7_reason },
+    { emoji: '🛂', label: t.oa_forbidden8_label, reason: t.oa_forbidden8_reason },
+  ];
+
   return (
     <main className="min-h-screen">
       {/* HERO */}
@@ -129,15 +74,14 @@ export default function ObjetsAutorisesPage() {
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-ink-100 mb-5">
               <ShieldCheck className="w-3.5 h-3.5 text-ink-500" />
               <span className="text-[12px] font-bold text-ink-600 tracking-wide">
-                Politique d&apos;utilisation
+                {t.oa_badge}
               </span>
             </div>
             <h1 className="text-4xl sm:text-5xl font-extrabold text-ink-600 tracking-[-0.03em] leading-[1.05] mb-4">
-              Que peut-on<br />transporter sur Jibly ?
+              {t.oa_hero_title}
             </h1>
             <p className="text-[16px] text-ink-500 leading-relaxed max-w-2xl mx-auto">
-              Pour la sécurité de tous, Jibly limite les envois à une liste précise
-              de catégories. Tout autre type d&apos;objet est interdit.
+              {t.oa_hero_subtitle}
             </p>
           </motion.div>
         </div>
@@ -152,10 +96,10 @@ export default function ObjetsAutorisesPage() {
             </div>
             <div>
               <p className="text-[12px] font-bold tracking-[0.18em] text-mint-700 uppercase">
-                Autorisés — Liste exhaustive
+                {t.oa_allowed_eyebrow}
               </p>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.02em]">
-                Les seules catégories transportables
+                {t.oa_allowed_heading}
               </h2>
             </div>
           </div>
@@ -191,19 +135,15 @@ export default function ObjetsAutorisesPage() {
               <div className="text-2xl flex-shrink-0">💊</div>
               <div>
                 <h3 className="text-[14px] font-bold text-ink-600 mb-2">
-                  Médicaments en vente libre — conditions strictes
+                  {t.oa_otc_title}
                 </h3>
                 <p className="text-[13px] text-ink-500 leading-relaxed mb-2">
-                  Seuls les médicaments <strong>sans ordonnance</strong> légalement
-                  disponibles dans les deux pays sont acceptés (Doliprane,
-                  Efferalgan, vitamines, parapharmacie).
+                  {t.oa_otc_p1}
                 </p>
                 <p className="text-[13px] text-ink-500 leading-relaxed">
-                  <strong>Quantité maximum :</strong> 2 unités par produit, dans
-                  leur emballage d&apos;origine fermé. L&apos;expéditeur déclare et assume
-                  la responsabilité légale du contenu.{' '}
+                  {t.oa_otc_p2}{' '}
                   <strong className="text-blush-600">
-                    Les médicaments sur ordonnance restent strictement interdits.
+                    {t.oa_otc_p2_emphasis}
                   </strong>
                 </p>
               </div>
@@ -221,14 +161,13 @@ export default function ObjetsAutorisesPage() {
             </div>
             <div>
               <p className="text-[12px] font-bold tracking-[0.18em] text-blush-600 uppercase">
-                Interdits
+                {t.oa_forbidden_eyebrow}
               </p>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.02em]">
-                Exemples d&apos;objets interdits
+                {t.oa_forbidden_heading}
               </h2>
               <p className="text-[13px] text-ink-400 mt-1">
-                Liste non exhaustive. Par défaut, tout ce qui n&apos;est pas dans la
-                liste des catégories autorisées est interdit.
+                {t.oa_forbidden_subtitle}
               </p>
             </div>
           </div>
@@ -244,7 +183,7 @@ export default function ObjetsAutorisesPage() {
                 className="bg-white rounded-2xl p-5 border border-blush-100/80 relative overflow-hidden"
               >
                 <div className="absolute top-2 right-2 text-[9px] font-bold tracking-wider text-blush-400 uppercase">
-                  Interdit
+                  {t.oa_forbidden_tag}
                 </div>
                 <div className="text-4xl mb-3 grayscale-[20%]">{item.emoji}</div>
                 <h3 className="text-[14px] font-bold text-ink-600 mb-1">
@@ -262,16 +201,16 @@ export default function ObjetsAutorisesPage() {
             <AlertTriangle className="w-6 h-6 text-blush-600 flex-shrink-0 mt-0.5" />
             <div>
               <h3 className="text-[15px] font-bold text-ink-600 mb-1.5">
-                Conséquences en cas d&apos;infraction
+                {t.oa_consequences_title}
               </h3>
               <p className="text-[13px] text-ink-500 leading-relaxed">
-                Tout colis contenant un objet interdit entraîne la{' '}
-                <strong className="text-ink-600">suspension permanente</strong>{' '}
-                du compte de l&apos;expéditeur et du voyageur, la{' '}
-                <strong className="text-ink-600">conservation des preuves</strong>{' '}
-                à des fins légales, et la{' '}
-                <strong className="text-ink-600">transmission aux autorités</strong>{' '}
-                compétentes si nécessaire.
+                {t.oa_consequences_p1}{' '}
+                <strong className="text-ink-600">{t.oa_consequences_strong1}</strong>{' '}
+                {t.oa_consequences_p2}{' '}
+                <strong className="text-ink-600">{t.oa_consequences_strong2}</strong>{' '}
+                {t.oa_consequences_p3}{' '}
+                <strong className="text-ink-600">{t.oa_consequences_strong3}</strong>{' '}
+                {t.oa_consequences_p4}
               </p>
             </div>
           </div>
@@ -283,14 +222,13 @@ export default function ObjetsAutorisesPage() {
         <div className="mx-auto max-w-3xl px-5 sm:px-8 lg:px-12">
           <div className="text-center mb-10">
             <p className="text-[12px] font-bold tracking-[0.18em] text-ink-300 uppercase mb-2">
-              Double déclaration
+              {t.oa_dd_eyebrow}
             </p>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em]">
-              Une vérification en deux temps
+              {t.oa_dd_title}
             </h2>
             <p className="text-[14px] text-ink-400 mt-3 max-w-xl mx-auto">
-              Pour qu&apos;un envoi soit accepté, l&apos;expéditeur et le voyageur
-              doivent chacun confirmer le contenu.
+              {t.oa_dd_subtitle}
             </p>
           </div>
 
@@ -299,11 +237,10 @@ export default function ObjetsAutorisesPage() {
               <span className="text-2xl flex-shrink-0">📋</span>
               <div>
                 <h3 className="text-[14px] font-bold text-ink-600 mb-1">
-                  L&apos;expéditeur certifie le contenu
+                  {t.oa_dd_card1_title}
                 </h3>
                 <p className="text-[13px] text-ink-500 leading-relaxed italic">
-                  « Je certifie que le contenu décrit est exact et qu&apos;il ne
-                  contient aucun produit interdit. »
+                  {t.oa_dd_card1_quote}
                 </p>
               </div>
             </div>
@@ -311,10 +248,10 @@ export default function ObjetsAutorisesPage() {
               <span className="text-2xl flex-shrink-0">👁️</span>
               <div>
                 <h3 className="text-[14px] font-bold text-ink-600 mb-1">
-                  Le voyageur vérifie avant d&apos;accepter
+                  {t.oa_dd_card2_title}
                 </h3>
                 <p className="text-[13px] text-ink-500 leading-relaxed italic">
-                  « J&apos;ai vérifié le contenu avant d&apos;accepter de le transporter. »
+                  {t.oa_dd_card2_quote}
                 </p>
               </div>
             </div>
@@ -322,12 +259,10 @@ export default function ObjetsAutorisesPage() {
               <span className="text-2xl flex-shrink-0">🚨</span>
               <div>
                 <h3 className="text-[14px] font-bold text-ink-600 mb-1">
-                  Signalement et droit d&apos;exclusion
+                  {t.oa_dd_card3_title}
                 </h3>
                 <p className="text-[13px] text-ink-500 leading-relaxed">
-                  Tout utilisateur peut signaler un colis suspect. Le voyageur
-                  peut refuser sans pénalité. Jibly se réserve le droit de
-                  suspendre tout compte en cas d&apos;infraction.
+                  {t.oa_dd_card3_body}
                 </p>
               </div>
             </div>
@@ -340,17 +275,16 @@ export default function ObjetsAutorisesPage() {
         <div className="mx-auto max-w-3xl px-5 sm:px-8 lg:px-12 text-center">
           <Sparkles className="w-8 h-8 text-butter-400 mx-auto mb-4" />
           <h2 className="text-2xl sm:text-3xl font-extrabold text-cream-50 tracking-[-0.025em] mb-3">
-            En savoir plus sur la sécurité Jibly
+            {t.oa_cta_title}
           </h2>
           <p className="text-[14px] text-cream-200 leading-relaxed mb-6 max-w-xl mx-auto">
-            Découvrez comment nous protégeons votre paiement, vérifions les
-            identités et gérons les litiges.
+            {t.oa_cta_subtitle}
           </p>
           <Link
             href="/trust"
             className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-cream-50 hover:bg-cream-100 text-ink-600 text-[14px] font-bold transition-colors"
           >
-            Lire notre politique de confiance
+            {t.oa_cta_button}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

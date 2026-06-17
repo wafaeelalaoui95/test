@@ -5,6 +5,7 @@ import { X, PackageCheck, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { CodeInput } from './CodeInput';
 import { browser } from '@/lib/supabase/queries';
+import { useI18n } from '@/lib/i18n/context';
 
 /**
  * Code entry modal — shown at one of the two trust-handoff moments.
@@ -55,6 +56,7 @@ export function PickupEnterCodeModal({
   senderName: string;
   mode?: 'pickup' | 'delivery';
 }) {
+  const { t } = useI18n();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,12 +64,12 @@ export function PickupEnterCodeModal({
 
   const isDelivery = mode === 'delivery';
 
-  const title = isDelivery ? 'Confirmer la réception' : 'Confirmer la remise';
+  const title = isDelivery ? t.pickup_enter_title_delivery : t.pickup_enter_title_pickup;
 
   async function submit(value: string) {
     if (busy) return;
     if (attempts >= 5) {
-      setError('Trop de tentatives. Réessayez dans quelques minutes.');
+      setError(t.pickup_enter_err_too_many);
       return;
     }
     setBusy(true);
@@ -85,28 +87,28 @@ export function PickupEnterCodeModal({
         if (res.reason === 'invalid_code') {
           setError(
             isDelivery
-              ? 'Code incorrect. Vérifiez avec le voyageur.'
-              : "Code incorrect. Vérifiez avec l'expéditeur."
+              ? t.pickup_enter_err_invalid_delivery
+              : t.pickup_enter_err_invalid_pickup
           );
         } else if (res.reason === 'already_confirmed') {
           setError(
             isDelivery
-              ? 'La réception a déjà été confirmée.'
-              : 'La remise a déjà été confirmée.'
+              ? t.pickup_enter_err_already_delivery
+              : t.pickup_enter_err_already_pickup
           );
         } else if (res.reason === 'not_traveler') {
-          setError("Vous n'êtes pas autorisé à confirmer cette remise.");
+          setError(t.pickup_enter_err_not_traveler);
         } else if (res.reason === 'not_sender') {
-          setError("Vous n'êtes pas autorisé à confirmer cette réception.");
+          setError(t.pickup_enter_err_not_sender);
         } else if (res.reason === 'no_proof') {
-          setError("Aucune preuve de livraison n'a encore été déposée.");
+          setError(t.pickup_enter_err_no_proof);
         } else {
-          setError('Une erreur est survenue. Réessayez.');
+          setError(t.pickup_enter_err_generic);
         }
         setCode('');
       }
     } catch (e: any) {
-      setError(e?.message ?? 'Erreur inattendue');
+      setError(e?.message ?? t.pickup_enter_err_unexpected);
     } finally {
       setBusy(false);
     }
@@ -152,7 +154,7 @@ export function PickupEnterCodeModal({
                 onClick={close}
                 disabled={busy}
                 className="p-1.5 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
-                aria-label="Fermer"
+                aria-label={t.pickup_close}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -160,18 +162,18 @@ export function PickupEnterCodeModal({
 
             <div className="px-6 pb-6">
               <p className="text-[14px] text-ink-500 leading-relaxed mb-5">
-                {isDelivery ? (
-                  <>
-                    Demandez à <strong className="text-ink-600">{senderName}</strong> le code de
-                    livraison qu&apos;il a affiché sur son application, puis saisissez-le
-                    ci-dessous.
-                  </>
-                ) : (
-                  <>
-                    Demandez à <strong className="text-ink-600">{senderName}</strong> le code de
-                    remise affiché sur son application, puis saisissez-le ci-dessous.
-                  </>
-                )}
+                {(isDelivery ? t.pickup_enter_body_delivery : t.pickup_enter_body_pickup)
+                  .split('{name}')
+                  .flatMap((part, i) =>
+                    i === 0
+                      ? [part]
+                      : [
+                          <strong key={i} className="text-ink-600">
+                            {senderName}
+                          </strong>,
+                          part,
+                        ]
+                  )}
               </p>
 
               <div className="mb-2">
@@ -189,13 +191,13 @@ export function PickupEnterCodeModal({
                 {busy ? (
                   <div className="flex items-center gap-1.5 text-[12px] text-ink-400">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    Vérification…
+                    {t.pickup_enter_verifying}
                   </div>
                 ) : error ? (
                   <div className="text-[12px] text-blush-500 font-medium">{error}</div>
                 ) : (
                   <div className="text-[11px] text-ink-300">
-                    Le code se valide automatiquement
+                    {t.pickup_enter_auto_validate}
                   </div>
                 )}
               </div>
@@ -203,17 +205,20 @@ export function PickupEnterCodeModal({
               <div className="mt-4 pt-4 border-t border-ink-50">
                 <p className="text-[11px] text-ink-400 leading-relaxed text-center">
                   {isDelivery ? (
-                    <>
-                      En confirmant la réception, vous libérez le paiement vers le voyageur.
-                      Cette action est définitive.
-                    </>
+                    t.pickup_enter_footer_delivery
                   ) : (
-                    <>
-                      En confirmant la remise, vous vous engagez à transporter ce colis et à le
-                      livrer à destination. Toute non-livraison peut entraîner des poursuites pour
-                      abus de confiance{' '}
-                      <span className="text-ink-500">(art. 314-1 du Code pénal)</span>.
-                    </>
+                    t.pickup_enter_footer_pickup
+                      .split('{article}')
+                      .flatMap((part, i) =>
+                        i === 0
+                          ? [part]
+                          : [
+                              <span key={i} className="text-ink-500">
+                                {t.pickup_enter_footer_pickup_article}
+                              </span>,
+                              part,
+                            ]
+                      )
                   )}
                 </p>
               </div>

@@ -16,10 +16,12 @@
 
 import Link from 'next/link';
 import { ArrowLeft, Scale, ShieldAlert, FileCheck2, AlertTriangle, Flag } from 'lucide-react';
+import { useI18n } from '@/lib/i18n/context';
 
 const LAST_UPDATED = '12 juin 2026';
 
 export default function CguPage() {
+  const { t, locale } = useI18n();
   return (
     <main className="min-h-screen bg-cream-50">
       <div className="mx-auto max-w-3xl px-5 sm:px-8 py-10 sm:py-14">
@@ -29,7 +31,7 @@ export default function CguPage() {
           className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-8"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Retour à l&apos;accueil
+          {t.cgu_back_home}
         </Link>
 
         {/* Header */}
@@ -37,24 +39,28 @@ export default function CguPage() {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-ink-100 mb-4">
             <Scale className="w-3.5 h-3.5 text-ink-500" />
             <span className="text-[12px] font-bold text-ink-600 tracking-wide">
-              Conditions Générales d&apos;Utilisation
+              {t.cgu_badge}
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-3">
-            CGU de Jibly
+            {t.cgu_title}
           </h1>
           <p className="text-[14px] text-ink-400">
-            Dernière mise à jour : {LAST_UPDATED}
+            {t.cgu_last_updated.replace('{date}', LAST_UPDATED)}
           </p>
         </div>
+
+        {/* Review note — English only */}
+        {locale === 'en' && (
+          <p className="text-[12px] text-ink-400 italic mb-6">
+            {t.cgu_review_note}
+          </p>
+        )}
 
         {/* Intro */}
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-ink-50 mb-6">
           <p className="text-[14px] text-ink-500 leading-relaxed">
-            Bienvenue sur Jibly. En utilisant notre plateforme, vous acceptez les conditions
-            décrites ci-dessous. Nous les avons voulues aussi courtes et claires que
-            possible, mais leur lecture est importante pour comprendre vos droits et vos
-            responsabilités.
+            {t.cgu_intro}
           </p>
         </div>
 
@@ -62,187 +68,95 @@ export default function CguPage() {
         <div className="space-y-6">
 
           {/* 1. Nature de la plateforme */}
-          <Section number="1" title="Nature de la plateforme">
-            <p>
-              Jibly est une <strong>plateforme de mise en relation</strong> entre des
-              voyageurs (transporteurs occasionnels) et des expéditeurs souhaitant
-              envoyer un objet personnel. Jibly <strong>n&apos;est pas un transporteur</strong>,
-              ne manipule physiquement aucun colis, et n&apos;assume pas la responsabilité
-              du transport lui-même.
-            </p>
-            <p>
-              Le contrat de transport est conclu directement entre l&apos;expéditeur et
-              le voyageur. Jibly facilite leur rencontre, sécurise le paiement et
-              fournit les outils de communication, mais n&apos;est pas partie au contrat
-              de transport.
-            </p>
+          <Section number="1" title={t.cgu_s1_title}>
+            <p>{t.cgu_s1_p1}</p>
+            <p>{t.cgu_s1_p2}</p>
           </Section>
 
           {/* 2. Inscription et compte */}
-          <Section number="2" title="Inscription et compte">
-            <p>
-              L&apos;inscription est gratuite et réservée aux personnes majeures. Vous
-              vous engagez à fournir des informations exactes (nom, email, téléphone).
-              La vérification d&apos;identité peut être requise pour certaines fonctionnalités.
-            </p>
-            <p>
-              Vous êtes responsable de la confidentialité de vos identifiants. Tout
-              usage de votre compte est présumé fait par vous.
-            </p>
+          <Section number="2" title={t.cgu_s2_title}>
+            <p>{t.cgu_s2_p1}</p>
+            <p>{t.cgu_s2_p2}</p>
           </Section>
 
           {/* 3. Objets autorisés — CRITICAL */}
-          <Section number="3" title="Objets autorisés et interdits" highlight>
+          <Section number="3" title={t.cgu_s3_title} highlight>
+            <p>{t.cgu_s3_p1}</p>
+            <p>{t.cgu_s3_p2}</p>
+            <p>{t.cgu_s3_p3}</p>
             <p>
-              Jibly fonctionne sur le principe d&apos;une <strong>liste positive</strong> :
-              seules les catégories d&apos;objets explicitement autorisées peuvent être
-              transportées. Tout autre objet est interdit par défaut.
-            </p>
-            <p>
-              Les catégories autorisées sont : documents, clés, objets personnels,
-              vêtements, électronique légère, médicaments en vente libre (sans
-              ordonnance, dans leur emballage d&apos;origine fermé, max. 2 unités).
-            </p>
-            <p>
-              Sont <strong>strictement interdits</strong>, sans exception et sans liste
-              exhaustive : espèces, médicaments sur ordonnance, drogues et stupéfiants,
-              armes, contrefaçons, bijoux et objets de luxe (valeur &gt; 500 €), produits
-              dangereux, alcool, tabac et produits réglementés, et tout objet interdit
-              par les douanes ou la législation du pays de départ ou d&apos;arrivée.
-            </p>
-            <p>
-              La liste complète et illustrée est disponible sur{' '}
+              {t.cgu_s3_p4_pre}{' '}
               <Link href="/objets-autorises" className="underline text-lavender-600 hover:text-lavender-700">
-                la page Objets autorisés
-              </Link>.
+                {t.cgu_s3_p4_link}
+              </Link>{t.cgu_s3_p4_post}
             </p>
           </Section>
 
           {/* 4. Double déclaration */}
-          <Section number="4" title="Double déclaration du contenu">
-            <p>
-              Avant tout transport, l&apos;expéditeur et le voyageur doivent chacun
-              certifier le contenu du colis :
-            </p>
+          <Section number="4" title={t.cgu_s4_title}>
+            <p>{t.cgu_s4_p1}</p>
             <ul className="list-disc pl-5 space-y-2 mt-2">
-              <li>
-                <strong>L&apos;expéditeur</strong> certifie que le contenu décrit est
-                exact et ne contient aucun produit interdit.
-              </li>
-              <li>
-                <strong>Le voyageur</strong> vérifie le contenu avant d&apos;accepter
-                de le transporter et reste libre de refuser à tout moment.
-              </li>
+              <li>{t.cgu_s4_li1}</li>
+              <li>{t.cgu_s4_li2}</li>
             </ul>
-            <p className="mt-2">
-              Toute fausse déclaration engage la responsabilité personnelle de son auteur,
-              y compris sur le plan pénal et douanier.
-            </p>
+            <p className="mt-2">{t.cgu_s4_p2}</p>
           </Section>
 
           {/* 5. Paiement et compensation */}
-          <Section number="5" title="Paiement et compensation">
-            <p>
-              Le paiement est effectué via Stripe au moment de la réservation et
-              conservé en séquestre par Jibly. Le voyageur reçoit sa compensation
-              uniquement après confirmation de la livraison par l&apos;expéditeur via
-              le code de livraison.
-            </p>
-            <p>
-              Jibly prélève une commission sur chaque transaction réussie. Le détail
-              du prix est affiché avant validation par chaque partie.
-            </p>
+          <Section number="5" title={t.cgu_s5_title}>
+            <p>{t.cgu_s5_p1}</p>
+            <p>{t.cgu_s5_p2}</p>
           </Section>
 
           {/* 6. Codes de remise et de livraison */}
-          <Section number="6" title="Codes de remise et de livraison">
-            <p>
-              Chaque réservation génère deux codes confidentiels à 6 chiffres : un
-              code de remise (détenu par l&apos;expéditeur) et un code de livraison
-              (détenu par le voyageur). Ces codes ne doivent jamais être partagés en
-              dehors du moment du rendez-vous physique. Le déblocage du paiement
-              dépend de leur saisie correcte par la partie destinataire.
-            </p>
+          <Section number="6" title={t.cgu_s6_title}>
+            <p>{t.cgu_s6_p1}</p>
           </Section>
 
           {/* 7. Comportements interdits + exclusion — CRITICAL */}
-          <Section number="7" title="Comportements interdits et exclusion" highlight>
-            <p>
-              Les comportements suivants entraînent la <strong>suspension permanente</strong> du
-              compte, sans préavis ni remboursement :
-            </p>
+          <Section number="7" title={t.cgu_s7_title} highlight>
+            <p>{t.cgu_s7_p1}</p>
             <ul className="list-disc pl-5 space-y-2 mt-2">
-              <li>Transport d&apos;un objet interdit (cf. article 3)</li>
-              <li>Fausse déclaration de contenu</li>
-              <li>Tentative de paiement en dehors de la plateforme</li>
-              <li>Usurpation d&apos;identité ou compte multiple frauduleux</li>
-              <li>Harcèlement, menaces, discrimination envers un autre utilisateur</li>
-              <li>Tentative de contournement des codes de remise / livraison</li>
+              <li>{t.cgu_s7_li1}</li>
+              <li>{t.cgu_s7_li2}</li>
+              <li>{t.cgu_s7_li3}</li>
+              <li>{t.cgu_s7_li4}</li>
+              <li>{t.cgu_s7_li5}</li>
+              <li>{t.cgu_s7_li6}</li>
             </ul>
-            <p className="mt-3">
-              En cas d&apos;infraction, Jibly se réserve le droit de :
-            </p>
+            <p className="mt-3">{t.cgu_s7_p2}</p>
             <ul className="list-disc pl-5 space-y-2 mt-2">
-              <li>Suspendre le compte de manière définitive</li>
-              <li>Conserver les preuves (messages, photos, données de compte) à des fins légales</li>
-              <li>Transmettre les informations aux autorités compétentes (police, douanes, justice)</li>
-              <li>Refuser tout remboursement des sommes engagées</li>
+              <li>{t.cgu_s7_li7}</li>
+              <li>{t.cgu_s7_li8}</li>
+              <li>{t.cgu_s7_li9}</li>
+              <li>{t.cgu_s7_li10}</li>
             </ul>
           </Section>
 
           {/* 8. Signalement */}
-          <Section number="8" title="Signalement">
-            <p>
-              Tout utilisateur peut signaler un comportement suspect, un colis non
-              conforme, ou une violation de ces conditions via le bouton « Signaler »
-              présent dans l&apos;application. Les signalements sont traités dans les
-              meilleurs délais et de manière confidentielle.
-            </p>
+          <Section number="8" title={t.cgu_s8_title}>
+            <p>{t.cgu_s8_p1}</p>
           </Section>
 
           {/* 9. Limitation de responsabilité */}
-          <Section number="9" title="Limitation de responsabilité">
-            <p>
-              Jibly fait ses meilleurs efforts pour faciliter une expérience sûre,
-              mais ne peut garantir le résultat de chaque transport. La responsabilité
-              de Jibly est limitée aux services qu&apos;elle fournit directement
-              (mise en relation, séquestre, messagerie).
-            </p>
-            <p>
-              En cas de litige entre un expéditeur et un voyageur, Jibly peut
-              intervenir comme médiateur via la fonction Litige, mais ne se substitue
-              pas à un tribunal. La responsabilité finale du transport, des objets
-              transportés et du respect des lois locales incombe aux utilisateurs.
-            </p>
+          <Section number="9" title={t.cgu_s9_title}>
+            <p>{t.cgu_s9_p1}</p>
+            <p>{t.cgu_s9_p2}</p>
           </Section>
 
           {/* 10. Données personnelles */}
-          <Section number="10" title="Données personnelles">
-            <p>
-              Vos données sont traitées conformément au RGPD. Vous pouvez à tout
-              moment exporter ou supprimer vos données via votre espace personnel.
-              Les conversations, transactions et signalements peuvent être conservés
-              jusqu&apos;à 5 ans pour des raisons légales et de sécurité.
-            </p>
+          <Section number="10" title={t.cgu_s10_title}>
+            <p>{t.cgu_s10_p1}</p>
           </Section>
 
           {/* 11. Modification des CGU */}
-          <Section number="11" title="Modification des conditions">
-            <p>
-              Jibly peut faire évoluer ces CGU. Les utilisateurs seront notifiés par
-              email en cas de modification substantielle. La poursuite de
-              l&apos;utilisation après notification vaut acceptation.
-            </p>
+          <Section number="11" title={t.cgu_s11_title}>
+            <p>{t.cgu_s11_p1}</p>
           </Section>
 
           {/* 12. Droit applicable */}
-          <Section number="12" title="Droit applicable et juridiction">
-            <p>
-              Ces conditions sont soumises au droit français. En cas de litige et à
-              défaut d&apos;accord amiable, les tribunaux français sont seuls
-              compétents, sous réserve des dispositions impératives applicables au
-              consommateur.
-            </p>
+          <Section number="12" title={t.cgu_s12_title}>
+            <p>{t.cgu_s12_p1}</p>
           </Section>
 
         </div>
@@ -250,28 +164,28 @@ export default function CguPage() {
         {/* Quick callouts grid */}
         <div className="mt-12">
           <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em] mb-5">
-            Les 4 points à retenir
+            {t.cgu_callouts_title}
           </h2>
           <div className="grid sm:grid-cols-2 gap-3">
             <Callout
               icon={<FileCheck2 className="w-4 h-4 text-lavender-600" />}
-              title="Double déclaration"
-              body="Expéditeur et voyageur certifient chacun le contenu avant transport."
+              title={t.cgu_callout1_title}
+              body={t.cgu_callout1_body}
             />
             <Callout
               icon={<ShieldAlert className="w-4 h-4 text-blush-600" />}
-              title="Suspension permanente"
-              body="Toute fausse déclaration ou objet interdit entraîne l'exclusion définitive."
+              title={t.cgu_callout2_title}
+              body={t.cgu_callout2_body}
             />
             <Callout
               icon={<AlertTriangle className="w-4 h-4 text-butter-600" />}
-              title="Coopération autorités"
-              body="Jibly conserve les preuves et coopère avec la police et les douanes."
+              title={t.cgu_callout3_title}
+              body={t.cgu_callout3_body}
             />
             <Callout
               icon={<Flag className="w-4 h-4 text-mint-600" />}
-              title="Signalement"
-              body="Tout utilisateur peut signaler un comportement suspect à tout moment."
+              title={t.cgu_callout4_title}
+              body={t.cgu_callout4_body}
             />
           </div>
         </div>
@@ -279,13 +193,13 @@ export default function CguPage() {
         {/* Bottom CTA */}
         <div className="mt-12 p-5 sm:p-6 rounded-2xl bg-white border border-ink-50 text-center">
           <p className="text-[14px] text-ink-500 leading-relaxed mb-4">
-            Une question avant de vous lancer ?
+            {t.cgu_cta_text}
           </p>
           <Link
             href="/trust"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[14px] font-bold transition-colors"
           >
-            Consulter notre FAQ Sérénité
+            {t.cgu_cta_button}
           </Link>
         </div>
       </div>

@@ -49,7 +49,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
   const [newTripDate, setNewTripDate] = useState('');
   const newTripCompensation = 50;
 
-  const senderName = displayName(request.profile?.full_name) || "L'expéditeur";
+  const senderName = displayName(request.profile?.full_name) || t.rev_respond_sender_fallback;
   const initial = nameInitial(request.profile?.full_name);
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
 
@@ -150,7 +150,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
       onSuccess();
       router.push('/me');
     } catch (e: any) {
-      setErr(e?.message ?? 'Échec de la proposition. Réessayez.');
+      setErr(e?.message ?? t.rev_respond_err_failed);
     } finally {
       setSubmitting(false);
     }
@@ -176,7 +176,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
         <div className="flex items-start justify-between mb-5">
           <div>
             <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-              Proposer mon aide
+              {t.rev_respond_eyebrow}
             </div>
             <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
               {request.pickup_city} → {request.destination_city}
@@ -199,20 +199,20 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
             </div>
             <div>
               <div className="text-[14px] font-semibold text-ink-600">{senderName}</div>
-              <div className="text-[12px] text-ink-400">Expéditeur</div>
+              <div className="text-[12px] text-ink-400">{t.rev_respond_sender_role}</div>
             </div>
           </div>
           <div className="h-px bg-ink-50" />
           <div className="grid grid-cols-2 gap-3 text-[13px]">
             <div>
-              <div className="text-[11px] text-ink-300 uppercase tracking-[0.06em] mb-1">Catégorie</div>
+              <div className="text-[11px] text-ink-300 uppercase tracking-[0.06em] mb-1">{t.rev_respond_category}</div>
               <div className="text-ink-600 font-medium flex items-center gap-1.5">
                 <span>{category?.icon}</span>
                 <span>{category ? t[category.labelKey] : request.item_category}</span>
               </div>
             </div>
             <div>
-              <div className="text-[11px] text-ink-300 uppercase tracking-[0.06em] mb-1">Avant le</div>
+              <div className="text-[11px] text-ink-300 uppercase tracking-[0.06em] mb-1">{t.rev_respond_before_date}</div>
               <div className="text-ink-600 font-medium num-display">
                 {formatShortDate(request.desired_delivery_date)}
               </div>
@@ -224,12 +224,12 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
         <div className="mb-5">
           <label className="block text-[13px] font-semibold text-ink-500 mb-2">
             <Plane className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
-            Sur quel vol allez-vous le transporter ?
+            {t.rev_respond_which_flight}
           </label>
           {tripsLoading ? (
             <div className="rounded-xl bg-white border border-ink-100 px-4 py-3 text-[13px] text-ink-400 flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Chargement de vos vols…
+              {t.rev_respond_loading_flights}
             </div>
           ) : (
             <div className="space-y-2">
@@ -263,7 +263,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
               >
                 <div className="text-[13px] font-semibold text-ink-600 flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5" />
-                  Nouveau vol
+                  {t.rev_respond_new_flight}
                 </div>
                 <div className="text-[12px] text-ink-400 mt-0.5">
                   {request.pickup_city} → {request.destination_city}
@@ -280,7 +280,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
                 >
                   <div>
                     <label className="block text-[11px] font-semibold text-ink-400 tracking-[0.06em] uppercase mb-1">
-                      Date du vol
+                      {t.rev_respond_flight_date}
                     </label>
                     <input
                       type="date"
@@ -291,7 +291,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
                     />
                   </div>
                   <p className="text-[11px] text-ink-400 leading-relaxed">
-                    Votre vol sera enregistré et visible dans &quot;Mes transports&quot;.
+                    {t.rev_respond_flight_saved_note}
                   </p>
                 </motion.div>
               )}
@@ -302,16 +302,16 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
         {/* Price breakdown */}
         <div className="rounded-2xl bg-mint-50 border border-mint-200/60 p-4 mb-5 space-y-2">
           <div className="text-[11px] font-semibold text-mint-700 tracking-[0.06em] uppercase">
-            Si l&apos;expéditeur accepte
+            {t.rev_respond_if_accepted}
           </div>
           <div className="flex items-center justify-between text-[14px]">
-            <span className="text-ink-500">Vous recevrez</span>
+            <span className="text-ink-500">{t.rev_respond_you_receive}</span>
             <span className="font-bold text-mint-600 text-[18px] num-display">
               {formatEuros(netTraveler)}
             </span>
           </div>
           <div className="flex items-center justify-between text-[12px] text-ink-400">
-            <span>Protection Jibly (15%)</span>
+            <span>{t.rev_respond_jibly_protection}</span>
             <span className="num-display">{formatEuros(jiblyFee)}</span>
           </div>
         </div>
@@ -319,12 +319,12 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
         {/* Optional message */}
         <div className="mb-5">
           <label className="block text-[13px] font-semibold text-ink-500 mb-2">
-            Message à l&apos;expéditeur (optionnel)
+            {t.rev_respond_message_label}
           </label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Ex: Je peux passer chercher l'item à votre adresse."
+            placeholder={t.rev_respond_message_placeholder}
             rows={2}
             maxLength={500}
             className="w-full px-4 py-2.5 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300 resize-none"
@@ -334,7 +334,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
         {/* Reassurance */}
         <div className="rounded-xl bg-cream-100 px-4 py-3 mb-5 text-[12px] text-ink-500 leading-relaxed">
           <ShieldCheck className="w-3.5 h-3.5 inline mr-1 text-ink-400" />
-          Aucune carte n&apos;est demandée à ce stade. S&apos;il accepte, vous serez notifié·e.
+          {t.rev_respond_reassurance}
         </div>
 
         {err && (
@@ -350,7 +350,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
             disabled={submitting}
             className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
           >
-            Annuler
+            {t.rev_cancel}
           </button>
           <button
             onClick={handleSubmit}
@@ -358,7 +358,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
             className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 disabled:bg-ink-200 disabled:cursor-not-allowed rounded-full transition-colors"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-            {submitting ? 'Envoi…' : 'Envoyer ma proposition'}
+            {submitting ? t.rev_sending : t.rev_respond_submit}
           </button>
         </div>
       </motion.div>

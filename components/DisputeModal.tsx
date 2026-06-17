@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { browser } from '@/lib/supabase/queries';
+import { useI18n } from '@/lib/i18n/context';
 
 /**
  * "Signaler un problème" modal — opens a dispute on a booking.
@@ -39,6 +40,7 @@ export function DisputeModal({
   reportedUserName: string;
   reporterRole: 'sender' | 'traveler';
 }) {
+  const { t } = useI18n();
   const [category, setCategory] = useState<string>('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,26 +50,26 @@ export function DisputeModal({
   // is non-delivery / damage; a traveler's is usually false accusations
   // from the sender ("they claim I didn't deliver when I did").
   const senderCategories = [
-    { value: 'not_delivered', icon: '📭', label: 'Colis non livré', desc: 'Le voyageur n\'a pas livré mon colis' },
-    { value: 'damaged', icon: '💥', label: 'Colis abîmé', desc: 'Le colis est arrivé endommagé' },
-    { value: 'wrong_item', icon: '🤔', label: 'Mauvais objet', desc: 'L\'objet livré n\'est pas le mien' },
-    { value: 'late_delivery', icon: '🐌', label: 'Très en retard', desc: 'La livraison est largement hors délai' },
-    { value: 'other', icon: '⚠️', label: 'Autre problème', desc: 'Je veux décrire un autre problème' },
+    { value: 'not_delivered', icon: '📭', label: t.rev_dispute_cat_not_delivered, desc: t.rev_dispute_cat_not_delivered_desc },
+    { value: 'damaged', icon: '💥', label: t.rev_dispute_cat_damaged, desc: t.rev_dispute_cat_damaged_desc },
+    { value: 'wrong_item', icon: '🤔', label: t.rev_dispute_cat_wrong_item, desc: t.rev_dispute_cat_wrong_item_desc },
+    { value: 'late_delivery', icon: '🐌', label: t.rev_dispute_cat_late, desc: t.rev_dispute_cat_late_desc },
+    { value: 'other', icon: '⚠️', label: t.rev_dispute_cat_other, desc: t.rev_dispute_cat_other_desc },
   ];
   const travelerCategories = [
-    { value: 'wrong_item', icon: '🤔', label: 'Le colis ne correspond pas', desc: 'L\'objet ne correspond pas à la description' },
-    { value: 'not_delivered', icon: '📭', label: 'Le destinataire refuse de confirmer', desc: 'J\'ai livré mais la réception n\'est pas confirmée' },
-    { value: 'other', icon: '⚠️', label: 'Autre problème', desc: 'Je veux décrire un autre problème' },
+    { value: 'wrong_item', icon: '🤔', label: t.rev_dispute_cat_mismatch, desc: t.rev_dispute_cat_mismatch_desc },
+    { value: 'not_delivered', icon: '📭', label: t.rev_dispute_cat_no_confirm, desc: t.rev_dispute_cat_no_confirm_desc },
+    { value: 'other', icon: '⚠️', label: t.rev_dispute_cat_other, desc: t.rev_dispute_cat_other_desc },
   ];
   const categories = reporterRole === 'sender' ? senderCategories : travelerCategories;
 
   async function submit() {
     if (!category) {
-      setError('Sélectionnez une catégorie');
+      setError(t.rev_dispute_err_no_category);
       return;
     }
     if (!description.trim() || description.trim().length < 10) {
-      setError('Décrivez le problème en quelques mots (10 caractères minimum)');
+      setError(t.rev_dispute_err_short_desc);
       return;
     }
     setBusy(true);
@@ -85,7 +87,7 @@ export function DisputeModal({
       setCategory('');
       setDescription('');
     } catch (e: any) {
-      setError(e?.message ?? 'Impossible d\'envoyer le signalement');
+      setError(e?.message ?? t.rev_dispute_err_submit_failed);
     } finally {
       setBusy(false);
     }
@@ -123,7 +125,7 @@ export function DisputeModal({
                   <AlertTriangle className="w-5 h-5 text-blush-600" />
                 </div>
                 <h2 className="text-[18px] font-bold text-ink-600 tracking-[-0.015em]">
-                  Signaler un problème
+                  {t.rev_dispute_title}
                 </h2>
               </div>
               <button
@@ -131,7 +133,7 @@ export function DisputeModal({
                 onClick={close}
                 disabled={busy}
                 className="p-1.5 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
-                aria-label="Fermer"
+                aria-label={t.rev_close}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -139,9 +141,9 @@ export function DisputeModal({
 
             <div className="px-6 pb-2 overflow-y-auto flex-1 min-h-0">
               <p className="text-[13px] text-ink-500 leading-relaxed mb-5">
-                Cette action signale un problème concernant{' '}
-                <strong className="text-ink-600">{reportedUserName}</strong>.
-                Notre équipe sera notifiée immédiatement et traitera le litige sous 48h.
+                {t.rev_dispute_intro_before}{' '}
+                <strong className="text-ink-600">{reportedUserName}</strong>
+                {t.rev_dispute_intro_after}
               </p>
 
               {/* Category picker */}
@@ -170,13 +172,13 @@ export function DisputeModal({
               {/* Description */}
               <label className="block">
                 <span className="text-[11px] font-semibold tracking-[0.1em] uppercase text-ink-400">
-                  Description détaillée
+                  {t.rev_dispute_desc_label}
                 </span>
                 <textarea
                   rows={4}
                   value={description}
                   onChange={(e) => { setDescription(e.target.value); setError(null); }}
-                  placeholder="Décrivez ce qu'il s'est passé, les dates, les échanges, et tout ce qui peut nous aider à trancher…"
+                  placeholder={t.rev_dispute_desc_placeholder}
                   disabled={busy}
                   className="mt-2 w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-white text-[14px] text-ink-600 placeholder:text-ink-300 focus:outline-none focus:ring-2 focus:ring-lavender-500/30 focus:border-lavender-500 transition-colors resize-none disabled:opacity-50"
                 />
@@ -203,15 +205,15 @@ export function DisputeModal({
                 {busy ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Envoi…
+                    {t.rev_sending}
                   </>
                 ) : (
-                  'Envoyer le signalement'
+                  t.rev_dispute_submit
                 )}
               </button>
 
               <p className="text-[10px] text-ink-300 text-center mt-2 leading-relaxed">
-                Les signalements abusifs peuvent entraîner la suspension de votre propre compte.
+                {t.rev_dispute_abuse_warning}
               </p>
               </div>   
           </motion.div>

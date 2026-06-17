@@ -6,6 +6,7 @@ import { Star, X, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Form';
 import { browser } from '@/lib/supabase/queries';
+import { useI18n } from '@/lib/i18n/context';
 
 type Props = {
   // The booking being reviewed.
@@ -42,6 +43,7 @@ export function ReviewModal({
   onClose,
   onSuccess,
 }: Props) {
+  const { t } = useI18n();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -52,25 +54,25 @@ export function ReviewModal({
   // contextualize.
   const roleLabels = reviewedRole === 'traveler'
     ? {
-        title: `Noter ${reviewedUserName}`,
-        subtitle: 'Comment s\'est passée la livraison ?',
-        placeholder: 'Sympa, ponctuel·le, soigneux·se… (optionnel)',
+        title: t.rev_review_title.replace('{name}', reviewedUserName),
+        subtitle: t.rev_review_subtitle_traveler,
+        placeholder: t.rev_review_placeholder_traveler,
       }
     : {
-        title: `Noter ${reviewedUserName}`,
-        subtitle: 'Comment s\'est passé l\'envoi ?',
-        placeholder: 'Clair·e, fiable, sympathique… (optionnel)',
+        title: t.rev_review_title.replace('{name}', reviewedUserName),
+        subtitle: t.rev_review_subtitle_sender,
+        placeholder: t.rev_review_placeholder_sender,
       };
 
   // Helper labels under the stars — give the user a quick clue about what
   // each number means. Shown only when a value is hovered or selected.
   const ratingLabel = (n: number): string => {
     switch (n) {
-      case 1: return 'Très décevant';
-      case 2: return 'Pas top';
-      case 3: return 'Correct';
-      case 4: return 'Très bien';
-      case 5: return 'Parfait';
+      case 1: return t.rev_rating_1;
+      case 2: return t.rev_rating_2;
+      case 3: return t.rev_rating_3;
+      case 4: return t.rev_rating_4;
+      case 5: return t.rev_rating_5;
       default: return '';
     }
   };
@@ -95,11 +97,11 @@ export function ReviewModal({
       // a friendlier one. Same for "received_confirmed_at is null".
       const msg = e?.message ?? '';
       if (msg.includes('duplicate') || msg.includes('uniq_reviews_booking_reviewer')) {
-        setErr('Vous avez déjà noté cet envoi.');
+        setErr(t.rev_err_already_reviewed);
       } else if (msg.includes('row-level security') || msg.includes('policy')) {
-        setErr('Vous ne pouvez pas encore noter cet envoi.');
+        setErr(t.rev_err_cannot_review_yet);
       } else {
-        setErr(msg || 'Échec de l\'enregistrement. Réessayez.');
+        setErr(msg || t.rev_err_save_failed);
       }
     } finally {
       setBusy(false);
@@ -126,7 +128,7 @@ export function ReviewModal({
         <div className="flex items-start justify-between mb-5">
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-              Votre avis
+              {t.rev_review_eyebrow}
             </div>
             <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
               {roleLabels.title}
@@ -137,7 +139,7 @@ export function ReviewModal({
             onClick={onClose}
             disabled={busy}
             className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
-            aria-label="Fermer"
+            aria-label={t.rev_close}
           >
             <X className="w-4 h-4" />
           </button>
@@ -158,7 +160,7 @@ export function ReviewModal({
                   onMouseEnter={() => setHoverRating(n)}
                   onMouseLeave={() => setHoverRating(0)}
                   disabled={busy}
-                  aria-label={`${n} étoile${n > 1 ? 's' : ''}`}
+                  aria-label={(n > 1 ? t.rev_stars_plural : t.rev_stars_singular).replace('{count}', String(n))}
                   className="p-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-lavender-300 disabled:opacity-50 transition-transform hover:scale-110"
                 >
                   <Star
@@ -172,12 +174,12 @@ export function ReviewModal({
             })}
           </div>
           <div className="h-5 text-[13px] font-medium text-ink-500">
-            {display > 0 ? ratingLabel(display) : 'Sélectionnez une note'}
+            {display > 0 ? ratingLabel(display) : t.rev_select_rating}
           </div>
         </div>
 
         <Textarea
-          label="Votre commentaire (optionnel)"
+          label={t.rev_comment_label}
           placeholder={roleLabels.placeholder}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -191,11 +193,11 @@ export function ReviewModal({
 
         <div className="mt-6 flex justify-end gap-2.5">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
-            Annuler
+            {t.rev_cancel}
           </Button>
           <Button onClick={handleSubmit} disabled={rating < 1 || busy}>
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Envoyer ma note
+            {t.rev_submit_review}
           </Button>
         </div>
       </motion.div>

@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { browser, type Notification } from '@/lib/supabase/queries';
+import { useI18n } from '@/lib/i18n/context';
 
 const PAGE_SIZE = 30;
 
@@ -22,6 +23,7 @@ export default function NotificationsPageClient({
   initialItems: Notification[];
 }) {
   const user = initialUser;
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [items, setItems] = useState<Notification[]>(initialItems);
   // If we got back fewer than a full page, we know there's nothing more.
@@ -103,7 +105,7 @@ export default function NotificationsPageClient({
   // "il y a 4 j".
   function formatTime(iso: string): string {
     const d = new Date(iso);
-    return d.toLocaleString('fr-FR', {
+    return d.toLocaleString(locale === 'en' ? 'en-GB' : 'fr-FR', {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',
@@ -120,7 +122,7 @@ export default function NotificationsPageClient({
           className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-6"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Retour à mon espace
+          {t.sec_back_to_space}
         </Link>
 
         <motion.div
@@ -131,10 +133,10 @@ export default function NotificationsPageClient({
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-1">
-                Notifications
+                {t.sec_notif_title}
               </h1>
               <p className="text-[14px] text-ink-400">
-                Toute l&apos;activité sur vos colis et vos voyages.
+                {t.sec_notif_subtitle}
               </p>
             </div>
             {unreadCount > 0 && (
@@ -145,7 +147,7 @@ export default function NotificationsPageClient({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors disabled:opacity-50"
               >
                 <Check className="w-3.5 h-3.5" />
-                Tout marquer lu
+                {t.sec_notif_mark_all_read}
               </button>
             )}
           </div>
@@ -156,11 +158,10 @@ export default function NotificationsPageClient({
                 <Bell className="w-6 h-6 text-ink-300" />
               </div>
               <h3 className="text-lg font-bold text-ink-600 mb-2">
-                Aucune notification
+                {t.sec_notif_empty_title}
               </h3>
               <p className="text-[14px] text-ink-400 max-w-sm mx-auto leading-relaxed">
-                Quand quelqu&apos;un acceptera votre colis ou proposera un
-                trajet, vous serez prévenu ici.
+                {t.sec_notif_empty_body}
               </p>
             </div>
           ) : (
@@ -221,10 +222,10 @@ export default function NotificationsPageClient({
                 {loadingMore ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Chargement…
+                    {t.sec_loading}
                   </>
                 ) : (
-                  'Charger plus'
+                  t.sec_load_more
                 )}
               </button>
             </div>

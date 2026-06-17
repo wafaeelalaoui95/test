@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Check, Package } from 'lucide-react';
 import { useState } from 'react';
+import { useI18n } from '@/lib/i18n/context';
  
 /**
  * Code display modal — shown at one of the two trust-handoff moments. 
@@ -39,6 +40,7 @@ export function PickupShowCodeModal({
   travelerName: string;
   mode?: 'pickup' | 'delivery';
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const isDelivery = mode === 'delivery';
 
@@ -77,14 +79,14 @@ export function PickupShowCodeModal({
                   <Package className="w-5 h-5 text-lavender-600" />
                 </div>
                 <h2 className="text-[18px] font-bold text-ink-600 tracking-[-0.015em]">
-                  {isDelivery ? 'Livraison du colis' : 'Remise du colis'}
+                  {isDelivery ? t.pickup_show_title_delivery : t.pickup_show_title_pickup}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={onClose}
                 className="p-1.5 rounded-full hover:bg-ink-50 text-ink-400"
-                aria-label="Fermer"
+                aria-label={t.pickup_close}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -92,27 +94,24 @@ export function PickupShowCodeModal({
 
             <div className="px-6 pb-6">
               <p className="text-[14px] text-ink-500 leading-relaxed mb-5">
-                {isDelivery ? (
-                  <>
-                    Communiquez ce code à{' '}
-                    <strong className="text-ink-600">{travelerName}</strong> sur place. Il devra
-                    le saisir dans son application pour confirmer la réception du colis et libérer
-                    le paiement.
-                  </>
-                ) : (
-                  <>
-                    Communiquez ce code à{' '}
-                    <strong className="text-ink-600">{travelerName}</strong> sur place. Il devra
-                    le saisir dans son application pour confirmer qu&apos;il a bien récupéré votre
-                    colis.
-                  </>
-                )}
+                {(isDelivery ? t.pickup_show_body_delivery : t.pickup_show_body_pickup)
+                  .split('{name}')
+                  .flatMap((part, i) =>
+                    i === 0
+                      ? [part]
+                      : [
+                          <strong key={i} className="text-ink-600">
+                            {travelerName}
+                          </strong>,
+                          part,
+                        ]
+                  )}
               </p>
 
               {/* The code itself — big, easy to read aloud */}
               <div className="bg-white rounded-2xl border-2 border-dashed border-lavender-300 p-6 mb-4">
                 <div className="text-[10px] font-bold tracking-[0.2em] text-ink-300 text-center uppercase mb-3">
-                  {isDelivery ? 'Code de livraison' : 'Code de remise'}
+                  {isDelivery ? t.pickup_show_code_label_delivery : t.pickup_show_code_label_pickup}
                 </div>
                 <div className="flex justify-center gap-2 sm:gap-2.5">
                   {code.split('').map((digit, i) => (
@@ -134,19 +133,18 @@ export function PickupShowCodeModal({
                 {copied ? (
                   <>
                     <Check className="w-3.5 h-3.5" />
-                    Code copié
+                    {t.pickup_show_copied}
                   </>
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    Copier le code
+                    {t.pickup_show_copy}
                   </>
                 )}
               </button>
 
               <p className="text-[11px] text-ink-400 text-center mt-4 leading-relaxed">
-                🔒 Ne partagez ce code <strong>qu&apos;au moment</strong>{' '}
-                {isDelivery ? 'de la livraison.' : 'de la remise en main propre.'}
+                {isDelivery ? t.pickup_show_warning_delivery : t.pickup_show_warning_pickup}
               </p>
             </div>
       </motion.div>

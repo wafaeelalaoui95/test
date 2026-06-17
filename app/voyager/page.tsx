@@ -144,9 +144,9 @@ export default function VoyagerPage() {
     try {
       await browser.createTrip({
         user_id: user.id,
-        departure_country: '',
+        departure_country: fromCountry,
         departure_city: fromCity,
-        arrival_country: '',
+        arrival_country: toCountry,
         arrival_city: toCity,
         departure_date: date,
         arrival_date: null,
@@ -996,9 +996,9 @@ function InstantProposeModal({
       if (!tripId) {
         const trip = await browser.createTrip({
           user_id: travelerId,
-          departure_country: '',
+          departure_country: fromCountry,
           departure_city: fromCity,
-          arrival_country: '',
+          arrival_country: toCountry,
           arrival_city: toCity,
           departure_date: date,
           arrival_date: null,

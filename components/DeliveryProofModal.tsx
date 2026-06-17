@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, CheckCircle2, Loader2, X, AlertCircle } from 'lucide-react';
+import { useI18n } from '@/lib/i18n/context';
 
 type Props = {
   bookingIntentId: string;
@@ -17,6 +18,7 @@ export function DeliveryProofModal({
   onSuccess,
   onClose,
 }: Props) {
+  const { t } = useI18n();
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [receiverName, setReceiverName] = useState(prefilledReceiverName ?? '');
@@ -28,7 +30,7 @@ export function DeliveryProofModal({
   function handlePhotoSelected(file: File) {
     setErr(null);
     if (file.size > 8 * 1024 * 1024) {
-      setErr('Photo trop volumineuse (max 8 Mo).');
+      setErr(t.pickup_proof_err_photo_too_large);
       return;
     }
     setPhoto(file);
@@ -37,11 +39,11 @@ export function DeliveryProofModal({
 
   async function handleSubmit() {
     if (!photo) {
-      setErr('Ajoutez une photo de la remise');
+      setErr(t.pickup_proof_err_no_photo);
       return;
     }
     if (!receiverName.trim()) {
-      setErr('Indiquez le nom de la personne qui a reçu le colis');
+      setErr(t.pickup_proof_err_no_name);
       return;
     }
 
@@ -60,10 +62,10 @@ export function DeliveryProofModal({
         body: form,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Échec du téléversement');
+      if (!res.ok) throw new Error(data.error ?? t.pickup_proof_err_upload_failed);
       onSuccess(data.url);
     } catch (e: any) {
-      setErr(e?.message ?? 'Une erreur est survenue');
+      setErr(e?.message ?? t.pickup_proof_err_generic);
     } finally {
       setSubmitting(false);
     }
@@ -89,10 +91,10 @@ export function DeliveryProofModal({
         <div className="flex items-start justify-between mb-5">
           <div>
             <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-              Preuve de livraison
+              {t.pickup_proof_eyebrow}
             </div>
             <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
-              J&apos;ai livré le colis
+              {t.pickup_proof_title}
             </h2>
           </div>
           <button
@@ -105,19 +107,19 @@ export function DeliveryProofModal({
         </div>
 
         <p className="text-[14px] text-ink-500 leading-relaxed mb-5">
-          Une photo + le nom de la personne suffisent. C&apos;est votre garantie en cas de problème.
+          {t.pickup_proof_intro}
         </p>
 
         <div className="mb-5">
           <label className="block text-[13px] font-semibold text-ink-500 mb-2.5">
-            Photo de la remise
+            {t.pickup_proof_photo_label}
           </label>
           {photoPreview ? (
             <div className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photoPreview}
-                alt="Aperçu"
+                alt={t.pickup_proof_preview_alt}
                 className="w-full h-56 object-cover rounded-2xl border border-ink-100"
               />
               <button
@@ -129,7 +131,7 @@ export function DeliveryProofModal({
                 }}
                 disabled={submitting}
                 className="absolute top-2 right-2 w-8 h-8 rounded-full bg-ink-600/70 text-white flex items-center justify-center hover:bg-ink-600 disabled:opacity-50"
-                aria-label="Supprimer la photo"
+                aria-label={t.pickup_proof_remove_photo}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -141,7 +143,7 @@ export function DeliveryProofModal({
               className="w-full h-40 rounded-2xl border-2 border-dashed border-ink-200 hover:border-lavender-300 hover:bg-lavender-50/30 transition-colors flex flex-col items-center justify-center gap-2 text-ink-400 hover:text-lavender-700"
             >
               <Camera className="w-7 h-7" />
-              <span className="text-[14px] font-medium">Prendre / choisir une photo</span>
+              <span className="text-[14px] font-medium">{t.pickup_proof_photo_cta}</span>
             </button>
           )}
           <input
@@ -159,28 +161,28 @@ export function DeliveryProofModal({
 
         <div className="mb-5">
           <label className="block text-[13px] font-semibold text-ink-500 mb-2">
-            Nom de la personne qui a reçu
+            {t.pickup_proof_receiver_label}
           </label>
           <input
             type="text"
             value={receiverName}
             onChange={(e) => setReceiverName(e.target.value)}
-            placeholder="Ex: Mohammed (le père)"
+            placeholder={t.pickup_proof_receiver_placeholder}
             className="w-full px-4 py-3 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300"
           />
           <p className="text-[11px] text-ink-300 mt-1.5">
-            Ce nom sera comparé avec celui fourni par l&apos;expéditeur.
+            {t.pickup_proof_receiver_hint}
           </p>
         </div>
 
         <div className="mb-5">
           <label className="block text-[13px] font-semibold text-ink-500 mb-2">
-            Note (optionnel)
+            {t.pickup_proof_note_label}
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ex: Remis à l'aéroport de Casablanca"
+            placeholder={t.pickup_proof_note_placeholder}
             rows={2}
             className="w-full px-4 py-3 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300 resize-none"
           />
@@ -199,7 +201,7 @@ export function DeliveryProofModal({
             disabled={submitting}
             className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
           >
-            Annuler
+            {t.pickup_proof_cancel}
           </button>
           <button
             onClick={handleSubmit}
@@ -207,7 +209,7 @@ export function DeliveryProofModal({
             className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 disabled:bg-ink-200 disabled:cursor-not-allowed rounded-full transition-colors"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-            {submitting ? 'Téléversement…' : 'Confirmer la livraison'}
+            {submitting ? t.pickup_proof_submitting : t.pickup_proof_submit}
           </button>
         </div>
       </motion.div>

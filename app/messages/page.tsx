@@ -8,9 +8,11 @@ import { browser, type ConversationListItem } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { ChatModal } from '@/components/ChatModal';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/context';
 
 export default function MessagesPage() {
   const { user, loading: authLoading } = useAuth();
+  const { t } = useI18n();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export default function MessagesPage() {
     browser
       .listMyConversations(user.id)
       .then(setConversations)
-      .catch((e) => setError(e?.message ?? 'Erreur de chargement'));
+      .catch((e) => setError(e?.message ?? t.sec_load_error));
   }
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function MessagesPage() {
       })
       .catch((e) => {
         if (cancelled) return;
-        setError(e?.message ?? 'Erreur de chargement');
+        setError(e?.message ?? t.sec_load_error);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -61,12 +63,12 @@ export default function MessagesPage() {
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-5 gap-4">
-        <p className="text-ink-500">Connectez-vous pour voir vos messages.</p>
+        <p className="text-ink-500">{t.sec_msg_login_prompt}</p>
         <Link
           href="/login?next=/messages"
           className="px-5 py-2.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[14px] font-semibold transition-colors"
         >
-          Se connecter
+          {t.sec_login}
         </Link>
       </div>
     );
@@ -80,7 +82,7 @@ export default function MessagesPage() {
           className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-6"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Retour à mon espace
+          {t.sec_back_to_space}
         </Link>
 
         <motion.div
@@ -89,10 +91,10 @@ export default function MessagesPage() {
           transition={{ duration: 0.3 }}
         >
           <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 tracking-[-0.025em] mb-2">
-            Messages
+            {t.sec_msg_title}
           </h1>
           <p className="text-[14px] text-ink-400 mb-8">
-            Vos conversations avec voyageurs et expéditeurs.
+            {t.sec_msg_subtitle}
           </p>
 
           {error && (
@@ -107,10 +109,10 @@ export default function MessagesPage() {
                 <Inbox className="w-6 h-6 text-ink-300" />
               </div>
               <h3 className="text-lg font-bold text-ink-600 mb-2">
-                Aucun message
+                {t.sec_msg_empty_title}
               </h3>
               <p className="text-[14px] text-ink-400 max-w-sm mx-auto leading-relaxed">
-                Vos conversations apparaîtront ici dès qu&apos;un voyage est confirmé.
+                {t.sec_msg_empty_body}
               </p>
             </div>
           ) : (
@@ -137,7 +139,7 @@ export default function MessagesPage() {
             senderId={openConv.sender_id}
             travelerId={openConv.traveler_id}
             currentUserId={user.id}
-            otherName={displayName(openConv.other_user.full_name) || 'Utilisateur'}
+            otherName={displayName(openConv.other_user.full_name) || t.sec_user_fallback}
             otherInitial={nameInitial(openConv.other_user.full_name)}
             contextLine={`${openConv.pickup_city} → ${openConv.destination_city}`}
             onClose={() => {
@@ -164,16 +166,17 @@ function ConversationRow({
   isLast: boolean;
   onClick: () => void;
 }) {
-  const otherName = displayName(conv.other_user?.full_name) || 'Utilisateur';
+  const { t } = useI18n();
+  const otherName = displayName(conv.other_user?.full_name) || t.sec_user_fallback;
   const initial = nameInitial(conv.other_user?.full_name);
   const isUnread = conv.unread_count > 0;
 
   // Preview: if last message is from me, prefix "Vous : ", else just the body
   const preview = conv.last_message
     ? conv.last_message.sender_id === currentUserId
-      ? `Vous : ${conv.last_message.body}`
+      ? t.sec_msg_you_prefix.replace('{body}', conv.last_message.body)
       : conv.last_message.body
-    : 'Pas encore de message';
+    : t.sec_msg_no_message;
 
   return (
     <button
