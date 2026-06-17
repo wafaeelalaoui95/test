@@ -84,6 +84,140 @@ export type Translations = {
   disc_you_receive: string;
   disc_on_paid: string;
   disc_i_can_do_it: string;
+  prof_not_found: string;
+  prof_not_found_desc: string;
+  prof_back_to_travelers: string;
+  prof_traveler: string;
+  prof_choose_category: string;
+  prof_error_occurred: string;
+  prof_identity_verified: string;
+  prof_transports_done_one: string;
+  prof_transports_done_other: string;
+  prof_verifications: string;
+  prof_identity_verified_hint: string;
+  prof_email_confirmed: string;
+  prof_email_confirmed_hint: string;
+  prof_member_since: string;
+  prof_member_recent: string;
+  prof_account_age_hint: string;
+  prof_new_traveler: string;
+  prof_experienced_traveler: string;
+  prof_trusted_traveler: string;
+  prof_transports_made_one: string;
+  prof_transports_made_other: string;
+  prof_open_trips: string;
+  prof_no_open_trips: string;
+  prof_starting_from: string;
+  prof_jibly_protection_included: string;
+  prof_book_this_trip: string;
+  prof_booking_step_1: string;
+  prof_what_to_send: string;
+  prof_description_optional: string;
+  prof_description_placeholder: string;
+  prof_payment_detail: string;
+  prof_traveler_compensation: string;
+  prof_jibly_protection_fee: string;
+  prof_total: string;
+  prof_no_immediate_charge: string;
+  prof_no_immediate_charge_desc: string;
+  prof_cancel: string;
+  prof_continue_to_payment: string;
+  prof_payment_step_2: string;
+  prof_modify: string;
+  prof_saving_booking: string;
+  prof_payment_authorized: string;
+  prof_payment_authorized_desc_before: string;
+  prof_payment_authorized_desc_after: string;
+  prof_view_my_space: string;
+  prof_close: string;
+  env_success_subtitle: string;
+  env_choose_subtitle: string;
+  env_fill_route_prompt: string;
+  env_searching_travelers: string;
+  env_travelers_available_one: string;
+  env_travelers_available_other: string;
+  env_before_date: string;
+  env_more_travelers: string;
+  env_none_suitable: string;
+  env_publish_public_request: string;
+  env_no_traveler_on_route: string;
+  env_nearby_routes_intro: string;
+  env_traveler_count_one: string;
+  env_traveler_count_other: string;
+  env_no_traveler_this_route: string;
+  env_no_traveler_publish_hint: string;
+  env_continue_request: string;
+  env_back_to_travelers: string;
+  env_public_request_title: string;
+  env_public_request_subtitle: string;
+  env_creation_failed: string;
+  env_describe_parcel: string;
+  env_confirm_payment: string;
+  env_book_traveler: string;
+  env_fixed_price: string;
+  env_close: string;
+  env_parcel_category: string;
+  env_description_label: string;
+  env_description_placeholder: string;
+  env_protection_title: string;
+  env_protection_desc: string;
+  env_continue_to_payment: string;
+  env_traveler_default: string;
+  env_traveler_default_def: string;
+  env_trips_completed: string;
+  env_book: string;
+  voy_subtitle: string;
+  voy_proposals_sent_one: string;
+  voy_proposals_sent_other: string;
+  voy_proposals_recap_hint: string;
+  voy_see_my_proposals: string;
+  voy_flight_details: string;
+  voy_flight_details_required_propose: string;
+  voy_flight_details_required_trust: string;
+  voy_flight_number_label: string;
+  voy_flight_number_invalid: string;
+  voy_flight_number_invalid_to: string;
+  voy_time_optional: string;
+  voy_airport_codes_hide: string;
+  voy_airport_codes_add: string;
+  voy_optional_paren: string;
+  voy_airport_departure: string;
+  voy_airport_arrival: string;
+  voy_fill_route_prompt: string;
+  voy_searching_parcels: string;
+  voy_senders_searching_one: string;
+  voy_senders_searching_other: string;
+  voy_on_your_route: string;
+  voy_more_requests: string;
+  voy_also_visible_prompt: string;
+  voy_publish_trip: string;
+  voy_no_parcels_title: string;
+  voy_no_parcels_text: string;
+  voy_back_to_parcels: string;
+  voy_publish_trip_subtitle: string;
+  voy_flight_date_label: string;
+  voy_sender_fallback: string;
+  voy_sender_fallback_def: string;
+  voy_proposal_sent: string;
+  voy_awaiting_response: string;
+  voy_locked: string;
+  voy_before_the: string;
+  voy_before_the_lc: string;
+  voy_net_for_you: string;
+  voy_propose: string;
+  voy_propose_title: string;
+  voy_propose_title_need_flight: string;
+  voy_help_sender: string;
+  voy_you_will_receive: string;
+  voy_close: string;
+  voy_what_to_transport: string;
+  voy_message_label: string;
+  voy_message_placeholder: string;
+  voy_how_it_works_next: string;
+  voy_how_it_works_text: string;
+  voy_cancel: string;
+  voy_send_proposal: string;
+  voy_send_failed: string;
 
   // How it works
   how_title: string;
@@ -1050,6 +1184,140 @@ export const translations: Record<Locale, Translations> = {
     disc_you_receive: 'Vous recevrez',
     disc_on_paid: 'sur {total} payés',
     disc_i_can_do_it: 'Je peux le faire',
+    prof_not_found: 'Profil introuvable',
+    prof_not_found_desc: 'Ce voyageur n\'existe plus ou son profil a été supprimé.',
+    prof_back_to_travelers: 'Retour aux voyageurs',
+    prof_traveler: 'Voyageur',
+    prof_choose_category: 'Choisissez une catégorie d\'objet',
+    prof_error_occurred: 'Une erreur est survenue',
+    prof_identity_verified: 'Identité vérifiée',
+    prof_transports_done_one: 'transport effectué',
+    prof_transports_done_other: 'transports effectués',
+    prof_verifications: 'Vérifications',
+    prof_identity_verified_hint: 'Pièce d\'identité + selfie',
+    prof_email_confirmed: 'Email confirmé',
+    prof_email_confirmed_hint: 'Adresse vérifiée à l\'inscription',
+    prof_member_since: 'Membre depuis {year}',
+    prof_member_recent: 'Membre récent',
+    prof_account_age_hint: 'Ancienneté du compte',
+    prof_new_traveler: 'Nouveau voyageur',
+    prof_experienced_traveler: 'Voyageur expérimenté',
+    prof_trusted_traveler: 'Voyageur en confiance',
+    prof_transports_made_one: '{count} transport réalisé',
+    prof_transports_made_other: '{count} transports réalisés',
+    prof_open_trips: 'Trajets ouverts',
+    prof_no_open_trips: '{name} n\'a aucun trajet ouvert pour le moment.',
+    prof_starting_from: 'À partir de',
+    prof_jibly_protection_included: 'protection Jibly incluse',
+    prof_book_this_trip: 'Réserver ce trajet',
+    prof_booking_step_1: 'Réservation · Étape 1/2',
+    prof_what_to_send: 'Que voulez-vous envoyer ?',
+    prof_description_optional: 'Description (optionnel)',
+    prof_description_placeholder: 'Ex: un trousseau de clés, une enveloppe avec des documents…',
+    prof_payment_detail: 'Détail du paiement',
+    prof_traveler_compensation: 'Compensation voyageur',
+    prof_jibly_protection_fee: 'Protection Jibly (15%)',
+    prof_total: 'Total',
+    prof_no_immediate_charge: 'Pas de débit immédiat.',
+    prof_no_immediate_charge_desc: 'Votre carte sera autorisée mais le paiement ne sera prélevé qu\'une fois le voyageur d\'accord.',
+    prof_cancel: 'Annuler',
+    prof_continue_to_payment: 'Continuer vers le paiement',
+    prof_payment_step_2: 'Paiement · Étape 2/2',
+    prof_modify: 'Modifier',
+    prof_saving_booking: 'Enregistrement de votre réservation…',
+    prof_payment_authorized: 'Paiement autorisé',
+    prof_payment_authorized_desc_before: 'Votre carte a été autorisée pour',
+    prof_payment_authorized_desc_after: '. Le voyageur sera notifié et vous recevrez sa décision rapidement. Aucun débit n\'a encore été effectué.',
+    prof_view_my_space: 'Voir mon espace',
+    prof_close: 'Fermer',
+    env_success_subtitle: 'On vous prévient dès qu\'un voyageur correspond à votre trajet.',
+    env_choose_subtitle: 'Réservez un voyageur disponible, ou publiez une demande publique.',
+    env_fill_route_prompt: 'Remplissez la route et la date pour découvrir les voyageurs disponibles.',
+    env_searching_travelers: 'Recherche de voyageurs…',
+    env_travelers_available_one: '1 voyageur disponible',
+    env_travelers_available_other: '{count} voyageurs disponibles',
+    env_before_date: 'avant le {date}',
+    env_more_travelers: 'Et {count} autres voyageurs…',
+    env_none_suitable: 'Aucun ne me convient ?',
+    env_publish_public_request: 'Publier une demande publique',
+    env_no_traveler_on_route: 'Aucun voyageur sur {from} → {to}',
+    env_nearby_routes_intro: 'Mais voici les voyageurs sur des routes proches :',
+    env_traveler_count_one: '· 1 voyageur',
+    env_traveler_count_other: '· {count} voyageurs',
+    env_no_traveler_this_route: 'Aucun voyageur sur cette route',
+    env_no_traveler_publish_hint: 'Publiez une demande publique — les voyageurs qui passeront par là pourront vous proposer leur aide.',
+    env_continue_request: 'Continuer ma demande',
+    env_back_to_travelers: 'Retour aux voyageurs',
+    env_public_request_title: 'Publier une demande publique',
+    env_public_request_subtitle: 'Nous vous notifierons dès qu\'un voyageur propose son aide.',
+    env_creation_failed: 'Échec de la création. Contactez le support.',
+    env_describe_parcel: 'Décrire le colis',
+    env_confirm_payment: 'Confirmer le paiement',
+    env_book_traveler: 'Réserver {name}',
+    env_fixed_price: 'Prix fixé',
+    env_close: 'Fermer',
+    env_parcel_category: 'Catégorie du colis',
+    env_description_label: 'Description',
+    env_description_placeholder: 'Que souhaitez-vous envoyer ?',
+    env_protection_title: 'Protection Jibly incluse',
+    env_protection_desc: 'Votre paiement est bloqué et ne sera versé au voyageur qu\'une fois la livraison confirmée.',
+    env_continue_to_payment: 'Continuer vers le paiement',
+    env_traveler_default: 'Voyageur',
+    env_traveler_default_def: 'Le voyageur',
+    env_trips_completed: '· {count} trajets',
+    env_book: 'Réserver',
+    voy_subtitle: 'Trouvez un colis à transporter sur votre vol, ou publiez votre trajet.',
+    voy_proposals_sent_one: '1 proposition envoyée',
+    voy_proposals_sent_other: '{count} propositions envoyées',
+    voy_proposals_recap_hint: 'Vous pouvez continuer à proposer votre aide à d\'autres expéditeurs ci-dessous.',
+    voy_see_my_proposals: 'Voir mes propositions',
+    voy_flight_details: 'Détails du vol',
+    voy_flight_details_required_propose: 'requis pour proposer votre aide',
+    voy_flight_details_required_trust: 'obligatoire pour la confiance',
+    voy_flight_number_label: 'Numéro de vol *',
+    voy_flight_number_invalid: 'Format invalide. Ex: AF1234, RAM 451',
+    voy_flight_number_invalid_to: 'Format invalide. Ex: AF1234, RAM 451, TO 8231',
+    voy_time_optional: 'Heure (optionnel)',
+    voy_airport_codes_hide: 'Masquer les codes aéroports',
+    voy_airport_codes_add: 'Ajouter les codes aéroports',
+    voy_optional_paren: '(optionnel)',
+    voy_airport_departure: 'Aéroport départ',
+    voy_airport_arrival: 'Aéroport arrivée',
+    voy_fill_route_prompt: 'Remplissez la route et la date pour découvrir les colis à transporter.',
+    voy_searching_parcels: 'Recherche de colis…',
+    voy_senders_searching_one: '1 expéditeur cherche un voyageur',
+    voy_senders_searching_other: '{count} expéditeurs cherchent un voyageur',
+    voy_on_your_route: 'sur votre route',
+    voy_more_requests: 'Et {count} autres demandes…',
+    voy_also_visible_prompt: 'Vous voulez aussi être visible pour d\'autres ?',
+    voy_publish_trip: 'Publier mon trajet',
+    voy_no_parcels_title: 'Aucun colis sur cette route pour l\'instant',
+    voy_no_parcels_text: 'Publiez votre trajet — les expéditeurs qui en ont besoin vous trouveront.',
+    voy_back_to_parcels: 'Retour aux colis',
+    voy_publish_trip_subtitle: 'Les expéditeurs pourront vous proposer des colis sur ce vol.',
+    voy_flight_date_label: 'Date de mon vol',
+    voy_sender_fallback: 'Expéditeur',
+    voy_sender_fallback_def: 'L\'expéditeur',
+    voy_proposal_sent: 'Proposition envoyée',
+    voy_awaiting_response: '· en attente de la réponse de {name}',
+    voy_locked: 'Verrouillé',
+    voy_before_the: '· avant le',
+    voy_before_the_lc: 'avant le',
+    voy_net_for_you: 'net pour vous',
+    voy_propose: 'Proposer',
+    voy_propose_title: 'Proposer mon aide',
+    voy_propose_title_need_flight: 'Renseignez d\'abord votre numéro de vol',
+    voy_help_sender: 'Aider {name}',
+    voy_you_will_receive: 'Vous recevrez',
+    voy_close: 'Fermer',
+    voy_what_to_transport: 'Ce qu\'on vous demande de transporter',
+    voy_message_label: 'Message à l\'expéditeur (optionnel)',
+    voy_message_placeholder: 'Bonjour, je voyage exactement sur cette route et serais ravi de transporter votre colis…',
+    voy_how_it_works_next: 'Comment ça marche ensuite',
+    voy_how_it_works_text: '{name} reçoit votre proposition. S\'il accepte, il paie et le montant est bloqué. Vous serez crédité une fois la livraison confirmée.',
+    voy_cancel: 'Annuler',
+    voy_send_proposal: 'Envoyer ma proposition',
+    voy_send_failed: 'Échec de l\'envoi. Réessayez.',
 
     how_title: 'Comment ça marche',
     how_subtitle: 'Trois étapes, c\'est tout.',
@@ -1996,6 +2264,140 @@ export const translations: Record<Locale, Translations> = {
     disc_you_receive: 'You’ll receive',
     disc_on_paid: 'of {total} paid',
     disc_i_can_do_it: 'I can do it',
+    prof_not_found: 'Profile not found',
+    prof_not_found_desc: 'This traveler no longer exists or their profile has been deleted.',
+    prof_back_to_travelers: 'Back to travelers',
+    prof_traveler: 'Traveler',
+    prof_choose_category: 'Choose an item category',
+    prof_error_occurred: 'An error occurred',
+    prof_identity_verified: 'Identity verified',
+    prof_transports_done_one: 'transport completed',
+    prof_transports_done_other: 'transports completed',
+    prof_verifications: 'Verifications',
+    prof_identity_verified_hint: 'ID document + selfie',
+    prof_email_confirmed: 'Email confirmed',
+    prof_email_confirmed_hint: 'Address verified at sign-up',
+    prof_member_since: 'Member since {year}',
+    prof_member_recent: 'New member',
+    prof_account_age_hint: 'Account age',
+    prof_new_traveler: 'New traveler',
+    prof_experienced_traveler: 'Experienced traveler',
+    prof_trusted_traveler: 'Trusted traveler',
+    prof_transports_made_one: '{count} transport made',
+    prof_transports_made_other: '{count} transports made',
+    prof_open_trips: 'Open trips',
+    prof_no_open_trips: '{name} has no open trips at the moment.',
+    prof_starting_from: 'Starting from',
+    prof_jibly_protection_included: 'Jibly protection included',
+    prof_book_this_trip: 'Book this trip',
+    prof_booking_step_1: 'Booking · Step 1/2',
+    prof_what_to_send: 'What do you want to send?',
+    prof_description_optional: 'Description (optional)',
+    prof_description_placeholder: 'E.g. a set of keys, an envelope with documents…',
+    prof_payment_detail: 'Payment breakdown',
+    prof_traveler_compensation: 'Traveler compensation',
+    prof_jibly_protection_fee: 'Jibly protection (15%)',
+    prof_total: 'Total',
+    prof_no_immediate_charge: 'No immediate charge.',
+    prof_no_immediate_charge_desc: 'Your card will be authorized, but the payment will only be charged once the traveler agrees.',
+    prof_cancel: 'Cancel',
+    prof_continue_to_payment: 'Continue to payment',
+    prof_payment_step_2: 'Payment · Step 2/2',
+    prof_modify: 'Edit',
+    prof_saving_booking: 'Saving your booking…',
+    prof_payment_authorized: 'Payment authorized',
+    prof_payment_authorized_desc_before: 'Your card has been authorized for',
+    prof_payment_authorized_desc_after: '. The traveler will be notified and you will receive their decision shortly. No charge has been made yet.',
+    prof_view_my_space: 'View my dashboard',
+    prof_close: 'Close',
+    env_success_subtitle: 'We\'ll let you know as soon as a traveler matches your route.',
+    env_choose_subtitle: 'Book an available traveler, or post a public request.',
+    env_fill_route_prompt: 'Fill in the route and date to discover available travelers.',
+    env_searching_travelers: 'Searching for travelers…',
+    env_travelers_available_one: '1 traveler available',
+    env_travelers_available_other: '{count} travelers available',
+    env_before_date: 'before {date}',
+    env_more_travelers: 'And {count} more travelers…',
+    env_none_suitable: 'None of them work for you?',
+    env_publish_public_request: 'Post a public request',
+    env_no_traveler_on_route: 'No traveler on {from} → {to}',
+    env_nearby_routes_intro: 'But here are travelers on nearby routes:',
+    env_traveler_count_one: '· 1 traveler',
+    env_traveler_count_other: '· {count} travelers',
+    env_no_traveler_this_route: 'No traveler on this route',
+    env_no_traveler_publish_hint: 'Post a public request — travelers passing through will be able to offer their help.',
+    env_continue_request: 'Continue my request',
+    env_back_to_travelers: 'Back to travelers',
+    env_public_request_title: 'Post a public request',
+    env_public_request_subtitle: 'We\'ll notify you as soon as a traveler offers their help.',
+    env_creation_failed: 'Creation failed. Please contact support.',
+    env_describe_parcel: 'Describe the parcel',
+    env_confirm_payment: 'Confirm payment',
+    env_book_traveler: 'Book {name}',
+    env_fixed_price: 'Fixed price',
+    env_close: 'Close',
+    env_parcel_category: 'Parcel category',
+    env_description_label: 'Description',
+    env_description_placeholder: 'What would you like to send?',
+    env_protection_title: 'Jibly Protection included',
+    env_protection_desc: 'Your payment is held and will only be released to the traveler once delivery is confirmed.',
+    env_continue_to_payment: 'Continue to payment',
+    env_traveler_default: 'Traveler',
+    env_traveler_default_def: 'The traveler',
+    env_trips_completed: '· {count} trips',
+    env_book: 'Book',
+    voy_subtitle: 'Find a parcel to carry on your flight, or publish your trip.',
+    voy_proposals_sent_one: '1 proposal sent',
+    voy_proposals_sent_other: '{count} proposals sent',
+    voy_proposals_recap_hint: 'You can keep offering your help to other senders below.',
+    voy_see_my_proposals: 'View my proposals',
+    voy_flight_details: 'Flight details',
+    voy_flight_details_required_propose: 'required to offer your help',
+    voy_flight_details_required_trust: 'required for trust',
+    voy_flight_number_label: 'Flight number *',
+    voy_flight_number_invalid: 'Invalid format. E.g. AF1234, RAM 451',
+    voy_flight_number_invalid_to: 'Invalid format. E.g. AF1234, RAM 451, TO 8231',
+    voy_time_optional: 'Time (optional)',
+    voy_airport_codes_hide: 'Hide airport codes',
+    voy_airport_codes_add: 'Add airport codes',
+    voy_optional_paren: '(optional)',
+    voy_airport_departure: 'Departure airport',
+    voy_airport_arrival: 'Arrival airport',
+    voy_fill_route_prompt: 'Fill in the route and date to discover parcels to carry.',
+    voy_searching_parcels: 'Searching for parcels…',
+    voy_senders_searching_one: '1 sender is looking for a traveler',
+    voy_senders_searching_other: '{count} senders are looking for a traveler',
+    voy_on_your_route: 'on your route',
+    voy_more_requests: 'And {count} more requests…',
+    voy_also_visible_prompt: 'Want to be visible to others too?',
+    voy_publish_trip: 'Publish my trip',
+    voy_no_parcels_title: 'No parcels on this route just yet',
+    voy_no_parcels_text: 'Publish your trip — the senders who need it will find you.',
+    voy_back_to_parcels: 'Back to parcels',
+    voy_publish_trip_subtitle: 'Senders will be able to offer you parcels on this flight.',
+    voy_flight_date_label: 'My flight date',
+    voy_sender_fallback: 'Sender',
+    voy_sender_fallback_def: 'The sender',
+    voy_proposal_sent: 'Proposal sent',
+    voy_awaiting_response: '· awaiting {name}\'s response',
+    voy_locked: 'Locked',
+    voy_before_the: '· before',
+    voy_before_the_lc: 'before',
+    voy_net_for_you: 'net for you',
+    voy_propose: 'Offer',
+    voy_propose_title: 'Offer my help',
+    voy_propose_title_need_flight: 'Enter your flight number first',
+    voy_help_sender: 'Help {name}',
+    voy_you_will_receive: 'You\'ll receive',
+    voy_close: 'Close',
+    voy_what_to_transport: 'What you\'re being asked to carry',
+    voy_message_label: 'Message to the sender (optional)',
+    voy_message_placeholder: 'Hi, I\'m travelling on exactly this route and would be happy to carry your parcel…',
+    voy_how_it_works_next: 'What happens next',
+    voy_how_it_works_text: '{name} receives your proposal. If they accept, they pay and the amount is held. You\'ll be credited once delivery is confirmed.',
+    voy_cancel: 'Cancel',
+    voy_send_proposal: 'Send my proposal',
+    voy_send_failed: 'Sending failed. Please try again.',
 
     how_title: 'How it works',
     how_subtitle: 'Three steps, that\'s it.',

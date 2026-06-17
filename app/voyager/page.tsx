@@ -8,7 +8,6 @@ import {
   Check,
   ArrowLeft,
   ArrowRight,
-  Upload,
   Plane,
   Loader2,
   CheckCircle2,
@@ -22,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Textarea, Checkbox, Input } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
+import { useIdentityGate } from '@/components/IdentityGate';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -39,7 +39,8 @@ export default function VoyagerPage() {
   const { t } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const STEPS = [t.trip_step_route, t.trip_step_space, t.trip_step_identity, t.trip_step_validation];
+  const gate = useIdentityGate();
+  const STEPS = [t.trip_step_route, t.trip_step_space, t.trip_step_validation];
 
   const [mode, setMode] = useState<Mode>('choose');
 
@@ -78,7 +79,6 @@ export default function VoyagerPage() {
   const [space, setSpace] = useState<AvailableSpace | null>(null);
   const [minComp, setMinComp] = useState(20);
   const [acceptedCategories, setAcceptedCategories] = useState<string[]>([]);
-  const [idFile, setIdFile] = useState<File | null>(null);
   const [terms, setTerms] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -127,8 +127,7 @@ export default function VoyagerPage() {
   const canNext = () => {
     if (step === 0) return fromCity && toCity && date && isValidFlightNumber(flightNumber);
     if (step === 1) return acceptedCategories.length > 0 && minComp >= 0;
-    if (step === 2) return true;
-    if (step === 3) return terms;
+    if (step === 2) return terms;
     return false;
   };
 
@@ -138,6 +137,8 @@ export default function VoyagerPage() {
       router.push('/login?next=/voyager');
       return;
     }
+    // Identity must be verified before a trip can be published.
+    if (!gate.ensureVerified()) return;
     if (!fromCity || !toCity) return;
     if (
       fromCity.trim().toLowerCase() === toCity.trim().toLowerCase() &&
@@ -230,7 +231,7 @@ export default function VoyagerPage() {
               {t.trip_title}
             </h1>
             <p className="text-[16px] text-ink-400 leading-relaxed">
-              Trouvez un colis à transporter sur votre vol, ou publiez votre trajet.
+              {t.voy_subtitle}
             </p>
           </div>
 
@@ -249,18 +250,18 @@ export default function VoyagerPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-[14px] font-semibold text-mint-700">
                   {proposedRequestIds.length === 1
-                    ? '1 proposition envoyée'
-                    : `${proposedRequestIds.length} propositions envoyées`}
+                    ? t.voy_proposals_sent_one
+                    : t.voy_proposals_sent_other.replace('{count}', String(proposedRequestIds.length))}
                 </div>
                 <div className="text-[12px] text-ink-500 mt-0.5">
-                  Vous pouvez continuer à proposer votre aide à d&apos;autres expéditeurs ci-dessous.
+                  {t.voy_proposals_recap_hint}
                 </div>
               </div>
               <Link
                 href="/me"
                 className="flex-shrink-0 text-[12px] font-semibold text-mint-700 hover:text-mint-800 underline underline-offset-2"
               >
-                Voir mes propositions
+                {t.voy_see_my_proposals}
               </Link>
             </motion.div>
           )}
@@ -324,14 +325,14 @@ export default function VoyagerPage() {
               a full trip. */}
           <div className="mt-6 bg-white rounded-2xl p-5 border border-ink-50">
             <div className="text-[13px] font-semibold text-ink-500 mb-3 flex items-center gap-2">
-              <span>Détails du vol</span>
-              <span className="text-[11px] text-ink-300 font-normal">requis pour proposer votre aide</span>
+              <span>{t.voy_flight_details}</span>
+              <span className="text-[11px] text-ink-300 font-normal">{t.voy_flight_details_required_propose}</span>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <Input
                   type="text"
-                  label="Numéro de vol *"
+                  label={t.voy_flight_number_label}
                   placeholder="AF1234, RAM 451…"
                   value={flightNumber}
                   onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
@@ -339,13 +340,13 @@ export default function VoyagerPage() {
                 />
                 {flightNumber && !isValidFlightNumber(flightNumber) && (
                   <p className="mt-1.5 text-[11px] text-blush-500">
-                    Format invalide. Ex: AF1234, RAM 451
+                    {t.voy_flight_number_invalid}
                   </p>
                 )}
               </div>
               <Input
                 type="time"
-                label="Heure (optionnel)"
+                label={t.voy_time_optional}
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
               />
@@ -371,8 +372,8 @@ export default function VoyagerPage() {
                 <polyline points="9 18 15 12 9 6" />
               </svg>
               <span>
-                {showAirportCodes ? 'Masquer' : 'Ajouter'} les codes aéroports
-                <span className="text-ink-300 ml-1">(optionnel)</span>
+                {showAirportCodes ? t.voy_airport_codes_hide : t.voy_airport_codes_add}
+                <span className="text-ink-300 ml-1">{t.voy_optional_paren}</span>
               </span>
             </button>
 
@@ -388,7 +389,7 @@ export default function VoyagerPage() {
                   <div className="grid grid-cols-2 gap-3 pt-3">
                     <Input
                       type="text"
-                      label="Aéroport départ"
+                      label={t.voy_airport_departure}
                       placeholder="CMN"
                       value={departureAirport}
                       onChange={(e) => setDepartureAirport(e.target.value.toUpperCase().slice(0, 4))}
@@ -396,7 +397,7 @@ export default function VoyagerPage() {
                     />
                     <Input
                       type="text"
-                      label="Aéroport arrivée"
+                      label={t.voy_airport_arrival}
                       placeholder="CDG"
                       value={arrivalAirport}
                       onChange={(e) => setArrivalAirport(e.target.value.toUpperCase().slice(0, 4))}
@@ -412,12 +413,12 @@ export default function VoyagerPage() {
           <div className="mt-8">
             {!hasRouteAndDate ? (
               <p className="text-[14px] text-ink-400 text-center py-8">
-                Remplissez la route et la date pour découvrir les colis à transporter.
+                {t.voy_fill_route_prompt}
               </p>
             ) : previewLoading ? (
               <div className="flex items-center justify-center gap-2.5 py-8 text-[13px] text-ink-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Recherche de colis…</span>
+                <span>{t.voy_searching_parcels}</span>
               </div>
             ) : hasResults ? (
               <div>
@@ -425,24 +426,27 @@ export default function VoyagerPage() {
                   <Sparkles className="w-4 h-4 text-lavender-500" />
                   <p className="text-[14px] font-semibold text-ink-600">
                     {previewRequests.length === 1
-                      ? "1 expéditeur cherche un voyageur"
-                      : `${previewRequests.length} expéditeurs cherchent un voyageur`}
+                      ? t.voy_senders_searching_one
+                      : t.voy_senders_searching_other.replace('{count}', String(previewRequests.length))}
                   </p>
-                  <span className="text-[13px] text-ink-400">sur votre route</span>
+                  <span className="text-[13px] text-ink-400">{t.voy_on_your_route}</span>
                 </div>
                 <div className="space-y-2.5">
                   {previewRequests.slice(0, 8).map((req) => (
                     <RequestHelpableCard
                       key={req.id}
                       request={req}
-                      onPropose={() => setRequestToHelp(req)}
+                      onPropose={() => {
+                        // Block the propose flow until identity is verified.
+                        if (gate.ensureVerified()) setRequestToHelp(req);
+                      }}
                       flightNumberRequired={!isValidFlightNumber(flightNumber)}
                       alreadyProposed={proposedRequestIds.includes(req.id)}
                     />
                   ))}
                   {previewRequests.length > 8 && (
                     <p className="text-[12px] text-ink-400 text-center pt-2">
-                      Et {previewRequests.length - 8} autres demandes…
+                      {t.voy_more_requests.replace('{count}', String(previewRequests.length - 8))}
                     </p>
                   )}
                 </div>
@@ -453,9 +457,9 @@ export default function VoyagerPage() {
                     onClick={switchToPublic}
                     className="w-full text-center text-[14px] text-ink-500 hover:text-ink-600 transition-colors group"
                   >
-                    Vous voulez aussi être visible pour d&apos;autres ?{' '}
+                    {t.voy_also_visible_prompt}{' '}
                     <span className="font-semibold underline underline-offset-2 group-hover:text-lavender-600">
-                      Publier mon trajet
+                      {t.voy_publish_trip}
                     </span>{' '}
                     <ArrowRight className="inline w-3.5 h-3.5 -mt-0.5 transition-transform group-hover:translate-x-0.5" />
                   </button>
@@ -467,13 +471,13 @@ export default function VoyagerPage() {
                   <Plane className="w-6 h-6 text-ink-400" />
                 </div>
                 <h3 className="text-[18px] font-bold text-ink-600 mb-2 tracking-[-0.01em]">
-                  Aucun colis sur cette route pour l&apos;instant
+                  {t.voy_no_parcels_title}
                 </h3>
                 <p className="text-[14px] text-ink-400 mb-7 leading-relaxed max-w-md mx-auto">
-                  Publiez votre trajet — les expéditeurs qui en ont besoin vous trouveront.
+                  {t.voy_no_parcels_text}
                 </p>
                 <Button onClick={switchToPublic}>
-                  Publier mon trajet
+                  {t.voy_publish_trip}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -514,6 +518,8 @@ export default function VoyagerPage() {
             />
           )}
         </AnimatePresence>
+
+        {gate.modal}
       </div>
     );
   }
@@ -530,16 +536,16 @@ export default function VoyagerPage() {
             className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Retour aux colis
+            {t.voy_back_to_parcels}
           </button>
         </div>
 
         <div className="mb-10">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 mb-3 tracking-[-0.03em]">
-            Publier mon trajet
+            {t.voy_publish_trip}
           </h1>
           <p className="text-[16px] text-ink-400 leading-relaxed">
-            Les expéditeurs pourront vous proposer des colis sur ce vol.
+            {t.voy_publish_trip_subtitle}
           </p>
         </div>
 
@@ -587,7 +593,7 @@ export default function VoyagerPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <Input
                       type="date"
-                      label="Date de mon vol"
+                      label={t.voy_flight_date_label}
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
@@ -602,14 +608,14 @@ export default function VoyagerPage() {
 
                   <div className="pt-2">
                     <div className="text-[13px] font-semibold text-ink-500 mb-3 flex items-center gap-2">
-                      <span>Détails du vol</span>
-                      <span className="text-[11px] text-ink-300 font-normal">obligatoire pour la confiance</span>
+                      <span>{t.voy_flight_details}</span>
+                      <span className="text-[11px] text-ink-300 font-normal">{t.voy_flight_details_required_trust}</span>
                     </div>
                     <div className="space-y-3">
                       <div>
                         <Input
                           type="text"
-                          label="Numéro de vol *"
+                          label={t.voy_flight_number_label}
                           placeholder="AF1234, RAM 451…"
                           value={flightNumber}
                           onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
@@ -617,7 +623,7 @@ export default function VoyagerPage() {
                         />
                         {flightNumber && !isValidFlightNumber(flightNumber) && (
                           <p className="mt-1.5 text-[11px] text-blush-500">
-                            Format invalide. Ex: AF1234, RAM 451, TO 8231
+                            {t.voy_flight_number_invalid_to}
                           </p>
                         )}
                       </div>
@@ -642,8 +648,8 @@ export default function VoyagerPage() {
                           <polyline points="9 18 15 12 9 6" />
                         </svg>
                         <span>
-                          {showAirportCodes ? 'Masquer' : 'Ajouter'} les codes aéroports
-                          <span className="text-ink-300 ml-1">(optionnel)</span>
+                          {showAirportCodes ? t.voy_airport_codes_hide : t.voy_airport_codes_add}
+                          <span className="text-ink-300 ml-1">{t.voy_optional_paren}</span>
                         </span>
                       </button>
 
@@ -659,7 +665,7 @@ export default function VoyagerPage() {
                             <div className="grid grid-cols-2 gap-3 pt-1">
                               <Input
                                 type="text"
-                                label="Aéroport départ"
+                                label={t.voy_airport_departure}
                                 placeholder="CMN"
                                 value={departureAirport}
                                 onChange={(e) => setDepartureAirport(e.target.value.toUpperCase().slice(0, 4))}
@@ -667,7 +673,7 @@ export default function VoyagerPage() {
                               />
                               <Input
                                 type="text"
-                                label="Aéroport arrivée"
+                                label={t.voy_airport_arrival}
                                 placeholder="CDG"
                                 value={arrivalAirport}
                                 onChange={(e) => setArrivalAirport(e.target.value.toUpperCase().slice(0, 4))}
@@ -747,35 +753,6 @@ export default function VoyagerPage() {
 
               {step === 2 && (
                 <div className="space-y-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em] mb-2">{t.trip_identity_title}</h2>
-                    <p className="text-[14px] text-ink-400 leading-relaxed">{t.trip_identity_subtitle}</p>
-                  </div>
-
-                  <ul className="space-y-3">
-                    {[t.trip_identity_benefit_1, t.trip_identity_benefit_2, t.trip_identity_benefit_3].map((b) => (
-                      <li key={b} className="flex items-start gap-3">
-                        <Check className="w-4 h-4 text-mint-500 mt-1 flex-shrink-0" strokeWidth={2.5} />
-                        <span className="text-[15px] text-ink-500">{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <label className="block">
-                    <input type="file" accept="image/*,.pdf" onChange={(e) => setIdFile(e.target.files?.[0] || null)} className="hidden" />
-                    <div className="border border-dashed border-ink-200 rounded-2xl p-7 text-center cursor-pointer hover:border-ink-400 hover:bg-cream-100/60 transition-colors">
-                      <Upload className="w-5 h-5 text-ink-400 mx-auto mb-3" />
-                      <div className="text-[14px] font-semibold text-ink-600">
-                        {idFile ? idFile.name : t.trip_upload_id}
-                      </div>
-                      <div className="text-[12px] text-ink-400 mt-1">{t.common_optional}</div>
-                    </div>
-                  </label>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="space-y-6">
                   <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em]">{t.trip_validation_title}</h2>
 
                   <ul className="space-y-3.5">
@@ -823,6 +800,8 @@ export default function VoyagerPage() {
           </div>
         </div>
       </div>
+
+      {gate.modal}
     </div>
   );
 }
@@ -851,7 +830,7 @@ function RequestHelpableCard({
   alreadyProposed: boolean;
 }) {
   const { t } = useI18n();
-  const name = displayName(request.user?.full_name) || 'Expéditeur';
+  const name = displayName(request.user?.full_name) || t.voy_sender_fallback;
   const initial = nameInitial(request.user?.full_name);
   const verified =
     request.user?.verification_level === 'id_verified' ||
@@ -881,14 +860,14 @@ function RequestHelpableCard({
             </div>
             <div className="flex items-center gap-1.5 text-[12px] text-mint-700 mt-0.5">
               <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.5} />
-              <span className="font-semibold">Proposition envoyée</span>
-              <span className="text-ink-400">· en attente de la réponse de {name.split(' ')[0]}</span>
+              <span className="font-semibold">{t.voy_proposal_sent}</span>
+              <span className="text-ink-400">{t.voy_awaiting_response.replace('{name}', name.split(' ')[0])}</span>
             </div>
           </div>
           {/* Small badge mirroring the button position so the layout stays
               consistent with the actionable state. */}
           <div className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-100 text-mint-700 text-[11px] font-bold uppercase tracking-[0.06em]">
-            Locked
+            {t.voy_locked}
           </div>
         </div>
       </motion.div>
@@ -922,23 +901,23 @@ function RequestHelpableCard({
                 <span>{t[category.labelKey]}</span>
               </span>
             )}
-            <span className="text-ink-300">· avant le</span>
+            <span className="text-ink-300">{t.voy_before_the}</span>
             <span className="num-display">{formatShortDate(request.desired_delivery_date)}</span>
             <span className="text-ink-300">·</span>
             <span className="font-semibold text-mint-600 num-display">
               {formatEuros(netTraveler)}
             </span>
-            <span className="text-ink-300 text-[11px]">net pour vous</span>
+            <span className="text-ink-300 text-[11px]">{t.voy_net_for_you}</span>
           </div>
         </div>
         <button
           type="button"
           onClick={onPropose}
           disabled={flightNumberRequired}
-          title={flightNumberRequired ? 'Renseignez d\'abord votre numéro de vol' : 'Proposer mon aide'}
+          title={flightNumberRequired ? t.voy_propose_title_need_flight : t.voy_propose_title}
           className="flex-shrink-0 inline-flex items-center gap-1 px-3.5 py-2 rounded-full bg-ink-500 hover:bg-ink-600 disabled:bg-ink-200 disabled:cursor-not-allowed text-cream-50 text-[12px] font-semibold transition-colors"
         >
-          Proposer
+          {t.voy_propose}
         </button>
       </div>
     </div>
@@ -992,7 +971,7 @@ function InstantProposeModal({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const senderName = displayName(request.user?.full_name) || 'L\'expéditeur';
+  const senderName = displayName(request.user?.full_name) || t.voy_sender_fallback_def;
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
   const netTraveler = Math.round((request.budget / 1.15) * 100) / 100;
 
@@ -1050,7 +1029,7 @@ function InstantProposeModal({
       });
       onSuccess(request.id, tripId);
     } catch (e: any) {
-      setErr(e?.message ?? 'Échec de l\'envoi. Réessayez.');
+      setErr(e?.message ?? t.voy_send_failed);
     } finally {
       setBusy(false);
     }
@@ -1076,16 +1055,16 @@ function InstantProposeModal({
         <div className="flex items-start justify-between mb-5">
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-              Proposer mon aide
+              {t.voy_propose_title}
             </div>
             <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
-              Aider {senderName}
+              {t.voy_help_sender.replace('{name}', senderName)}
             </h2>
             <div className="text-[13px] text-ink-400 mt-1.5">
-              {request.pickup_city} → {request.destination_city} · avant le {formatShortDate(request.desired_delivery_date)}
+              {request.pickup_city} → {request.destination_city} · {t.voy_before_the_lc} {formatShortDate(request.desired_delivery_date)}
             </div>
             <div className="mt-2 inline-flex items-baseline gap-1.5">
-              <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">Vous recevrez</span>
+              <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">{t.voy_you_will_receive}</span>
               <span className="text-xl font-extrabold text-mint-600 num-display">
                 {formatEuros(netTraveler)}
               </span>
@@ -1095,7 +1074,7 @@ function InstantProposeModal({
             onClick={onClose}
             disabled={busy}
             className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
-            aria-label="Fermer"
+            aria-label={t.voy_close}
           >
             <X className="w-4 h-4" />
           </button>
@@ -1104,7 +1083,7 @@ function InstantProposeModal({
         {/* What they're shipping — read-only recap */}
         <div className="rounded-xl bg-white border border-ink-100 px-4 py-3 mb-4">
           <div className="text-[11px] font-semibold text-ink-300 tracking-[0.08em] uppercase mb-2">
-            Ce qu&apos;on vous demande de transporter
+            {t.voy_what_to_transport}
           </div>
           {category && (
             <div className="inline-flex items-center gap-1.5 text-[13px] text-ink-600 font-medium mb-2">
@@ -1121,8 +1100,8 @@ function InstantProposeModal({
 
         {/* Optional traveler message */}
         <Textarea
-          label="Message à l'expéditeur (optionnel)"
-          placeholder="Bonjour, je voyage exactement sur cette route et serais ravi de transporter votre colis…"
+          label={t.voy_message_label}
+          placeholder={t.voy_message_placeholder}
           value={travelerMessage}
           onChange={(e) => setTravelerMessage(e.target.value)}
         />
@@ -1130,9 +1109,9 @@ function InstantProposeModal({
         <div className="mt-4 rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 text-[12px] text-ink-500 leading-relaxed">
           <div className="font-bold text-mint-700 mb-1 flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Comment ça marche ensuite
+            {t.voy_how_it_works_next}
           </div>
-          {senderName} reçoit votre proposition. S&apos;il accepte, il paie et le montant est bloqué. Vous serez crédité une fois la livraison confirmée.
+          {t.voy_how_it_works_text.replace('{name}', senderName)}
         </div>
 
         {err && (
@@ -1143,11 +1122,11 @@ function InstantProposeModal({
 
         <div className="mt-5 flex justify-end gap-2.5">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
-            Annuler
+            {t.voy_cancel}
           </Button>
           <Button onClick={handleSubmit} disabled={busy}>
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Envoyer ma proposition
+            {t.voy_send_proposal}
           </Button>
         </div>
       </motion.div>

@@ -72,7 +72,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err.message ?? 'Profil introuvable');
+        setError(err.message ?? t.prof_not_found);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -92,7 +92,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
 
   function handleProceedToPayment() {
     if (!intentCategory) {
-      setSubmitErr('Choisissez une catégorie d\'objet');
+      setSubmitErr(t.prof_choose_category);
       return;
     }
     setSubmitErr(null);
@@ -119,7 +119,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       });
       setBookingStep('success');
     } catch (e: any) {
-      setSubmitErr(e.message ?? 'Une erreur est survenue');
+      setSubmitErr(e.message ?? t.prof_error_occurred);
     } finally {
       setSubmitting(false);
     }
@@ -148,12 +148,12 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-5">
         <div className="text-center max-w-sm">
-          <h1 className="text-xl font-bold text-ink-600 mb-2">Profil introuvable</h1>
+          <h1 className="text-xl font-bold text-ink-600 mb-2">{t.prof_not_found}</h1>
           <p className="text-[14px] text-ink-400 mb-6">
-            Ce voyageur n&apos;existe plus ou son profil a été supprimé.
+            {t.prof_not_found_desc}
           </p>
           <Link href="/">
-            <Button variant="outline">Retour aux voyageurs</Button>
+            <Button variant="outline">{t.prof_back_to_travelers}</Button>
           </Link>
         </div>
       </div>
@@ -161,7 +161,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   }
 
   const initial = nameInitial(profile.full_name);
-  const publicName = displayName(profile.full_name) || 'Voyageur';
+  const publicName = displayName(profile.full_name) || t.prof_traveler;
   const firstName = publicName.split(' ')[0];
 
   // Derived trust signals — passed down to the badge grid
@@ -187,7 +187,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
           className="inline-flex items-center gap-1.5 text-[14px] text-ink-400 hover:text-ink-600 mb-6 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Retour aux voyageurs
+          {t.prof_back_to_travelers}
         </Link>
 
         {/* PROFILE HERO — Airbnb / BlaBlaCar inspired
@@ -218,7 +218,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   visual signature of a verified profile, like the Airbnb
                   superhost ribbon. */}
               {isIdentityVerified && (
-                <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-mint-500 border-[3px] border-white flex items-center justify-center" title="Identité vérifiée">
+                <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-mint-500 border-[3px] border-white flex items-center justify-center" title={t.prof_identity_verified}>
                   <BadgeCheck className="w-4 h-4 text-white" strokeWidth={2.5} />
                 </div>
               )}
@@ -237,7 +237,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   </span>
                   <span className="text-ink-300">·</span>
                   <span>
-                    <span className="num-display font-semibold text-ink-500">{profile.trips_completed ?? 0}</span> {profile.trips_completed === 1 ? 'transport effectué' : 'transports effectués'}
+                    <span className="num-display font-semibold text-ink-500">{profile.trips_completed ?? 0}</span> {profile.trips_completed === 1 ? t.prof_transports_done_one : t.prof_transports_done_other}
                   </span>
                 </div>
                 {profile.city && (
@@ -256,26 +256,26 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
               isn't implemented; it'll get added the same way later. */}
           <div className="mt-7 pt-6 border-t border-ink-50">
             <h2 className="text-[11px] font-bold tracking-[0.14em] uppercase text-ink-300 mb-4">
-              Vérifications
+              {t.prof_verifications}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <TrustBadge
                 done={isIdentityVerified}
                 icon={BadgeCheck}
-                label="Identité vérifiée"
-                hint="Pièce d'identité + selfie"
+                label={t.prof_identity_verified}
+                hint={t.prof_identity_verified_hint}
               />
               <TrustBadge
                 done={isEmailVerified}
                 icon={Mail}
-                label="Email confirmé"
-                hint="Adresse vérifiée à l'inscription"
+                label={t.prof_email_confirmed}
+                hint={t.prof_email_confirmed_hint}
               />
               <TrustBadge
                 done={!!memberSinceYear}
                 icon={Calendar}
-                label={memberSinceYear ? `Membre depuis ${memberSinceYear}` : 'Membre récent'}
-                hint="Ancienneté du compte"
+                label={memberSinceYear ? t.prof_member_since.replace('{year}', String(memberSinceYear)) : t.prof_member_recent}
+                hint={t.prof_account_age_hint}
                 neutral
               />
               <TrustBadge
@@ -283,12 +283,16 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                 icon={TrendingUp}
                 label={
                   (profile.trips_completed ?? 0) === 0
-                    ? 'Nouveau voyageur'
+                    ? t.prof_new_traveler
                     : (profile.trips_completed ?? 0) >= 10
-                      ? 'Voyageur expérimenté'
-                      : 'Voyageur en confiance'
+                      ? t.prof_experienced_traveler
+                      : t.prof_trusted_traveler
                 }
-                hint={`${profile.trips_completed ?? 0} transport${(profile.trips_completed ?? 0) > 1 ? 's' : ''} réalisé${(profile.trips_completed ?? 0) > 1 ? 's' : ''}`}
+                hint={
+                  (profile.trips_completed ?? 0) > 1
+                    ? t.prof_transports_made_other.replace('{count}', String(profile.trips_completed ?? 0))
+                    : t.prof_transports_made_one.replace('{count}', String(profile.trips_completed ?? 0))
+                }
                 neutral
               />
             </div>
@@ -297,12 +301,12 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
 
         {/* Open trips */}
         <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em] mb-5">
-          Trajets ouverts
+          {t.prof_open_trips}
         </h2>
         {trips.length === 0 ? (
           <div className="bg-white rounded-2xl p-10 text-center border border-dashed border-ink-100">
             <p className="text-[14px] text-ink-400">
-              {firstName} n&apos;a aucun trajet ouvert pour le moment.
+              {t.prof_no_open_trips.replace('{name}', firstName)}
             </p>
           </div>
         ) : (
@@ -348,8 +352,8 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   )}
                   <div className="flex items-end justify-between mb-5 mt-auto">
                     <div>
-                      <div className="text-[13px] text-ink-400">À partir de</div>
-                      <div className="text-[10px] text-ink-300 mt-0.5">protection Jibly incluse</div>
+                      <div className="text-[13px] text-ink-400">{t.prof_starting_from}</div>
+                      <div className="text-[10px] text-ink-300 mt-0.5">{t.prof_jibly_protection_included}</div>
                     </div>
                     <div className="font-bold text-ink-600 text-[20px] num-display tracking-[-0.015em]">
                       {formatEuros(priceBreakdown(tr.compensation_min).total)}
@@ -361,7 +365,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                     fullWidth
                   >
                     <CreditCard className="w-4 h-4 mr-1.5" />
-                    Réserver ce trajet
+                    {t.prof_book_this_trip}
                   </Button>
                 </motion.div>
               );
@@ -395,7 +399,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   <div className="flex items-start justify-between mb-5">
                     <div>
                       <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-                        Réservation · Étape 1/2
+                        {t.prof_booking_step_1}
                       </div>
                       <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
                         {bookingTrip.departure_city} → {bookingTrip.arrival_city}
@@ -414,7 +418,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   </div>
                   <div className="mb-5">
                     <label className="block text-[13px] font-semibold text-ink-500 mb-2.5">
-                      Que voulez-vous envoyer ?
+                      {t.prof_what_to_send}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       {ITEM_CATEGORIES.map((c) => {
@@ -444,36 +448,36 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   </div>
                   <div className="mb-5">
                     <label className="block text-[13px] font-semibold text-ink-500 mb-2">
-                      Description (optionnel)
+                      {t.prof_description_optional}
                     </label>
                     <textarea
                       value={intentDescription}
                       onChange={(e) => setIntentDescription(e.target.value)}
-                      placeholder="Ex: un trousseau de clés, une enveloppe avec des documents…"
+                      placeholder={t.prof_description_placeholder}
                       rows={3}
                       className="w-full px-4 py-3 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300 resize-none"
                     />
                   </div>
                   <div className="mb-6">
                     <label className="block text-[13px] font-semibold text-ink-500 mb-3">
-                      Détail du paiement
+                      {t.prof_payment_detail}
                     </label>
                     <div className="rounded-xl bg-white border border-ink-100 px-4 py-3 space-y-2">
                       <div className="flex items-center justify-between text-[14px] text-ink-500">
-                        <span>Compensation voyageur</span>
+                        <span>{t.prof_traveler_compensation}</span>
                         <span className="num-display font-medium text-ink-600">
                           {formatEuros(priceBreakdown(bookingTrip.compensation_min).traveler)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[14px] text-ink-500">
-                        <span>Protection Jibly (15%)</span>
+                        <span>{t.prof_jibly_protection_fee}</span>
                         <span className="num-display font-medium text-ink-600">
                           {formatEuros(priceBreakdown(bookingTrip.compensation_min).fees)}
                         </span>
                       </div>
                       <div className="h-px bg-ink-50 my-2" />
                       <div className="flex items-baseline justify-between">
-                        <span className="text-[15px] font-semibold text-ink-600">Total</span>
+                        <span className="text-[15px] font-semibold text-ink-600">{t.prof_total}</span>
                         <span className="text-2xl font-bold text-ink-600 num-display tracking-[-0.02em]">
                           {formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}
                         </span>
@@ -488,8 +492,8 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 mb-5 text-[13px] text-ink-500 flex gap-2.5">
                     <Sparkles className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-ink-600">Pas de débit immédiat.</strong>{' '}
-                      Votre carte sera autorisée mais le paiement ne sera prélevé qu&apos;une fois le voyageur d&apos;accord.
+                      <strong className="text-ink-600">{t.prof_no_immediate_charge}</strong>{' '}
+                      {t.prof_no_immediate_charge_desc}
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2.5">
@@ -497,7 +501,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       onClick={() => setBookingTrip(null)}
                       className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
                     >
-                      Annuler
+                      {t.prof_cancel}
                     </button>
                     <button
                       onClick={handleProceedToPayment}
@@ -505,7 +509,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 disabled:bg-ink-200 disabled:cursor-not-allowed rounded-full transition-colors"
                     >
                       <ShieldCheck className="w-4 h-4" />
-                      Continuer vers le paiement
+                      {t.prof_continue_to_payment}
                     </button>
                   </div>
                 </>
@@ -515,7 +519,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   <div className="flex items-start justify-between mb-5">
                     <div>
                       <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-                        Paiement · Étape 2/2
+                        {t.prof_payment_step_2}
                       </div>
                       <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
                         {formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}
@@ -528,7 +532,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                       onClick={() => setBookingStep('details')}
                       className="text-[13px] font-medium text-ink-400 hover:text-ink-600"
                     >
-                      ← Modifier
+                      ← {t.prof_modify}
                     </button>
                   </div>
                   {submitErr && (
@@ -545,7 +549,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   {submitting && (
                     <div className="mt-4 text-center text-[13px] text-ink-400">
                       <Loader2 className="w-4 h-4 animate-spin inline mr-1.5" />
-                      Enregistrement de votre réservation…
+                      {t.prof_saving_booking}
                     </div>
                   )}
                 </>
@@ -556,24 +560,22 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                     <CheckCircle2 className="w-7 h-7 text-white" strokeWidth={2.5} />
                   </div>
                   <h3 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
-                    Paiement autorisé
+                    {t.prof_payment_authorized}
                   </h3>
                   <p className="text-[15px] text-ink-400 mb-7 leading-relaxed">
-                    Votre carte a été autorisée pour <strong className="text-ink-600 num-display">{formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}</strong>.
-                    Le voyageur sera notifié et vous recevrez sa décision rapidement.
-                    Aucun débit n&apos;a encore été effectué.
+                    {t.prof_payment_authorized_desc_before} <strong className="text-ink-600 num-display">{formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}</strong>{t.prof_payment_authorized_desc_after}
                   </p>
                   <div className="flex flex-col gap-2.5">
                     <Link href="/me">
                       <Button variant="secondary" fullWidth>
-                        Voir mon espace
+                        {t.prof_view_my_space}
                       </Button>
                     </Link>
                     <button
                       onClick={() => setBookingTrip(null)}
                       className="text-[14px] text-ink-400 hover:text-ink-600 py-2"
                     >
-                      Fermer
+                      {t.prof_close}
                     </button>
                   </div>
                 </div>

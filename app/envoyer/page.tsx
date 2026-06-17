@@ -21,6 +21,7 @@ import { Textarea, Checkbox, Input } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
+import { useIdentityGate } from '@/components/IdentityGate';
 import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES } from '@/lib/constants';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -38,6 +39,7 @@ export default function EnvoyerPage() {
   const { t } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const gate = useIdentityGate();
   const STEPS = [t.send_step_route, t.send_step_item, t.send_step_details, t.send_step_confirm];
 
   // Mode controls whether we're on the search bar (choose) or in the
@@ -139,6 +141,8 @@ export default function EnvoyerPage() {
       router.push('/login?next=/envoyer');
       return;
     }
+    // Identity must be verified before a request can be published.
+    if (!gate.ensureVerified()) return;
     if (!fromCity || !toCity || !category) return;
     if (
       fromCity.trim().toLowerCase() === toCity.trim().toLowerCase() &&
@@ -199,7 +203,7 @@ export default function EnvoyerPage() {
             {t.send_success_title}
           </h1>
           <p className="text-[16px] text-ink-400 mb-9 leading-relaxed">
-            On vous prévient dès qu&apos;un voyageur correspond à votre trajet.
+            {t.env_success_subtitle}
           </p>
           <div className="flex flex-col gap-2.5">
             <Link href="/me">
@@ -229,7 +233,7 @@ export default function EnvoyerPage() {
               {t.send_title}
             </h1>
             <p className="text-[16px] text-ink-400 leading-relaxed">
-              Réservez un voyageur disponible, ou publiez une demande publique.
+              {t.env_choose_subtitle}
             </p>
           </div>
 
@@ -291,12 +295,12 @@ export default function EnvoyerPage() {
           <div className="mt-8">
             {!hasRouteAndDate ? (
               <p className="text-[14px] text-ink-400 text-center py-8">
-                Remplissez la route et la date pour découvrir les voyageurs disponibles.
+                {t.env_fill_route_prompt}
               </p>
             ) : previewLoading ? (
               <div className="flex items-center justify-center gap-2.5 py-8 text-[13px] text-ink-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Recherche de voyageurs…</span>
+                <span>{t.env_searching_travelers}</span>
               </div>
             ) : hasResults ? (
               <div>
@@ -304,11 +308,11 @@ export default function EnvoyerPage() {
                   <Sparkles className="w-4 h-4 text-lavender-500" />
                   <p className="text-[14px] font-semibold text-ink-600">
                     {previewTrips.length === 1
-                      ? '1 voyageur disponible'
-                      : `${previewTrips.length} voyageurs disponibles`}
+                      ? t.env_travelers_available_one
+                      : t.env_travelers_available_other.replace('{count}', String(previewTrips.length))}
                   </p>
                   <span className="text-[13px] text-ink-400">
-                    avant le {formatShortDate(date)}
+                    {t.env_before_date.replace('{date}', formatShortDate(date))}
                   </span>
                 </div>
                 <div className="space-y-2.5">
@@ -316,12 +320,15 @@ export default function EnvoyerPage() {
                     <TripBookableCard
                       key={trip.id}
                       trip={trip}
-                      onBook={() => setTripToBook(trip)}
+                      onBook={() => {
+                        // Block booking + payment until identity is verified.
+                        if (gate.ensureVerified()) setTripToBook(trip);
+                      }}
                     />
                   ))}
                   {previewTrips.length > 8 && (
                     <p className="text-[12px] text-ink-400 text-center pt-2">
-                      Et {previewTrips.length - 8} autres voyageurs…
+                      {t.env_more_travelers.replace('{count}', String(previewTrips.length - 8))}
                     </p>
                   )}
                 </div>
@@ -331,9 +338,9 @@ export default function EnvoyerPage() {
                     onClick={switchToPublic}
                     className="w-full text-center text-[14px] text-ink-500 hover:text-ink-600 transition-colors group"
                   >
-                    Aucun ne me convient ?{' '}
+                    {t.env_none_suitable}{' '}
                     <span className="font-semibold underline underline-offset-2 group-hover:text-lavender-600">
-                      Publier une demande publique
+                      {t.env_publish_public_request}
                     </span>{' '}
                     <ArrowRight className="inline w-3.5 h-3.5 -mt-0.5 transition-transform group-hover:translate-x-0.5" />
                   </button>
@@ -343,10 +350,10 @@ export default function EnvoyerPage() {
               <div>
                 <div className="text-center mb-5">
                   <h3 className="text-[15px] font-semibold text-ink-600 mb-1">
-                    Aucun voyageur sur {fromCity} → {toCity}
+                    {t.env_no_traveler_on_route.replace('{from}', fromCity).replace('{to}', toCity)}
                   </h3>
                   <p className="text-[13px] text-ink-400">
-                    Mais voici les voyageurs sur des routes proches :
+                    {t.env_nearby_routes_intro}
                   </p>
                 </div>
 
@@ -356,7 +363,9 @@ export default function EnvoyerPage() {
                     {fromCountry} → {toCountry}
                   </p>
                   <span className="text-[13px] text-ink-400">
-                    · {broadenedTrips.length} voyageur{broadenedTrips.length > 1 ? 's' : ''}
+                    {(broadenedTrips.length === 1
+                      ? t.env_traveler_count_one
+                      : t.env_traveler_count_other.replace('{count}', String(broadenedTrips.length)))}
                   </span>
                 </div>
 
@@ -365,12 +374,15 @@ export default function EnvoyerPage() {
                     <TripBookableCard
                       key={trip.id}
                       trip={trip}
-                      onBook={() => setTripToBook(trip)}
+                      onBook={() => {
+                        // Block booking + payment until identity is verified.
+                        if (gate.ensureVerified()) setTripToBook(trip);
+                      }}
                     />
                   ))}
                   {broadenedTrips.length > 8 && (
                     <p className="text-[12px] text-ink-400 text-center pt-2">
-                      Et {broadenedTrips.length - 8} autres voyageurs…
+                      {t.env_more_travelers.replace('{count}', String(broadenedTrips.length - 8))}
                     </p>
                   )}
                 </div>
@@ -380,9 +392,9 @@ export default function EnvoyerPage() {
                     onClick={switchToPublic}
                     className="w-full text-center text-[14px] text-ink-500 hover:text-ink-600 transition-colors group"
                   >
-                    Aucun ne me convient ?{' '}
+                    {t.env_none_suitable}{' '}
                     <span className="font-semibold underline underline-offset-2 group-hover:text-lavender-600">
-                      Publier une demande publique
+                      {t.env_publish_public_request}
                     </span>{' '}
                     <ArrowRight className="inline w-3.5 h-3.5 -mt-0.5 transition-transform group-hover:translate-x-0.5" />
                   </button>
@@ -394,13 +406,13 @@ export default function EnvoyerPage() {
                   <Plane className="w-6 h-6 text-ink-400" />
                 </div>
                 <h3 className="text-[18px] font-bold text-ink-600 mb-2 tracking-[-0.01em]">
-                  Aucun voyageur sur cette route
+                  {t.env_no_traveler_this_route}
                 </h3>
                 <p className="text-[14px] text-ink-400 mb-7 leading-relaxed max-w-md mx-auto">
-                  Publiez une demande publique — les voyageurs qui passeront par là pourront vous proposer leur aide.
+                  {t.env_no_traveler_publish_hint}
                 </p>
                 <Button onClick={switchToPublic}>
-                  Continuer ma demande
+                  {t.env_continue_request}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -421,6 +433,8 @@ export default function EnvoyerPage() {
             />
           )}
         </AnimatePresence>
+
+        {gate.modal}
       </div>
     );
   }
@@ -437,16 +451,16 @@ export default function EnvoyerPage() {
             className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Retour aux voyageurs
+            {t.env_back_to_travelers}
           </button>
         </div>
 
         <div className="mb-10">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 mb-3 tracking-[-0.03em]">
-            Publier une demande publique
+            {t.env_public_request_title}
           </h1>
           <p className="text-[16px] text-ink-400 leading-relaxed">
-            Nous vous notifierons dès qu&apos;un voyageur propose son aide.
+            {t.env_public_request_subtitle}
           </p>
         </div>
 
@@ -637,6 +651,8 @@ export default function EnvoyerPage() {
           </div>
         </div>
       </div>
+
+      {gate.modal}
     </div>
   );
 }
@@ -660,7 +676,8 @@ function TripBookableCard({
   trip: MatchingTrip;
   onBook: () => void;
 }) {
-  const name = displayName(trip.user?.full_name) || 'Voyageur';
+  const { t } = useI18n();
+  const name = displayName(trip.user?.full_name) || t.env_traveler_default;
   const initial = nameInitial(trip.user?.full_name);
   const verified =
     trip.user?.verification_level === 'id_verified' ||
@@ -686,7 +703,7 @@ function TripBookableCard({
             )}
             {(trip.user?.trips_completed ?? 0) > 0 && (
               <span className="text-[11px] text-ink-300">
-                · {trip.user!.trips_completed} trajets
+                {t.env_trips_completed.replace('{count}', String(trip.user!.trips_completed))}
               </span>
             )}
           </div>
@@ -710,7 +727,7 @@ function TripBookableCard({
           onClick={onBook}
           className="flex-shrink-0 inline-flex items-center gap-1 px-3.5 py-2 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[12px] font-semibold transition-colors"
         >
-          Réserver
+          {t.env_book}
         </button>
       </div>
     </div>
@@ -745,7 +762,7 @@ function InstantBookModal({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const travelerName = displayName(trip.user?.full_name) || 'Le voyageur';
+  const travelerName = displayName(trip.user?.full_name) || t.env_traveler_default_def;
   // Price is fixed by the traveler — sender doesn't negotiate here.
   const price = trip.compensation_min;
  const canPay = !!category && description.trim().length > 0 && certified;
@@ -789,7 +806,7 @@ function InstantBookModal({
       });
       onSuccess();
     } catch (e: any) {
-      setErr(e?.message ?? 'Échec de la création. Contactez le support.');
+      setErr(e?.message ?? t.env_creation_failed);
     } finally {
       setBusy(false);
     }
@@ -815,17 +832,17 @@ function InstantBookModal({
         <div className="flex items-start justify-between mb-5">
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-              {phase === 'describe' ? 'Décrire le colis' : 'Confirmer le paiement'}
+              {phase === 'describe' ? t.env_describe_parcel : t.env_confirm_payment}
             </div>
             <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
-              Réserver {travelerName}
+              {t.env_book_traveler.replace('{name}', travelerName)}
             </h2>
             <div className="text-[13px] text-ink-400 mt-1.5">
               {pickupCity} → {destinationCity} · {formatShortDate(trip.departure_date)}
               {trip.flight_number && <> · {trip.flight_number}</>}
             </div>
             <div className="mt-2 inline-flex items-baseline gap-1.5">
-              <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">Prix fixé</span>
+              <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">{t.env_fixed_price}</span>
               <span className="text-xl font-extrabold text-ink-600 num-display">
                 {formatEuros(price)}
               </span>
@@ -835,7 +852,7 @@ function InstantBookModal({
             onClick={onClose}
             disabled={busy}
             className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
-            aria-label="Fermer"
+            aria-label={t.env_close}
           >
             <X className="w-4 h-4" />
           </button>
@@ -853,7 +870,7 @@ function InstantBookModal({
             >
               <div>
                 <label className="block text-[13px] font-semibold text-ink-500 mb-3">
-                  Catégorie du colis
+                  {t.env_parcel_category}
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
                   {ITEM_CATEGORIES.map((c) => {
@@ -880,8 +897,8 @@ function InstantBookModal({
               </div>
 
             <Textarea
-                label="Description"
-                placeholder="Que souhaitez-vous envoyer ?"
+                label={t.env_description_label}
+                placeholder={t.env_description_placeholder}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -898,9 +915,9 @@ function InstantBookModal({
               <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 text-[12px] text-ink-500 leading-relaxed">
                 <div className="font-bold text-mint-700 mb-1 flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  Protection Jibly incluse
+                  {t.env_protection_title}
                 </div>
-                Votre paiement est bloqué et ne sera versé au voyageur qu&apos;une fois la livraison confirmée.
+                {t.env_protection_desc}
               </div>
 
               <label className="flex items-start gap-2.5 cursor-pointer group">
@@ -918,14 +935,14 @@ function InstantBookModal({
               <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 text-[12px] text-ink-500 leading-relaxed">
                 <div className="font-bold text-mint-700 mb-1 flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  Protection Jibly incluse
+                  {t.env_protection_title}
                 </div>
-                Votre paiement est bloqué et ne sera versé au voyageur qu&apos;une fois la livraison confirmée.
+                {t.env_protection_desc}
               </div>
 
               <div className="flex justify-end">
                 <Button disabled={!canPay} onClick={() => setPhase('pay')}>
-                  Continuer vers le paiement
+                  {t.env_continue_to_payment}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
