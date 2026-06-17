@@ -14,6 +14,7 @@ import {
   COUNTRIES,
   findCountryByName,
   nearestCountry,
+  nearestCity,
 } from '@/lib/countries';
 import { useI18n } from '@/lib/i18n/context';
 
@@ -26,9 +27,8 @@ import { useI18n } from '@/lib/i18n/context';
  * text input, so we never block a user whose country/city isn't curated yet.
  * A custom country implies a custom city (we have no city list for it).
  *
- * Optional "Me localiser" shortcut geolocates the user and pre-selects the
- * nearest country (city is then picked from the list). Country-level only —
- * we don't store city coordinates.
+ * Optional "Me localiser" shortcut geolocates the user and lands on the
+ * nearest hub city, opening the city list so they can adjust if needed.
  */
 type Props = {
   country: string;
@@ -146,9 +146,21 @@ export function CountryCityPicker({
     setGeoError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const c = nearestCountry(pos.coords.latitude, pos.coords.longitude);
         setLocating(false);
-        pickCountry(c.name_fr);
+        const loc = nearestCity(pos.coords.latitude, pos.coords.longitude);
+        if (loc) {
+          // Land directly on the nearest hub city, but open the city list so
+          // the user can pick a different one in their country if needed.
+          onChange({ country: loc.countryName, city: loc.city });
+          setWantCustomCountry(false);
+          setWantCustomCity(false);
+          setCountryQuery('');
+          setCityQuery('');
+          setGeoError(null);
+          setPanel('city');
+        } else {
+          pickCountry(nearestCountry(pos.coords.latitude, pos.coords.longitude).name_fr);
+        }
       },
       () => {
         setLocating(false);
