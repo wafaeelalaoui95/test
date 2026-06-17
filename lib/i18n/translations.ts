@@ -57,6 +57,33 @@ export type Translations = {
   bt_step_delivered_short: string;
   bt_step_paid_short: string;
   bt_payment_safety: string;
+  disc_clear: string;
+  disc_filter_budget: string;
+  disc_filter_trust: string;
+  disc_filter_verified_only: string;
+  disc_tab_travelers: string;
+  disc_tab_requests: string;
+  disc_heading_travelers: string;
+  disc_heading_requests: string;
+  disc_publish_request: string;
+  disc_publish_trip: string;
+  disc_trips_count: string;
+  disc_price_from: string;
+  disc_protection_included: string;
+  disc_empty_travelers_route: string;
+  disc_empty_requests_route: string;
+  disc_empty_travelers: string;
+  disc_empty_requests: string;
+  disc_empty_hint_search: string;
+  disc_empty_hint_travelers: string;
+  disc_empty_hint_requests: string;
+  disc_clear_search: string;
+  disc_age_today: string;
+  disc_age_yesterday: string;
+  disc_age_days_ago: string;
+  disc_you_receive: string;
+  disc_on_paid: string;
+  disc_i_can_do_it: string;
 
   // How it works
   how_title: string;
@@ -262,6 +289,8 @@ export type Translations = {
   common_back: string;
   common_next: string;
   common_cancel: string;
+  common_close: string;
+  gate_identity_required: string;
   common_save: string;
   common_loading: string;
   common_optional: string;
@@ -994,6 +1023,33 @@ export const translations: Record<Locale, Translations> = {
     bt_step_delivered_short: 'Livré',
     bt_step_paid_short: 'Payé',
     bt_payment_safety: '🔒 Votre paiement est conservé en sécurité jusqu’à la confirmation de la livraison.',
+    disc_clear: 'Effacer',
+    disc_filter_budget: 'Budget maximum',
+    disc_filter_trust: 'Confiance',
+    disc_filter_verified_only: 'Identité vérifiée uniquement',
+    disc_tab_travelers: 'Voyageurs',
+    disc_tab_requests: 'Demandes',
+    disc_heading_travelers: 'Voyageurs disponibles',
+    disc_heading_requests: 'Demandes de transport',
+    disc_publish_request: 'Publier ma demande',
+    disc_publish_trip: 'Publier mon trajet',
+    disc_trips_count: 'trajets',
+    disc_price_from: 'À partir de',
+    disc_protection_included: 'protection Jibly incluse',
+    disc_empty_travelers_route: 'Aucun voyageur sur cette route',
+    disc_empty_requests_route: 'Aucune demande sur cette route',
+    disc_empty_travelers: 'Aucun voyageur pour le moment',
+    disc_empty_requests: 'Aucune demande pour le moment',
+    disc_empty_hint_search: 'Essayez d’élargir vos critères.',
+    disc_empty_hint_travelers: 'Publiez votre demande, on vous prévient dès qu’un voyageur passe par chez vous.',
+    disc_empty_hint_requests: 'Publiez votre trajet — les expéditeurs vous trouveront.',
+    disc_clear_search: 'Effacer la recherche',
+    disc_age_today: 'Aujourd’hui',
+    disc_age_yesterday: 'Hier',
+    disc_age_days_ago: 'Il y a {n} jours',
+    disc_you_receive: 'Vous recevrez',
+    disc_on_paid: 'sur {total} payés',
+    disc_i_can_do_it: 'Je peux le faire',
 
     how_title: 'Comment ça marche',
     how_subtitle: 'Trois étapes, c\'est tout.',
@@ -1188,6 +1244,9 @@ export const translations: Record<Locale, Translations> = {
     common_back: 'Précédent',
     common_next: 'Suivant',
     common_cancel: 'Annuler',
+    common_close: 'Fermer',
+    gate_identity_required:
+      'Vérifiez votre identité pour continuer. Obligatoire avant de publier un trajet, réserver ou proposer votre aide. Vérification gratuite et chiffrée par Stripe.',
     common_save: 'Enregistrer',
     common_loading: 'Chargement...',
     common_optional: 'optionnel',
@@ -1910,6 +1969,33 @@ export const translations: Record<Locale, Translations> = {
     bt_step_delivered_short: 'Delivered',
     bt_step_paid_short: 'Paid',
     bt_payment_safety: '🔒 Your payment is held securely until delivery is confirmed.',
+    disc_clear: 'Clear',
+    disc_filter_budget: 'Max budget',
+    disc_filter_trust: 'Trust',
+    disc_filter_verified_only: 'Verified identity only',
+    disc_tab_travelers: 'Travelers',
+    disc_tab_requests: 'Requests',
+    disc_heading_travelers: 'Available travelers',
+    disc_heading_requests: 'Delivery requests',
+    disc_publish_request: 'Post my request',
+    disc_publish_trip: 'Post my trip',
+    disc_trips_count: 'trips',
+    disc_price_from: 'From',
+    disc_protection_included: 'Jibly protection included',
+    disc_empty_travelers_route: 'No traveler on this route',
+    disc_empty_requests_route: 'No request on this route',
+    disc_empty_travelers: 'No traveler yet',
+    disc_empty_requests: 'No request yet',
+    disc_empty_hint_search: 'Try widening your criteria.',
+    disc_empty_hint_travelers: 'Post your request — we’ll let you know as soon as a traveler comes your way.',
+    disc_empty_hint_requests: 'Post your trip — senders will find you.',
+    disc_clear_search: 'Clear search',
+    disc_age_today: 'Today',
+    disc_age_yesterday: 'Yesterday',
+    disc_age_days_ago: '{n} days ago',
+    disc_you_receive: 'You’ll receive',
+    disc_on_paid: 'of {total} paid',
+    disc_i_can_do_it: 'I can do it',
 
     how_title: 'How it works',
     how_subtitle: 'Three steps, that\'s it.',
@@ -2104,6 +2190,9 @@ export const translations: Record<Locale, Translations> = {
     common_back: 'Back',
     common_next: 'Next',
     common_cancel: 'Cancel',
+    common_close: 'Close',
+    gate_identity_required:
+      'Verify your identity to continue. Required before publishing a trip, booking, or proposing help. Verification is free and encrypted by Stripe.',
     common_save: 'Save',
     common_loading: 'Loading...',
     common_optional: 'optional',
