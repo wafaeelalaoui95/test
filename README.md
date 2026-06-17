@@ -97,7 +97,7 @@ app/
 
 components/
   ├── layout/               Navbar, Footer
-  ├── ui/                   Button, Badge, Form, Stepper, LocationSelector, LanguageSwitcher
+  ├── ui/                   Button, Badge, Form, Stepper, CountryCityPicker, LanguageSwitcher
   └── illustrations/        Logo, HeroScene
 
 lib/

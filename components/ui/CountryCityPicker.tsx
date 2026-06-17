@@ -73,16 +73,23 @@ export function CountryCityPicker({
     isCustomCountry ||
     (!!city && !!knownCountry && !cityList.includes(city));
 
-  // Close any open panel on click-outside.
+  // Close any open panel on click-outside or Escape.
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setPanel(null);
       }
     }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPanel(null);
+    }
     if (panel) {
       document.addEventListener('mousedown', onClickOutside);
-      return () => document.removeEventListener('mousedown', onClickOutside);
+      document.addEventListener('keydown', onKeyDown);
+      return () => {
+        document.removeEventListener('mousedown', onClickOutside);
+        document.removeEventListener('keydown', onKeyDown);
+      };
     }
   }, [panel]);
 
@@ -320,7 +327,7 @@ export function CountryCityPicker({
                   city ? 'text-ink-600' : knownCountry ? 'text-ink-300' : 'text-ink-200'
                 }`}
               >
-                {city || cityPlaceholder}
+                {city || (cityPlaceholder ?? t.picker_city_placeholder)}
               </span>
               <ChevronDown
                 className={`w-3.5 h-3.5 flex-shrink-0 ${knownCountry ? 'text-ink-300' : 'text-ink-200'}`}
@@ -339,7 +346,7 @@ export function CountryCityPicker({
                       type="text"
                       value={cityQuery}
                       onChange={(e) => setCityQuery(e.target.value)}
-                      placeholder="Rechercher une ville…"
+                      placeholder={t.picker_search_city}
                       className="w-full pl-8 pr-3 py-2 bg-cream-100 rounded-lg text-[13px] text-ink-600 placeholder:text-ink-300 focus:outline-none focus:bg-white focus:ring-1 focus:ring-ink-200"
                     />
                   </div>
@@ -367,7 +374,7 @@ export function CountryCityPicker({
                 className="w-full text-start px-4 py-2.5 text-[14px] text-ink-500 hover:bg-cream-50 transition-colors flex items-center gap-2 border-t border-ink-50"
               >
                 <Pencil className="w-3.5 h-3.5 text-ink-300" />
-                <span>Autre ville — saisir manuellement</span>
+                <span>{t.picker_other_city}</span>
               </button>
             </div>
           )}

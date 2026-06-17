@@ -262,6 +262,7 @@ export type Translations = {
   picker_geo_denied: string;
   picker_back_countries: string;
   picker_back_cities: string;
+  error_same_route: string;
 
  // Item categories (whitelist MVP)
   cat_documents: string;
@@ -1162,6 +1163,7 @@ export const translations: Record<Locale, Translations> = {
     picker_geo_denied: 'Position refusée. Choisis ton pays manuellement.',
     picker_back_countries: 'Revenir à la liste des pays',
     picker_back_cities: 'Revenir à la liste des villes',
+    error_same_route: 'Le départ et l’arrivée doivent être différents.',
 
    cat_documents: 'Documents',
     cat_documents_desc: 'Papiers, contrats, attestations',
@@ -2053,6 +2055,7 @@ export const translations: Record<Locale, Translations> = {
     picker_geo_denied: 'Location denied. Pick your country manually.',
     picker_back_countries: 'Back to country list',
     picker_back_cities: 'Back to city list',
+    error_same_route: 'Departure and arrival must be different.',
 
    cat_documents: 'Documents',
     cat_documents_desc: 'Papers, contracts, certificates',

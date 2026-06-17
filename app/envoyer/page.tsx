@@ -140,6 +140,13 @@ export default function EnvoyerPage() {
       return;
     }
     if (!fromCity || !toCity || !category) return;
+    if (
+      fromCity.trim().toLowerCase() === toCity.trim().toLowerCase() &&
+      fromCountry.trim().toLowerCase() === toCountry.trim().toLowerCase()
+    ) {
+      setSubmitError(t.error_same_route);
+      return;
+    }
     setSubmitError(null);
     setSubmitting(true);
     try {

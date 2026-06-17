@@ -139,14 +139,21 @@ export default function VoyagerPage() {
       return;
     }
     if (!fromCity || !toCity) return;
+    if (
+      fromCity.trim().toLowerCase() === toCity.trim().toLowerCase() &&
+      fromCountry.trim().toLowerCase() === toCountry.trim().toLowerCase()
+    ) {
+      setSubmitError(t.error_same_route);
+      return;
+    }
     setSubmitError(null);
     setSubmitting(true);
     try {
       await browser.createTrip({
         user_id: user.id,
-        departure_country: fromCountry,
+        departure_country: '',
         departure_city: fromCity,
-        arrival_country: toCountry,
+        arrival_country: '',
         arrival_city: toCity,
         departure_date: date,
         arrival_date: null,
@@ -996,9 +1003,9 @@ function InstantProposeModal({
       if (!tripId) {
         const trip = await browser.createTrip({
           user_id: travelerId,
-          departure_country: fromCountry,
+          departure_country: '',
           departure_city: fromCity,
-          arrival_country: toCountry,
+          arrival_country: '',
           arrival_city: toCity,
           departure_date: date,
           arrival_date: null,

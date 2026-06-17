@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
+import { getCitiesForCountry } from '@/lib/countries';
 import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
@@ -37,6 +38,18 @@ type RequestWithProfile = ShippingRequestRow & {
 };
 
 type Mode = 'travelers' | 'requests';
+
+/**
+ * Does a row's location fall within the selected country? Used when the user
+ * picks a country but no city. Matches on the stored country, and falls back
+ * to "is this city one of that country's cities" so legacy rows (saved with an
+ * empty country) still match.
+ */
+function cityInCountry(rowCountry: string, rowCity: string, selectedCountry: string): boolean {
+  const sel = selectedCountry.toLowerCase();
+  if (rowCountry && rowCountry.toLowerCase() === sel) return true;
+  return getCitiesForCountry(selectedCountry).some((c) => c.toLowerCase() === rowCity.toLowerCase());
+}
 
 export default function HomePage() {
   const { t } = useI18n();
@@ -63,7 +76,9 @@ export default function HomePage() {
 
   // Active filters (applied after Search button or advanced toggle)
   const [activeFrom, setActiveFrom] = useState('');
+  const [activeFromCountry, setActiveFromCountry] = useState('');
   const [activeTo, setActiveTo] = useState('');
+  const [activeToCountry, setActiveToCountry] = useState('');
   const [activeDate, setActiveDate] = useState('');
 
   // Advanced filters (collapsible)
@@ -101,7 +116,9 @@ export default function HomePage() {
 
   function handleSearch() {
     setActiveFrom(searchFrom);
+    setActiveFromCountry(searchFromCountry);
     setActiveTo(searchTo);
+    setActiveToCountry(searchToCountry);
     setActiveDate(searchDate);
     const el = document.getElementById('results');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -114,7 +131,9 @@ export default function HomePage() {
     setSearchToCountry('');
     setSearchDate('');
     setActiveFrom('');
+    setActiveFromCountry('');
     setActiveTo('');
+    setActiveToCountry('');
     setActiveDate('');
     setMaxBudget('');
     setVerifiedOnly(false);
@@ -126,13 +145,15 @@ export default function HomePage() {
       // Anonymous users see everything (user is null).
       if (user && tv.user_id === user.id) return false;
       if (activeFrom && !tv.departure_city.toLowerCase().includes(activeFrom.toLowerCase())) return false;
+      if (!activeFrom && activeFromCountry && !cityInCountry(tv.departure_country, tv.departure_city, activeFromCountry)) return false;
       if (activeTo && !tv.arrival_city.toLowerCase().includes(activeTo.toLowerCase())) return false;
+      if (!activeTo && activeToCountry && !cityInCountry(tv.arrival_country, tv.arrival_city, activeToCountry)) return false;
       if (activeDate && tv.departure_date > activeDate) return false;
       if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
       if (verifiedOnly && tv.profile?.verification_level !== 'id_verified' && tv.profile?.verification_level !== 'trusted') return false;
       return true;
     });
-  }, [trips, user, activeFrom, activeTo, activeDate, maxBudget, verifiedOnly]);
+  }, [trips, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget, verifiedOnly]);
 
   // Same filtering logic but applied to shipping requests:
   //   - hide my own requests
@@ -146,15 +167,17 @@ export default function HomePage() {
     return requests.filter((r) => {
       if (user && r.user_id === user.id) return false;
       if (activeFrom && !r.pickup_city.toLowerCase().includes(activeFrom.toLowerCase())) return false;
+      if (!activeFrom && activeFromCountry && !cityInCountry(r.pickup_country, r.pickup_city, activeFromCountry)) return false;
       if (activeTo && !r.destination_city.toLowerCase().includes(activeTo.toLowerCase())) return false;
+      if (!activeTo && activeToCountry && !cityInCountry(r.destination_country, r.destination_city, activeToCountry)) return false;
       if (activeDate && r.desired_delivery_date < activeDate) return false;
       if (maxBudget !== '' && r.budget < Number(maxBudget)) return false;
       if (verifiedOnly && r.profile?.verification_level !== 'id_verified' && r.profile?.verification_level !== 'trusted') return false;
       return true;
     });
-  }, [requests, user, activeFrom, activeTo, activeDate, maxBudget, verifiedOnly]);
+  }, [requests, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget, verifiedOnly]);
 
-  const hasActiveSearch = !!(activeFrom || activeTo || activeDate || maxBudget !== '' || verifiedOnly);
+  const hasActiveSearch = !!(activeFrom || activeFromCountry || activeTo || activeToCountry || activeDate || maxBudget !== '' || verifiedOnly);
 
   return (
     <div>
