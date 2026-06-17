@@ -8,6 +8,7 @@ import { ArrowLeft, Loader2, Plane, Package } from 'lucide-react';
 import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { useI18n } from '@/lib/i18n/context';
+import { ViewProofButton } from '@/components/ImageLightbox';
 import {
   displayName,
   nameInitial,
@@ -303,14 +304,7 @@ function HistoryRow({
           <span className={`text-[11px] ml-1 ${statusLabel.tone}`}>{statusLabel.text}</span>
         </div>
         {row.delivery_proof_url && (
-          <a
-            href={row.delivery_proof_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-shrink-0 text-[12px] font-medium text-ink-400 hover:text-ink-600 underline transition-colors"
-          >
-            {t.sec_hist_view_proof}
-          </a>
+          <ViewProofButton url={row.delivery_proof_url} label={t.sec_hist_view_proof} />
         )}
       </div>
     </div>

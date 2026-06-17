@@ -40,6 +40,7 @@ import { DisputeModal } from '@/components/DisputeModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
+import { ViewProofButton, ProofThumbnail } from '@/components/ImageLightbox';
 import { BookingTimeline, deriveTimelineStep } from '@/components/BookingTimeline';
 // Reviews — mutual star-rating between sender and traveler once received_confirmed_at is set.
 import { ReviewModal } from '@/components/ReviewModal';
@@ -1340,14 +1341,7 @@ function BookingCard({
               <span className="text-[11px] text-butter-700 ml-1">📸 {t.me2_delivered_to_confirm}</span>
             )}
           </div>
-          <a
-            href={booking.delivery_proof_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-shrink-0 text-[12px] font-medium text-ink-400 hover:text-ink-600 underline transition-colors"
-          >
-            {t.me2_view_proof}
-          </a>
+          <ViewProofButton url={booking.delivery_proof_url} label={t.me2_view_proof} />
           {/* Reception confirmation by code — sender enters the delivery
               code the traveler/recipient just gave them. Once confirmed,
               Stripe captures the payment via /api/booking/confirm-receipt. */}
@@ -1462,9 +1456,8 @@ function BookingCard({
                   {t.me2_delivery_proof}
                 </div>
               </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={booking.delivery_proof_url}
+              <ProofThumbnail
+                url={booking.delivery_proof_url}
                 alt={t.me2_delivery_proof}
                 className="w-full max-h-64 object-cover rounded-lg mb-3 border border-mint-200/40"
               />
