@@ -77,6 +77,15 @@ export default async function MePage() {
       ...myProposals.map((i: any) => i.id),
     ])
   );
+  // Guard: a logged-in user with no profile (or an anonymised one) means the
+  // account was deleted but the auth session is still live — eject it instead
+  // of rendering a ghost profile. A genuinely new user always has a profile
+  // (created synchronously by the on_auth_user_created trigger), so this only
+  // catches deleted/orphaned accounts.
+  if (!profile || profile.deleted_at) {
+    redirect('/auth/sign-out');
+  }
+
   const reviews = await safe(
     listReviewsByBookingIds(supabase, allBookingIds),
     [] as any[]

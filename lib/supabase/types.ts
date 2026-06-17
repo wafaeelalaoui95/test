@@ -42,6 +42,8 @@ export interface Profile {
   identity_verification_id: string | null;
   identity_verification_status: string | null; // 'processing' | 'verified' | 'requires_input' | 'canceled'
   identity_verified_at: string | null;
+  // Set when the user anonymises their account (soft delete). NULL = active.
+  deleted_at: string | null;
 }
 
 export interface TravelerTripRow {
