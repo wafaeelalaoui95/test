@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
-import { CityCombobox } from '@/components/ui/CityCombobox';
+import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
@@ -56,7 +56,9 @@ export default function HomePage() {
 
   // Search box state (uncontrolled until user clicks search)
   const [searchFrom, setSearchFrom] = useState('');
+  const [searchFromCountry, setSearchFromCountry] = useState('');
   const [searchTo, setSearchTo] = useState('');
+  const [searchToCountry, setSearchToCountry] = useState('');
   const [searchDate, setSearchDate] = useState('');
 
   // Active filters (applied after Search button or advanced toggle)
@@ -107,7 +109,9 @@ export default function HomePage() {
 
   function resetAll() {
     setSearchFrom('');
+    setSearchFromCountry('');
     setSearchTo('');
+    setSearchToCountry('');
     setSearchDate('');
     setActiveFrom('');
     setActiveTo('');
@@ -192,10 +196,14 @@ export default function HomePage() {
                       <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                         Départ
                       </label>
-                      <CityCombobox
-                        value={searchFrom}
-                        onChange={setSearchFrom}
-                        placeholder="Paris, Casablanca…"
+                      <CountryCityPicker
+                        country={searchFromCountry}
+                        city={searchFrom}
+                        onChange={({ country, city }) => {
+                          setSearchFromCountry(country);
+                          setSearchFrom(city);
+                        }}
+                        enableNearby
                       />
                     </div>
 
@@ -205,10 +213,13 @@ export default function HomePage() {
                       <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                         Arrivée
                       </label>
-                      <CityCombobox
-                        value={searchTo}
-                        onChange={setSearchTo}
-                        placeholder="Londres, Marrakech…"
+                      <CountryCityPicker
+                        country={searchToCountry}
+                        city={searchTo}
+                        onChange={({ country, city }) => {
+                          setSearchToCountry(country);
+                          setSearchTo(city);
+                        }}
                       />
                     </div>
 

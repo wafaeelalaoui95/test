@@ -21,7 +21,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Textarea, Checkbox, Input } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
-import { CityCombobox } from '@/components/ui/CityCombobox';
+import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -45,7 +45,9 @@ export default function VoyagerPage() {
 
   // ---- Shared route data ----
   const [fromCity, setFromCity] = useState('');
+  const [fromCountry, setFromCountry] = useState('');
   const [toCity, setToCity] = useState('');
+  const [toCountry, setToCountry] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
 
@@ -263,10 +265,14 @@ export default function VoyagerPage() {
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                   Départ
                 </label>
-                <CityCombobox
-                  value={fromCity}
-                  onChange={setFromCity}
-                  placeholder="Paris, Casablanca…"
+                <CountryCityPicker
+                  country={fromCountry}
+                  city={fromCity}
+                  onChange={({ country, city }) => {
+                    setFromCountry(country);
+                    setFromCity(city);
+                  }}
+                  enableNearby
                 />
               </div>
 
@@ -276,10 +282,13 @@ export default function VoyagerPage() {
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
                   Arrivée
                 </label>
-                <CityCombobox
-                  value={toCity}
-                  onChange={setToCity}
-                  placeholder="Londres, Marrakech…"
+                <CountryCityPicker
+                  country={toCountry}
+                  city={toCity}
+                  onChange={({ country, city }) => {
+                    setToCountry(country);
+                    setToCity(city);
+                  }}
                 />
               </div>
 
@@ -544,11 +553,26 @@ export default function VoyagerPage() {
                   <div className="grid sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[13px] font-medium text-ink-500 mb-2">{t.send_label_from}</label>
-                      <CityCombobox value={fromCity} onChange={setFromCity} placeholder="Paris…" />
+                      <CountryCityPicker
+                        country={fromCountry}
+                        city={fromCity}
+                        onChange={({ country, city }) => {
+                          setFromCountry(country);
+                          setFromCity(city);
+                        }}
+                        enableNearby
+                      />
                     </div>
                     <div>
                       <label className="block text-[13px] font-medium text-ink-500 mb-2">{t.send_label_to}</label>
-                      <CityCombobox value={toCity} onChange={setToCity} placeholder="Casablanca…" />
+                      <CountryCityPicker
+                        country={toCountry}
+                        city={toCity}
+                        onChange={({ country, city }) => {
+                          setToCountry(country);
+                          setToCity(city);
+                        }}
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
