@@ -25,9 +25,17 @@ create table if not exists public.profiles (
   verification_level text not null default 'email' check (verification_level in ('none','email','id_verified','trusted')),
   rating          numeric(2,1) not null default 0 check (rating >= 0 and rating <= 5),
   trips_completed integer not null default 0 check (trips_completed >= 0),
+  -- Set when the user anonymises (soft-deletes) their account. The profile row
+  -- is kept so received reviews & closed-match history survive, but all PII is
+  -- wiped and the auth.users row is e-mail-scrambled + banned. NULL = active.
+  deleted_at      timestamptz,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+
+-- Idempotent add for existing databases (the create-table above only runs on a
+-- fresh DB; this keeps already-deployed instances in sync).
+alter table public.profiles add column if not exists deleted_at timestamptz;
 
 -- Auto-create a profile row whenever a new auth user is created.
 create or replace function public.handle_new_user()

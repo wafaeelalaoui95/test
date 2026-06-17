@@ -38,6 +38,7 @@ import { Input } from '@/components/ui/Form';
 // Trust & safety: dispute reporting + code-based handoff verification
 import { DisputeModal } from '@/components/DisputeModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
+import { VerifyIdentityButton } from '@/components/IdentityGate';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
 import { BookingTimeline, deriveTimelineStep } from '@/components/BookingTimeline';
 // Reviews — mutual star-rating between sender and traveler once received_confirmed_at is set.
@@ -2189,7 +2190,9 @@ function ProfileTab({
       const res = await fetch('/api/account/delete', { method: 'POST' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'Failed');
+        // The API returns a human-readable `message` for expected cases (e.g.
+        // an active obligation blocking deletion); fall back to `error`.
+        throw new Error(body.message || body.error || 'Failed');
       }
       // Hard reload to clear all client state
       window.location.href = '/';
@@ -2431,51 +2434,6 @@ function ProfileTab({
         )}
       </AnimatePresence>
     </div>
-  );
-}
-// =============================================================================
-// VerifyIdentityButton — calls /api/identity/create-session and redirects
-// =============================================================================
-// Reusable button that kicks off Stripe Identity. It POSTs to our API
-// route, which creates a VerificationSession server-side and returns the
-// hosted-flow URL. The user is redirected there; Stripe sends them back
-// to /me?identity=done after completion.
-function VerifyIdentityButton({ label }: { label?: string }) {
-  const { t } = useI18n();
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function start() {
-    setLoading(true);
-    setErr(null);
-    try {
-      const res = await fetch('/api/identity/create-session', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.error ?? t.me2_verify_start_failed);
-      }
-      // Redirect to Stripe's hosted flow
-      window.location.href = data.url;
-    } catch (e: any) {
-      setErr(e.message ?? t.me2_error_retry);
-      setLoading(false);
-    }
-  }
-
-  return (
-    <>
-      <Button onClick={start} disabled={loading} size="sm" fullWidth>
-        {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <ShieldCheck className="w-4 h-4" />
-        )}
-        {label ?? t.me2_verify_my_identity}
-      </Button>
-      {err && (
-        <p className="mt-2 text-[12px] text-blush-500 text-center">{err}</p>
-      )}
-    </>
   );
 }
 function CheckRow({ label, done }: { label: string; done: boolean }) {
