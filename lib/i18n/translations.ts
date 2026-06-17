@@ -40,6 +40,23 @@ export type Translations = {
   search_filters_show: string;
   search_filters_hide: string;
   search_label_flight_date: string;
+  login_session_reset_title: string;
+  login_session_reset_text: string;
+  login_submit: string;
+  login_reset_link: string;
+  signup_name_placeholder: string;
+  sec_wallet_withdraw_subject: string;
+  footer_allowed_items: string;
+  footer_terms: string;
+  pay_security_note: string;
+  pay_submitting: string;
+  pay_submit: string;
+  bt_step_booked_short: string;
+  bt_step_handover_short: string;
+  bt_step_transit_short: string;
+  bt_step_delivered_short: string;
+  bt_step_paid_short: string;
+  bt_payment_safety: string;
 
   // How it works
   how_title: string;
@@ -960,6 +977,23 @@ export const translations: Record<Locale, Translations> = {
     search_filters_show: 'Filtres avancés',
     search_filters_hide: 'Masquer les filtres',
     search_label_flight_date: 'Date du vol',
+    login_session_reset_title: 'Votre session a été réinitialisée.',
+    login_session_reset_text: 'Reconnectez-vous pour continuer.',
+    login_submit: 'Se connecter',
+    login_reset_link: 'Problème de connexion ? Réinitialiser',
+    signup_name_placeholder: 'Salma El Amrani',
+    sec_wallet_withdraw_subject: 'Retrait de mes gains',
+    footer_allowed_items: 'Objets autorisés',
+    footer_terms: 'CGU',
+    pay_security_note: 'Paiement sécurisé par Stripe. Votre carte est autorisée mais pas débitée. Le montant ne sera prélevé que si le voyageur accepte. En cas de refus, l’autorisation est libérée.',
+    pay_submitting: 'Confirmation…',
+    pay_submit: 'Confirmer le paiement',
+    bt_step_booked_short: 'Réservé',
+    bt_step_handover_short: 'Remis',
+    bt_step_transit_short: 'Transport',
+    bt_step_delivered_short: 'Livré',
+    bt_step_paid_short: 'Payé',
+    bt_payment_safety: '🔒 Votre paiement est conservé en sécurité jusqu’à la confirmation de la livraison.',
 
     how_title: 'Comment ça marche',
     how_subtitle: 'Trois étapes, c\'est tout.',
@@ -1859,6 +1893,23 @@ export const translations: Record<Locale, Translations> = {
     search_filters_show: 'Advanced filters',
     search_filters_hide: 'Hide filters',
     search_label_flight_date: 'Flight date',
+    login_session_reset_title: 'Your session has been reset.',
+    login_session_reset_text: 'Sign back in to continue.',
+    login_submit: 'Sign in',
+    login_reset_link: 'Trouble signing in? Reset',
+    signup_name_placeholder: 'Jane Doe',
+    sec_wallet_withdraw_subject: 'Withdrawal of my earnings',
+    footer_allowed_items: 'Allowed items',
+    footer_terms: 'Terms',
+    pay_security_note: 'Secure payment by Stripe. Your card is authorized but not charged. The amount is only taken if the traveler accepts. If they decline, the authorization is released.',
+    pay_submitting: 'Confirming…',
+    pay_submit: 'Confirm payment',
+    bt_step_booked_short: 'Booked',
+    bt_step_handover_short: 'Handed over',
+    bt_step_transit_short: 'In transit',
+    bt_step_delivered_short: 'Delivered',
+    bt_step_paid_short: 'Paid',
+    bt_payment_safety: '🔒 Your payment is held securely until delivery is confirmed.',
 
     how_title: 'How it works',
     how_subtitle: 'Three steps, that\'s it.',

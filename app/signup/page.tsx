@@ -88,7 +88,7 @@ export default function SignupPage() {
           <Input
             type="text"
             label={t.auth_full_name}
-            placeholder="Salma El Amrani"
+            placeholder={t.signup_name_placeholder}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required

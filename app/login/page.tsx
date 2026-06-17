@@ -62,8 +62,8 @@ function LoginInner() {
           <div className="mb-6 rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 flex gap-2.5">
             <RefreshCw className="w-4 h-4 text-butter-500 flex-shrink-0 mt-0.5" />
             <div className="text-[13px] text-ink-500 leading-relaxed">
-              <strong className="text-ink-600">Votre session a été réinitialisée.</strong>{' '}
-              Reconnectez-vous pour continuer.
+              <strong className="text-ink-600">{t.login_session_reset_title}</strong>{' '}
+              {t.login_session_reset_text}
             </div>
           </div>
         )}
@@ -96,7 +96,7 @@ function LoginInner() {
 
           <Button type="submit" fullWidth disabled={loading || !email || !password}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-            Se connecter
+            {t.login_submit}
           </Button>
         </form>
 
@@ -116,7 +116,7 @@ function LoginInner() {
             }}
             className="text-[12px] text-ink-300 hover:text-ink-500 transition-colors"
           >
-            Problème de connexion ? Réinitialiser
+            {t.login_reset_link}
           </button>
         </div>
       </div>

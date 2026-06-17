@@ -146,7 +146,7 @@ export default function WalletPageClient({
                       <p className="text-[12px] text-cream-50/60 leading-relaxed pt-1">
                         {t.sec_wallet_withdraw_note_before}{' '}
                         <a
-                          href="mailto:hello@jibly.com?subject=Retrait%20de%20mes%20gains"
+                          href={`mailto:hello@jibly.com?subject=${encodeURIComponent(t.sec_wallet_withdraw_subject)}`}
                           className="underline font-semibold hover:text-cream-50 transition-colors"
                         >
                           hello@jibly.com

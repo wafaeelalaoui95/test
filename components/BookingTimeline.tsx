@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, CircleDashed, Clock } from 'lucide-react';
+import { useI18n } from '@/lib/i18n/context';
 
 /**
  * 5-step timeline shown on each booking card. Visualizes the journey
@@ -22,13 +23,7 @@ export type TimelineStep =
   | 'delivered'  // traveler handed over to recipient
   | 'paid';      // payment captured and released to traveler
 
-const STEPS: { id: TimelineStep; label: string; shortLabel: string }[] = [
-  { id: 'booked',     label: 'Réservation confirmée', shortLabel: 'Réservé' },
-  { id: 'picked_up',  label: 'Remise effectuée',       shortLabel: 'Remis' },
-  { id: 'in_transit', label: 'En transport',           shortLabel: 'Transport' },
-  { id: 'delivered',  label: 'Livré',                  shortLabel: 'Livré' },
-  { id: 'paid',       label: 'Paiement versé',         shortLabel: 'Payé' },
-];
+const STEP_ORDER: TimelineStep[] = ['booked', 'picked_up', 'in_transit', 'delivered', 'paid'];
 
 /**
  * Derive which step is current from booking state. Keeps the timeline
@@ -74,17 +69,25 @@ export function BookingTimeline({
    */
   compact?: boolean;
 }) {
-  const currentIdx = STEPS.findIndex((s) => s.id === current);
+  const { t } = useI18n();
+  const SHORT: Record<TimelineStep, string> = {
+    booked: t.bt_step_booked_short,
+    picked_up: t.bt_step_handover_short,
+    in_transit: t.bt_step_transit_short,
+    delivered: t.bt_step_delivered_short,
+    paid: t.bt_step_paid_short,
+  };
+  const currentIdx = STEP_ORDER.indexOf(current);
 
   return (
     <div className="w-full">
       <div className="flex items-center">
-        {STEPS.map((step, i) => {
+        {STEP_ORDER.map((id, i) => {
           const isDone = i < currentIdx;
           const isCurrent = i === currentIdx;
           const isFuture = i > currentIdx;
           return (
-            <div key={step.id} className="flex-1 flex items-center first:flex-none last:flex-none">
+            <div key={id} className="flex-1 flex items-center first:flex-none last:flex-none">
               {/* Step dot */}
               <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
                 <div
@@ -117,13 +120,13 @@ export function BookingTimeline({
                           : 'text-ink-300'}
                     `}
                   >
-                    {step.shortLabel}
+                    {SHORT[id]}
                   </span>
                 )}
               </div>
 
               {/* Connector line (except after last step) */}
-              {i < STEPS.length - 1 && (
+              {i < STEP_ORDER.length - 1 && (
                 <div
                   className={`
                     flex-1 h-0.5 mx-1 -mt-5 transition-colors
@@ -144,10 +147,10 @@ export function BookingTimeline({
  * brief: payment is held until delivery is confirmed.
  */
 export function PaymentSafetyCaption() {
+  const { t } = useI18n();
   return (
     <p className="text-[11px] text-ink-400 text-center mt-3 leading-relaxed">
-      🔒 Votre paiement est conservé en sécurité jusqu&apos;à la confirmation
-      de la livraison.
+      {t.bt_payment_safety}
     </p>
   );
 }

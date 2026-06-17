@@ -10,6 +10,7 @@ import {
 import type { StripeElementsOptions } from '@stripe/stripe-js';
 import { Loader2, Lock } from 'lucide-react';
 import { getStripeClient } from '@/lib/stripe/client';
+import { useI18n } from '@/lib/i18n/context';
 
 type Props = {
   amountEuros: number;
@@ -127,6 +128,7 @@ function InnerForm({
   onAuthorized: (id: string) => void;
   onCancel?: () => void;
 }) {
+  const { t } = useI18n();
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -182,10 +184,7 @@ function InnerForm({
 
       <div className="flex items-start gap-2 text-[12px] text-ink-400 leading-relaxed">
         <Lock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-        <span>
-          Paiement sécurisé par Stripe. Votre carte est <strong className="text-ink-500">autorisée mais pas débitée</strong>.
-          Le montant ne sera prélevé que si le voyageur accepte. En cas de refus, l&apos;autorisation est libérée.
-        </span>
+        <span>{t.pay_security_note}</span>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
@@ -196,7 +195,7 @@ function InnerForm({
             disabled={submitting}
             className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
           >
-            Annuler
+            {t.common_cancel}
           </button>
         )}
         <button
@@ -205,7 +204,7 @@ function InnerForm({
           className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 disabled:bg-ink-200 disabled:cursor-not-allowed rounded-full transition-colors"
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-          {submitting ? 'Confirmation…' : 'Confirmer le paiement'}
+          {submitting ? t.pay_submitting : t.pay_submit}
         </button>
       </div>
     </form>
