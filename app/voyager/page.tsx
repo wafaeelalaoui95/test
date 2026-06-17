@@ -488,7 +488,9 @@ export default function VoyagerPage() {
               request={requestToHelp}
               travelerId={user.id}
               fromCity={fromCity}
+              fromCountry={fromCountry}
               toCity={toCity}
+              toCountry={toCountry}
               date={date}
               time={time}
               flightNumber={flightNumber}
@@ -953,7 +955,9 @@ function InstantProposeModal({
   request,
   travelerId,
   fromCity,
+  fromCountry,
   toCity,
+  toCountry,
   date,
   time,
   flightNumber,
@@ -966,7 +970,9 @@ function InstantProposeModal({
   request: MatchingRequest;
   travelerId: string;
   fromCity: string;
+  fromCountry: string;
   toCity: string;
+  toCountry: string;
   date: string;
   time: string;
   flightNumber: string;
