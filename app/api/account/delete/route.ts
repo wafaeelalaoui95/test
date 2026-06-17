@@ -51,7 +51,7 @@ export async function POST() {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  let admin: ReturnType<typeof createClient>;
+  let admin: ReturnType<typeof getAdminSupabase>;
   try {
     admin = getAdminSupabase();
   } catch (e) {
