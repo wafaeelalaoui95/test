@@ -112,12 +112,17 @@ export function DisputeModal({
             exit={{ opacity: 0 }}
             onClick={close}
           />
+          {/* Centering wrapper — fixed inset-0 flex instead of translate-based
+              positioning, which mis-centred the modal (see PickupShowCodeModal
+              fix). pointer-events-none lets clicks fall through to the backdrop
+              so click-outside-to-close still works. */}
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 pointer-events-none">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-2rem)] sm:w-[480px] max-h-[calc(100vh-2rem)] sm:max-h-[85vh] bg-cream-50 rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col"
+            className="w-full sm:w-[480px] max-h-[calc(100vh-2rem)] sm:max-h-[85vh] bg-cream-50 rounded-3xl shadow-2xl overflow-hidden flex flex-col pointer-events-auto"
           >
             <div className="px-6 pt-6 pb-2 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2.5">
@@ -215,8 +220,9 @@ export function DisputeModal({
               <p className="text-[10px] text-ink-300 text-center mt-2 leading-relaxed">
                 {t.rev_dispute_abuse_warning}
               </p>
-              </div>   
+              </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

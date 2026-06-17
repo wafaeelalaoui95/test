@@ -133,12 +133,13 @@ export function PickupEnterCodeModal({
             exit={{ opacity: 0 }}
             onClick={close}
           />
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 pointer-events-none">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-            className="fixed inset-x-4 bottom-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:w-[420px] bg-cream-50 rounded-3xl shadow-2xl z-50 overflow-hidden"
+            className="w-full sm:w-[420px] max-h-[90vh] overflow-y-auto bg-cream-50 rounded-3xl shadow-2xl pointer-events-auto"
           >
             <div className="px-6 pt-6 pb-2 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -224,6 +225,7 @@ export function PickupEnterCodeModal({
               </div>
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
