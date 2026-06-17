@@ -2,9 +2,25 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Send, Loader2, ArrowLeft } from 'lucide-react';
+import { X, Send, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { browser, type MessageRowChat } from '@/lib/supabase/queries';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
+
+/**
+ * Quick replies steer the conversation toward the two things we actually
+ * want users discussing in-app: the address and the parcel. Tapping one
+ * drops the text into the input (rather than sending immediately) so the
+ * user can complete it — e.g. fill in the actual address after "Voici
+ * l'adresse :" — and review before sending.
+ */
+const QUICK_REPLIES: { label: string; text: string }[] = [
+  { label: '📍 Adresse', text: 'Voici l\'adresse : ' },
+  { label: '📦 Le colis', text: 'À propos du colis : ' },
+  { label: '🕐 J\'arrive bientôt', text: 'J\'arrive bientôt 🙂' },
+  { label: '🔑 Code de récupération', text: 'Quel est le code de récupération ?' },
+];
+
+const TRACEABILITY_NOTICE_KEY = 'jibly:chat:traceability-dismissed';
 
 type ChatModalProps = {
   bookingIntentId: string;
@@ -48,6 +64,8 @@ export function ChatModal({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Traceability reminder: shown until the user dismisses it (per-browser).
+  const [showNotice, setShowNotice] = useState(false);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -59,6 +77,31 @@ export function ChatModal({
   // which is the lag the user saw while typing.
   const onMessagesReadRef = useRef(onMessagesRead);
   useEffect(() => { onMessagesReadRef.current = onMessagesRead; }, [onMessagesRead]);
+
+  // Show the traceability reminder unless this browser already dismissed it.
+  useEffect(() => {
+    try {
+      setShowNotice(localStorage.getItem(TRACEABILITY_NOTICE_KEY) !== '1');
+    } catch {
+      setShowNotice(true);
+    }
+  }, []);
+
+  function dismissNotice() {
+    setShowNotice(false);
+    try {
+      localStorage.setItem(TRACEABILITY_NOTICE_KEY, '1');
+    } catch {
+      /* ignore — private mode etc. */
+    }
+  }
+
+  // Drop a quick-reply template into the input so the user can complete
+  // and review it before sending. Append to any existing draft.
+  function applyQuickReply(text: string) {
+    setDraft((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text));
+    inputRef.current?.focus();
+  }
 
   // Boot: get or create the conversation, load messages, mark as read.
   useEffect(() => {
@@ -215,6 +258,25 @@ export function ChatModal({
           </button>
         </div>
 
+        {/* Traceability reminder — nudges users to keep exchanges on Jibly
+            for tracking & protection. Dismissible per browser. */}
+        {showNotice && (
+          <div className="flex items-start gap-2.5 px-4 py-2.5 bg-lavender-50 border-b border-lavender-100">
+            <ShieldCheck className="w-4 h-4 text-lavender-400 flex-shrink-0 mt-0.5" />
+            <p className="flex-1 text-[12px] leading-relaxed text-ink-500">
+              Gardez vos échanges sur Jibly : c'est ce qui nous permet d'assurer
+              le suivi du colis et de vous protéger en cas de litige.
+            </p>
+            <button
+              onClick={dismissNotice}
+              className="p-0.5 -mr-1 rounded-full hover:bg-lavender-100 text-ink-300 transition-colors flex-shrink-0"
+              aria-label="Masquer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Messages */}
         <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
           {loading ? (
@@ -269,6 +331,20 @@ export function ChatModal({
 
         {/* Input */}
         <div className="px-3 py-3 border-t border-ink-100 bg-cream-50">
+          {/* Quick replies — steer toward address & parcel topics. Tapping
+              fills the input so the user can complete/edit before sending. */}
+          <div className="flex gap-1.5 overflow-x-auto pb-2.5 -mx-0.5 px-0.5 scrollbar-hide">
+            {QUICK_REPLIES.map((qr) => (
+              <button
+                key={qr.label}
+                onClick={() => applyQuickReply(qr.text)}
+                disabled={loading || sending}
+                className="flex-shrink-0 px-3 py-1.5 rounded-full bg-white border border-ink-100 text-[12px] text-ink-500 whitespace-nowrap hover:bg-lavender-50 hover:border-lavender-200 transition-colors disabled:opacity-40"
+              >
+                {qr.label}
+              </button>
+            ))}
+          </div>
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
