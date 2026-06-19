@@ -2765,10 +2765,10 @@ function MasterDetailLayout({
       {/* Detail panel — on desktop sits next to master. On mobile,
           slides in over the list as a full-screen sheet. */}
       <section
-        className={`bg-white rounded-2xl border border-ink-50 overflow-hidden ${detailOpen ? 'fixed inset-0 z-40 md:relative md:inset-auto md:z-auto' : 'hidden md:block'}`}
+        className={`bg-white rounded-2xl border border-ink-50 overflow-hidden ${detailOpen ? 'fixed inset-x-0 top-16 bottom-0 z-40 flex flex-col md:relative md:inset-auto md:top-auto md:z-auto md:block' : 'hidden md:block'}`}
       >
         {/* Mobile back bar — only visible when detail is open on mobile */}
-        <div className="md:hidden flex items-center gap-2 px-3 py-3 border-b border-ink-50 bg-cream-50">
+        <div className="md:hidden flex items-center gap-2 px-3 py-3 border-b border-ink-50 bg-cream-50 flex-shrink-0">
           <button
             type="button"
             onClick={onCloseDetail}
@@ -2778,7 +2778,7 @@ function MasterDetailLayout({
             {t.me2_back}
           </button>
         </div>
-        <div className="overflow-y-auto md:max-h-[80vh]">
+        <div className="overflow-y-auto flex-1 min-h-0 md:flex-none md:max-h-[80vh]">
           {detail}
         </div>
       </section>
