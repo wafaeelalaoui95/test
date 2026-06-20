@@ -35,12 +35,32 @@ import type { MatchingTrip, TieredMatchingTrip } from '@/lib/supabase/queries';
 //   - "public" : fallback wizard for when no traveler matches or user opts out
 type Mode = 'choose' | 'public';
 
+// Persist the in-progress request form so it survives the identity-
+// verification round-trip (a full redirect to Stripe and back). Expires after
+// 24h so a stale route/date doesn't resurface days later.
+const DRAFT_KEY = 'jibly:envoyer-draft';
+const DRAFT_TTL = 24 * 60 * 60 * 1000;
+function loadEnvoyerDraft(): any {
+  if (typeof window === 'undefined') return null;
+  try {
+    const d = JSON.parse(window.localStorage.getItem(DRAFT_KEY) || 'null');
+    if (!d || !d._ts || Date.now() - d._ts > DRAFT_TTL) return null;
+    return d;
+  } catch {
+    return null;
+  }
+}
+
 export default function EnvoyerPage() {
   const { t } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const gate = useIdentityGate();
   const STEPS = [t.send_step_route, t.send_step_item, t.send_step_details, t.send_step_confirm];
+
+  // True once any saved draft has been restored (see effect below). Until
+  // then we don't persist, so we never clobber the draft with defaults.
+  const [draftRestored, setDraftRestored] = useState(false);
 
   // Mode controls whether we're on the search bar (choose) or in the
   // public-request wizard. Users start in 'choose' — they see travelers
@@ -115,6 +135,47 @@ export default function EnvoyerPage() {
     };
   }, [fromCity, toCity, fromCountry, toCountry, date, mode, user?.id]);
 
+  // Restore a draft saved before an identity-verification redirect (same
+  // rationale as /voyager: the redirect fully reloads the page). Done in an
+  // effect — not useState initialisers — to avoid an SSR hydration mismatch.
+  useEffect(() => {
+    const d = loadEnvoyerDraft();
+    if (d) {
+      setMode(d.mode ?? 'choose');
+      setFromCity(d.fromCity ?? '');
+      setFromCountry(d.fromCountry ?? '');
+      setToCity(d.toCity ?? '');
+      setToCountry(d.toCountry ?? '');
+      setDate(d.date ?? '');
+      setStep(d.step ?? 0);
+      setCategory(d.category ?? null);
+      setDescription(d.description ?? '');
+      setBudget(d.budget ?? 30);
+      setTerms(d.terms ?? false);
+    }
+    setDraftRestored(true);
+  }, []);
+
+  // Persist on every change so the identity-verification redirect doesn't wipe
+  // the user's progress. Gated on draftRestored so it can't overwrite the
+  // saved draft with defaults before the restore effect above has run.
+  useEffect(() => {
+    if (!draftRestored || typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          _ts: Date.now(),
+          mode, step, fromCity, fromCountry, toCity, toCountry, date,
+          category, description, budget, terms,
+        })
+      );
+    } catch {
+      /* ignore quota / private-mode errors */
+    }
+  }, [draftRestored, mode, step, fromCity, fromCountry, toCity, toCountry, date,
+      category, description, budget, terms]);
+
   // ---- WIZARD canNext (public mode only) ----
   const canNext = () => {
     if (step === 0) return fromCity && toCity && date;
@@ -162,6 +223,8 @@ export default function EnvoyerPage() {
         prescription_url: null,
         status: 'pending',
       });
+      // Request published — clear the saved draft so it doesn't resurface.
+      try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setSubmitted(true);
     } catch (err: any) {
       setSubmitError(err.message ?? t.auth_error_generic);
