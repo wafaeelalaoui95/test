@@ -35,12 +35,32 @@ import type { MatchingRequest } from '@/lib/supabase/queries';
 //   - "public" : full wizard to publish a regular trip
 type Mode = 'choose' | 'public';
 
+// Persist the in-progress trip form so it survives the identity-verification
+// round-trip (a full redirect to Stripe and back). Expires after 24h so a
+// stale route/date doesn't resurface days later.
+const DRAFT_KEY = 'jibly:voyager-draft';
+const DRAFT_TTL = 24 * 60 * 60 * 1000;
+function loadVoyagerDraft(): any {
+  if (typeof window === 'undefined') return null;
+  try {
+    const d = JSON.parse(window.localStorage.getItem(DRAFT_KEY) || 'null');
+    if (!d || !d._ts || Date.now() - d._ts > DRAFT_TTL) return null;
+    return d;
+  } catch {
+    return null;
+  }
+}
+
 export default function VoyagerPage() {
   const { t } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const gate = useIdentityGate();
   const STEPS = [t.trip_step_route, t.trip_step_space, t.trip_step_validation];
+
+  // True once any saved draft has been restored (see effect below). Until
+  // then we don't persist, so we never clobber the draft with defaults.
+  const [draftRestored, setDraftRestored] = useState(false);
 
   const [mode, setMode] = useState<Mode>('choose');
 
@@ -124,6 +144,55 @@ export default function VoyagerPage() {
     };
   }, [fromCity, toCity, date, mode]);
 
+  // Restore a draft saved before an identity-verification redirect. Done in
+  // an effect (not in useState initialisers) to avoid an SSR/client hydration
+  // mismatch. Runs once on mount.
+  useEffect(() => {
+    const d = loadVoyagerDraft();
+    if (d) {
+      setMode(d.mode ?? 'choose');
+      setFromCity(d.fromCity ?? '');
+      setFromCountry(d.fromCountry ?? '');
+      setToCity(d.toCity ?? '');
+      setToCountry(d.toCountry ?? '');
+      setDate(d.date ?? '');
+      setTime(d.time ?? '');
+      setFlightNumber(d.flightNumber ?? '');
+      setDepartureAirport(d.departureAirport ?? '');
+      setArrivalAirport(d.arrivalAirport ?? '');
+      setShowAirportCodes(d.showAirportCodes ?? false);
+      setStep(d.step ?? 0);
+      setSpace(d.space ?? null);
+      setMinComp(d.minComp ?? 20);
+      setAcceptedCategories(d.acceptedCategories ?? []);
+      setTerms(d.terms ?? false);
+    }
+    setDraftRestored(true);
+  }, []);
+
+  // Persist the form on every change so an identity-verification redirect
+  // (which fully reloads the page) doesn't wipe the user's progress. Guarded
+  // by draftRestored so we never overwrite the saved draft with defaults
+  // before the restore effect above has run.
+  useEffect(() => {
+    if (!draftRestored || typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          _ts: Date.now(),
+          mode, step, fromCity, fromCountry, toCity, toCountry, date, time,
+          flightNumber, departureAirport, arrivalAirport, showAirportCodes,
+          space, minComp, acceptedCategories, terms,
+        })
+      );
+    } catch {
+      /* ignore quota / private-mode errors */
+    }
+  }, [draftRestored, mode, step, fromCity, fromCountry, toCity, toCountry, date, time,
+      flightNumber, departureAirport, arrivalAirport, showAirportCodes,
+      space, minComp, acceptedCategories, terms]);
+
   const canNext = () => {
     if (step === 0) return fromCity && toCity && date && isValidFlightNumber(flightNumber);
     if (step === 1) return acceptedCategories.length > 0 && minComp >= 0;
@@ -169,6 +238,8 @@ export default function VoyagerPage() {
         notes: JSON.stringify({ accepted_categories: acceptedCategories }),
         status: 'open',
       });
+      // Trip published — clear the saved draft so it doesn't resurface.
+      try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setSubmitted(true);
     } catch (err: any) {
       setSubmitError(err.message ?? t.auth_error_generic);

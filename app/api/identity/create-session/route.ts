@@ -49,10 +49,17 @@ export async function POST(req: NextRequest) {
   const stripe = getStripe();
 
   // Build the return URL — where Stripe sends the user back after they
-  // finish (or abandon) the flow. We append a flag so /me can show a
-  // confirmation toast.
+  // finish (or abandon) the flow. The client passes the page it started
+  // from (e.g. /voyager) so we return the user exactly there with their
+  // in-progress form intact, instead of always dumping them on /me.
   const origin = req.headers.get('origin') ?? req.nextUrl.origin;
-  const returnUrl = `${origin}/me?identity=done`;
+  const body = await req.json().catch(() => ({} as any));
+  let returnTo = typeof body?.returnTo === 'string' ? body.returnTo : '/me';
+  // Safety: only allow same-origin relative paths (no protocol-relative // or
+  // absolute URLs that could redirect off-site).
+  if (!returnTo.startsWith('/') || returnTo.startsWith('//')) returnTo = '/me';
+  const sep = returnTo.includes('?') ? '&' : '?';
+  const returnUrl = `${origin}${returnTo}${sep}identity=done`;
 
   try {
     const session = await stripe.identity.verificationSessions.create({

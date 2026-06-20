@@ -23,7 +23,18 @@ export function VerifyIdentityButton({ label }: { label?: string }) {
     setLoading(true);
     setErr(null);
     try {
-      const res = await fetch('/api/identity/create-session', { method: 'POST' });
+      // Tell the API where to send the user back after Stripe — the page
+      // they're on right now (e.g. /voyager) so their in-progress form is
+      // restored instead of landing them on /me.
+      const returnTo =
+        typeof window !== 'undefined'
+          ? window.location.pathname + window.location.search
+          : undefined;
+      const res = await fetch('/api/identity/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ returnTo }),
+      });
       const data = await res.json();
       if (!res.ok || !data.url) {
         throw new Error(data.error ?? t.me2_verify_start_failed);
