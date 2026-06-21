@@ -801,24 +801,44 @@ export default function VoyagerPage() {
                   <div>
                     <div className="flex items-baseline justify-between mb-3">
                       <label className="block text-[14px] font-semibold text-ink-500">{t.trip_label_min_comp}</label>
-                      <span className="text-2xl font-bold text-ink-600 num-display tracking-[-0.02em]">
-                        {minComp}{t.common_eur}
-                      </span>
+                      <div className="flex items-baseline text-2xl font-bold text-ink-600 num-display tracking-[-0.02em]">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={minComp}
+                          aria-label={t.trip_label_min_comp}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/[^0-9]/g, '');
+                            setMinComp(digits === '' ? 0 : Math.min(Number(digits), 20000));
+                          }}
+                          onBlur={() => setMinComp((m) => Math.min(Math.max(m, 0), 20000))}
+                          style={{ width: `${String(minComp).length + 0.5}ch` }}
+                          className="bg-transparent text-end outline-none focus:text-mint-700"
+                        />
+                        <span>{t.common_eur}</span>
+                      </div>
                     </div>
                     <input
                       type="range"
                       min={0}
-                      max={80}
+                      max={200}
                       step={5}
-                      value={minComp}
+                      value={Math.min(minComp, 200)}
                       onChange={(e) => setMinComp(Number(e.target.value))}
                       className="w-full h-1.5 bg-ink-100 rounded-full appearance-none accent-ink-500"
                     />
                     <div className="flex justify-between text-[12px] text-ink-300 mt-2">
                       <span>0{t.common_eur}</span>
-                      <span>80{t.common_eur}</span>
+                      <span>200{t.common_eur}+</span>
                     </div>
-                    <p className="text-[13px] text-ink-400 mt-4 leading-relaxed">{t.trip_min_comp_hint}</p>
+                    {minComp > 80 ? (
+                      <p className="flex items-start gap-2 text-[13px] text-butter-700 bg-butter-50 border border-butter-200 rounded-xl px-3.5 py-2.5 mt-4 leading-relaxed">
+                        <span className="flex-shrink-0">💡</span>
+                        <span>{t.trip_min_comp_hint_high}</span>
+                      </p>
+                    ) : (
+                      <p className="text-[13px] text-ink-400 mt-4 leading-relaxed">{t.trip_min_comp_hint}</p>
+                    )}
                   </div>
                 </div>
               )}

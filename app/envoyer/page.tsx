@@ -693,17 +693,17 @@ export default function EnvoyerPage() {
                     <input
                       type="range"
                       min={10}
-                      max={100}
+                      max={200}
                       step={5}
-                      value={Math.min(budget, 100)}
+                      value={Math.min(budget, 200)}
                       onChange={(e) => setBudget(Number(e.target.value))}
                       className="w-full h-1.5 bg-ink-100 rounded-full appearance-none accent-ink-500"
                     />
                     <div className="flex justify-between text-[12px] text-ink-300 mt-2">
                       <span>10{t.common_eur}</span>
-                      <span>100{t.common_eur}+</span>
+                      <span>200{t.common_eur}+</span>
                     </div>
-                    {budget > 100 && (
+                    {budget > 80 && (
                       <p className="flex items-start gap-2 text-[13px] text-butter-700 bg-butter-50 border border-butter-200 rounded-xl px-3.5 py-2.5 mt-4 leading-relaxed">
                         <span className="flex-shrink-0">💡</span>
                         <span>{t.send_budget_hint_high}</span>
