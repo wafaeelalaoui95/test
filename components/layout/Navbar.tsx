@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X, User, LogOut, Wallet, Bell } from 'lucide-react';
+import { Menu, X, User, LogOut, Wallet, Bell, Inbox } from 'lucide-react';
 import { Logo } from '@/components/illustrations/Logo';
 import { NotificationsDropdown } from '@/components/NotificationsDropdown';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -260,6 +260,17 @@ export function Navbar() {
                         {mobileUnread > 9 ? '9+' : mobileUnread}
                       </span>
                     )}
+                  </Link>
+                  {/* Messages — same destination as the desktop dropdown's
+                      "Mes messages" entry, surfaced here since mobile has no
+                      notifications dropdown. */}
+                  <Link
+                    href="/messages"
+                    className="py-3 text-base font-medium text-ink-500 flex items-center gap-2"
+                    onClick={() => setOpen(false)}
+                  >
+                    <Inbox className="w-4 h-4" />
+                    <span>{t.notif_my_messages}</span>
                   </Link>
                   <form action="/auth/sign-out" method="post" className="mt-2">
                     <button
