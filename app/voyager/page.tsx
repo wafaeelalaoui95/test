@@ -196,7 +196,7 @@ export default function VoyagerPage() {
 
   const canNext = () => {
     if (step === 0) return fromCity && toCity && date && isValidFlightNumber(flightNumber);
-    if (step === 1) return acceptedCategories.length > 0 && minComp >= 0;
+    if (step === 1) return acceptedCategories.length > 0 && minComp >= 10;
     if (step === 2) return terms;
     return false;
   };
@@ -811,7 +811,7 @@ export default function VoyagerPage() {
                             const digits = e.target.value.replace(/[^0-9]/g, '');
                             setMinComp(digits === '' ? 0 : Math.min(Number(digits), 20000));
                           }}
-                          onBlur={() => setMinComp((m) => Math.min(Math.max(m, 0), 20000))}
+                          onBlur={() => setMinComp((m) => Math.min(Math.max(m, 10), 20000))}
                           style={{ width: `${String(minComp).length + 0.5}ch` }}
                           className="bg-transparent text-end outline-none focus:text-mint-700"
                         />
@@ -820,7 +820,7 @@ export default function VoyagerPage() {
                     </div>
                     <input
                       type="range"
-                      min={0}
+                      min={10}
                       max={200}
                       step={5}
                       value={Math.min(minComp, 200)}
@@ -828,7 +828,7 @@ export default function VoyagerPage() {
                       className="w-full h-1.5 bg-ink-100 rounded-full appearance-none accent-ink-500"
                     />
                     <div className="flex justify-between text-[12px] text-ink-300 mt-2">
-                      <span>0{t.common_eur}</span>
+                      <span>10{t.common_eur}</span>
                       <span>200{t.common_eur}+</span>
                     </div>
                     {minComp > 80 ? (
