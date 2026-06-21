@@ -55,6 +55,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   const [bookingTrip, setBookingTrip] = useState<TravelerTripRow | null>(null);
   const [bookingStep, setBookingStep] = useState<'details' | 'payment' | 'success'>('details');
   const [intentCategory, setIntentCategory] = useState<string>('');
+  const [intentTitle, setIntentTitle] = useState('');
   const [intentDescription, setIntentDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
@@ -87,6 +88,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     setBookingTrip(trip);
     setBookingStep('details');
     setIntentCategory('');
+    setIntentTitle('');
     setIntentDescription('');
     setSubmitErr(null);
   }
@@ -94,6 +96,10 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   function handleProceedToPayment() {
     if (!intentCategory) {
       setSubmitErr(t.prof_choose_category);
+      return;
+    }
+    if (!intentTitle.trim()) {
+      setSubmitErr(t.send_item_name_label);
       return;
     }
     setSubmitErr(null);
@@ -110,6 +116,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
         sender_id: user.id,
         traveler_trip_id: bookingTrip.id,
         item_category: intentCategory,
+        item_title: intentTitle.trim() || null,
         item_description: intentDescription || null,
         proposed_price: breakdown.total,
         pickup_city: bookingTrip.departure_city,
@@ -449,6 +456,19 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   </div>
                   <div className="mb-5">
                     <label className="block text-[13px] font-semibold text-ink-500 mb-2">
+                      {t.send_item_name_label}
+                    </label>
+                    <input
+                      type="text"
+                      value={intentTitle}
+                      onChange={(e) => setIntentTitle(e.target.value)}
+                      placeholder={t.send_item_name_placeholder}
+                      maxLength={60}
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300"
+                    />
+                  </div>
+                  <div className="mb-5">
+                    <label className="block text-[13px] font-semibold text-ink-500 mb-2">
                       {t.prof_description_optional}
                     </label>
                     <textarea
@@ -506,7 +526,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                     </button>
                     <button
                       onClick={handleProceedToPayment}
-                      disabled={!intentCategory}
+                      disabled={!intentCategory || !intentTitle.trim()}
                       className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 disabled:bg-ink-200 disabled:cursor-not-allowed rounded-full transition-colors"
                     >
                       <ShieldCheck className="w-4 h-4" />
