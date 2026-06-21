@@ -113,6 +113,7 @@ create table if not exists public.shipping_requests (
   pickup_city             text not null,
   destination_country     text not null,
   destination_city        text not null,
+  recipient_name          text,
   desired_delivery_date   date not null,
   budget                  integer not null check (budget >= 0),
   weight_kg               numeric(5,2),
@@ -125,6 +126,9 @@ create table if not exists public.shipping_requests (
 create index if not exists idx_shipping_requests_user on public.shipping_requests(user_id);
 create index if not exists idx_shipping_requests_status on public.shipping_requests(status);
 create index if not exists idx_shipping_requests_route on public.shipping_requests(pickup_city, destination_city);
+
+-- Recipient at destination (added after initial release). null = sender collects.
+alter table public.shipping_requests add column if not exists recipient_name text;
 
 
 -- ============================================================================
@@ -142,6 +146,88 @@ create table if not exists public.matches (
 
 create index if not exists idx_matches_trip on public.matches(traveler_trip_id);
 create index if not exists idx_matches_request on public.matches(shipping_request_id);
+
+
+-- ============================================================================
+-- BOOKING INTENTS
+-- ============================================================================
+-- The spine of the instant book / propose flow. One row per booking between a
+-- sender and a traveler, carrying the parcel details, the Stripe payment state
+-- (authorise → capture), the pickup/delivery confirmation codes, and the
+-- proof-of-delivery upload.
+--
+-- NOTE: this table was originally created by hand in the Supabase dashboard and
+-- was missing from this file — which is how the production `item_title` column
+-- drift happened. This definition is reconstructed from `BookingIntentRow` in
+-- lib/supabase/queries.ts and the create/capture/cancel/confirm/upload-proof
+-- routes. The column list is authoritative; the RLS policies below are a
+-- best-effort reconstruction — DIFF THEM AGAINST THE LIVE DB before re-running
+-- this file on production, since drop/create policy replaces the live ones.
+-- ----------------------------------------------------------------------------
+create table if not exists public.booking_intents (
+  id                            uuid primary key default uuid_generate_v4(),
+  -- Parties. sender_id = the requester; traveler_user_id = the carrier.
+  sender_id                     uuid not null references public.profiles(id) on delete cascade,
+  traveler_user_id              uuid references public.profiles(id) on delete set null,
+  traveler_trip_id              uuid references public.traveler_trips(id) on delete set null,
+  shipping_request_id           uuid references public.shipping_requests(id) on delete set null,
+  -- Parcel
+  item_category                 text not null,
+  item_title                    text,
+  item_description              text,
+  proposed_price                integer not null check (proposed_price >= 0),
+  pickup_city                   text not null,
+  destination_city              text not null,
+  -- Who started this booking: 'sender' (instant book + pay) or 'traveler'
+  -- (instant propose, paid later by the sender on accept).
+  initiated_by                  text not null default 'sender' check (initiated_by in ('sender','traveler')),
+  traveler_message              text,
+  status                        text not null default 'pending' check (status in ('pending','confirmed','cancelled')),
+  -- Stripe. payment_amount is in CENTS (proposed_price is in euros).
+  payment_intent_id             text,
+  payment_status                text not null default 'unpaid' check (payment_status in ('unpaid','authorized','captured','canceled','failed')),
+  payment_amount                integer,
+  -- Handoff confirmation codes (6-char, generated at insert).
+  pickup_code                   text,
+  delivery_code                 text,
+  pickup_confirmed_at           timestamptz,
+  pickup_confirmed_by           uuid references public.profiles(id) on delete set null,
+  received_confirmed_at         timestamptz,
+  -- Proof of delivery upload.
+  delivery_proof_url            text,
+  delivery_proof_uploaded_at    timestamptz,
+  delivery_proof_receiver_name  text,
+  delivery_proof_notes          text,
+  created_at                    timestamptz not null default now()
+);
+
+-- Idempotent column adds — keep already-deployed instances in sync (the
+-- create-table above only fires on a fresh DB). This is the safety net that
+-- prevents the "Could not find the '<col>' column" class of bug: every column
+-- the app writes is added here too.
+alter table public.booking_intents add column if not exists item_title                   text;
+alter table public.booking_intents add column if not exists item_description             text;
+alter table public.booking_intents add column if not exists shipping_request_id          uuid references public.shipping_requests(id) on delete set null;
+alter table public.booking_intents add column if not exists traveler_user_id             uuid references public.profiles(id) on delete set null;
+alter table public.booking_intents add column if not exists traveler_message             text;
+alter table public.booking_intents add column if not exists initiated_by                 text not null default 'sender';
+alter table public.booking_intents add column if not exists payment_intent_id            text;
+alter table public.booking_intents add column if not exists payment_status               text not null default 'unpaid';
+alter table public.booking_intents add column if not exists payment_amount               integer;
+alter table public.booking_intents add column if not exists pickup_code                  text;
+alter table public.booking_intents add column if not exists delivery_code                text;
+alter table public.booking_intents add column if not exists pickup_confirmed_at          timestamptz;
+alter table public.booking_intents add column if not exists pickup_confirmed_by          uuid references public.profiles(id) on delete set null;
+alter table public.booking_intents add column if not exists received_confirmed_at        timestamptz;
+alter table public.booking_intents add column if not exists delivery_proof_url           text;
+alter table public.booking_intents add column if not exists delivery_proof_uploaded_at   timestamptz;
+alter table public.booking_intents add column if not exists delivery_proof_receiver_name text;
+alter table public.booking_intents add column if not exists delivery_proof_notes         text;
+
+create index if not exists idx_booking_intents_sender   on public.booking_intents(sender_id);
+create index if not exists idx_booking_intents_traveler on public.booking_intents(traveler_user_id);
+create index if not exists idx_booking_intents_trip     on public.booking_intents(traveler_trip_id);
+create index if not exists idx_booking_intents_request  on public.booking_intents(shipping_request_id);
 
 
 -- ============================================================================
@@ -214,6 +300,7 @@ alter table public.profiles            enable row level security;
 alter table public.traveler_trips      enable row level security;
 alter table public.shipping_requests   enable row level security;
 alter table public.matches             enable row level security;
+alter table public.booking_intents     enable row level security;
 alter table public.messages            enable row level security;
 alter table public.reviews             enable row level security;
 alter table public.reports             enable row level security;
@@ -323,6 +410,60 @@ create policy "messages_insert_sender" on public.messages
 drop policy if exists "messages_update_receiver_read" on public.messages;
 create policy "messages_update_receiver_read" on public.messages
   for update using (auth.uid() = receiver_id) with check (auth.uid() = receiver_id);
+
+-- ----- booking_intents -----
+-- Visible to and writable by the two parties only: the sender (sender_id) and
+-- the traveler. The traveler is identified EITHER directly via
+-- traveler_user_id (traveler-initiated proposals) OR, in the common
+-- sender-books-a-trip flow, only via the linked trip (traveler_trip_id →
+-- traveler_trips.user_id), leaving traveler_user_id null. Both paths must be
+-- admitted, otherwise the trip owner can neither see nor confirm handover on
+-- their own bookings. Server routes (Stripe capture/cancel, confirm-receipt,
+-- upload-proof) act with the user's own session, so these policies apply.
+drop policy if exists "booking_intents_select_parties" on public.booking_intents;
+create policy "booking_intents_select_parties" on public.booking_intents
+  for select using (
+    auth.uid() = sender_id
+    or auth.uid() = traveler_user_id
+    or exists (
+      select 1 from public.traveler_trips
+      where traveler_trips.id = booking_intents.traveler_trip_id
+        and traveler_trips.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "booking_intents_insert_parties" on public.booking_intents;
+create policy "booking_intents_insert_parties" on public.booking_intents
+  for insert with check (
+    auth.uid() = sender_id
+    or auth.uid() = traveler_user_id
+    or exists (
+      select 1 from public.traveler_trips
+      where traveler_trips.id = booking_intents.traveler_trip_id
+        and traveler_trips.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "booking_intents_update_parties" on public.booking_intents;
+create policy "booking_intents_update_parties" on public.booking_intents
+  for update using (
+    auth.uid() = sender_id
+    or auth.uid() = traveler_user_id
+    or exists (
+      select 1 from public.traveler_trips
+      where traveler_trips.id = booking_intents.traveler_trip_id
+        and traveler_trips.user_id = auth.uid()
+    )
+  )
+  with check (
+    auth.uid() = sender_id
+    or auth.uid() = traveler_user_id
+    or exists (
+      select 1 from public.traveler_trips
+      where traveler_trips.id = booking_intents.traveler_trip_id
+        and traveler_trips.user_id = auth.uid()
+    )
+  );
 
 -- ----- reviews -----
 drop policy if exists "reviews_select_all" on public.reviews;

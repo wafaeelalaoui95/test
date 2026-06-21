@@ -756,7 +756,7 @@ export async function confirmPickupWithCode(
     Promise.resolve(
       supabase
         .from('booking_intents')
-        .select('id, pickup_code, traveler_user_id, pickup_confirmed_at, status')
+        .select('id, pickup_code, traveler_user_id, traveler_trip_id, pickup_confirmed_at, status')
         .eq('id', bookingId)
         .maybeSingle()
     ),
@@ -765,7 +765,28 @@ export async function confirmPickupWithCode(
   );
   if (error || !data) return { ok: false, reason: 'unknown' };
 
-  if (data.traveler_user_id !== travelerId) {
+  // The traveler can be identified two ways: directly via traveler_user_id
+  // (traveler-initiated proposals), OR — for the common sender-books-a-trip
+  // flow — only the trip is linked and traveler_user_id is null. In that case
+  // the real traveler is the trip owner. Resolve both so the handover works
+  // regardless of how the booking was created (and before the flight happens).
+  let authorizedTravelerId: string | null = data.traveler_user_id ?? null;
+  if (!authorizedTravelerId && data.traveler_trip_id) {
+    const { data: trip } = await withTimeout(
+      Promise.resolve(
+        supabase
+          .from('traveler_trips')
+          .select('user_id')
+          .eq('id', data.traveler_trip_id)
+          .maybeSingle()
+      ),
+      8000,
+      'Confirm pickup trip lookup'
+    );
+    authorizedTravelerId = trip?.user_id ?? null;
+  }
+
+  if (authorizedTravelerId !== travelerId) {
     return { ok: false, reason: 'not_traveler' };
   }
   if (data.pickup_confirmed_at) {
