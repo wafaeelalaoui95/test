@@ -60,6 +60,18 @@ export function Navbar() {
     ? nameInitial(profile.full_name)
     : (user?.email?.charAt(0).toUpperCase() ?? '·');
 
+  // Trust/FAQ entry for the mobile menu. Pulled out of the top nav links so it
+  // can sit at the bottom of the list (just above sign-out when logged in).
+  const mobileTrustLink = (
+    <Link
+      href="/trust"
+      className="py-3 text-base font-medium text-ink-500"
+      onClick={() => setOpen(false)}
+    >
+      {t.nav_trust}
+    </Link>
+  );
+
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-cream-50/85 border-b border-ink-50">
       <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
@@ -212,16 +224,18 @@ export function Navbar() {
             className="md:hidden border-t border-ink-50 bg-cream-50"
           >
             <div className="px-5 py-6 flex flex-col gap-1">
-              {navLinks.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className="py-3 text-base font-medium text-ink-500"
-                  onClick={() => setOpen(false)}
-                >
-                  {l.label}
-                </Link>
-              ))}
+              {navLinks
+                .filter((l) => l.href !== '/trust')
+                .map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    className="py-3 text-base font-medium text-ink-500"
+                    onClick={() => setOpen(false)}
+                  >
+                    {l.label}
+                  </Link>
+                ))}
 
               <div className="py-3 border-t border-ink-50 mt-1">
                 <LanguageSwitcher />
@@ -272,6 +286,7 @@ export function Navbar() {
                     <Inbox className="w-4 h-4" />
                     <span>{t.notif_my_messages}</span>
                   </Link>
+                  {mobileTrustLink}
                   <form action="/auth/sign-out" method="post" className="mt-2">
                     <button
                       type="submit"
@@ -284,6 +299,7 @@ export function Navbar() {
                 </>
               ) : (
                 <>
+                  {mobileTrustLink}
                   <Link
                     href="/login"
                     onClick={() => setOpen(false)}
