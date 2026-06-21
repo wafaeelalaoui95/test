@@ -25,6 +25,7 @@ import { VerificationBadge } from '@/components/ui/Badge';
 import { formatShortDate, formatName, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
+import { cityDisplayName } from '@/lib/countries';
 import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
@@ -43,7 +44,7 @@ type PublicProfile = Pick<
 
 export default function PublicProfilePage({ params }: { params: { id: string } }) {
   const travelerId = params.id;
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user } = useAuth();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [trips, setTrips] = useState<TravelerTripRow[]>([]);
@@ -323,9 +324,9 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                 >
                   <div className="mb-4">
                     <div className="text-[17px] font-bold text-ink-600 mb-2 tracking-[-0.01em]">
-                      {tr.departure_city}
+                      {cityDisplayName(tr.departure_city, locale)}
                       <Plane className="inline w-4 h-4 mx-2 text-ink-400" />
-                      {tr.arrival_city}
+                      {cityDisplayName(tr.arrival_city, locale)}
                     </div>
                     <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
                       <Clock className="w-3.5 h-3.5" />
@@ -402,7 +403,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                         {t.prof_booking_step_1}
                       </div>
                       <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
-                        {bookingTrip.departure_city} → {bookingTrip.arrival_city}
+                        {cityDisplayName(bookingTrip.departure_city, locale)} → {cityDisplayName(bookingTrip.arrival_city, locale)}
                       </h2>
                       <div className="flex items-center gap-1.5 text-[13px] text-ink-400 mt-1.5">
                         <Clock className="w-3 h-3" />
@@ -525,7 +526,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                         {formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}
                       </h2>
                       <div className="text-[13px] text-ink-400 mt-1.5">
-                        {bookingTrip.departure_city} → {bookingTrip.arrival_city} · {formatShortDate(bookingTrip.departure_date)}
+                        {cityDisplayName(bookingTrip.departure_city, locale)} → {cityDisplayName(bookingTrip.arrival_city, locale)} · {formatShortDate(bookingTrip.departure_date)}
                       </div>
                     </div>
                     <button
@@ -542,7 +543,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                   )}
                   <StripePaymentForm
                     amountEuros={priceBreakdown(bookingTrip.compensation_min).total}
-                    description={`Jibly · ${bookingTrip.departure_city} → ${bookingTrip.arrival_city}`}
+                    description={`Jibly · ${cityDisplayName(bookingTrip.departure_city, locale)} → ${cityDisplayName(bookingTrip.arrival_city, locale)}`}
                     onAuthorized={handlePaymentAuthorized}
                     onCancel={() => setBookingStep('details')}
                   />

@@ -9,10 +9,11 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 import { ChatModal } from '@/components/ChatModal';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
+import { cityDisplayName } from '@/lib/countries';
 
 export default function MessagesPage() {
   const { user, loading: authLoading } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -141,7 +142,7 @@ export default function MessagesPage() {
             currentUserId={user.id}
             otherName={displayName(openConv.other_user.full_name) || t.sec_user_fallback}
             otherInitial={nameInitial(openConv.other_user.full_name)}
-            contextLine={`${openConv.pickup_city} → ${openConv.destination_city}`}
+            contextLine={`${cityDisplayName(openConv.pickup_city, locale)} → ${cityDisplayName(openConv.destination_city, locale)}`}
             onClose={() => {
               setOpenConv(null);
               // Refresh the list so unread badges clear after the user read
@@ -166,7 +167,7 @@ function ConversationRow({
   isLast: boolean;
   onClick: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const otherName = displayName(conv.other_user?.full_name) || t.sec_user_fallback;
   const initial = nameInitial(conv.other_user?.full_name);
   const isUnread = conv.unread_count > 0;
@@ -201,7 +202,7 @@ function ConversationRow({
           </div>
         </div>
         <div className="text-[12px] text-ink-400 mb-0.5 truncate">
-          {conv.pickup_city} → {conv.destination_city}
+          {cityDisplayName(conv.pickup_city, locale)} → {cityDisplayName(conv.destination_city, locale)}
         </div>
         <div className={`text-[13px] truncate ${isUnread ? 'text-ink-600 font-medium' : 'text-ink-400'}`}>
           {preview}

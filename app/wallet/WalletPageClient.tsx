@@ -14,6 +14,7 @@ import {
 import type { WalletTransaction } from '@/lib/supabase/queries';
 import { formatEuros, formatShortDate, displayName, nameInitial } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
+import { cityDisplayName } from '@/lib/countries';
 
 // Props now come pre-filled from the Server Component, so no useEffect/loading
 // dance on mount — the page renders fully on first paint.
@@ -247,7 +248,7 @@ function TxRow({
   tx: WalletTransaction;
   kind: 'captured' | 'pending' | 'failed';
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const senderName = displayName(tx.sender_profile?.full_name) || t.sec_wallet_sender_fallback;
   const initial = nameInitial(tx.sender_profile?.full_name);
   const netCents = tx.payment_amount ?? 0;
@@ -269,7 +270,7 @@ function TxRow({
         <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
           <span className="font-semibold text-ink-600">{senderName}</span>
           <span className="text-ink-300">·</span>
-          <span className="text-ink-500 truncate">{tx.pickup_city} → {tx.destination_city}</span>
+          <span className="text-ink-500 truncate">{cityDisplayName(tx.pickup_city, locale)} → {cityDisplayName(tx.destination_city, locale)}</span>
           <span className="text-ink-300">·</span>
           <span className="text-ink-400 text-[12px] num-display">{formatShortDate(tx.created_at)}</span>
         </div>

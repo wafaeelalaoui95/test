@@ -8,6 +8,7 @@ import { ArrowLeft, Loader2, Plane, Package } from 'lucide-react';
 import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { useI18n } from '@/lib/i18n/context';
+import { cityDisplayName } from '@/lib/countries';
 import { ViewProofButton } from '@/components/ImageLightbox';
 import {
   displayName,
@@ -243,7 +244,7 @@ function HistoryRow({
   kind: 'incoming' | 'proposal' | 'trip' | 'booking';
   row: any;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   // Cancelled trip — special compact row
   if (kind === 'trip') {
     return (
@@ -251,7 +252,7 @@ function HistoryRow({
         <div className="flex items-center gap-3 text-[13px]">
           <Plane className="w-3.5 h-3.5 text-ink-300 flex-shrink-0" />
           <span className="text-ink-500">
-            {row.departure_city} → {row.arrival_city}
+            {cityDisplayName(row.departure_city, locale)} → {cityDisplayName(row.arrival_city, locale)}
           </span>
           <span className="text-ink-300">·</span>
           <span className="text-ink-400 num-display">
@@ -297,7 +298,7 @@ function HistoryRow({
           <span className="font-semibold text-ink-600">{otherName}</span>
           <span className="text-ink-300">·</span>
           <span className="text-ink-500 truncate">
-            {row.pickup_city} → {row.destination_city}
+            {cityDisplayName(row.pickup_city, locale)} → {cityDisplayName(row.destination_city, locale)}
           </span>
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-ink-600 num-display">{priceLabel}</span>

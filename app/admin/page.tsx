@@ -16,6 +16,7 @@ import { VerificationBadge } from '@/components/ui/Badge';
 import { DEMO_TRAVELERS } from '@/lib/constants';
 import { formatShortDate } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
+import { cityDisplayName } from '@/lib/countries';
 
 const DEMO_REQUESTS = [
   { id: 'r1', sender: 'Lila M.', route: '🇫🇷 Paris → 🇲🇦 Rabat', category: 'Documents', date: '2026-06-05', status: 'pending' },
@@ -29,7 +30,7 @@ const DEMO_REPORTS = [
 ];
 
 export default function AdminPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [tab, setTab] = useState('overview');
 
   const TABS = [
@@ -186,7 +187,7 @@ export default function AdminPage() {
             {DEMO_TRAVELERS.map((tr) => (
               <div key={tr.id} className="grid grid-cols-12 gap-4 px-6 py-5 border-t border-ink-50 items-center">
                 <div className="col-span-3 text-[14px] font-semibold text-ink-600">{tr.name}</div>
-                <div className="col-span-4 text-[14px] text-ink-500">{tr.departure_flag} {tr.departure_city} → {tr.arrival_flag} {tr.arrival_city}</div>
+                <div className="col-span-4 text-[14px] text-ink-500">{tr.departure_flag} {cityDisplayName(tr.departure_city, locale)} → {tr.arrival_flag} {cityDisplayName(tr.arrival_city, locale)}</div>
                 <div className="col-span-2 text-[14px] text-ink-400 capitalize">{tr.available_space}</div>
                 <div className="col-span-2 text-[14px] font-semibold text-ink-600">{t.admin_starts_at} {tr.compensation_min}€</div>
                 <div className="col-span-1"><VerificationBadge level={tr.verification_level} /></div>

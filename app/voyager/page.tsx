@@ -23,6 +23,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { ITEM_CATEGORIES } from '@/lib/constants';
+import { cityDisplayName } from '@/lib/countries';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
@@ -1037,7 +1038,7 @@ function InstantProposeModal({
   // parent caches so the next proposal reuses it).
   onSuccess: (proposedRequestId: string, tripId: string | null) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [travelerMessage, setTravelerMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1132,7 +1133,7 @@ function InstantProposeModal({
               {t.voy_help_sender.replace('{name}', senderName)}
             </h2>
             <div className="text-[13px] text-ink-400 mt-1.5">
-              {request.pickup_city} → {request.destination_city} · {t.voy_before_the_lc} {formatShortDate(request.desired_delivery_date)}
+              {cityDisplayName(request.pickup_city, locale)} → {cityDisplayName(request.destination_city, locale)} · {t.voy_before_the_lc} {formatShortDate(request.desired_delivery_date)}
             </div>
             <div className="mt-2 inline-flex items-baseline gap-1.5">
               <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">{t.voy_you_will_receive}</span>

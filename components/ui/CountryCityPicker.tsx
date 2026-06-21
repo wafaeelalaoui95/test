@@ -14,6 +14,7 @@ import {
   COUNTRIES,
   findCountryByName,
   countryDisplayName,
+  cityDisplayName,
   getAllCities,
   nearestCountry,
   nearestCity,
@@ -117,14 +118,23 @@ export function CountryCityPicker({
     const q = countryQuery.trim().toLowerCase();
     if (!q) return [];
     return getAllCities()
-      .filter((loc) => loc.city.toLowerCase().includes(q))
+      .filter(
+        (loc) =>
+          loc.city.toLowerCase().includes(q) ||
+          cityDisplayName(loc.city, 'en').toLowerCase().includes(q)
+      )
       .slice(0, 8);
   }, [countryQuery]);
 
   const filteredCities = useMemo(() => {
     const q = cityQuery.trim().toLowerCase();
     if (!q) return cityList;
-    return cityList.filter((c) => c.toLowerCase().includes(q));
+    // Match either spelling so "london" finds the stored "Londres".
+    return cityList.filter(
+      (c) =>
+        c.toLowerCase().includes(q) ||
+        cityDisplayName(c, 'en').toLowerCase().includes(q)
+    );
   }, [cityQuery, cityList]);
 
   function openPanel() {
@@ -229,7 +239,7 @@ export function CountryCityPicker({
     : knownCountry
       ? `${knownCountry.flag} ${cname(knownCountry)}`
       : countryPlaceholder ?? t.picker_country_placeholder;
-  const cityLabel = city || t.picker_city_placeholder;
+  const cityLabel = city ? cityDisplayName(city, locale) : t.picker_city_placeholder;
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -359,7 +369,7 @@ export function CountryCityPicker({
                       className="w-full text-start px-4 py-2 text-[14px] text-ink-600 hover:bg-cream-50 transition-colors flex items-center gap-2"
                     >
                       <MapPin className="w-3.5 h-3.5 text-ink-300 flex-shrink-0" />
-                      <span>{loc.city}</span>
+                      <span>{cityDisplayName(loc.city, locale)}</span>
                       <span className="text-ink-300 text-[12px] truncate">
                         · {loc.countryFlag} {countryDisplayName(loc.countryName, locale)}
                       </span>
@@ -452,7 +462,7 @@ export function CountryCityPicker({
                           selected ? 'text-lavender-700 font-semibold' : 'text-ink-600'
                         }`}
                       >
-                        <span>{c}</span>
+                        <span>{cityDisplayName(c, locale)}</span>
                         {selected && <Check className="w-3.5 h-3.5 text-lavender-500" strokeWidth={2.5} />}
                       </button>
                     );

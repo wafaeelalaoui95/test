@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
-import { getCitiesForCountry } from '@/lib/countries';
+import { getCitiesForCountry, cityDisplayName } from '@/lib/countries';
 import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
@@ -536,6 +536,7 @@ export default function HomePage() {
 }
 
 function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t: any }) {
+  const { locale } = useI18n();
   const name = displayName(trip.profile?.full_name);
   const initial = nameInitial(trip.profile?.full_name);
 
@@ -581,9 +582,9 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
 
         <div className="mb-4">
           <div className="flex items-baseline gap-2 text-[18px] font-bold text-ink-600 mb-1.5 tracking-[-0.015em]">
-            <span>{trip.departure_city}</span>
+            <span>{cityDisplayName(trip.departure_city, locale)}</span>
             <Plane className="w-4 h-4 text-ink-300" />
-            <span>{trip.arrival_city}</span>
+            <span>{cityDisplayName(trip.arrival_city, locale)}</span>
           </div>
           <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
             <Calendar className="w-3 h-3" />
@@ -701,6 +702,7 @@ function RequestCard({
   t: any;
   onRespond: () => void;
 }) {
+  const { locale } = useI18n();
   const name = displayName(request.profile?.full_name);
   const initial = nameInitial(request.profile?.full_name);
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
@@ -750,9 +752,9 @@ function RequestCard({
       {/* Route */}
       <div className="mb-4">
         <div className="flex items-baseline gap-2 text-[18px] font-bold text-ink-600 mb-1.5 tracking-[-0.015em]">
-          <span>{request.pickup_city}</span>
+          <span>{cityDisplayName(request.pickup_city, locale)}</span>
           <ArrowRight className="w-4 h-4 text-ink-300" />
-          <span>{request.destination_city}</span>
+          <span>{cityDisplayName(request.destination_city, locale)}</span>
         </div>
         <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
           <Calendar className="w-3 h-3" />

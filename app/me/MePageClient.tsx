@@ -48,6 +48,7 @@ import type { ReviewForBooking } from '@/lib/supabase/queries';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
 import { formatShortDate, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
+import { cityDisplayName } from '@/lib/countries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
 import { getBrowserClient } from '@/lib/supabase/client';
@@ -157,7 +158,7 @@ export default function MyPage(
     initialReviews?: any[];
   }
 ) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const [tab, setTab] = useState<TabId>('trips');
 
@@ -297,7 +298,7 @@ export default function MyPage(
         travelerId: user.id,
         otherName,
         otherInitial: nameInitial(incoming.sender_profile?.full_name),
-        contextLine: `${incoming.pickup_city} → ${incoming.destination_city}`,
+        contextLine: `${cityDisplayName(incoming.pickup_city, locale)} → ${cityDisplayName(incoming.destination_city, locale)}`,
       });
       return;
     }
@@ -310,7 +311,7 @@ export default function MyPage(
         travelerId: booking.traveler_profile.id,
         otherName,
         otherInitial: nameInitial(booking.traveler_profile.full_name),
-        contextLine: `${booking.pickup_city} → ${booking.destination_city}`,
+        contextLine: `${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`,
       });
       return;
     }
@@ -323,7 +324,7 @@ export default function MyPage(
         travelerId: user.id,
         otherName,
         otherInitial: nameInitial(proposal.sender_profile.full_name),
-        contextLine: `${proposal.pickup_city} → ${proposal.destination_city}`,
+        contextLine: `${cityDisplayName(proposal.pickup_city, locale)} → ${cityDisplayName(proposal.destination_city, locale)}`,
       });
     }
   }, [dataLoading, user, incomingIntents, myBookings, myProposals, chatTarget]);
@@ -611,7 +612,7 @@ export default function MyPage(
                       travelerId: user.id,
                       otherName: shortName(intent.sender_profile?.full_name) || t.me2_role_sender,
                       otherInitial: nameInitial(intent.sender_profile?.full_name),
-                      contextLine: `${intent.pickup_city} → ${intent.destination_city}`,
+                      contextLine: `${cityDisplayName(intent.pickup_city, locale)} → ${cityDisplayName(intent.destination_city, locale)}`,
                     });
                   }}
                   onReportProblem={(intent) => {
@@ -688,7 +689,7 @@ export default function MyPage(
                       travelerId: booking.traveler_profile.id,
                       otherName: shortName(booking.traveler_profile.full_name) || t.me2_role_traveler,
                       otherInitial: nameInitial(booking.traveler_profile.full_name),
-                      contextLine: `${booking.pickup_city} → ${booking.destination_city}`,
+                      contextLine: `${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`,
                     });
                   }}
                   onReportProblem={(booking) => {
@@ -1302,6 +1303,7 @@ function BookingCard({
   otherReview?: ReviewForBooking | null;
   t: Translations;
 }) {
+  const { locale } = useI18n();
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
   const trip = booking.traveler_trip;
   const traveler = booking.traveler_profile;
@@ -1332,7 +1334,7 @@ function BookingCard({
           <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
             <span className="font-semibold text-ink-600">{travelerName}</span>
             <span className="text-ink-300">·</span>
-            <span className="text-ink-500 truncate">{booking.pickup_city} → {booking.destination_city}</span>
+            <span className="text-ink-500 truncate">{cityDisplayName(booking.pickup_city, locale)} → {cityDisplayName(booking.destination_city, locale)}</span>
             <span className="text-ink-300">·</span>
             <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
             {isFullyReceived ? (
@@ -1436,7 +1438,7 @@ function BookingCard({
                 {travelerName}
               </Link>
               <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap mt-0.5">
-                <span>{booking.pickup_city} → {booking.destination_city}</span>
+                <span>{cityDisplayName(booking.pickup_city, locale)} → {cityDisplayName(booking.destination_city, locale)}</span>
                 <span>·</span>
                 <span>{trip && formatShortDate(trip.departure_date)}</span>
                 <span>·</span>
@@ -1598,7 +1600,7 @@ function BookingCard({
         <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
           <span className="font-semibold text-ink-600">{travelerName}</span>
           <span className="text-ink-300">·</span>
-          <span className="text-ink-500 truncate">{booking.pickup_city} → {booking.destination_city}</span>
+          <span className="text-ink-500 truncate">{cityDisplayName(booking.pickup_city, locale)} → {cityDisplayName(booking.destination_city, locale)}</span>
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
           {isTravelerProposal && (
@@ -1642,6 +1644,7 @@ function BookingCard({
 }
 
 function RequestCard({ request, t }: { request: ShippingRequestRow; t: Translations }) {
+  const { locale } = useI18n();
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
   return (
     <div className="bg-white rounded-2xl p-5 border border-ink-50 hover:border-ink-100 transition-colors">
@@ -1652,9 +1655,9 @@ function RequestCard({ request, t }: { request: ShippingRequestRow; t: Translati
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3 mb-1.5">
             <div className="font-semibold text-ink-600 flex items-center gap-2 flex-wrap text-[15px]">
-              <span>{request.pickup_city}</span>
+              <span>{cityDisplayName(request.pickup_city, locale)}</span>
               <ArrowRight className="w-3.5 h-3.5 text-ink-300" />
-              <span>{request.destination_city}</span>
+              <span>{cityDisplayName(request.destination_city, locale)}</span>
             </div>
             <StatusBadge status={request.status} t={t} />
           </div>
@@ -1715,6 +1718,7 @@ function TripCard({
   onCancel: (tripId: string) => Promise<void>;
   t: Translations;
 }) {
+  const { locale } = useI18n();
   const space = SPACE_OPTIONS.find((s) => s.value === (trip.available_space as AvailableSpace));
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [activeBookings, setActiveBookings] = useState<number | null>(null);
@@ -1758,7 +1762,7 @@ function TripCard({
             {space?.icon}
           </div>
           <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
-            <span className="font-semibold text-ink-600">{trip.departure_city} → {trip.arrival_city}</span>
+            <span className="font-semibold text-ink-600">{cityDisplayName(trip.departure_city, locale)} → {cityDisplayName(trip.arrival_city, locale)}</span>
             <span className="text-ink-300">·</span>
             <span className="text-ink-500 num-display">{formatShortDate(trip.departure_date)}</span>
             <span className="text-ink-300">·</span>
@@ -1804,7 +1808,7 @@ function TripCard({
                     {t.me2_cancel_trip_q}
                   </h3>
                   <p className="text-[14px] text-ink-500 leading-relaxed">
-                    {trip.departure_city} → {trip.arrival_city} · {formatShortDate(trip.departure_date)}
+                    {cityDisplayName(trip.departure_city, locale)} → {cityDisplayName(trip.arrival_city, locale)} · {formatShortDate(trip.departure_date)}
                   </p>
                 </div>
               </div>
@@ -1997,7 +2001,7 @@ function IntentCard({
   historic?: boolean;
   showDeliverButton?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
   const [showProofModal, setShowProofModal] = useState(false);
   const senderName = shortName(intent.sender_profile?.full_name) || t.me2_role_someone;
@@ -2022,7 +2026,7 @@ function IntentCard({
         <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
           <span className="font-semibold text-ink-600">{senderName}</span>
           <span className="text-ink-300">·</span>
-          <span className="text-ink-500 truncate">{intent.pickup_city} → {intent.destination_city}</span>
+          <span className="text-ink-500 truncate">{cityDisplayName(intent.pickup_city, locale)} → {cityDisplayName(intent.destination_city, locale)}</span>
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-mint-600 num-display">{formatEuros(intent.proposed_price / 1.15)}</span>
           {intent.payment_status === 'authorized' && !historic && (
@@ -2111,6 +2115,7 @@ function MatchCard({
   t: Translations;
   expanded?: boolean;
 }) {
+  const { locale } = useI18n();
   const req = match.shipping_request;
   return (
     <div className="bg-white rounded-2xl p-5 border border-ink-50">
@@ -2120,7 +2125,7 @@ function MatchCard({
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-ink-600 text-[15px]">
-            {req ? `${req.pickup_city} → ${req.destination_city}` : `Match #${match.id.slice(0, 6)}`}
+            {req ? `${cityDisplayName(req.pickup_city, locale)} → ${cityDisplayName(req.destination_city, locale)}` : `Match #${match.id.slice(0, 6)}`}
           </div>
           <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap mt-0.5">
             <span>{t.me_status_pending}</span>
@@ -2488,7 +2493,7 @@ function ProposalPaymentModal({
   onClose: () => void;
   onSuccess: (paymentIntentId: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -2544,7 +2549,7 @@ function ProposalPaymentModal({
               {formatEuros(booking.proposed_price)}
             </h2>
             <div className="text-[13px] text-ink-400 mt-1.5">
-              {t.me2_with_traveler.replace('{name}', travelerName)} · {booking.pickup_city} → {booking.destination_city}
+              {t.me2_with_traveler.replace('{name}', travelerName)} · {cityDisplayName(booking.pickup_city, locale)} → {cityDisplayName(booking.destination_city, locale)}
             </div>
           </div>
           <button
@@ -2564,7 +2569,7 @@ function ProposalPaymentModal({
 
         <StripePaymentForm
           amountEuros={booking.proposed_price}
-          description={`Jibly · ${booking.pickup_city} → ${booking.destination_city}`}
+          description={`Jibly · ${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`}
           onAuthorized={handleAuthorized}
           onCancel={onClose}
         />
@@ -2589,7 +2594,7 @@ function ProposalCard({
   proposal: TravelerProposal;
   accepted?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const senderName = shortName(proposal.sender_profile?.full_name) || t.me2_role_sender;
   const initial = nameInitial(proposal.sender_profile?.full_name);
   // What I'll actually receive after Jibly's 15% fee
@@ -2604,7 +2609,7 @@ function ProposalCard({
         <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
           <span className="font-semibold text-ink-600">{senderName}</span>
           <span className="text-ink-300">·</span>
-          <span className="text-ink-500 truncate">{proposal.pickup_city} → {proposal.destination_city}</span>
+          <span className="text-ink-500 truncate">{cityDisplayName(proposal.pickup_city, locale)} → {cityDisplayName(proposal.destination_city, locale)}</span>
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-mint-600 num-display">{formatEuros(netTraveler)}</span>
           {accepted ? (
@@ -3075,7 +3080,7 @@ function SendListRow({
   onClick: () => void;
   tone?: 'urgent';
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const cat = ITEM_CATEGORIES.find((c) => c.value === (booking.item_category as ItemCategory));
   const emoji = cat?.icon ?? '📦';
   const travelerName = shortName(booking.traveler_profile?.full_name) || t.me2_role_traveler;
@@ -3083,7 +3088,7 @@ function SendListRow({
 
   let subtitle = '';
   if (bucket === 'todo' && booking.status === 'pending') {
-    subtitle = `${t.me2_sub_proposes.replace('{name}', travelerName)} · ${booking.pickup_city} → ${booking.destination_city}`;
+    subtitle = `${t.me2_sub_proposes.replace('{name}', travelerName)} · ${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`;
   } else if (bucket === 'todo' && booking.delivery_proof_url) {
     subtitle = `📸 ${t.me2_sub_delivered_by.replace('{name}', travelerName)} · ${t.me2_sub_to_confirm}`;
   } else if (bucket === 'inProgress' && booking.status === 'confirmed') {
@@ -3101,7 +3106,7 @@ function SendListRow({
       selected={selected}
       onClick={onClick}
       emoji={emoji}
-      title={`${booking.pickup_city} → ${booking.destination_city}`}
+      title={`${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`}
       subtitle={subtitle}
       rightLabel={formatEuros(booking.proposed_price)}
       dotClass={tone === 'urgent' ? 'bg-butter-500' : undefined}
@@ -3119,14 +3124,14 @@ function RequestListRow({
   selected: boolean;
   onClick: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
   return (
     <ListRow
       selected={selected}
       onClick={onClick}
       emoji={cat?.icon ?? '📦'}
-      title={`${request.pickup_city} → ${request.destination_city}`}
+      title={`${cityDisplayName(request.pickup_city, locale)} → ${cityDisplayName(request.destination_city, locale)}`}
       subtitle={t.me2_before_date.replace('{date}', formatShortDate(request.desired_delivery_date))}
       rightLabel={formatEuros(request.budget)}
     />
@@ -3136,6 +3141,7 @@ function RequestListRow({
 // Detail panel for a request without traveler — simple card with route +
 // budget + reassurance message. Minimal because there's not much to do yet.
 function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Translations }) {
+  const { locale } = useI18n();
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
   return (
     <div className="bg-white rounded-2xl border border-ink-50 p-5">
@@ -3145,7 +3151,7 @@ function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Tra
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[16px] font-bold text-ink-600">
-            {request.pickup_city} → {request.destination_city}
+            {cityDisplayName(request.pickup_city, locale)} → {cityDisplayName(request.destination_city, locale)}
           </div>
           <div className="text-[13px] text-ink-400">
             {t.me2_before_date.replace('{date}', formatShortDate(request.desired_delivery_date))}
@@ -3437,7 +3443,7 @@ function TripListRow({
   onClick: () => void;
   isPast: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <button
       type="button"
@@ -3451,7 +3457,7 @@ function TripListRow({
       <span className="flex-shrink-0 text-[18px]">✈️</span>
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-semibold text-ink-600 truncate">
-          {trip.departure_city} → {trip.arrival_city}
+          {cityDisplayName(trip.departure_city, locale)} → {cityDisplayName(trip.arrival_city, locale)}
         </div>
         <div className="text-[12px] text-ink-400 truncate num-display">
           {formatShortDate(trip.departure_date)}
@@ -3505,7 +3511,7 @@ function TripDetailCard({
   hasReviewed: (bookingIntentId: string) => boolean;
   reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const totalNet = packages.reduce((sum, p) => {
     const ttc = p.row.proposed_price ?? 0;
     return sum + ttc / 1.15;
@@ -3546,8 +3552,8 @@ function TripDetailCard({
               </div>
             </div>
             <div className="flex items-center justify-between text-[11px] text-ink-400 mb-3">
-              <span className="truncate max-w-[40%]">{trip.departure_city}</span>
-              <span className="truncate max-w-[40%] text-right">{trip.arrival_city}</span>
+              <span className="truncate max-w-[40%]">{cityDisplayName(trip.departure_city, locale)}</span>
+              <span className="truncate max-w-[40%] text-right">{cityDisplayName(trip.arrival_city, locale)}</span>
             </div>
             <div className="flex items-center gap-4 text-[11px]">
               <div>
@@ -3969,6 +3975,7 @@ function HistoryView({
   trips: TravelerTripRow[];
   t: Translations;
 }) {
+  const { locale } = useI18n();
   // Incoming as traveler — delivered or cancelled
   const incomingHistory = incomingIntents.filter(
     (i) => i.status === 'cancelled' || (i.status === 'confirmed' && i.delivery_proof_url)
@@ -4051,7 +4058,7 @@ function HistoryView({
                   <Plane className="w-4 h-4 text-ink-300" />
                   <div className="flex-1">
                     <div className="text-[14px] text-ink-500">
-                      {trip.departure_city} → {trip.arrival_city}
+                      {cityDisplayName(trip.departure_city, locale)} → {cityDisplayName(trip.arrival_city, locale)}
                     </div>
                     <div className="text-[12px] text-ink-400">
                       {formatShortDate(trip.departure_date)} · {t.me2_cancelled_label}

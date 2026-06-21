@@ -24,7 +24,7 @@ import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES } from '@/lib/constants';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
-import { countryDisplayName } from '@/lib/countries';
+import { countryDisplayName, cityDisplayName } from '@/lib/countries';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
@@ -450,13 +450,13 @@ export default function EnvoyerPage() {
                         fromCountryTrips,
                         t.env_tier_from_country
                           .replace('{country}', countryDisplayName(fromCountry, locale))
-                          .replace('{city}', toCity)
+                          .replace('{city}', cityDisplayName(toCity, locale))
                       )}
                     {toCountryTrips.length > 0 &&
                       renderGroup(
                         toCountryTrips,
                         t.env_tier_to_country
-                          .replace('{city}', fromCity)
+                          .replace('{city}', cityDisplayName(fromCity, locale))
                           .replace('{country}', countryDisplayName(toCountry, locale))
                       )}
                     {bothCountryTrips.length > 0 &&
@@ -688,7 +688,7 @@ export default function EnvoyerPage() {
                   <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em]">{t.send_confirm_title}</h2>
 
                   <div className="bg-cream-100 rounded-2xl p-5 space-y-3 text-[14px]">
-                    <Row label={t.send_recap_route} value={`${fromCity} → ${toCity}`} />
+                    <Row label={t.send_recap_route} value={`${cityDisplayName(fromCity, locale)} → ${cityDisplayName(toCity, locale)}`} />
                     <Row label={t.send_recap_date} value={date} />
                     <Row label={t.send_recap_item} value={category ? t[ITEM_CATEGORIES.find(c => c.value === category)!.labelKey] : '—'} />
                     <Row label={t.send_recap_budget} value={`${budget}${t.common_eur}`} />
@@ -840,7 +840,7 @@ function InstantBookModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [phase, setPhase] = useState<'describe' | 'pay'>('describe');
   const [category, setCategory] = useState<ItemCategory | null>(null);
   const [description, setDescription] = useState('');
@@ -924,7 +924,7 @@ function InstantBookModal({
               {t.env_book_traveler.replace('{name}', travelerName)}
             </h2>
             <div className="text-[13px] text-ink-400 mt-1.5">
-              {pickupCity} → {destinationCity} · {formatShortDate(trip.departure_date)}
+              {cityDisplayName(pickupCity, locale)} → {cityDisplayName(destinationCity, locale)} · {formatShortDate(trip.departure_date)}
               {trip.flight_number && <> · {trip.flight_number}</>}
             </div>
             <div className="mt-2 inline-flex items-baseline gap-1.5">
@@ -1048,7 +1048,7 @@ function InstantBookModal({
               )}
               <StripePaymentForm
                 amountEuros={price}
-                description={`Jibly · ${pickupCity} → ${destinationCity}`}
+                description={`Jibly · ${cityDisplayName(pickupCity, locale)} → ${cityDisplayName(destinationCity, locale)}`}
                 onAuthorized={handleAuthorized}
                 onCancel={() => setPhase('describe')}
               />

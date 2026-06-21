@@ -204,6 +204,49 @@ export function countryDisplayName(value: string, locale: string): string {
   return locale === 'en' ? c.name_en : c.name_fr;
 }
 
+/**
+ * English display names for the curated hub cities whose English spelling
+ * differs from the stored French one. Cities not listed here are identical
+ * in both languages (Paris, Madrid, Doha…) and fall through unchanged.
+ * The KEY is the canonical (stored) French name — never change those, the
+ * matching queries depend on them.
+ */
+const CITY_EN: Record<string, string> = {
+  // Maroc
+  Marrakech: 'Marrakesh', Tanger: 'Tangier', 'Fès': 'Fez',
+  // Belgique
+  Bruxelles: 'Brussels', Anvers: 'Antwerp',
+  // Espagne
+  Barcelone: 'Barcelona', Valence: 'Valencia', 'Séville': 'Seville', 'Málaga': 'Malaga',
+  // Italie
+  Venise: 'Venice', Bologne: 'Bologna',
+  // Allemagne
+  Hambourg: 'Hamburg', Francfort: 'Frankfurt',
+  // Royaume-Uni
+  Londres: 'London', 'Édimbourg': 'Edinburgh',
+  // Canada
+  'Montréal': 'Montreal',
+  // Algérie
+  Alger: 'Algiers',
+  // Égypte
+  'Le Caire': 'Cairo', Alexandrie: 'Alexandria', 'Charm el-Cheikh': 'Sharm El Sheikh',
+  // Liban
+  Beyrouth: 'Beirut',
+  // Émirats
+  'Dubaï': 'Dubai',
+  // Arabie saoudite
+  Djeddah: 'Jeddah', 'Médine': 'Medina', Riyad: 'Riyadh',
+};
+
+/**
+ * Localised city name for display. `value` is the stored (French) city name;
+ * returns the English spelling when locale is 'en', otherwise the value as-is.
+ */
+export function cityDisplayName(value: string, locale: string): string {
+  if (locale !== 'en') return value;
+  return CITY_EN[value] ?? value;
+}
+
 /** Cities of a country, looked up by French name. Empty if unknown. */
 export function getCitiesForCountry(name: string): string[] {
   return findCountryByName(name)?.cities ?? [];
