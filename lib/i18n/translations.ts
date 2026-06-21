@@ -307,6 +307,7 @@ export type Translations = {
   trip_space_title: string;
   trip_label_min_comp: string;
   trip_min_comp_hint: string;
+  trip_min_comp_hint_high: string;
   trip_accepted_categories_label: string;
   trip_accepted_categories_hint: string;
   trip_identity_title: string;
@@ -1271,7 +1272,7 @@ export const translations: Record<Locale, Translations> = {
     env_close: 'Fermer',
     env_parcel_category: 'Catégorie du colis',
     env_description_label: 'Description',
-    env_description_placeholder: 'Que souhaitez-vous envoyer ?',
+    env_description_placeholder: 'Souhaitez-vous donner plus de détails ?',
     env_protection_title: 'Protection Jibly incluse',
     env_protection_desc: 'Votre paiement est bloqué et ne sera versé au voyageur qu\'une fois la livraison confirmée.',
     env_continue_to_payment: 'Continuer vers le paiement',
@@ -1383,7 +1384,7 @@ export const translations: Record<Locale, Translations> = {
     send_details_title: 'Quand et combien ?',
     send_label_urgency: 'Urgence',
     send_label_budget: 'Budget proposé',
-    send_budget_hint_low: 'Les voyageurs acceptent en général les colis à partir de 50 €. Vous restez libre de proposer le montant de votre choix.',
+    send_budget_hint_low: 'En dessous de 30 €, peu de voyageurs accepteront votre colis. Vous restez libre de proposer le montant de votre choix.',
     send_budget_hint_high: 'Les demandes acceptées tournent en général autour de 50–100 € maximum.',
     send_confirm_title: 'Tout est bon ?',
     send_recap_route: 'Trajet',
@@ -1409,6 +1410,7 @@ export const translations: Record<Locale, Translations> = {
     trip_space_title: 'Que pouvez-vous transporter ?',
     trip_label_min_comp: 'Compensation minimum acceptée',
     trip_min_comp_hint: 'La plupart des voyageurs fixent leur prix autour de 50€. Vous recevrez ce montant exactement.',
+    trip_min_comp_hint_high: 'Au-delà de 80 €, peu de demandes correspondront — les expéditeurs proposent en général entre 50 et 100 €.',
     trip_accepted_categories_label: 'Ce que vous acceptez de transporter',
     trip_accepted_categories_hint: 'Sélectionnez ce avec quoi vous êtes à l\'aise. Vous pourrez toujours refuser à la livraison.',
     trip_identity_title: 'Vérifier votre identité',
@@ -2360,7 +2362,7 @@ export const translations: Record<Locale, Translations> = {
     env_close: 'Close',
     env_parcel_category: 'Parcel category',
     env_description_label: 'Description',
-    env_description_placeholder: 'What would you like to send?',
+    env_description_placeholder: 'Would you like to give more details?',
     env_protection_title: 'Jibly Protection included',
     env_protection_desc: 'Your payment is held and will only be released to the traveler once delivery is confirmed.',
     env_continue_to_payment: 'Continue to payment',
@@ -2472,7 +2474,7 @@ export const translations: Record<Locale, Translations> = {
     send_details_title: 'When and how much?',
     send_label_urgency: 'Urgency',
     send_label_budget: 'Proposed budget',
-    send_budget_hint_low: 'Travelers usually accept packages from €50 and up. You\'re still free to offer whatever amount you like.',
+    send_budget_hint_low: 'Below €30, few travelers will accept your package. You\'re still free to offer whatever amount you like.',
     send_budget_hint_high: 'Accepted requests are generally around €50–100 at most.',
     send_confirm_title: 'All good?',
     send_recap_route: 'Route',
@@ -2498,6 +2500,7 @@ export const translations: Record<Locale, Translations> = {
     trip_space_title: 'What can you carry?',
     trip_label_min_comp: 'Minimum compensation accepted',
     trip_min_comp_hint: 'Most travelers set their price around €50. You\'ll receive exactly this amount.',
+    trip_min_comp_hint_high: 'Above €80, few requests will match — senders usually offer between €50 and €100.',
     trip_accepted_categories_label: 'What you\'re willing to carry',
     trip_accepted_categories_hint: 'Pick what you\'re comfortable with. You can always decline at handover.',
     trip_identity_title: 'Verify your identity',
