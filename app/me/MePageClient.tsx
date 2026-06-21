@@ -2499,6 +2499,9 @@ function ProposalPaymentModal({
   const { t, locale } = useI18n();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Once the card is authorised we show a confirmation screen instead of
+  // closing instantly, then sync the parent on the CTA / close.
+  const [paidIntentId, setPaidIntentId] = useState<string | null>(null);
 
   const traveler = booking.traveler_profile;
   const travelerName = shortName(traveler?.full_name) || t.me2_role_traveler;
@@ -2518,7 +2521,7 @@ function ProposalPaymentModal({
         })
         .eq('id', booking.id);
       if (updErr) throw updErr;
-      onSuccess(paymentIntentId);
+      setPaidIntentId(paymentIntentId);
     } catch (e: any) {
       setErr(e?.message ?? t.me2_update_failed);
     } finally {
@@ -2533,7 +2536,10 @@ function ProposalPaymentModal({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
-      onClick={() => !busy && onClose()}
+      onClick={() => {
+        if (busy) return;
+        paidIntentId ? onSuccess(paidIntentId) : onClose();
+      }}
     >
       <motion.div
         initial={{ y: 20, opacity: 0, scale: 0.98 }}
@@ -2543,39 +2549,58 @@ function ProposalPaymentModal({
         onClick={(e) => e.stopPropagation()}
         className="bg-cream-50 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto"
       >
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-              {t.me2_confirm_and_pay}
+        {paidIntentId ? (
+          <div className="text-center py-4">
+            <div className="w-14 h-14 rounded-full bg-mint-500 mx-auto flex items-center justify-center mb-5">
+              <CheckCircle2 className="w-7 h-7 text-white" strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
-              {formatEuros(booking.proposed_price)}
-            </h2>
-            <div className="text-[13px] text-ink-400 mt-1.5">
-              {t.me2_with_traveler.replace('{name}', travelerName)} · {cityDisplayName(booking.pickup_city, locale)} → {cityDisplayName(booking.destination_city, locale)}
-            </div>
+            <h3 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
+              {t.pay_success_title}
+            </h3>
+            <p className="text-[15px] text-ink-400 mb-7 leading-relaxed">
+              {t.pay_success_text}
+            </p>
+            <Button fullWidth onClick={() => onSuccess(paidIntentId)}>
+              {t.pay_success_cta}
+            </Button>
           </div>
-          <button
-            onClick={onClose}
-            disabled={busy}
-            className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        ) : (
+          <>
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
+                  {t.me2_confirm_and_pay}
+                </div>
+                <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
+                  {formatEuros(booking.proposed_price)}
+                </h2>
+                <div className="text-[13px] text-ink-400 mt-1.5">
+                  {t.me2_with_traveler.replace('{name}', travelerName)} · {cityDisplayName(booking.pickup_city, locale)} → {cityDisplayName(booking.destination_city, locale)}
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                disabled={busy}
+                className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-        {err && (
-          <div className="rounded-xl bg-blush-50 px-4 py-3 mb-4 text-[13px] text-blush-500">
-            {err}
-          </div>
+            {err && (
+              <div className="rounded-xl bg-blush-50 px-4 py-3 mb-4 text-[13px] text-blush-500">
+                {err}
+              </div>
+            )}
+
+            <StripePaymentForm
+              amountEuros={booking.proposed_price}
+              description={`Jibly · ${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`}
+              onAuthorized={handleAuthorized}
+              onCancel={onClose}
+            />
+          </>
         )}
-
-        <StripePaymentForm
-          amountEuros={booking.proposed_price}
-          description={`Jibly · ${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`}
-          onAuthorized={handleAuthorized}
-          onCancel={onClose}
-        />
       </motion.div>
     </motion.div>
   );
