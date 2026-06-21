@@ -13,6 +13,8 @@ import {
 import {
   COUNTRIES,
   findCountryByName,
+  countryDisplayName,
+  getAllCities,
   nearestCountry,
   nearestCity,
 } from '@/lib/countries';
@@ -49,7 +51,11 @@ export function CountryCityPicker({
   countryPlaceholder,
   enableNearby = false,
 }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  // Localised country label. The stored value stays French (canonical, used by
+  // the matching queries); only the display switches with the locale.
+  const cname = (c: { name_fr: string; name_en: string }) =>
+    locale === 'en' ? c.name_en : c.name_fr;
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'country' | 'city'>('country');
   const [countryQuery, setCountryQuery] = useState('');
@@ -99,7 +105,20 @@ export function CountryCityPicker({
   const filteredCountries = useMemo(() => {
     const q = countryQuery.trim().toLowerCase();
     if (!q) return COUNTRIES;
-    return COUNTRIES.filter((c) => c.name_fr.toLowerCase().includes(q));
+    // Match either language so "morocco" and "maroc" both work.
+    return COUNTRIES.filter(
+      (c) => c.name_fr.toLowerCase().includes(q) || c.name_en.toLowerCase().includes(q)
+    );
+  }, [countryQuery]);
+
+  // Let the country box double as a city search: typing "casa" surfaces
+  // Casablanca even before a country is picked. Selecting one fills both.
+  const cityMatches = useMemo(() => {
+    const q = countryQuery.trim().toLowerCase();
+    if (!q) return [];
+    return getAllCities()
+      .filter((loc) => loc.city.toLowerCase().includes(q))
+      .slice(0, 8);
   }, [countryQuery]);
 
   const filteredCities = useMemo(() => {
@@ -146,6 +165,17 @@ export function CountryCityPicker({
     onChange({ country, city: name });
     setWantCustomCity(false);
     setCityQuery('');
+    setOpen(false);
+  }
+
+  // Pick a city directly from the country-step search (sets both fields).
+  function pickCityDirect(loc: { countryName: string; city: string }) {
+    onChange({ country: loc.countryName, city: loc.city });
+    setWantCustomCountry(false);
+    setWantCustomCity(false);
+    setCountryQuery('');
+    setCityQuery('');
+    setGeoError(null);
     setOpen(false);
   }
 
@@ -197,7 +227,7 @@ export function CountryCityPicker({
   const countryLabel = isCustomCountry
     ? country || (countryPlaceholder ?? t.picker_country_placeholder)
     : knownCountry
-      ? `${knownCountry.flag} ${knownCountry.name_fr}`
+      ? `${knownCountry.flag} ${cname(knownCountry)}`
       : countryPlaceholder ?? t.picker_country_placeholder;
   const cityLabel = city || t.picker_city_placeholder;
 
@@ -309,12 +339,34 @@ export function CountryCityPicker({
                   >
                     <span className="flex items-center gap-2">
                       <span>{c.flag}</span>
-                      <span>{c.name_fr}</span>
+                      <span>{cname(c)}</span>
                     </span>
                     {selected && <Check className="w-3.5 h-3.5 text-lavender-500" strokeWidth={2.5} />}
                   </button>
                 );
               })}
+              {/* City matches — so the country box doubles as a city search */}
+              {cityMatches.length > 0 && (
+                <div className="border-t border-ink-50">
+                  <div className="px-4 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-300">
+                    {t.picker_cities_label}
+                  </div>
+                  {cityMatches.map((loc) => (
+                    <button
+                      key={`${loc.countryCode}-${loc.city}`}
+                      type="button"
+                      onClick={() => pickCityDirect(loc)}
+                      className="w-full text-start px-4 py-2 text-[14px] text-ink-600 hover:bg-cream-50 transition-colors flex items-center gap-2"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-ink-300 flex-shrink-0" />
+                      <span>{loc.city}</span>
+                      <span className="text-ink-300 text-[12px] truncate">
+                        · {loc.countryFlag} {countryDisplayName(loc.countryName, locale)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={chooseCustomCountry}
@@ -338,7 +390,7 @@ export function CountryCityPicker({
                 </button>
                 <span className="text-[14px] font-semibold text-ink-600 flex items-center gap-1.5">
                   <span>{knownCountry?.flag}</span>
-                  <span>{knownCountry?.name_fr}</span>
+                  <span>{knownCountry ? cname(knownCountry) : ''}</span>
                 </span>
               </div>
 

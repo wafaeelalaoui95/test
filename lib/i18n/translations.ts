@@ -445,6 +445,7 @@ export type Translations = {
   picker_city_input_placeholder: string;
   picker_search_country: string;
   picker_search_city: string;
+  picker_cities_label: string;
   picker_locate: string;
   picker_locating: string;
   picker_other_country: string;
@@ -1536,8 +1537,9 @@ export const translations: Record<Locale, Translations> = {
     picker_city_placeholder: 'Ville',
     picker_country_input_placeholder: 'Tapez le pays…',
     picker_city_input_placeholder: 'Tapez la ville…',
-    picker_search_country: 'Rechercher un pays…',
+    picker_search_country: 'Rechercher un pays ou une ville…',
     picker_search_city: 'Rechercher une ville…',
+    picker_cities_label: 'Villes',
     picker_locate: 'Me localiser',
     picker_locating: 'Localisation…',
     picker_other_country: 'Autre pays — saisir manuellement',
@@ -2620,8 +2622,9 @@ export const translations: Record<Locale, Translations> = {
     picker_city_placeholder: 'City',
     picker_country_input_placeholder: 'Type the country…',
     picker_city_input_placeholder: 'Type the city…',
-    picker_search_country: 'Search a country…',
+    picker_search_country: 'Search a country or city…',
     picker_search_city: 'Search a city…',
+    picker_cities_label: 'Cities',
     picker_locate: 'Use my location',
     picker_locating: 'Locating…',
     picker_other_country: 'Other country — type manually',

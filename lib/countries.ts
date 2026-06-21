@@ -12,6 +12,7 @@
 export type Country = {
   code: string;        // ISO 3166-1 alpha-2
   name_fr: string;
+  name_en: string;     // display name for the English locale
   flag: string;        // emoji
   cities: string[];
   // Approximate geographic centroid, used only to pre-select the closest
@@ -26,6 +27,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'MA',
     name_fr: 'Maroc',
+    name_en: 'Morocco',
     flag: '🇲🇦',
     cities: ['Casablanca', 'Rabat', 'Marrakech', 'Tanger', 'Fès', 'Agadir', 'Oujda', 'Nador'],
     lat: 31.8, lng: -7.1,
@@ -33,6 +35,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'FR',
     name_fr: 'France',
+    name_en: 'France',
     flag: '🇫🇷',
     cities: ['Paris', 'Marseille', 'Lyon', 'Toulouse', 'Nice', 'Bordeaux', 'Lille', 'Nantes', 'Strasbourg', 'Montpellier'],
     lat: 46.6, lng: 2.5,
@@ -40,6 +43,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'BE',
     name_fr: 'Belgique',
+    name_en: 'Belgium',
     flag: '🇧🇪',
     cities: ['Bruxelles', 'Anvers', 'Charleroi', 'Liège'],
     lat: 50.6, lng: 4.6,
@@ -47,6 +51,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'ES',
     name_fr: 'Espagne',
+    name_en: 'Spain',
     flag: '🇪🇸',
     cities: ['Madrid', 'Barcelone', 'Valence', 'Séville', 'Málaga', 'Bilbao'],
     lat: 40.2, lng: -3.7,
@@ -54,6 +59,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'NL',
     name_fr: 'Pays-Bas',
+    name_en: 'Netherlands',
     flag: '🇳🇱',
     cities: ['Amsterdam', 'Rotterdam', 'Eindhoven'],
     lat: 52.2, lng: 5.3,
@@ -61,6 +67,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'IT',
     name_fr: 'Italie',
+    name_en: 'Italy',
     flag: '🇮🇹',
     cities: ['Rome', 'Milan', 'Naples', 'Venise', 'Florence', 'Bologne'],
     lat: 42.8, lng: 12.6,
@@ -68,6 +75,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'DE',
     name_fr: 'Allemagne',
+    name_en: 'Germany',
     flag: '🇩🇪',
     cities: ['Berlin', 'Munich', 'Hambourg', 'Francfort', 'Düsseldorf', 'Cologne', 'Stuttgart'],
     lat: 51.2, lng: 10.4,
@@ -75,6 +83,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'GB',
     name_fr: 'Royaume-Uni',
+    name_en: 'United Kingdom',
     flag: '🇬🇧',
     cities: ['Londres', 'Manchester', 'Birmingham', 'Édimbourg'],
     lat: 54.0, lng: -2.0,
@@ -82,6 +91,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'CA',
     name_fr: 'Canada',
+    name_en: 'Canada',
     flag: '🇨🇦',
     cities: ['Montréal', 'Toronto', 'Vancouver', 'Calgary', 'Ottawa'],
     lat: 56.1, lng: -106.3,
@@ -89,6 +99,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'US',
     name_fr: 'États-Unis',
+    name_en: 'United States',
     flag: '🇺🇸',
     cities: ['New York', 'Los Angeles', 'Chicago', 'Miami', 'Boston', 'Washington', 'San Francisco', 'Houston'],
     lat: 39.8, lng: -98.6,
@@ -96,6 +107,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'DZ',
     name_fr: 'Algérie',
+    name_en: 'Algeria',
     flag: '🇩🇿',
     cities: ['Alger', 'Oran', 'Constantine', 'Annaba'],
     lat: 28.0, lng: 2.6,
@@ -103,6 +115,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'TN',
     name_fr: 'Tunisie',
+    name_en: 'Tunisia',
     flag: '🇹🇳',
     cities: ['Tunis', 'Sfax', 'Djerba', 'Monastir'],
     lat: 34.0, lng: 9.6,
@@ -110,6 +123,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'EG',
     name_fr: 'Égypte',
+    name_en: 'Egypt',
     flag: '🇪🇬',
     cities: ['Le Caire', 'Alexandrie', 'Charm el-Cheikh', 'Hurghada'],
     lat: 26.8, lng: 30.8,
@@ -117,6 +131,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'LB',
     name_fr: 'Liban',
+    name_en: 'Lebanon',
     flag: '🇱🇧',
     cities: ['Beyrouth'],
     lat: 33.9, lng: 35.9,
@@ -124,6 +139,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'AE',
     name_fr: 'Émirats arabes unis',
+    name_en: 'United Arab Emirates',
     flag: '🇦🇪',
     cities: ['Dubaï', 'Abu Dhabi'],
     lat: 23.4, lng: 53.8,
@@ -131,6 +147,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'QA',
     name_fr: 'Qatar',
+    name_en: 'Qatar',
     flag: '🇶🇦',
     cities: ['Doha'],
     lat: 25.3, lng: 51.2,
@@ -138,6 +155,7 @@ export const COUNTRIES: Country[] = [
   {
     code: 'SA',
     name_fr: 'Arabie saoudite',
+    name_en: 'Saudi Arabia',
     flag: '🇸🇦',
     cities: ['Riyad', 'Djeddah', 'Médine'],
     lat: 23.9, lng: 45.1,
@@ -166,9 +184,24 @@ export function getAllCities(): CityLocation[] {
   );
 }
 
-/** Lookup a country by its French name (the value we store/display). */
+/**
+ * Lookup a country by name. We always STORE the French name (it's the
+ * canonical value used by the matching queries), but we accept the English
+ * name too so display/search work in either locale.
+ */
 export function findCountryByName(name: string): Country | undefined {
-  return COUNTRIES.find((c) => c.name_fr === name);
+  return COUNTRIES.find((c) => c.name_fr === name || c.name_en === name);
+}
+
+/**
+ * Localised country name for display. `value` is the stored (French) name;
+ * we return the English label when the locale is 'en'. Unknown/freeform
+ * countries are returned unchanged.
+ */
+export function countryDisplayName(value: string, locale: string): string {
+  const c = findCountryByName(value);
+  if (!c) return value;
+  return locale === 'en' ? c.name_en : c.name_fr;
 }
 
 /** Cities of a country, looked up by French name. Empty if unknown. */

@@ -24,6 +24,7 @@ import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES } from '@/lib/constants';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
+import { countryDisplayName } from '@/lib/countries';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
@@ -52,7 +53,7 @@ function loadEnvoyerDraft(): any {
 }
 
 export default function EnvoyerPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const gate = useIdentityGate();
@@ -448,7 +449,7 @@ export default function EnvoyerPage() {
                       renderGroup(
                         fromCountryTrips,
                         t.env_tier_from_country
-                          .replace('{country}', fromCountry)
+                          .replace('{country}', countryDisplayName(fromCountry, locale))
                           .replace('{city}', toCity)
                       )}
                     {toCountryTrips.length > 0 &&
@@ -456,14 +457,14 @@ export default function EnvoyerPage() {
                         toCountryTrips,
                         t.env_tier_to_country
                           .replace('{city}', fromCity)
-                          .replace('{country}', toCountry)
+                          .replace('{country}', countryDisplayName(toCountry, locale))
                       )}
                     {bothCountryTrips.length > 0 &&
                       renderGroup(
                         bothCountryTrips,
                         t.env_tier_both_country
-                          .replace('{from}', fromCountry)
-                          .replace('{to}', toCountry)
+                          .replace('{from}', countryDisplayName(fromCountry, locale))
+                          .replace('{to}', countryDisplayName(toCountry, locale))
                       )}
                   </div>
                 )}
