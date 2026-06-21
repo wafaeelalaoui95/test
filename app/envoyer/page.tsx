@@ -183,7 +183,8 @@ export default function EnvoyerPage() {
   const canNext = () => {
     if (step === 0) return fromCity && toCity && date;
     if (step === 1) {
-      if (!category || !description) return false;
+      // Title is required; description is optional.
+      if (!category || !itemTitle.trim()) return false;
       return true;
     }
     if (step === 2) return budget > 0;
@@ -648,7 +649,7 @@ export default function EnvoyerPage() {
                   />
 
                   <Textarea
-                    label={t.send_label_description}
+                    label={`${t.send_label_description} (${t.common_optional})`}
                     placeholder={t.send_placeholder_description}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -708,7 +709,7 @@ export default function EnvoyerPage() {
                         <span>{t.send_budget_hint_high}</span>
                       </p>
                     )}
-                    {budget < 50 && (
+                    {budget < 30 && (
                       <p className="text-[13px] text-ink-400 mt-4 leading-relaxed">{t.send_budget_hint_low}</p>
                     )}
                   </div>
@@ -884,7 +885,7 @@ function InstantBookModal({
   const travelerName = displayName(trip.user?.full_name) || t.env_traveler_default_def;
   // Price is fixed by the traveler — sender doesn't negotiate here.
   const price = trip.compensation_min;
- const canPay = !!category && description.trim().length > 0 && certified;
+ const canPay = !!category && itemTitle.trim().length > 0 && certified;
 
   async function handleAuthorized(paymentIntentId: string) {
     if (!category) return;
@@ -1025,7 +1026,7 @@ function InstantBookModal({
               />
 
               <Textarea
-                label={t.env_description_label}
+                label={`${t.env_description_label} (${t.common_optional})`}
                 placeholder={t.env_description_placeholder}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -1059,14 +1060,6 @@ function InstantBookModal({
                   {t.send_certify_label}
                 </span>
               </label>
-
-              <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 text-[12px] text-ink-500 leading-relaxed">
-                <div className="font-bold text-mint-700 mb-1 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {t.env_protection_title}
-                </div>
-                {t.env_protection_desc}
-              </div>
 
               <div className="flex justify-end">
                 <Button disabled={!canPay} onClick={() => setPhase('pay')}>
