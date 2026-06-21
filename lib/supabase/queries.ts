@@ -1790,6 +1790,40 @@ export async function hasUnreadMessages(
   return (count ?? 0) > 0;
 }
 
+// Total number of unread messages across all of the user's conversations.
+// Powers the unread badge on the navbar Messages icon.
+export async function countUnreadMessages(
+  supabase: SB,
+  userId: string
+): Promise<number> {
+  const { data: convs } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('conversations')
+        .select('id')
+        .or(`sender_id.eq.${userId},traveler_id.eq.${userId}`)
+    ),
+    8000,
+    'Unread messages count (conversations)'
+  );
+  const ids = (convs ?? []).map((c: any) => c.id);
+  if (ids.length === 0) return 0;
+
+  const { count } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .in('conversation_id', ids)
+        .neq('sender_id', userId)
+        .is('read_at', null)
+    ),
+    8000,
+    'Unread messages count'
+  );
+  return count ?? 0;
+}
+
 // ============================================================================
 // Browser convenience wrappers
 // ============================================================================
@@ -1941,4 +1975,5 @@ export const browser = {
   listMyConversations: (userId: string) =>
     listMyConversations(getBrowserClient(), userId),
   hasUnreadMessages: (userId: string) => hasUnreadMessages(getBrowserClient(), userId),
+  countUnreadMessages: (userId: string) => countUnreadMessages(getBrowserClient(), userId),
 };

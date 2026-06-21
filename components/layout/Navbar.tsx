@@ -18,6 +18,10 @@ export function Navbar() {
   // We still poll unread notifications count for the MOBILE bell (the
   // dropdown component handles its own count for the desktop bell).
   const [mobileUnread, setMobileUnread] = useState(0);
+  // Unread chat messages — drives the badge on the Messages icon (both
+  // desktop and mobile). Messages don't create notification rows, so this is
+  // tracked separately from the bell count.
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const { t } = useI18n();
   const { user, profile, loading, signOut } = useAuth();
 
@@ -28,6 +32,7 @@ export function Navbar() {
     if (!user) {
       setWalletBalance(null);
       setMobileUnread(0);
+      setUnreadMessages(0);
       return;
     }
     let cancelled = false;
@@ -41,6 +46,10 @@ export function Navbar() {
         .countUnreadNotifications(user.id)
         .then((n) => { if (!cancelled) setMobileUnread(n); })
         .catch(() => { if (!cancelled) setMobileUnread(0); });
+      browser
+        .countUnreadMessages(user.id)
+        .then((n) => { if (!cancelled) setUnreadMessages(n); })
+        .catch(() => { if (!cancelled) setUnreadMessages(0); });
     };
     refreshUnread();
     const iv = setInterval(refreshUnread, 30_000);
@@ -99,6 +108,20 @@ export function Navbar() {
                 Inbox messages are still reachable, but as a secondary
                 entry from inside the notifications dropdown. */}
             {user && <NotificationsDropdown />}
+
+            {/* Messages — dedicated icon with its own unread badge, since
+                chat messages don't surface in the notifications bell. */}
+            {user && (
+              <Link
+                href="/messages"
+                className="relative p-2 text-ink-400 hover:text-ink-600 transition-colors"
+                aria-label={t.notif_my_messages}
+                title={t.notif_my_messages}
+              >
+                <Inbox className="w-[18px] h-[18px]" />
+                <UnreadBadge count={unreadMessages} />
+              </Link>
+            )}
 
             {loading ? (
               <>
@@ -171,7 +194,7 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile right-side cluster — wallet pill + bell + burger.
+          {/* Mobile right-side cluster — wallet pill + bell + messages + burger.
               The dropdown is full-featured on desktop, but on mobile we
               just link to the dedicated /notifications page when the bell
               is tapped — a small popover doesn't work well on phone. */}
@@ -201,6 +224,16 @@ export function Navbar() {
                     {mobileUnread > 9 ? '9+' : mobileUnread}
                   </span>
                 )}
+              </Link>
+            )}
+            {user && (
+              <Link
+                href="/messages"
+                className="relative p-2 text-ink-500"
+                aria-label={t.notif_my_messages}
+              >
+                <Inbox className="h-5 w-5" />
+                <UnreadBadge count={unreadMessages} />
               </Link>
             )}
             <button
@@ -285,6 +318,11 @@ export function Navbar() {
                   >
                     <Inbox className="w-4 h-4" />
                     <span>{t.notif_my_messages}</span>
+                    {unreadMessages > 0 && (
+                      <span className="ml-auto min-w-[18px] h-5 px-1.5 rounded-full bg-blush-500 text-white text-[11px] font-bold flex items-center justify-center num-display">
+                        {unreadMessages > 9 ? '9+' : unreadMessages}
+                      </span>
+                    )}
                   </Link>
                   {mobileTrustLink}
                   <form action="/auth/sign-out" method="post" className="mt-2">
@@ -321,5 +359,16 @@ export function Navbar() {
         )}
       </AnimatePresence>
     </header>
+  );
+}
+
+// Small red count badge, absolutely positioned over an icon. Renders nothing
+// when there's nothing unread. Caps the display at "9+".
+function UnreadBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-1 rounded-full bg-blush-500 text-white text-[9px] font-bold flex items-center justify-center num-display border border-cream-50">
+      {count > 9 ? '9+' : count}
+    </span>
   );
 }
