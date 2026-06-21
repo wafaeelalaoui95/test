@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Send, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { X, Send, Loader2, ArrowLeft, ShieldCheck, KeyRound } from 'lucide-react';
 import { browser, type MessageRowChat } from '@/lib/supabase/queries';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -59,8 +59,15 @@ export function ChatModal({
     { label: t.chat_qr_code_label, text: t.chat_qr_code_text },
   ];
 
+  // Which side am I in this booking? Drives the code-handoff hint copy.
+  const isSender = currentUserId === senderId;
+
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageRowChat[]>([]);
+  // Booking stage (the two confirmation timestamps), used to pick the hint.
+  const [stage, setStage] = useState<
+    { pickup_confirmed_at: string | null; received_confirmed_at: string | null } | null
+  >(null);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -123,6 +130,13 @@ export function ChatModal({
         if (cancelled) return;
         setMessages(msgs);
 
+        // Booking stage drives the code-handoff hint. Best-effort — a
+        // failure here just hides the hint, it never blocks the chat.
+        browser
+          .getBookingStage(bookingIntentId)
+          .then((s) => { if (!cancelled) setStage(s); })
+          .catch(() => {});
+
         // Mark as read in the background — don't block the UI on it.
         // We use the ref to avoid re-firing this whole effect on every
         // parent re-render (which is what made the input lag).
@@ -146,6 +160,10 @@ export function ChatModal({
       if (document.visibilityState !== 'visible') return;
       browser.listMessages(conversationId!)
         .then((msgs) => setMessages(msgs))
+        .catch(() => {});
+      // Re-read the stage too, so the hint advances after a confirmation.
+      browser.getBookingStage(bookingIntentId)
+        .then((s) => setStage(s))
         .catch(() => {});
       browser.markMessagesRead(conversationId!, currentUserId)
         .then(() => onMessagesReadRef.current?.())
@@ -212,6 +230,20 @@ export function ChatModal({
       e.preventDefault();
       handleSend();
     }
+  }
+
+  // Contextual code-handoff hint, shown at the end of the thread so people
+  // know a code is coming and who reads it to whom. Role + stage aware:
+  //  - before pickup  → handover phase (sender reads the code, traveler enters)
+  //  - after pickup, before receipt → delivery phase (roles reverse)
+  //  - once received → nothing more to do, no hint.
+  const firstName = otherName.split(' ')[0];
+  let codeHint: string | null = null;
+  if (stage && !stage.received_confirmed_at) {
+    const key = !stage.pickup_confirmed_at
+      ? (isSender ? t.chat_code_hint_handover_sender : t.chat_code_hint_handover_traveler)
+      : (isSender ? t.chat_code_hint_delivery_sender : t.chat_code_hint_delivery_traveler);
+    codeHint = key.replace('{name}', firstName);
   }
 
   return (
@@ -320,6 +352,17 @@ export function ChatModal({
                 </div>
               );
             })
+          )}
+
+          {/* Code-handoff hint — appended after the messages so it reads like
+              guidance at the bottom of the thread. */}
+          {!loading && codeHint && (
+            <div className="flex justify-center pt-1">
+              <div className="flex items-start gap-2 max-w-[88%] px-3.5 py-2.5 rounded-2xl bg-lavender-50 border border-lavender-100">
+                <KeyRound className="w-3.5 h-3.5 text-lavender-400 flex-shrink-0 mt-0.5" />
+                <p className="text-[12px] leading-relaxed text-ink-500">{codeHint}</p>
+              </div>
+            </div>
           )}
         </div>
 

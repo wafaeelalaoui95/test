@@ -847,6 +847,30 @@ export async function confirmDeliveryWithCode(
   return { ok: true };
 }
 
+// Lightweight stage read for the chat: just the two confirmation timestamps,
+// used to decide which code-handoff hint to show in the conversation.
+export async function getBookingStage(
+  supabase: SB,
+  bookingId: string
+): Promise<{ pickup_confirmed_at: string | null; received_confirmed_at: string | null } | null> {
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('booking_intents')
+        .select('pickup_confirmed_at, received_confirmed_at')
+        .eq('id', bookingId)
+        .maybeSingle()
+    ),
+    8000,
+    'Booking stage'
+  );
+  if (error || !data) return null;
+  return {
+    pickup_confirmed_at: data.pickup_confirmed_at ?? null,
+    received_confirmed_at: data.received_confirmed_at ?? null,
+  };
+}
+
 // -----------------------------------------------------------------------------
 // DISPUTES
 // -----------------------------------------------------------------------------
@@ -1867,6 +1891,8 @@ export const browser = {
   markAllNotificationsRead: (userId: string) =>
     markAllNotificationsRead(getBrowserClient(), userId),
 
+  getBookingStage: (bookingId: string) =>
+    getBookingStage(getBrowserClient(), bookingId),
   confirmPickupWithCode: (bookingId: string, code: string, travelerId: string) =>
     confirmPickupWithCode(getBrowserClient(), bookingId, code, travelerId),
   confirmDeliveryWithCode: (bookingId: string, code: string, senderId: string) =>

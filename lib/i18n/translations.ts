@@ -130,6 +130,9 @@ export type Translations = {
   prof_payment_authorized_desc_after: string;
   prof_view_my_space: string;
   prof_close: string;
+  pay_success_title: string;
+  pay_success_text: string;
+  pay_success_cta: string;
   env_success_subtitle: string;
   env_choose_subtitle: string;
   env_fill_route_prompt: string;
@@ -274,6 +277,11 @@ export type Translations = {
   send_item_name_placeholder: string;
   send_label_description: string;
   send_placeholder_description: string;
+  send_recipient_label: string;
+  send_recipient_me: string;
+  send_recipient_other: string;
+  send_recipient_name_label: string;
+  send_recipient_name_placeholder: string;
   send_prescription_required: string;
   send_upload_prescription: string;
   send_forbidden_title: string;
@@ -613,6 +621,10 @@ export type Translations = {
   chat_qr_code_label: string;
   chat_qr_code_text: string;
   chat_traceability_notice: string;
+  chat_code_hint_handover_sender: string;
+  chat_code_hint_handover_traveler: string;
+  chat_code_hint_delivery_traveler: string;
+  chat_code_hint_delivery_sender: string;
   chat_empty_line1: string;
   chat_empty_line2: string;
   chat_input_placeholder: string;
@@ -1240,6 +1252,9 @@ export const translations: Record<Locale, Translations> = {
     prof_payment_authorized_desc_after: '. Le voyageur sera notifié et vous recevrez sa décision rapidement. Aucun débit n\'a encore été effectué.',
     prof_view_my_space: 'Voir mon espace',
     prof_close: 'Fermer',
+    pay_success_title: 'Paiement accepté',
+    pay_success_text: 'Votre envoi est enregistré dans votre espace.',
+    pay_success_cta: 'Voir mon espace',
     env_success_subtitle: 'On vous prévient dès qu\'un voyageur correspond à votre trajet.',
     env_choose_subtitle: 'Réservez un voyageur disponible, ou publiez une demande publique.',
     env_fill_route_prompt: 'Remplissez la route et la date pour découvrir les voyageurs disponibles.',
@@ -1378,6 +1393,11 @@ export const translations: Record<Locale, Translations> = {
     send_item_name_placeholder: 'Ex : clé de ma maison, acte de naissance, médicaments…',
     send_label_description: 'Description',
     send_placeholder_description: 'Ex: acte de naissance, dans une enveloppe scellée',
+    send_recipient_label: 'Qui récupère le colis à l\'arrivée ?',
+    send_recipient_me: 'Moi',
+    send_recipient_other: 'Quelqu\'un d\'autre',
+    send_recipient_name_label: 'Nom du destinataire',
+    send_recipient_name_placeholder: 'Ex : Sarah Benali',
     send_prescription_required: 'Ordonnance obligatoire',
     send_upload_prescription: 'Téléverser l\'ordonnance',
     send_forbidden_title: 'Objets interdits',
@@ -1385,7 +1405,7 @@ export const translations: Record<Locale, Translations> = {
     send_label_urgency: 'Urgence',
     send_label_budget: 'Budget proposé',
     send_budget_hint_low: 'En dessous de 30 €, peu de voyageurs accepteront votre colis. Vous restez libre de proposer le montant de votre choix.',
-    send_budget_hint_high: 'Les demandes acceptées tournent en général autour de 50–100 € maximum.',
+    send_budget_hint_high: 'Au-delà de 80 €, vous risquez de recevoir moins de réponses. Vous restez libre de proposer le montant que vous voulez.',
     send_confirm_title: 'Tout est bon ?',
     send_recap_route: 'Trajet',
     send_recap_date: 'Date',
@@ -1704,6 +1724,14 @@ export const translations: Record<Locale, Translations> = {
     chat_qr_code_text: 'Quel est le code de récupération ?',
     chat_traceability_notice:
       'Gardez vos échanges sur Jibly : c\'est ce qui nous permet d\'assurer le suivi du colis et de vous protéger en cas de litige.',
+    chat_code_hint_handover_sender:
+      'À la remise du colis, transmettez le code à 6 chiffres à {name}.',
+    chat_code_hint_handover_traveler:
+      'Après la remise du colis, {name} vous transmettra un code à 6 chiffres à saisir.',
+    chat_code_hint_delivery_traveler:
+      'À la livraison du colis, transmettez le code à 6 chiffres à {name}.',
+    chat_code_hint_delivery_sender:
+      'À la réception du colis, {name} vous transmettra un code à 6 chiffres à saisir.',
     chat_empty_line1: 'Pas encore de message.',
     chat_empty_line2: 'Dites bonjour à {name} 👋',
     chat_input_placeholder: 'Écrire à {name}…',
@@ -2329,6 +2357,9 @@ export const translations: Record<Locale, Translations> = {
     prof_payment_authorized_desc_before: 'Your card has been authorized for',
     prof_payment_authorized_desc_after: '. The traveler will be notified and you will receive their decision shortly. No charge has been made yet.',
     prof_view_my_space: 'View my dashboard',
+    pay_success_title: 'Payment accepted',
+    pay_success_text: 'Your shipment is logged in your space.',
+    pay_success_cta: 'View my dashboard',
     prof_close: 'Close',
     env_success_subtitle: 'We\'ll let you know as soon as a traveler matches your route.',
     env_choose_subtitle: 'Book an available traveler, or post a public request.',
@@ -2468,6 +2499,11 @@ export const translations: Record<Locale, Translations> = {
     send_item_name_placeholder: 'E.g. my house key, birth certificate, medication…',
     send_label_description: 'Description',
     send_placeholder_description: 'E.g. birth certificate, in a sealed envelope',
+    send_recipient_label: 'Who collects the parcel on arrival?',
+    send_recipient_me: 'Me',
+    send_recipient_other: 'Someone else',
+    send_recipient_name_label: 'Recipient\'s name',
+    send_recipient_name_placeholder: 'E.g. Sarah Benali',
     send_prescription_required: 'Prescription required',
     send_upload_prescription: 'Upload prescription',
     send_forbidden_title: 'Forbidden items',
@@ -2475,7 +2511,7 @@ export const translations: Record<Locale, Translations> = {
     send_label_urgency: 'Urgency',
     send_label_budget: 'Proposed budget',
     send_budget_hint_low: 'Below €30, few travelers will accept your package. You\'re still free to offer whatever amount you like.',
-    send_budget_hint_high: 'Accepted requests are generally around €50–100 at most.',
+    send_budget_hint_high: 'Above €80 you may get fewer responses. You\'re still free to offer whatever amount you like.',
     send_confirm_title: 'All good?',
     send_recap_route: 'Route',
     send_recap_date: 'Date',
@@ -2794,6 +2830,14 @@ export const translations: Record<Locale, Translations> = {
     chat_qr_code_text: 'What is the pickup code?',
     chat_traceability_notice:
       'Keep your exchanges on Jibly: it lets us track the parcel and protect you in case of a dispute.',
+    chat_code_hint_handover_sender:
+      'When you hand the parcel over, give the 6-digit code to {name}.',
+    chat_code_hint_handover_traveler:
+      'After the hand-over, {name} will give you a 6-digit code to enter.',
+    chat_code_hint_delivery_traveler:
+      'When you deliver the parcel, give the 6-digit code to {name}.',
+    chat_code_hint_delivery_sender:
+      'On delivery, {name} will give you a 6-digit code to enter.',
     chat_empty_line1: 'No messages yet.',
     chat_empty_line2: 'Say hi to {name} 👋',
     chat_input_placeholder: 'Message {name}…',
