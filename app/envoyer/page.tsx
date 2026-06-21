@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   X,
   Calendar,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Textarea, Checkbox, Input } from '@/components/ui/Form';
@@ -90,6 +91,10 @@ export default function EnvoyerPage() {
   const [category, setCategory] = useState<ItemCategory | null>(null);
   const [itemTitle, setItemTitle] = useState('');
   const [description, setDescription] = useState('');
+  // Who collects the parcel at destination. true = the sender; false = a third
+  // party whose name goes in recipientName.
+  const [recipientSelf, setRecipientSelf] = useState(true);
+  const [recipientName, setRecipientName] = useState('');
   const [budget, setBudget] = useState(30);
   const [terms, setTerms] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -153,6 +158,8 @@ export default function EnvoyerPage() {
       setCategory(d.category ?? null);
       setItemTitle(d.itemTitle ?? '');
       setDescription(d.description ?? '');
+      setRecipientSelf(d.recipientSelf ?? true);
+      setRecipientName(d.recipientName ?? '');
       setBudget(d.budget ?? 30);
       setTerms(d.terms ?? false);
     }
@@ -170,14 +177,14 @@ export default function EnvoyerPage() {
         JSON.stringify({
           _ts: Date.now(),
           mode, step, fromCity, fromCountry, toCity, toCountry, date,
-          category, itemTitle, description, budget, terms,
+          category, itemTitle, description, recipientSelf, recipientName, budget, terms,
         })
       );
     } catch {
       /* ignore quota / private-mode errors */
     }
   }, [draftRestored, mode, step, fromCity, fromCountry, toCity, toCountry, date,
-      category, itemTitle, description, budget, terms]);
+      category, itemTitle, description, recipientSelf, recipientName, budget, terms]);
 
   // ---- WIZARD canNext (public mode only) ----
   const canNext = () => {
@@ -185,6 +192,8 @@ export default function EnvoyerPage() {
     if (step === 1) {
       // Title is required; description is optional.
       if (!category || !itemTitle.trim()) return false;
+      // If a third party collects, their name is required.
+      if (!recipientSelf && !recipientName.trim()) return false;
       return true;
     }
     if (step === 2) return budget > 0;
@@ -220,6 +229,7 @@ export default function EnvoyerPage() {
         pickup_city: fromCity,
         destination_country: toCountry,
         destination_city: toCity,
+        recipient_name: recipientSelf ? null : recipientName.trim(),
         desired_delivery_date: date,
         budget,
         weight_kg: null,
@@ -655,6 +665,13 @@ export default function EnvoyerPage() {
                     onChange={(e) => setDescription(e.target.value)}
                   />
 
+                  <RecipientPicker
+                    self={recipientSelf}
+                    name={recipientName}
+                    onSelfChange={setRecipientSelf}
+                    onNameChange={setRecipientName}
+                  />
+
                   <div className="rounded-2xl bg-blush-50 p-4">
                     <p className="text-[12px] font-semibold text-blush-500 uppercase tracking-[0.08em] mb-2.5">
                       {t.send_forbidden_title}
@@ -724,6 +741,7 @@ export default function EnvoyerPage() {
                     <Row label={t.send_recap_route} value={`${cityDisplayName(fromCity, locale)} → ${cityDisplayName(toCity, locale)}`} />
                     <Row label={t.send_recap_date} value={date} />
                     <Row label={t.send_recap_item} value={category ? t[ITEM_CATEGORIES.find(c => c.value === category)!.labelKey] : '—'} />
+                    <Row label={t.send_recipient_label} value={recipientSelf ? t.send_recipient_me : recipientName.trim() || t.send_recipient_other} />
                     <Row label={t.send_recap_budget} value={`${budget}${t.common_eur}`} />
                   </div>
 
@@ -781,6 +799,69 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between gap-4">
       <span className="text-ink-400">{label}</span>
       <span className="font-semibold text-ink-600 text-end">{value}</span>
+    </div>
+  );
+}
+
+// =============================================================================
+// RecipientPicker — "Moi" / "Quelqu'un d'autre" toggle. When a third party
+// collects the parcel, reveals a name field. Shared by both flows (wizard +
+// instant-book modal).
+// =============================================================================
+function RecipientPicker({
+  self,
+  name,
+  onSelfChange,
+  onNameChange,
+}: {
+  self: boolean;
+  name: string;
+  onSelfChange: (v: boolean) => void;
+  onNameChange: (v: string) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div>
+      <label className="block text-[13px] font-semibold text-ink-500 mb-2.5">
+        {t.send_recipient_label}
+      </label>
+      <div className="grid grid-cols-2 gap-2.5">
+        {[
+          { value: true, label: t.send_recipient_me },
+          { value: false, label: t.send_recipient_other },
+        ].map((opt) => {
+          const active = self === opt.value;
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => onSelfChange(opt.value)}
+              className={`px-3 py-2.5 rounded-xl border text-[14px] font-medium transition-all ${
+                active
+                  ? 'border-ink-500 bg-cream-100 text-ink-600'
+                  : 'border-ink-100 bg-white text-ink-500 hover:border-ink-300'
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      {!self && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3"
+        >
+          <Input
+            label={t.send_recipient_name_label}
+            placeholder={t.send_recipient_name_placeholder}
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            maxLength={80}
+          />
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -874,10 +955,12 @@ function InstantBookModal({
   onSuccess: () => void;
 }) {
   const { t, locale } = useI18n();
-  const [phase, setPhase] = useState<'describe' | 'pay'>('describe');
+  const [phase, setPhase] = useState<'describe' | 'pay' | 'success'>('describe');
   const [category, setCategory] = useState<ItemCategory | null>(null);
   const [itemTitle, setItemTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [recipientSelf, setRecipientSelf] = useState(true);
+  const [recipientName, setRecipientName] = useState('');
   const [certified, setCertified] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -885,7 +968,11 @@ function InstantBookModal({
   const travelerName = displayName(trip.user?.full_name) || t.env_traveler_default_def;
   // Price is fixed by the traveler — sender doesn't negotiate here.
   const price = trip.compensation_min;
- const canPay = !!category && itemTitle.trim().length > 0 && certified;
+ const canPay =
+    !!category &&
+    itemTitle.trim().length > 0 &&
+    (recipientSelf || recipientName.trim().length > 0) &&
+    certified;
 
   async function handleAuthorized(paymentIntentId: string) {
     if (!category) return;
@@ -901,6 +988,7 @@ function InstantBookModal({
         pickup_city: pickupCity,
         destination_country: '',
         destination_city: destinationCity,
+        recipient_name: recipientSelf ? null : recipientName.trim(),
         desired_delivery_date: trip.departure_date,
         budget: price,
         weight_kg: null,
@@ -925,7 +1013,7 @@ function InstantBookModal({
         shipping_request_id: req.id || null,
         initiated_by: 'sender',
       });
-      onSuccess();
+      setPhase('success');
     } catch (e: any) {
       setErr(e?.message ?? t.env_creation_failed);
     } finally {
@@ -952,22 +1040,26 @@ function InstantBookModal({
       >
         <div className="flex items-start justify-between mb-5">
           <div className="flex-1 min-w-0">
-            <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
-              {phase === 'describe' ? t.env_describe_parcel : t.env_confirm_payment}
-            </div>
-            <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
-              {t.env_book_traveler.replace('{name}', travelerName)}
-            </h2>
-            <div className="text-[13px] text-ink-400 mt-1.5">
-              {cityDisplayName(pickupCity, locale)} → {cityDisplayName(destinationCity, locale)} · {formatShortDate(trip.departure_date)}
-              {trip.flight_number && <> · {trip.flight_number}</>}
-            </div>
-            <div className="mt-2 inline-flex items-baseline gap-1.5">
-              <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">{t.env_fixed_price}</span>
-              <span className="text-xl font-extrabold text-ink-600 num-display">
-                {formatEuros(price)}
-              </span>
-            </div>
+            {phase !== 'success' && (
+              <>
+                <div className="text-[11px] font-semibold text-lavender-500 tracking-[0.12em] uppercase mb-2">
+                  {phase === 'describe' ? t.env_describe_parcel : t.env_confirm_payment}
+                </div>
+                <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
+                  {t.env_book_traveler.replace('{name}', travelerName)}
+                </h2>
+                <div className="text-[13px] text-ink-400 mt-1.5">
+                  {cityDisplayName(pickupCity, locale)} → {cityDisplayName(destinationCity, locale)} · {formatShortDate(trip.departure_date)}
+                  {trip.flight_number && <> · {trip.flight_number}</>}
+                </div>
+                <div className="mt-2 inline-flex items-baseline gap-1.5">
+                  <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">{t.env_fixed_price}</span>
+                  <span className="text-xl font-extrabold text-ink-600 num-display">
+                    {formatEuros(price)}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -1032,6 +1124,13 @@ function InstantBookModal({
                 onChange={(e) => setDescription(e.target.value)}
               />
 
+              <RecipientPicker
+                self={recipientSelf}
+                name={recipientName}
+                onSelfChange={setRecipientSelf}
+                onNameChange={setRecipientName}
+              />
+
               {category === 'otc' && (
                 <div className="bg-butter-50 border border-butter-200 rounded-xl px-4 py-3">
                   <p className="text-[12px] text-ink-600 leading-relaxed flex items-start gap-2">
@@ -1068,7 +1167,7 @@ function InstantBookModal({
                 </Button>
               </div>
             </motion.div>
-          ) : (
+          ) : phase === 'pay' ? (
             <motion.div
               key="pay"
               initial={{ opacity: 0, x: 8 }}
@@ -1087,6 +1186,28 @@ function InstantBookModal({
                 onAuthorized={handleAuthorized}
                 onCancel={() => setPhase('describe')}
               />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-center py-4"
+            >
+              <div className="w-14 h-14 rounded-full bg-mint-500 mx-auto flex items-center justify-center mb-5">
+                <CheckCircle2 className="w-7 h-7 text-white" strokeWidth={2.5} />
+              </div>
+              <h3 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
+                {t.pay_success_title}
+              </h3>
+              <p className="text-[15px] text-ink-400 mb-7 leading-relaxed">
+                {t.pay_success_text}
+              </p>
+              <Button fullWidth onClick={onSuccess}>
+                {t.pay_success_cta}
+              </Button>
             </motion.div>
           )}
         </AnimatePresence>

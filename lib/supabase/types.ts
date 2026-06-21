@@ -81,6 +81,9 @@ export interface ShippingRequestRow {
   pickup_city: string;
   destination_country: string;
   destination_city: string;
+  // Who collects the parcel at the destination. null = the sender themselves;
+  // a name = a third party the traveler hands it to.
+  recipient_name: string | null;
   desired_delivery_date: string;
   budget: number;
   weight_kg: number | null;
