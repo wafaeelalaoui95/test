@@ -112,6 +112,7 @@ type IncomingIntent = {
   sender_id: string;
   traveler_trip_id: string | null;
   item_category: string;
+  item_title: string | null;
   item_description: string | null;
   proposed_price: number;
   pickup_city: string;
@@ -1154,6 +1155,7 @@ type TravelerProposal = {
   sender_id: string;
   traveler_trip_id: string | null;
   item_category: string;
+  item_title: string | null;
   item_description: string | null;
   proposed_price: number;
   pickup_city: string;
@@ -1186,6 +1188,7 @@ type MyBooking = {
   sender_id: string;
   traveler_trip_id: string | null;
   item_category: string;
+  item_title: string | null;
   item_description: string | null;
   proposed_price: number;
   pickup_city: string;
