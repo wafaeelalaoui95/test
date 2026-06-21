@@ -88,6 +88,7 @@ export default function EnvoyerPage() {
   // ---- Public-request wizard state (only used in 'public' mode) ----
   const [step, setStep] = useState(0);
   const [category, setCategory] = useState<ItemCategory | null>(null);
+  const [itemTitle, setItemTitle] = useState('');
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState(30);
   const [terms, setTerms] = useState(false);
@@ -150,6 +151,7 @@ export default function EnvoyerPage() {
       setDate(d.date ?? '');
       setStep(d.step ?? 0);
       setCategory(d.category ?? null);
+      setItemTitle(d.itemTitle ?? '');
       setDescription(d.description ?? '');
       setBudget(d.budget ?? 30);
       setTerms(d.terms ?? false);
@@ -168,14 +170,14 @@ export default function EnvoyerPage() {
         JSON.stringify({
           _ts: Date.now(),
           mode, step, fromCity, fromCountry, toCity, toCountry, date,
-          category, description, budget, terms,
+          category, itemTitle, description, budget, terms,
         })
       );
     } catch {
       /* ignore quota / private-mode errors */
     }
   }, [draftRestored, mode, step, fromCity, fromCountry, toCity, toCountry, date,
-      category, description, budget, terms]);
+      category, itemTitle, description, budget, terms]);
 
   // ---- WIZARD canNext (public mode only) ----
   const canNext = () => {
@@ -210,7 +212,7 @@ export default function EnvoyerPage() {
     try {
       await browser.createShippingRequest({
         user_id: user.id,
-        item_title: null,
+        item_title: itemTitle.trim() || null,
         item_category: category,
         item_description: description,
         pickup_country: fromCountry,
@@ -637,8 +639,15 @@ export default function EnvoyerPage() {
                     </motion.div>
                   )}
 
+                  <Input
+                    label={t.send_item_name_label}
+                    placeholder={t.send_item_name_placeholder}
+                    value={itemTitle}
+                    onChange={(e) => setItemTitle(e.target.value)}
+                    maxLength={60}
+                  />
+
                   <Textarea
-                
                     label={t.send_label_description}
                     placeholder={t.send_placeholder_description}
                     value={description}
@@ -663,22 +672,45 @@ export default function EnvoyerPage() {
                   <div>
                     <div className="flex items-baseline justify-between mb-3">
                       <label className="block text-[14px] font-semibold text-ink-500">{t.send_label_budget}</label>
-                      <span className="text-2xl font-bold text-ink-600 num-display tracking-[-0.02em]">
-                        {budget}{t.common_eur}
-                      </span>
+                      <div className="flex items-baseline text-2xl font-bold text-ink-600 num-display tracking-[-0.02em]">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={budget}
+                          aria-label={t.send_label_budget}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/[^0-9]/g, '');
+                            setBudget(digits === '' ? 0 : Math.min(Number(digits), 20000));
+                          }}
+                          onBlur={() => setBudget((b) => Math.max(10, Math.min(b, 20000)))}
+                          style={{ width: `${String(budget).length + 0.5}ch` }}
+                          className="bg-transparent text-end outline-none focus:text-mint-700"
+                        />
+                        <span>{t.common_eur}</span>
+                      </div>
                     </div>
                     <input
                       type="range"
                       min={10}
-                      max={80}
-                      value={budget}
+                      max={100}
+                      step={5}
+                      value={Math.min(budget, 100)}
                       onChange={(e) => setBudget(Number(e.target.value))}
                       className="w-full h-1.5 bg-ink-100 rounded-full appearance-none accent-ink-500"
                     />
                     <div className="flex justify-between text-[12px] text-ink-300 mt-2">
                       <span>10{t.common_eur}</span>
-                      <span>80{t.common_eur}</span>
+                      <span>100{t.common_eur}+</span>
                     </div>
+                    {budget > 100 && (
+                      <p className="flex items-start gap-2 text-[13px] text-butter-700 bg-butter-50 border border-butter-200 rounded-xl px-3.5 py-2.5 mt-4 leading-relaxed">
+                        <span className="flex-shrink-0">💡</span>
+                        <span>{t.send_budget_hint_high}</span>
+                      </p>
+                    )}
+                    {budget < 50 && (
+                      <p className="text-[13px] text-ink-400 mt-4 leading-relaxed">{t.send_budget_hint_low}</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -843,6 +875,7 @@ function InstantBookModal({
   const { t, locale } = useI18n();
   const [phase, setPhase] = useState<'describe' | 'pay'>('describe');
   const [category, setCategory] = useState<ItemCategory | null>(null);
+  const [itemTitle, setItemTitle] = useState('');
   const [description, setDescription] = useState('');
   const [certified, setCertified] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -860,7 +893,7 @@ function InstantBookModal({
     try {
       const req = await browser.createShippingRequest({
         user_id: senderId,
-        item_title: null,
+        item_title: itemTitle.trim() || null,
         item_category: category,
         item_description: description,
         pickup_country: '',
@@ -880,6 +913,7 @@ function InstantBookModal({
         traveler_trip_id: trip.id,
         traveler_user_id: trip.user_id,
         item_category: category,
+        item_title: itemTitle.trim() || null,
         item_description: description,
         proposed_price: price,
         pickup_city: pickupCity,
@@ -982,7 +1016,15 @@ function InstantBookModal({
                 </div>
               </div>
 
-            <Textarea
+              <Input
+                label={t.send_item_name_label}
+                placeholder={t.send_item_name_placeholder}
+                value={itemTitle}
+                onChange={(e) => setItemTitle(e.target.value)}
+                maxLength={60}
+              />
+
+              <Textarea
                 label={t.env_description_label}
                 placeholder={t.env_description_placeholder}
                 value={description}

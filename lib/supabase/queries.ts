@@ -1004,6 +1004,7 @@ export type BookingIntentInput = {
   sender_id: string;
   traveler_trip_id: string | null;
   item_category: string;
+  item_title?: string | null;
   item_description?: string | null;
   proposed_price: number;
   pickup_city: string;
@@ -1029,6 +1030,7 @@ export async function createBookingIntent(
           sender_id: input.sender_id,
           traveler_trip_id: input.traveler_trip_id,
           item_category: input.item_category,
+          item_title: input.item_title ?? null,
           item_description: input.item_description ?? null,
           proposed_price: input.proposed_price,
           pickup_city: input.pickup_city,
@@ -1075,6 +1077,7 @@ export type BookingIntentRow = {
   sender_id: string;
   traveler_trip_id: string | null;
   item_category: string;
+  item_title: string | null;
   item_description: string | null;
   proposed_price: number;
   pickup_city: string;

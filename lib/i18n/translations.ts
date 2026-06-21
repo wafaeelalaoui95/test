@@ -270,6 +270,8 @@ export type Translations = {
   send_placeholder_to: string;
   send_label_date: string;
   send_item_title: string;
+  send_item_name_label: string;
+  send_item_name_placeholder: string;
   send_label_description: string;
   send_placeholder_description: string;
   send_prescription_required: string;
@@ -278,6 +280,8 @@ export type Translations = {
   send_details_title: string;
   send_label_urgency: string;
   send_label_budget: string;
+  send_budget_hint_low: string;
+  send_budget_hint_high: string;
   send_confirm_title: string;
   send_recap_route: string;
   send_recap_date: string;
@@ -1369,6 +1373,8 @@ export const translations: Record<Locale, Translations> = {
     send_placeholder_to: 'Choisir la ville d\'arrivée',
     send_label_date: 'Date souhaitée',
     send_item_title: 'Qu\'envoyez-vous ?',
+    send_item_name_label: 'Intitulé du colis',
+    send_item_name_placeholder: 'Ex : clé de ma maison, acte de naissance, médicaments…',
     send_label_description: 'Description',
     send_placeholder_description: 'Ex: acte de naissance, dans une enveloppe scellée',
     send_prescription_required: 'Ordonnance obligatoire',
@@ -1377,6 +1383,8 @@ export const translations: Record<Locale, Translations> = {
     send_details_title: 'Quand et combien ?',
     send_label_urgency: 'Urgence',
     send_label_budget: 'Budget proposé',
+    send_budget_hint_low: 'Les voyageurs acceptent en général les colis à partir de 50 €. Vous restez libre de proposer le montant de votre choix.',
+    send_budget_hint_high: 'Les demandes acceptées tournent en général autour de 50–100 € maximum.',
     send_confirm_title: 'Tout est bon ?',
     send_recap_route: 'Trajet',
     send_recap_date: 'Date',
@@ -2454,6 +2462,8 @@ export const translations: Record<Locale, Translations> = {
     send_placeholder_to: 'Pick arrival city',
     send_label_date: 'Preferred date',
     send_item_title: 'What are you sending?',
+    send_item_name_label: 'Parcel title',
+    send_item_name_placeholder: 'E.g. my house key, birth certificate, medication…',
     send_label_description: 'Description',
     send_placeholder_description: 'E.g. birth certificate, in a sealed envelope',
     send_prescription_required: 'Prescription required',
@@ -2462,6 +2472,8 @@ export const translations: Record<Locale, Translations> = {
     send_details_title: 'When and how much?',
     send_label_urgency: 'Urgency',
     send_label_budget: 'Proposed budget',
+    send_budget_hint_low: 'Travelers usually accept packages from €50 and up. You\'re still free to offer whatever amount you like.',
+    send_budget_hint_high: 'Accepted requests are generally around €50–100 at most.',
     send_confirm_title: 'All good?',
     send_recap_route: 'Route',
     send_recap_date: 'Date',

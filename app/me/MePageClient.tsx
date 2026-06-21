@@ -3086,28 +3086,33 @@ function SendListRow({
   const travelerName = shortName(booking.traveler_profile?.full_name) || t.me2_role_traveler;
   const bucket = bucketForSendBooking(booking);
 
-  let subtitle = '';
+  // Status line (without the route — the route is prepended below).
+  let statusText = '';
   if (bucket === 'todo' && booking.status === 'pending') {
-    subtitle = `${t.me2_sub_proposes.replace('{name}', travelerName)} · ${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`;
+    statusText = t.me2_sub_proposes.replace('{name}', travelerName);
   } else if (bucket === 'todo' && booking.delivery_proof_url) {
-    subtitle = `📸 ${t.me2_sub_delivered_by.replace('{name}', travelerName)} · ${t.me2_sub_to_confirm}`;
+    statusText = `📸 ${t.me2_sub_delivered_by.replace('{name}', travelerName)} · ${t.me2_sub_to_confirm}`;
   } else if (bucket === 'inProgress' && booking.status === 'confirmed') {
-    subtitle = `${travelerName} · ${t.me2_sub_in_transit}`;
+    statusText = `${travelerName} · ${t.me2_sub_in_transit}`;
   } else if (bucket === 'inProgress') {
-    subtitle = t.me2_sub_waiting_for.replace('{name}', travelerName);
+    statusText = t.me2_sub_waiting_for.replace('{name}', travelerName);
   } else if (bucket === 'delivered') {
-    subtitle = t.me2_sub_delivered_by.replace('{name}', travelerName);
+    statusText = t.me2_sub_delivered_by.replace('{name}', travelerName);
   } else {
-    subtitle = t.me2_sub_cancelled;
+    statusText = t.me2_sub_cancelled;
   }
+
+  const route = `${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`;
+  // Show the parcel's title (what it is) as the headline; route + status below.
+  const title = booking.item_title || (cat ? t[cat.labelKey] : '') || route;
 
   return (
     <ListRow
       selected={selected}
       onClick={onClick}
       emoji={emoji}
-      title={`${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`}
-      subtitle={subtitle}
+      title={title}
+      subtitle={`${route} · ${statusText}`}
       rightLabel={formatEuros(booking.proposed_price)}
       dotClass={tone === 'urgent' ? 'bg-butter-500' : undefined}
     />
@@ -3126,13 +3131,15 @@ function RequestListRow({
 }) {
   const { t, locale } = useI18n();
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  const route = `${cityDisplayName(request.pickup_city, locale)} → ${cityDisplayName(request.destination_city, locale)}`;
+  const title = request.item_title || (cat ? t[cat.labelKey] : '') || route;
   return (
     <ListRow
       selected={selected}
       onClick={onClick}
       emoji={cat?.icon ?? '📦'}
-      title={`${cityDisplayName(request.pickup_city, locale)} → ${cityDisplayName(request.destination_city, locale)}`}
-      subtitle={t.me2_before_date.replace('{date}', formatShortDate(request.desired_delivery_date))}
+      title={title}
+      subtitle={`${route} · ${t.me2_before_date.replace('{date}', formatShortDate(request.desired_delivery_date))}`}
       rightLabel={formatEuros(request.budget)}
     />
   );
