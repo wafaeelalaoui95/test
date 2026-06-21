@@ -140,18 +140,36 @@ export default function HomePage() {
   }
 
   const filteredTrips = useMemo(() => {
-    return trips.filter((tv) => {
+    const cityHit = (city: string, q: string) => city.toLowerCase().includes(q.toLowerCase());
+    // A side matches if the exact city matches OR (broaden) the row is in the
+    // searched country. So "Paris → Tunis" also surfaces other France→Tunisia
+    // trips instead of only the exact city pair.
+    const depExact = (tv: TripWithProfile) => !activeFrom || cityHit(tv.departure_city, activeFrom);
+    const arrExact = (tv: TripWithProfile) => !activeTo || cityHit(tv.arrival_city, activeTo);
+    const out = trips.filter((tv) => {
       // Hide the user's own trips — they're not going to book themselves.
       // Anonymous users see everything (user is null).
       if (user && tv.user_id === user.id) return false;
-      if (activeFrom && !tv.departure_city.toLowerCase().includes(activeFrom.toLowerCase())) return false;
-      if (!activeFrom && activeFromCountry && !cityInCountry(tv.departure_country, tv.departure_city, activeFromCountry)) return false;
-      if (activeTo && !tv.arrival_city.toLowerCase().includes(activeTo.toLowerCase())) return false;
-      if (!activeTo && activeToCountry && !cityInCountry(tv.arrival_country, tv.arrival_city, activeToCountry)) return false;
+      const depOk =
+        (!activeFrom && !activeFromCountry) ||
+        depExact(tv) ||
+        (!!activeFromCountry && cityInCountry(tv.departure_country, tv.departure_city, activeFromCountry));
+      if (!depOk) return false;
+      const arrOk =
+        (!activeTo && !activeToCountry) ||
+        arrExact(tv) ||
+        (!!activeToCountry && cityInCountry(tv.arrival_country, tv.arrival_city, activeToCountry));
+      if (!arrOk) return false;
       if (activeDate && tv.departure_date > activeDate) return false;
       if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
       if (verifiedOnly && tv.profile?.verification_level !== 'id_verified' && tv.profile?.verification_level !== 'trusted') return false;
       return true;
+    });
+    // Exact city matches first, broadened (country-level) ones after.
+    return out.sort((a, b) => {
+      const ra = depExact(a) && arrExact(a) ? 0 : 1;
+      const rb = depExact(b) && arrExact(b) ? 0 : 1;
+      return ra - rb;
     });
   }, [trips, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget, verifiedOnly]);
 
@@ -164,16 +182,30 @@ export default function HomePage() {
   //     wants requests that pay at least the entered amount)
   //   - verified filter is symmetric: check the SENDER's verification
   const filteredRequests = useMemo(() => {
-    return requests.filter((r) => {
+    const cityHit = (city: string, q: string) => city.toLowerCase().includes(q.toLowerCase());
+    const depExact = (r: RequestWithProfile) => !activeFrom || cityHit(r.pickup_city, activeFrom);
+    const arrExact = (r: RequestWithProfile) => !activeTo || cityHit(r.destination_city, activeTo);
+    const out = requests.filter((r) => {
       if (user && r.user_id === user.id) return false;
-      if (activeFrom && !r.pickup_city.toLowerCase().includes(activeFrom.toLowerCase())) return false;
-      if (!activeFrom && activeFromCountry && !cityInCountry(r.pickup_country, r.pickup_city, activeFromCountry)) return false;
-      if (activeTo && !r.destination_city.toLowerCase().includes(activeTo.toLowerCase())) return false;
-      if (!activeTo && activeToCountry && !cityInCountry(r.destination_country, r.destination_city, activeToCountry)) return false;
+      const depOk =
+        (!activeFrom && !activeFromCountry) ||
+        depExact(r) ||
+        (!!activeFromCountry && cityInCountry(r.pickup_country, r.pickup_city, activeFromCountry));
+      if (!depOk) return false;
+      const arrOk =
+        (!activeTo && !activeToCountry) ||
+        arrExact(r) ||
+        (!!activeToCountry && cityInCountry(r.destination_country, r.destination_city, activeToCountry));
+      if (!arrOk) return false;
       if (activeDate && r.desired_delivery_date < activeDate) return false;
       if (maxBudget !== '' && r.budget < Number(maxBudget)) return false;
       if (verifiedOnly && r.profile?.verification_level !== 'id_verified' && r.profile?.verification_level !== 'trusted') return false;
       return true;
+    });
+    return out.sort((a, b) => {
+      const ra = depExact(a) && arrExact(a) ? 0 : 1;
+      const rb = depExact(b) && arrExact(b) ? 0 : 1;
+      return ra - rb;
     });
   }, [requests, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget, verifiedOnly]);
 
