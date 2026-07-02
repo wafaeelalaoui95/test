@@ -2510,17 +2510,19 @@ function ProposalPaymentModal({
     setBusy(true);
     setErr(null);
     try {
-      // Persist the authorisation on the booking_intent row.
-      // We also flip status to 'confirmed' so both sides see the green light.
-      const { error: updErr } = await getBrowserClient()
-        .from('booking_intents')
-        .update({
-          status: 'confirmed',
-          payment_intent_id: paymentIntentId,
-          payment_status: 'authorized',
-        })
-        .eq('id', booking.id);
-      if (updErr) throw updErr;
+      // Record the authorisation server-side: it verifies the PaymentIntent
+      // with Stripe and writes the money columns (status/payment_status/
+      // payment_amount) with the service-role client. The browser is not
+      // allowed to write those columns directly.
+      const res = await fetch('/api/booking/record-authorization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingIntentId: booking.id, paymentIntentId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? t.me2_update_failed);
+      }
       setPaidIntentId(paymentIntentId);
     } catch (e: any) {
       setErr(e?.message ?? t.me2_update_failed);
