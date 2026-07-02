@@ -742,7 +742,11 @@ export async function markAllNotificationsRead(
 // ============================================================================
 
 export function generateConfirmationCode(): string {
-  const n = Math.floor(Math.random() * 1_000_000);
+  // Cryptographically-strong: these 6-digit codes gate pickup/delivery (and
+  // thus payment capture), so they must not be predictable like Math.random.
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  const n = arr[0] % 1_000_000;
   return n.toString().padStart(6, '0');
 }
 

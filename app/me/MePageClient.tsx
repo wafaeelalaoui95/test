@@ -41,7 +41,6 @@ import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
 import { ViewProofButton, ProofThumbnail } from '@/components/ImageLightbox';
-import { BookingTimeline, deriveTimelineStep } from '@/components/BookingTimeline';
 // Reviews — mutual star-rating between sender and traveler once received_confirmed_at is set.
 import { ReviewModal } from '@/components/ReviewModal';
 import type { ReviewForBooking } from '@/lib/supabase/queries';
