@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
-import { getServerClient } from '@/lib/supabase/server';
+import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/stripe/capture
@@ -99,8 +99,9 @@ export async function POST(req: NextRequest) {
     const captured = await stripe.paymentIntents.capture(body.paymentIntentId);
 
     // Mirror the Stripe status into our DB so the UI sees it immediately
-    // without waiting for the webhook.
-    const { error: updateErr } = await supabase
+    // without waiting for the webhook. Written with the service-role client:
+    // the money columns are not client-writable (RLS), so the server owns them.
+    const { error: updateErr } = await getAdminClient()
       .from('booking_intents')
       .update({ payment_status: 'captured' })
       .eq('id', body.bookingIntentId);

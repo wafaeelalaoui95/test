@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import type { Database } from './types';
 import { getSupabaseEnv } from './env';
@@ -32,5 +33,27 @@ export function getServerClient() {
         }
       },
     },
+  });
+}
+
+/**
+ * Service-role Supabase client. Bypasses RLS — use ONLY in trusted server
+ * route handlers, and ONLY after you've authenticated + authorised the caller
+ * yourself. This is how money-state columns on `booking_intents`
+ * (payment_status, payment_amount, pickup_confirmed_at, received_confirmed_at)
+ * are written: the client role is denied write access to them (see the SQL
+ * migration), so the server is the single source of truth.
+ *
+ * Never import this into client components — it needs SUPABASE_SERVICE_ROLE_KEY
+ * which must never reach the browser.
+ */
+export function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error('getAdminClient: missing SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL');
+  }
+  return createClient<Database>(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
   });
 }

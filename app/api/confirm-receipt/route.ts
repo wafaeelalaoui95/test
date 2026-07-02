@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
-import { getServerClient } from '@/lib/supabase/server';
+import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/confirm-receipt
@@ -71,7 +71,8 @@ export async function POST(req: NextRequest) {
   // ===== STEP 1: mark received_confirmed_at =====
   // Idempotent: if it's already set, we don't overwrite the timestamp.
   if (!intent.received_confirmed_at) {
-    const { error: updateErr } = await supabase
+    // Money-flow columns are service-role-only (RLS); write via admin client.
+    const { error: updateErr } = await getAdminClient()
       .from('booking_intents')
       .update({ received_confirmed_at: new Date().toISOString() })
       .eq('id', body.bookingIntentId);
@@ -108,8 +109,8 @@ export async function POST(req: NextRequest) {
     const captured = await stripe.paymentIntents.capture(intent.payment_intent_id);
 
     // Mirror the new status into our DB so the wallet picks it up
-    // immediately, without waiting for the webhook.
-    const { error: statusErr } = await supabase
+    // immediately, without waiting for the webhook. Service-role write.
+    const { error: statusErr } = await getAdminClient()
       .from('booking_intents')
       .update({ payment_status: 'captured' })
       .eq('id', body.bookingIntentId);

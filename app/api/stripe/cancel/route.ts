@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
-import { getServerClient } from '@/lib/supabase/server';
+import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/stripe/cancel
@@ -78,7 +78,8 @@ export async function POST(req: NextRequest) {
   const stripe = getStripe();
   try {
     await stripe.paymentIntents.cancel(body.paymentIntentId);
-    await supabase
+    // Money column → service-role write (not client-writable under RLS).
+    await getAdminClient()
       .from('booking_intents')
       .update({ payment_status: 'canceled' })
       .eq('id', body.bookingIntentId);
