@@ -650,11 +650,13 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
         )}
 
         <div className="flex items-center justify-between pt-4 border-t border-ink-50/60 mt-auto">
-          {trip.profile?.verification_level ? (
-            <VerificationBadge level={trip.profile.verification_level} />
-          ) : (
-            <span />
-          )}
+          {/* Always render the slot so the price stays right-aligned, even
+              when there's no badge to show (baseline email-only accounts). */}
+          <span>
+            {trip.profile?.verification_level && (
+              <VerificationBadge level={trip.profile.verification_level} />
+            )}
+          </span>
           <div className="text-end">
             <div className="text-[11px] text-ink-300 tracking-[0.04em] uppercase">{t.disc_price_from}</div>
             <div className="font-bold text-ink-600 text-[18px] num-display tracking-[-0.015em]">
@@ -813,11 +815,11 @@ function RequestCard({
       {/* Footer: verification + price + CTA */}
       <div className="space-y-3 pt-4 border-t border-ink-50/60 mt-auto">
         <div className="flex items-center justify-between">
-          {request.profile?.verification_level ? (
-            <VerificationBadge level={request.profile.verification_level} />
-          ) : (
-            <span />
-          )}
+          <span>
+            {request.profile?.verification_level && (
+              <VerificationBadge level={request.profile.verification_level} />
+            )}
+          </span>
           <div className="text-end">
             <div className="text-[11px] text-ink-300 tracking-[0.04em] uppercase">{t.disc_you_receive}</div>
             <div className="font-bold text-mint-600 text-[18px] num-display tracking-[-0.015em]">

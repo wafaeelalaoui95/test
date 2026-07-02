@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { ShieldCheck, Mail, ShieldQuestion, BadgeCheck } from 'lucide-react';
+import { ShieldCheck, BadgeCheck } from 'lucide-react';
 import type { VerificationLevel } from '@/lib/types';
 import { useI18n } from '@/lib/i18n/context';
 
@@ -52,17 +52,10 @@ export function VerificationBadge({ level }: { level: VerificationLevel }) {
           {t.verif_id}
         </Badge>
       );
-    case 'email':
-      return (
-        <Badge variant="butter" icon={<Mail className="h-3.5 w-3.5" strokeWidth={2.5} />}>
-          {t.verif_email}
-        </Badge>
-      );
+    // 'email' is the baseline every account has, so it carries no trust signal
+    // worth showing — render nothing rather than a weak "Email confirmed"
+    // badge. Same for any unknown/none level.
     default:
-      return (
-        <Badge variant="ink" icon={<ShieldQuestion className="h-3.5 w-3.5" strokeWidth={2.5} />}>
-          {t.verif_none}
-        </Badge>
-      );
+      return null;
   }
 }
