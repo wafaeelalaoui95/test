@@ -44,6 +44,24 @@ export type Translations = {
   login_session_reset_text: string;
   login_submit: string;
   login_reset_link: string;
+  login_forgot: string;
+  login_error_auth: string;
+  notfound_title: string;
+  notfound_text: string;
+  notfound_home: string;
+  error_title: string;
+  error_text: string;
+  error_retry: string;
+  reset_title: string;
+  reset_subtitle: string;
+  reset_submit: string;
+  reset_sent: string;
+  reset_new_title: string;
+  reset_new_subtitle: string;
+  reset_new_submit: string;
+  reset_updated: string;
+  reset_back_login: string;
+  reset_error_generic: string;
   signup_name_placeholder: string;
   sec_wallet_withdraw_subject: string;
   footer_allowed_items: string;
@@ -1166,6 +1184,24 @@ export const translations: Record<Locale, Translations> = {
     login_session_reset_text: 'Reconnectez-vous pour continuer.',
     login_submit: 'Se connecter',
     login_reset_link: 'Problème de connexion ? Réinitialiser',
+    login_forgot: 'Mot de passe oublié ?',
+    login_error_auth: 'Le lien de connexion est invalide ou expiré. Merci de te reconnecter.',
+    notfound_title: 'Page introuvable',
+    notfound_text: 'Cette page n\'existe pas ou a été déplacée.',
+    notfound_home: 'Retour à l\'accueil',
+    error_title: 'Une erreur est survenue',
+    error_text: 'Un problème inattendu s\'est produit. Réessaie, ou reviens à l\'accueil.',
+    error_retry: 'Réessayer',
+    reset_title: 'Mot de passe oublié',
+    reset_subtitle: 'Entre ton email : on t\'envoie un lien pour le réinitialiser.',
+    reset_submit: 'Envoyer le lien',
+    reset_sent: 'Si un compte existe pour cet email, un lien de réinitialisation vient d\'être envoyé. Vérifie ta boîte de réception.',
+    reset_new_title: 'Nouveau mot de passe',
+    reset_new_subtitle: 'Choisis un nouveau mot de passe pour ton compte.',
+    reset_new_submit: 'Mettre à jour le mot de passe',
+    reset_updated: 'Mot de passe mis à jour. Tu peux te connecter.',
+    reset_back_login: 'Retour à la connexion',
+    reset_error_generic: 'Impossible de traiter la demande. Réessaie.',
     signup_name_placeholder: 'Salma El Amrani',
     sec_wallet_withdraw_subject: 'Retrait de mes gains',
     footer_allowed_items: 'Objets autorisés',
@@ -2272,6 +2308,24 @@ export const translations: Record<Locale, Translations> = {
     login_session_reset_text: 'Sign back in to continue.',
     login_submit: 'Sign in',
     login_reset_link: 'Trouble signing in? Reset',
+    login_forgot: 'Forgot password?',
+    login_error_auth: 'That sign-in link is invalid or has expired. Please sign in again.',
+    notfound_title: 'Page not found',
+    notfound_text: 'This page doesn\'t exist or has moved.',
+    notfound_home: 'Back home',
+    error_title: 'Something went wrong',
+    error_text: 'An unexpected error occurred. Try again, or head back home.',
+    error_retry: 'Try again',
+    reset_title: 'Forgot password',
+    reset_subtitle: 'Enter your email and we\'ll send you a reset link.',
+    reset_submit: 'Send reset link',
+    reset_sent: 'If an account exists for this email, a reset link is on its way. Check your inbox.',
+    reset_new_title: 'New password',
+    reset_new_subtitle: 'Choose a new password for your account.',
+    reset_new_submit: 'Update password',
+    reset_updated: 'Password updated. You can sign in now.',
+    reset_back_login: 'Back to sign in',
+    reset_error_generic: 'Could not process the request. Please try again.',
     signup_name_placeholder: 'Jane Doe',
     sec_wallet_withdraw_subject: 'Withdrawal of my earnings',
     footer_allowed_items: 'Allowed items',

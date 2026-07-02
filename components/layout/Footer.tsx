@@ -46,9 +46,11 @@ export function Footer() {
               {t.footer_community}
             </h4>
             <ul className="space-y-3 text-[14px] text-ink-400">
-              <li className="hover:text-ink-600 transition-colors cursor-pointer">Instagram</li>
-              <li className="hover:text-ink-600 transition-colors cursor-pointer">Newsletter</li>
-              <li className="hover:text-ink-600 transition-colors cursor-pointer">Contact</li>
+              <li>
+                <a href="mailto:hello@jibly.com" className="hover:text-ink-600 transition-colors">
+                  Contact
+                </a>
+              </li>
             </ul>
           </div>
         </div>

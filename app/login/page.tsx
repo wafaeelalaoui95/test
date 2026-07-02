@@ -16,6 +16,8 @@ function LoginInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next') || '/me';
   const recovered = searchParams.get('recovered') === '1';
+  // Surfaced when an expired/invalid magic or recovery link bounces here.
+  const authError = searchParams.get('error') === 'auth';
   const { t } = useI18n();
 
   const [email, setEmail] = useState('');
@@ -68,6 +70,12 @@ function LoginInner() {
           </div>
         )}
 
+        {authError && (
+          <div className="mb-6 rounded-xl bg-blush-50 border border-blush-200/60 px-4 py-3 text-[13px] text-blush-500 leading-relaxed">
+            {t.login_error_auth}
+          </div>
+        )}
+
         <form onSubmit={handleSignIn} className="space-y-4">
           <Input
             type="email"
@@ -87,6 +95,15 @@ function LoginInner() {
             required
             minLength={6}
           />
+
+          <div className="text-end -mt-1">
+            <Link
+              href="/reset-password"
+              className="text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
+            >
+              {t.login_forgot}
+            </Link>
+          </div>
 
           {error && (
             <div className="rounded-xl bg-blush-50 px-4 py-3 text-[14px] text-blush-500">
