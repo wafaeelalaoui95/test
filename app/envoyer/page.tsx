@@ -24,7 +24,7 @@ import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES } from '@/lib/constants';
-import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
+import { formatShortDate, displayName, nameInitial, formatEuros, priceBreakdown } from '@/lib/utils';
 import { countryDisplayName, cityDisplayName } from '@/lib/countries';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
@@ -915,7 +915,7 @@ function TripBookableCard({
             )}
             <span className="text-ink-300">·</span>
             <span className="font-semibold text-ink-600 num-display">
-              {formatEuros(trip.compensation_min)}
+              {formatEuros(priceBreakdown(trip.compensation_min).total)}
             </span>
           </div>
           <div className="text-[11px] text-ink-300 mt-0.5">
@@ -966,8 +966,12 @@ function InstantBookModal({
   const [err, setErr] = useState<string | null>(null);
 
   const travelerName = displayName(trip.user?.full_name) || t.env_traveler_default_def;
-  // Price is fixed by the traveler — sender doesn't negotiate here.
-  const price = trip.compensation_min;
+  // The traveler sets their compensation; the sender pays that + the Jibly
+  // fee on top (same model as the profile-booking flow). `price` is the TOTAL
+  // the sender is charged, stored as proposed_price so the wallet (which nets
+  // out the fee) stays consistent.
+  const breakdown = priceBreakdown(trip.compensation_min);
+  const price = breakdown.total;
  const canPay =
     !!category &&
     itemTitle.trim().length > 0 &&
@@ -1052,11 +1056,16 @@ function InstantBookModal({
                   {cityDisplayName(pickupCity, locale)} → {cityDisplayName(destinationCity, locale)} · {formatShortDate(trip.departure_date)}
                   {trip.flight_number && <> · {trip.flight_number}</>}
                 </div>
-                <div className="mt-2 inline-flex items-baseline gap-1.5">
-                  <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">{t.env_fixed_price}</span>
-                  <span className="text-xl font-extrabold text-ink-600 num-display">
-                    {formatEuros(price)}
-                  </span>
+                <div className="mt-2">
+                  <div className="inline-flex items-baseline gap-1.5">
+                    <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">{t.prof_total}</span>
+                    <span className="text-xl font-extrabold text-ink-600 num-display">
+                      {formatEuros(breakdown.total)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-ink-400 mt-0.5 num-display">
+                    {t.prof_traveler_compensation}: {formatEuros(breakdown.traveler)} · {t.prof_jibly_protection_fee}: {formatEuros(breakdown.fees)}
+                  </div>
                 </div>
               </>
             )}
