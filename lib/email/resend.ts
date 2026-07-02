@@ -15,4 +15,4 @@ export function getResend(): Resend {
 }
 
 // Default sender for all transactional emails. Override via env if needed.
-export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Jibly <hello@jibly.com>';
+export const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Jibly <hello@jibly.io>';

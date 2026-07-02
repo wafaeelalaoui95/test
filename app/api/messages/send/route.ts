@@ -179,7 +179,7 @@ async function sendNotificationEmail(params: {
     // where the modal will reopen via the URL hash. We pass the
     // booking id so the dashboard can open the matching chat modal.
     const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL || 'https://jibly.com';
+      process.env.NEXT_PUBLIC_APP_URL || 'https://jibly.io';
     const link = `${baseUrl}/me?chat=${bookingIntentId}`;
 
     const resend = getResend();
