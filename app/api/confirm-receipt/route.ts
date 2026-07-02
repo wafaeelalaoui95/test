@@ -4,7 +4,7 @@ import { getStripe } from '@/lib/stripe/server';
 import { getServerClient } from '@/lib/supabase/server';
 
 /**
- * POST /api/booking/confirm-receipt
+ * POST /api/confirm-receipt
  * Body: { bookingIntentId: string }
  *
  * Called when the sender clicks "J'ai bien reçu" on /me. This is the

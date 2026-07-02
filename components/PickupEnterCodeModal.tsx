@@ -24,7 +24,7 @@ import { useI18n } from '@/lib/i18n/context';
  *   3. Traveler reads them the delivery code (from PickupShowCodeModal)
  *   4. Sender enters it here
  *   5. We call confirmDeliveryWithCode → DB verifies + parent triggers
- *      the existing /api/booking/confirm-receipt to capture Stripe.
+ *      the existing /api/confirm-receipt to capture Stripe.
  *
  * The two modes share UI but call DIFFERENT verification functions:
  *   pickup   → confirmPickupWithCode   (validates against `pickup_code`)

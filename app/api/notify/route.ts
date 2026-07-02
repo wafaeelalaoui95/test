@@ -15,6 +15,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServerClient } from '@/lib/supabase/server';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
 import {
   senderGotProposalEmail,
@@ -38,6 +39,15 @@ export async function POST(req: Request) {
     const body = (await req.json()) as NotifyPayload;
     if (!body?.event || !body?.bookingId) {
       return NextResponse.json({ ok: false, reason: 'missing_fields' });
+    }
+
+    // The caller must be authenticated. This endpoint reads private emails
+    // and (for confirmation events) embeds pickup/delivery codes, so it must
+    // never be triggerable by an anonymous request guessing a bookingId.
+    const authClient = getServerClient();
+    const { data: { user } } = await authClient.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ ok: false, reason: 'unauthorized' }, { status: 401 });
     }
 
     // Use the service-role key for this internal call. The API key is
@@ -74,6 +84,12 @@ export async function POST(req: Request) {
 
     if (!travelerId) {
       return NextResponse.json({ ok: false, reason: 'no_traveler' });
+    }
+
+    // Authorisation: the caller must be a party (sender or traveler) of this
+    // booking. Prevents enumerating bookingIds to spam emails or leak codes.
+    if (user.id !== booking.sender_id && user.id !== travelerId) {
+      return NextResponse.json({ ok: false, reason: 'forbidden' }, { status: 403 });
     }
 
     // Fetch both profiles + auth.users emails in one go

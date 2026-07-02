@@ -207,7 +207,7 @@ export default function MyPage(
   //            to mark `pickup_confirmed_at`.
   //   DELIVERY — traveler shows a 6-digit code at drop-off; sender types
   //              it on their side, which we use as the gate before calling
-  //              the existing /api/booking/confirm-receipt route.
+  //              the existing /api/confirm-receipt route.
   // Each modal stays open until the user closes it or the code verifies.
 
   // Sender opens this to SEE the pickup code and read it aloud to the traveler.
@@ -879,7 +879,7 @@ export default function MyPage(
       {/* DELIVERY code — ENTER side (sender types it).
           We pass mode='delivery' so the modal calls confirmDeliveryWithCode
           instead of confirmPickupWithCode. On success → call the existing
-          /api/booking/confirm-receipt route which captures the Stripe
+          /api/confirm-receipt route which captures the Stripe
           authorization and sets received_confirmed_at server-side. We
           ALSO optimistically update local state so the UI doesn't wait
           for a refetch. */}
@@ -895,7 +895,7 @@ export default function MyPage(
           // Code matched. Now capture the Stripe payment via our API.
           // The route is idempotent — safe to call.
           try {
-            const res = await fetch('/api/booking/confirm-receipt', {
+            const res = await fetch('/api/confirm-receipt', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ bookingIntentId: deliveryEnteringFor.bookingId }),
@@ -1349,7 +1349,7 @@ function BookingCard({
           <ViewProofButton url={booking.delivery_proof_url} label={t.me2_view_proof} />
           {/* Reception confirmation by code — sender enters the delivery
               code the traveler/recipient just gave them. Once confirmed,
-              Stripe captures the payment via /api/booking/confirm-receipt. */}
+              Stripe captures the payment via /api/confirm-receipt. */}
           {!isFullyReceived && onEnterDeliveryCode && (
             <button
               type="button"
