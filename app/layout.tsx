@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { CookieConsent } from '@/components/CookieConsent';
 import { I18nProvider } from '@/lib/i18n/context';
 import { AuthProvider } from '@/lib/supabase/auth-provider';
 
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Navbar />
             <main className="relative">{children}</main>
             <Footer />
+            <CookieConsent />
           </AuthProvider>
         </I18nProvider>
       </body>

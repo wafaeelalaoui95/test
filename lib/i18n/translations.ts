@@ -67,6 +67,9 @@ export type Translations = {
   footer_allowed_items: string;
   footer_terms: string;
   footer_privacy: string;
+  cookie_text: string;
+  cookie_accept: string;
+  cookie_more: string;
   pay_security_note: string;
   pay_submitting: string;
   pay_submit: string;
@@ -1208,6 +1211,9 @@ export const translations: Record<Locale, Translations> = {
     footer_allowed_items: 'Objets autorisés',
     footer_terms: 'CGU',
     footer_privacy: 'Confidentialité',
+    cookie_text: 'On utilise des cookies nécessaires au fonctionnement du site et, le cas échéant, à la mesure d\'audience.',
+    cookie_accept: 'J\'accepte',
+    cookie_more: 'En savoir plus',
     pay_security_note: 'Paiement sécurisé par Stripe. Votre carte est autorisée mais pas débitée. Le montant ne sera prélevé que si le voyageur accepte. En cas de refus, l’autorisation est libérée.',
     pay_submitting: 'Confirmation…',
     pay_submit: 'Confirmer le paiement',
@@ -2333,6 +2339,9 @@ export const translations: Record<Locale, Translations> = {
     footer_allowed_items: 'Allowed items',
     footer_terms: 'Terms',
     footer_privacy: 'Privacy',
+    cookie_text: 'We use cookies necessary for the site to work and, where applicable, for analytics.',
+    cookie_accept: 'Accept',
+    cookie_more: 'Learn more',
     pay_security_note: 'Secure payment by Stripe. Your card is authorized but not charged. The amount is only taken if the traveler accepts. If they decline, the authorization is released.',
     pay_submitting: 'Confirming…',
     pay_submit: 'Confirm payment',
