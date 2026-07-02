@@ -26,6 +26,10 @@ import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 
 const schema = z.object({
   bookingIntentId: z.string().uuid(),
+  // The delivery code the traveler reads out at drop-off. Required to release
+  // the payment when the booking has one — this is what makes the handover
+  // gate real (it used to be checked only client-side).
+  code: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -46,26 +50,31 @@ export async function POST(req: NextRequest) {
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
     .select(
-      'id, sender_id, payment_intent_id, payment_status, received_confirmed_at, delivery_proof_url'
+      'id, sender_id, payment_intent_id, payment_status, received_confirmed_at, delivery_proof_url, delivery_code'
     )
     .eq('id', body.bookingIntentId)
     .maybeSingle();
   if (intentErr || !intent) {
-    return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    return NextResponse.json({ ok: false, reason: 'unknown' }, { status: 404 });
   }
 
   // Only the sender of THIS booking can confirm receipt.
   if (intent.sender_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ ok: false, reason: 'not_sender' }, { status: 403 });
   }
 
   // Sanity check: there must be a delivery proof before the sender can
   // claim receipt. Protects against accidental clicks pre-delivery.
   if (!intent.delivery_proof_url) {
-    return NextResponse.json(
-      { error: 'Cannot confirm receipt before delivery proof is uploaded' },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, reason: 'no_proof' }, { status: 400 });
+  }
+
+  // The handover gate: to release payment for the first time, the sender must
+  // present the traveler's delivery code. Enforced here (server-side) so it
+  // can't be bypassed by calling the endpoint directly. Skipped once already
+  // received (idempotent retries).
+  if (!intent.received_confirmed_at && intent.delivery_code && body.code !== intent.delivery_code) {
+    return NextResponse.json({ ok: false, reason: 'invalid_code' }, { status: 400 });
   }
 
   // ===== STEP 1: mark received_confirmed_at =====
@@ -112,7 +121,7 @@ export async function POST(req: NextRequest) {
     // immediately, without waiting for the webhook. Service-role write.
     const { error: statusErr } = await getAdminClient()
       .from('booking_intents')
-      .update({ payment_status: 'captured' })
+      .update({ payment_status: 'captured', payment_amount: captured.amount })
       .eq('id', body.bookingIntentId);
 
     if (statusErr) {

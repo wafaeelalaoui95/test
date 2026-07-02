@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     // the money columns are not client-writable (RLS), so the server owns them.
     const { error: updateErr } = await getAdminClient()
       .from('booking_intents')
-      .update({ payment_status: 'captured' })
+      .update({ payment_status: 'captured', payment_amount: captured.amount })
       .eq('id', body.bookingIntentId);
 
     if (updateErr) {

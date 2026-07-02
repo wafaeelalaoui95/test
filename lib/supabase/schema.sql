@@ -465,6 +465,41 @@ create policy "booking_intents_update_parties" on public.booking_intents
     )
   );
 
+-- ----------------------------------------------------------------------------
+-- Money-column lockdown (added post-audit). The server (service-role, via the
+-- app/api routes) is the single source of truth for payment_status,
+-- payment_amount and the handover timestamps. Clients may INSERT a booking in
+-- an 'unpaid'/'authorized' state but may NOT update these columns, and may not
+-- insert an already-captured or pre-confirmed row. Writes happen through
+-- getAdminClient() in app/api/stripe/*, /api/confirm-receipt, /api/booking/*.
+-- ----------------------------------------------------------------------------
+revoke update (payment_status, payment_amount, pickup_confirmed_at, pickup_confirmed_by, received_confirmed_at)
+  on public.booking_intents from authenticated, anon;
+
+create or replace function public.booking_intents_guard_money()
+returns trigger language plpgsql as $$
+begin
+  -- Our server routes use the service-role key and may write anything.
+  if coalesce(auth.role(), '') = 'service_role' then
+    return new;
+  end if;
+  -- Clients can only create bookings pre-payment or authorised — never
+  -- already captured, and never pre-confirmed.
+  if new.payment_status not in ('unpaid', 'authorized') then
+    raise exception 'payment_status % not allowed on client insert', new.payment_status;
+  end if;
+  new.pickup_confirmed_at := null;
+  new.pickup_confirmed_by := null;
+  new.received_confirmed_at := null;
+  return new;
+end;
+$$;
+
+drop trigger if exists booking_intents_guard_money_ins on public.booking_intents;
+create trigger booking_intents_guard_money_ins
+  before insert on public.booking_intents
+  for each row execute function public.booking_intents_guard_money();
+
 -- ----- reviews -----
 drop policy if exists "reviews_select_all" on public.reviews;
 create policy "reviews_select_all" on public.reviews

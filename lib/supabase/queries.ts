@@ -1927,10 +1927,47 @@ export const browser = {
 
   getBookingStage: (bookingId: string) =>
     getBookingStage(getBrowserClient(), bookingId),
-  confirmPickupWithCode: (bookingId: string, code: string, travelerId: string) =>
-    confirmPickupWithCode(getBrowserClient(), bookingId, code, travelerId),
-  confirmDeliveryWithCode: (bookingId: string, code: string, senderId: string) =>
-    confirmDeliveryWithCode(getBrowserClient(), bookingId, code, senderId),
+  // Handover-code confirmation now goes through server routes that verify the
+  // code and write the confirmation columns with the service-role client (the
+  // browser can't write them). The id args are kept for signature
+  // compatibility but ignored — the server derives identity from the session.
+  confirmPickupWithCode: async (
+    bookingId: string,
+    code: string,
+    _travelerId: string
+  ): Promise<{ ok: boolean; reason?: string }> => {
+    try {
+      const res = await fetch('/api/booking/confirm-pickup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, code }),
+      });
+      const json = await res.json().catch(() => ({}));
+      return json?.ok ? { ok: true } : { ok: false, reason: json?.reason ?? 'unexpected' };
+    } catch {
+      return { ok: false, reason: 'unexpected' };
+    }
+  },
+  confirmDeliveryWithCode: async (
+    bookingId: string,
+    code: string,
+    _senderId: string
+  ): Promise<{ ok: boolean; reason?: string }> => {
+    try {
+      const res = await fetch('/api/confirm-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingIntentId: bookingId, code }),
+      });
+      const json = await res.json().catch(() => ({}));
+      // Success, or receipt recorded but capture pending (reconciles later) —
+      // either way the handover is done from the sender's perspective.
+      if (json?.ok || json?.receiptRecorded) return { ok: true };
+      return { ok: false, reason: json?.reason ?? 'unexpected' };
+    } catch {
+      return { ok: false, reason: 'unexpected' };
+    }
+  },
   createDispute: (input: Parameters<typeof createDispute>[1]) =>
     createDispute(getBrowserClient(), input),
   listDisputesForUser: (userId: string) =>

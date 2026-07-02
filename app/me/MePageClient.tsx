@@ -892,29 +892,10 @@ export default function MyPage(
         onClose={() => setDeliveryEnteringFor(null)}
         onSuccess={async () => {
           if (!deliveryEnteringFor) return;
-          // Code matched. Now capture the Stripe payment via our API.
-          // The route is idempotent — safe to call.
-          try {
-            const res = await fetch('/api/confirm-receipt', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ bookingIntentId: deliveryEnteringFor.bookingId }),
-            });
-            if (!res.ok) {
-              const json = await res.json().catch(() => ({}));
-              if (json?.receiptRecorded) {
-                // Receipt landed but capture didn't — keep going,
-                // reconciliation will pick it up.
-                console.warn('[me] confirm-receipt partial:', json);
-              } else {
-                alert(
-                  t.me2_receipt_recorded_transfer_pending
-                );
-              }
-            }
-          } catch (e) {
-            console.warn('[me] confirm-receipt error after code:', e);
-          }
+          // The delivery-code modal already called /api/confirm-receipt
+          // (via confirmDeliveryWithCode), which verified the code, recorded
+          // receipt and captured the payment server-side. Here we just reflect
+          // it optimistically in local state.
           const stamp = new Date().toISOString();
           setMyBookings((prev) =>
             prev.map((b) =>
