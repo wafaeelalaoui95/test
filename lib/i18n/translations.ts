@@ -66,6 +66,7 @@ export type Translations = {
   sec_wallet_withdraw_subject: string;
   footer_allowed_items: string;
   footer_terms: string;
+  footer_privacy: string;
   pay_security_note: string;
   pay_submitting: string;
   pay_submit: string;
@@ -1206,6 +1207,7 @@ export const translations: Record<Locale, Translations> = {
     sec_wallet_withdraw_subject: 'Retrait de mes gains',
     footer_allowed_items: 'Objets autorisés',
     footer_terms: 'CGU',
+    footer_privacy: 'Confidentialité',
     pay_security_note: 'Paiement sécurisé par Stripe. Votre carte est autorisée mais pas débitée. Le montant ne sera prélevé que si le voyageur accepte. En cas de refus, l’autorisation est libérée.',
     pay_submitting: 'Confirmation…',
     pay_submit: 'Confirmer le paiement',
@@ -2330,6 +2332,7 @@ export const translations: Record<Locale, Translations> = {
     sec_wallet_withdraw_subject: 'Withdrawal of my earnings',
     footer_allowed_items: 'Allowed items',
     footer_terms: 'Terms',
+    footer_privacy: 'Privacy',
     pay_security_note: 'Secure payment by Stripe. Your card is authorized but not charged. The amount is only taken if the traveler accepts. If they decline, the authorization is released.',
     pay_submitting: 'Confirming…',
     pay_submit: 'Confirm payment',

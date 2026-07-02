@@ -1,11 +1,14 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { I18nProvider } from '@/lib/i18n/context';
 import { AuthProvider } from '@/lib/supabase/auth-provider';
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://jibly.com';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: 'Jibly — Send things with a traveler',
   description:
     'Someone is already going your way. Send your documents, keys or small items with a community of verified travelers.',
@@ -14,7 +17,20 @@ export const metadata: Metadata = {
     title: 'Jibly — Someone is already going your way',
     description: 'Send your stuff with a verified traveler community, worldwide.',
     type: 'website',
+    url: siteUrl,
+    siteName: 'Jibly',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Jibly — Someone is already going your way',
+    description: 'Send your stuff with a verified traveler community, worldwide.',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#FBF8F2',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
