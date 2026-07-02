@@ -119,7 +119,7 @@ export function Navbar() {
                 title={t.notif_my_messages}
               >
                 <MessageSquare className="w-[18px] h-[18px]" />
-                <UnreadBadge count={unreadMessages} />
+                <UnreadBadge count={unreadMessages} variant="desktop" />
               </Link>
             )}
 
@@ -364,10 +364,26 @@ export function Navbar() {
 
 // Small red count badge, absolutely positioned over an icon. Renders nothing
 // when there's nothing unread. Caps the display at "9+".
-function UnreadBadge({ count }: { count: number }) {
+//   - variant="desktop" matches the desktop notifications bell (floats at the
+//     outer corner, slightly larger).
+//   - variant="mobile" (default) matches the mobile bell (tucked inside, with
+//     a cream ring so it reads over the icon).
+function UnreadBadge({
+  count,
+  variant = 'mobile',
+}: {
+  count: number;
+  variant?: 'mobile' | 'desktop';
+}) {
   if (count <= 0) return null;
+  const pos =
+    variant === 'desktop'
+      ? 'absolute -top-0.5 -right-0.5 min-w-[16px] h-4 text-[10px]'
+      : 'absolute top-1.5 right-1.5 min-w-[14px] h-3.5 text-[9px] border border-cream-50';
   return (
-    <span className="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-1 rounded-full bg-blush-500 text-white text-[9px] font-bold flex items-center justify-center num-display border border-cream-50">
+    <span
+      className={`${pos} px-1 rounded-full bg-blush-500 text-white font-bold flex items-center justify-center num-display`}
+    >
       {count > 9 ? '9+' : count}
     </span>
   );
