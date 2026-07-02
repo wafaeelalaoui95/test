@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X, User, LogOut, Wallet, Bell, Inbox } from 'lucide-react';
+import { Menu, X, User, LogOut, Wallet, Bell, MessageSquare } from 'lucide-react';
 import { Logo } from '@/components/illustrations/Logo';
 import { NotificationsDropdown } from '@/components/NotificationsDropdown';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -118,7 +118,7 @@ export function Navbar() {
                 aria-label={t.notif_my_messages}
                 title={t.notif_my_messages}
               >
-                <Inbox className="w-[18px] h-[18px]" />
+                <MessageSquare className="w-[18px] h-[18px]" />
                 <UnreadBadge count={unreadMessages} />
               </Link>
             )}
@@ -232,7 +232,7 @@ export function Navbar() {
                 className="relative p-2 text-ink-500"
                 aria-label={t.notif_my_messages}
               >
-                <Inbox className="h-5 w-5" />
+                <MessageSquare className="h-5 w-5" />
                 <UnreadBadge count={unreadMessages} />
               </Link>
             )}
@@ -316,7 +316,7 @@ export function Navbar() {
                     className="py-3 text-base font-medium text-ink-500 flex items-center gap-2"
                     onClick={() => setOpen(false)}
                   >
-                    <Inbox className="w-4 h-4" />
+                    <MessageSquare className="w-4 h-4" />
                     <span>{t.notif_my_messages}</span>
                     {unreadMessages > 0 && (
                       <span className="ml-auto min-w-[18px] h-5 px-1.5 rounded-full bg-blush-500 text-white text-[11px] font-bold flex items-center justify-center num-display">
