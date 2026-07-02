@@ -584,17 +584,19 @@ export default function MyPage(
                     );
                   }}
                   onProofUploaded={(id, url, receiverName) => {
+                    const patch = {
+                      delivery_proof_url: url,
+                      delivery_proof_uploaded_at: new Date().toISOString(),
+                      delivery_proof_receiver_name: receiverName || null,
+                    };
+                    // The row lives in incomingIntents (sender-booked) OR
+                    // myProposals (traveler-initiated, now accepted); patch by
+                    // id in both — it only exists in one.
                     setIncomingIntents((prev) =>
-                      prev.map((it) =>
-                        it.id === id
-                          ? {
-                              ...it,
-                              delivery_proof_url: url,
-                              delivery_proof_uploaded_at: new Date().toISOString(),
-                              delivery_proof_receiver_name: receiverName || null,
-                            }
-                          : it
-                      )
+                      prev.map((it) => (it.id === id ? { ...it, ...patch } : it))
+                    );
+                    setMyProposals((prev) =>
+                      prev.map((it) => (it.id === id ? { ...it, ...patch } : it))
                     );
                   }}
                   onCancelTrip={async (tripId) => {
@@ -856,12 +858,13 @@ export default function MyPage(
         onSuccess={() => {
           if (!pickupEnteringFor || !user) return;
           const stamp = new Date().toISOString();
+          const patch = { pickup_confirmed_at: stamp, pickup_confirmed_by: user.id };
+          // Row may be an incoming booking or an accepted proposal — patch both.
           setIncomingIntents((prev) =>
-            prev.map((it) =>
-              it.id === pickupEnteringFor.bookingId
-                ? { ...it, pickup_confirmed_at: stamp, pickup_confirmed_by: user.id }
-                : it
-            )
+            prev.map((it) => (it.id === pickupEnteringFor.bookingId ? { ...it, ...patch } : it))
+          );
+          setMyProposals((prev) =>
+            prev.map((it) => (it.id === pickupEnteringFor.bookingId ? { ...it, ...patch } : it))
           );
           setPickupEnteringFor(null);
         }}
@@ -3625,9 +3628,14 @@ function TripDetailCard({
         <div className="divide-y divide-ink-50">
           {packages.map((p, i) => (
             <div key={`${p.kind}-${p.row.id}-${i}`} className="px-3 py-2">
-              {p.kind === 'incoming' ? (
+              {p.kind === 'incoming' || p.row.status === 'confirmed' ? (
+                // Incoming bookings, AND traveler-initiated proposals the sender
+                // has accepted+paid, both need the full pickup/deliver/handover
+                // actions. A proposal row has the same shape as an incoming one
+                // (both are booking_intents); it just lacks the unused
+                // traveler_trip field, so we fill it in.
                 <IntentCardInline
-                  intent={p.row}
+                  intent={p.kind === 'incoming' ? p.row : ({ ...p.row, traveler_trip: null } as IncomingIntent)}
                   onUpdate={onUpdateIntent}
                   onProofUploaded={onProofUploaded}
                   onOpenChat={onOpenChat}
