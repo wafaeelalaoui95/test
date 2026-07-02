@@ -10,12 +10,12 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://jibly.io';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'Jibly — Send things with a traveler',
+  title: 'Jibly - Send things with a traveler',
   description:
     'Someone is already going your way. Send your documents, keys or small items with a community of verified travelers.',
   keywords: ['Jibly', 'envoi documents', 'voyageurs', 'peer-to-peer', 'community travel'],
   openGraph: {
-    title: 'Jibly — Someone is already going your way',
+    title: 'Jibly - Someone is already going your way',
     description: 'Send your stuff with a verified traveler community, worldwide.',
     type: 'website',
     url: siteUrl,
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Jibly — Someone is already going your way',
+    title: 'Jibly - Someone is already going your way',
     description: 'Send your stuff with a verified traveler community, worldwide.',
   },
 };

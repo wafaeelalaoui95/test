@@ -1,6 +1,6 @@
 // app/confidentialite/page.tsx
 //
-// Privacy Policy (Politique de confidentialité) — GDPR/RGPD notice.
+// Privacy Policy (Politique de confidentialité) - GDPR/RGPD notice.
 // MVP draft covering the essentials for a France↔Morocco P2P parcel app
 // that collects ID documents (Stripe Identity), contact details and
 // payment data: controller, data collected, purposes & legal bases,
@@ -33,7 +33,7 @@ const CONTENT: Record<'fr' | 'en', {
     title: 'Politique de confidentialité',
     lastUpdated: `Dernière mise à jour : ${LAST_UPDATED.fr}`,
     reviewNote:
-      'Brouillon — ce document doit être relu par un juriste avant le lancement en production.',
+      'Brouillon - ce document doit être relu par un juriste avant le lancement en production.',
     intro:
       'Cette politique explique quelles données personnelles Jibly collecte, pourquoi, avec qui elles sont partagées et quels sont vos droits. Elle s’applique à l’utilisation de la plateforme Jibly.',
     backHome: 'Retour à l’accueil',
@@ -102,7 +102,7 @@ const CONTENT: Record<'fr' | 'en', {
     title: 'Privacy Policy',
     lastUpdated: `Last updated: ${LAST_UPDATED.en}`,
     reviewNote:
-      'Draft — this document must be reviewed by a lawyer before a production launch.',
+      'Draft - this document must be reviewed by a lawyer before a production launch.',
     intro:
       'This policy explains what personal data Jibly collects, why, who it is shared with, and what your rights are. It applies to your use of the Jibly platform.',
     backHome: 'Back home',

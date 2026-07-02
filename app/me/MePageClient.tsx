@@ -3491,7 +3491,7 @@ function TripListRow({
             <span className="text-ink-400">{t.me2_packages_unit}</span>
           </span>
         ) : (
-          <span className="text-ink-300">—</span>
+          <span className="text-ink-300">-</span>
         )}
       </div>
     </button>

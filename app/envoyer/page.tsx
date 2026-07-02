@@ -740,7 +740,7 @@ export default function EnvoyerPage() {
                   <div className="bg-cream-100 rounded-2xl p-5 space-y-3 text-[14px]">
                     <Row label={t.send_recap_route} value={`${cityDisplayName(fromCity, locale)} → ${cityDisplayName(toCity, locale)}`} />
                     <Row label={t.send_recap_date} value={date} />
-                    <Row label={t.send_recap_item} value={category ? t[ITEM_CATEGORIES.find(c => c.value === category)!.labelKey] : '—'} />
+                    <Row label={t.send_recap_item} value={category ? t[ITEM_CATEGORIES.find(c => c.value === category)!.labelKey] : '-'} />
                     <Row label={t.send_recipient_label} value={recipientSelf ? t.send_recipient_me : recipientName.trim() || t.send_recipient_other} />
                     <Row label={t.send_recap_budget} value={`${budget}${t.common_eur}`} />
                   </div>

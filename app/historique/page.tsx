@@ -271,7 +271,7 @@ function HistoryRow({
       : kind === 'proposal'
         ? row.sender_profile
         : row.traveler_profile;
-  const otherName = displayName(otherProfile?.full_name) || '—';
+  const otherName = displayName(otherProfile?.full_name) || '-';
   const initial = nameInitial(otherProfile?.full_name);
   const cat = ITEM_CATEGORIES.find((c) => c.value === (row.item_category as ItemCategory));
 

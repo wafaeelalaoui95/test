@@ -600,12 +600,12 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-ink-600 truncate text-[15px] tracking-[-0.005em]">
-              {name || '—'}
+              {name || '-'}
             </div>
             <div className="flex items-center gap-1 text-[13px] text-ink-400">
               <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
               <span className="font-medium text-ink-500 num-display">
-                {trip.profile?.rating?.toFixed(1) ?? '—'}
+                {trip.profile?.rating?.toFixed(1) ?? '-'}
               </span>
               <span>· <span className="num-display">{trip.profile?.trips_completed ?? 0}</span> {t.disc_trips_count}</span>
             </div>
@@ -769,12 +769,12 @@ function RequestCard({
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-ink-600 truncate text-[15px] tracking-[-0.005em]">
-            {name || '—'}
+            {name || '-'}
           </div>
           <div className="flex items-center gap-1 text-[13px] text-ink-400">
             <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
             <span className="font-medium text-ink-500 num-display">
-              {request.profile?.rating?.toFixed(1) ?? '—'}
+              {request.profile?.rating?.toFixed(1) ?? '-'}
             </span>
             <span>· {ageLabel}</span>
           </div>

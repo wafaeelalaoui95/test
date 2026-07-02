@@ -152,7 +152,7 @@ export function Navbar() {
                 >
                   <Wallet className="w-3.5 h-3.5" />
                   <span className="text-[13px] font-bold num-display">
-                    {walletBalance !== null ? formatEuros(walletBalance) : '—'}
+                    {walletBalance !== null ? formatEuros(walletBalance) : '-'}
                   </span>
                 </Link>
 
@@ -208,7 +208,7 @@ export function Navbar() {
               >
                 <Wallet className="w-3.5 h-3.5" />
                 <span className="text-[12px] font-bold num-display">
-                  {walletBalance !== null ? formatEuros(walletBalance) : '—'}
+                  {walletBalance !== null ? formatEuros(walletBalance) : '-'}
                 </span>
               </Link>
             )}
@@ -292,7 +292,7 @@ export function Navbar() {
                     <Wallet className="w-4 h-4" />
                     <span>{t.nav_wallet_label}</span>
                     <span className="ml-auto text-[14px] font-bold text-ink-600 num-display">
-                      {walletBalance !== null ? formatEuros(walletBalance) : '—'}
+                      {walletBalance !== null ? formatEuros(walletBalance) : '-'}
                     </span>
                   </Link>
                   <Link
