@@ -3644,6 +3644,7 @@ function TripDetailCard({
                   onOpenReview={onOpenReview}
                   hasReviewed={hasReviewed(p.row.id)}
                   otherReview={reviewFromOther(p.row.id)}
+                  tripDepartureDate={trip.departure_date}
                 />
               ) : (
                 <ProposalCardInline proposal={p.row} />
@@ -3674,6 +3675,7 @@ function IntentCardInline({
   onOpenReview,
   hasReviewed,
   otherReview,
+  tripDepartureDate,
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
@@ -3685,6 +3687,9 @@ function IntentCardInline({
   onOpenReview: (intent: IncomingIntent) => void;
   hasReviewed: boolean;
   otherReview: ReviewForBooking | null;
+  // The trip's flight date (YYYY-MM-DD). Used to warn on delivery before the
+  // flight — the traveler may genuinely travel earlier, so we confirm, not block.
+  tripDepartureDate?: string;
 }) {
   const { t } = useI18n();
   const [showProofModal, setShowProofModal] = useState(false);
@@ -3692,7 +3697,23 @@ function IntentCardInline({
   // inspect the item and refuse without penalty.
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [acceptAck, setAcceptAck] = useState(false);
+  // Delivery-before-flight confirmation.
+  const [showEarlyModal, setShowEarlyModal] = useState(false);
+  const [earlyAck, setEarlyAck] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const isBeforeFlight = !!tripDepartureDate && today < tripDepartureDate;
+  // Clicking "I delivered": warn if the flight hasn't happened yet, else go
+  // straight to the proof upload.
+  function startDeliver() {
+    if (isBeforeFlight) {
+      setEarlyAck(false);
+      setShowEarlyModal(true);
+    } else {
+      setShowProofModal(true);
+    }
+  }
   const senderName = shortName(intent.sender_profile?.full_name) || t.me2_role_sender;
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
 
@@ -3838,7 +3859,7 @@ function IntentCardInline({
               <Flag className="w-3.5 h-3.5" strokeWidth={1.75} />
             </button>
             <button
-              onClick={() => setShowProofModal(true)}
+              onClick={startDeliver}
               className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
             >
               <Camera className="w-3 h-3" />
@@ -3987,6 +4008,65 @@ function IntentCardInline({
                   className="flex-1 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t.me2_accept_confirm}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delivery-before-flight confirmation (soft — never blocks). */}
+      <AnimatePresence>
+        {showEarlyModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+            onClick={() => setShowEarlyModal(false)}
+          >
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 20, opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-cream-50 rounded-3xl p-6 max-w-md w-full shadow-xl"
+            >
+              <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-3">
+                {t.me2_early_deliver_title}
+              </h3>
+              <p className="text-[14px] text-ink-500 leading-relaxed mb-4">
+                {t.me2_early_deliver_text.replace(
+                  '{date}',
+                  tripDepartureDate ? formatShortDate(tripDepartureDate) : ''
+                )}
+              </p>
+              <label className="flex items-start gap-2.5 cursor-pointer mb-5">
+                <input
+                  type="checkbox"
+                  checked={earlyAck}
+                  onChange={(e) => setEarlyAck(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-ink-300 text-ink-500 focus:ring-2 focus:ring-lavender-500/30 cursor-pointer"
+                />
+                <span className="text-[13px] text-ink-600 leading-relaxed">
+                  {t.me2_early_deliver_ack}
+                </span>
+              </label>
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => setShowEarlyModal(false)}
+                  className="flex-1 px-4 py-2.5 text-[14px] font-medium text-ink-500 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
+                >
+                  {t.me2_accept_cancel}
+                </button>
+                <button
+                  disabled={!earlyAck}
+                  onClick={() => { setShowEarlyModal(false); setShowProofModal(true); }}
+                  className="flex-1 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t.me2_early_deliver_confirm}
                 </button>
               </div>
             </motion.div>

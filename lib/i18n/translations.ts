@@ -924,6 +924,10 @@ export type Translations = {
   me2_accept_doubt: string;
   me2_accept_confirm: string;
   me2_accept_cancel: string;
+  me2_early_deliver_title: string;
+  me2_early_deliver_text: string;
+  me2_early_deliver_ack: string;
+  me2_early_deliver_confirm: string;
   me2_open_conversation: string;
   me2_messages: string;
   me2_i_delivered: string;
@@ -2061,6 +2065,10 @@ export const translations: Record<Locale, Translations> = {
     me2_accept_doubt: 'En cas de doute, refusez.',
     me2_accept_confirm: 'Accepter la demande',
     me2_accept_cancel: 'Annuler',
+    me2_early_deliver_title: 'Livraison en avance ?',
+    me2_early_deliver_text: 'Votre vol n\'est prévu que le {date}. Êtes-vous sûr d\'avoir déjà remis le colis (par exemple si vous voyagez plus tôt) ?',
+    me2_early_deliver_ack: 'Oui, je confirme avoir remis le colis au destinataire.',
+    me2_early_deliver_confirm: 'Continuer',
     me2_open_conversation: 'Ouvrir la conversation',
     me2_messages: 'Messages',
     me2_i_delivered: 'J\'ai livré',
@@ -3197,6 +3205,10 @@ export const translations: Record<Locale, Translations> = {
     me2_accept_doubt: 'When in doubt, refuse.',
     me2_accept_confirm: 'Accept the request',
     me2_accept_cancel: 'Cancel',
+    me2_early_deliver_title: 'Delivering early?',
+    me2_early_deliver_text: 'Your flight isn\'t until {date}. Are you sure you\'ve already handed over the parcel (e.g. if you\'re travelling earlier)?',
+    me2_early_deliver_ack: 'Yes, I confirm I handed the parcel to the recipient.',
+    me2_early_deliver_confirm: 'Continue',
     me2_open_conversation: 'Open conversation',
     me2_messages: 'Messages',
     me2_i_delivered: 'I delivered it',
