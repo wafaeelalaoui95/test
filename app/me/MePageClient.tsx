@@ -3688,6 +3688,10 @@ function IntentCardInline({
 }) {
   const { t } = useI18n();
   const [showProofModal, setShowProofModal] = useState(false);
+  // Safety gate before accepting: the traveler must acknowledge they can
+  // inspect the item and refuse without penalty.
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [acceptAck, setAcceptAck] = useState(false);
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
   const senderName = shortName(intent.sender_profile?.full_name) || t.me2_role_sender;
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
@@ -3778,7 +3782,7 @@ function IntentCardInline({
               {busy === 'cancel' ? '...' : t.me2_decline}
             </button>
             <button
-              onClick={() => handle('confirmed')}
+              onClick={() => { setAcceptAck(false); setShowAcceptModal(true); }}
               disabled={!!busy}
               className="px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
             >
@@ -3927,6 +3931,66 @@ function IntentCardInline({
               setShowProofModal(false);
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Safety acknowledgement before accepting a request. */}
+      <AnimatePresence>
+        {showAcceptModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+            onClick={() => !busy && setShowAcceptModal(false)}
+          >
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 20, opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-cream-50 rounded-3xl p-6 max-w-md w-full shadow-xl"
+            >
+              <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-3">
+                {t.me2_accept_check_title}
+              </h3>
+              <div className="rounded-xl bg-ink-500 text-cream-50 px-4 py-2.5 mb-4 text-[13px] font-semibold">
+                {t.me2_accept_doubt}
+              </div>
+              <label className="flex items-start gap-2.5 cursor-pointer mb-5">
+                <input
+                  type="checkbox"
+                  checked={acceptAck}
+                  onChange={(e) => setAcceptAck(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-ink-300 text-ink-500 focus:ring-2 focus:ring-lavender-500/30 cursor-pointer"
+                />
+                <span className="text-[13px] text-ink-600 leading-relaxed">
+                  {t.me2_accept_check_label}
+                </span>
+              </label>
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => setShowAcceptModal(false)}
+                  disabled={!!busy}
+                  className="flex-1 px-4 py-2.5 text-[14px] font-medium text-ink-500 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
+                >
+                  {t.me2_accept_cancel}
+                </button>
+                <button
+                  disabled={!acceptAck || !!busy}
+                  onClick={async () => {
+                    setShowAcceptModal(false);
+                    await handle('confirmed');
+                  }}
+                  className="flex-1 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t.me2_accept_confirm}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>
