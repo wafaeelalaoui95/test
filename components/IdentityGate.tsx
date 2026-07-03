@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ShieldCheck, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -14,8 +14,17 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 // which creates a VerificationSession server-side and returns the hosted-flow
 // URL. The user is redirected there; Stripe sends them back to /me?identity=done
 // after completion. Shared by /me and the identity gate below.
-export function VerifyIdentityButton({ label }: { label?: string }) {
+export function VerifyIdentityButton({
+  label,
+  onAlreadyVerified,
+}: {
+  label?: string;
+  // Called when the server reports the user is already verified — instead of
+  // showing an error, we refresh the profile and let the caller move on.
+  onAlreadyVerified?: () => void;
+}) {
   const { t } = useI18n();
+  const { refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -36,6 +45,14 @@ export function VerifyIdentityButton({ label }: { label?: string }) {
         body: JSON.stringify({ returnTo }),
       });
       const data = await res.json();
+      // Already verified server-side (the client profile was just stale):
+      // don't scare the user with an error — refresh and proceed.
+      if (res.status === 409 || /already verified/i.test(data?.error ?? '')) {
+        await refreshProfile();
+        setLoading(false);
+        if (onAlreadyVerified) onAlreadyVerified();
+        return;
+      }
       if (!res.ok || !data.url) {
         throw new Error(data.error ?? t.me2_verify_start_failed);
       }
@@ -106,6 +123,18 @@ export function useIdentityGate(): {
 // the framer-motion backdrop/card styling of the propose/book modals.
 function IdentityGateModal({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
+  const { profile, refreshProfile } = useAuth();
+
+  // The client profile can be stale when the gate opens (e.g. the Stripe
+  // identity webhook landed just after the redirect back). Refresh once on
+  // open, and if it turns out the user is already verified, close immediately
+  // so we never ask them to verify again.
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
+  useEffect(() => {
+    if (profile?.identity_verified_at) onClose();
+  }, [profile?.identity_verified_at, onClose]);
 
   return (
     <motion.div
@@ -155,7 +184,7 @@ function IdentityGateModal({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
 
-        <VerifyIdentityButton />
+        <VerifyIdentityButton onAlreadyVerified={onClose} />
       </motion.div>
     </motion.div>
   );

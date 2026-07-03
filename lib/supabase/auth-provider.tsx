@@ -136,6 +136,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
+  // Re-fetch the profile when the tab regains focus. Catches out-of-band
+  // updates the client can't see live — most importantly identity
+  // verification, whose Stripe webhook lands a moment after the user is
+  // redirected back, so the profile loaded on return is briefly stale.
+  useEffect(() => {
+    function refresh() {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (user) loadProfile(user.id);
+    }
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [user, loadProfile]);
+
   async function signOut() {
     const supabase = getBrowserClient();
     try {
@@ -148,9 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }
 
-  async function refreshProfile() {
+  const refreshProfile = useCallback(async () => {
     if (user) await loadProfile(user.id);
-  }
+  }, [user, loadProfile]);
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
