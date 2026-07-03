@@ -318,6 +318,14 @@ drop policy if exists "profiles_insert_own" on public.profiles;
 create policy "profiles_insert_own" on public.profiles
   for insert with check (auth.uid() = id);
 
+-- Trust/reputation columns are server-only — a user must not be able to grant
+-- themselves verification or inflate their rating via a direct client UPDATE.
+-- Applied on the live DB by migrations/2026-07-03-lock-profile-columns.sql
+-- (kept there because some columns live in the identity migration, not here).
+-- revoke update (verification_level, identity_verified_at,
+--   identity_verification_status, rating, trips_completed)
+--   on public.profiles from authenticated, anon;
+
 -- ----- traveler_trips -----
 drop policy if exists "trips_select_visible" on public.traveler_trips;
 create policy "trips_select_visible" on public.traveler_trips

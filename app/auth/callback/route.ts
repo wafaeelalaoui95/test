@@ -9,7 +9,13 @@ import { getServerClient } from '@/lib/supabase/server';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/me';
+  // Only allow same-origin internal paths — reject absolute URLs and
+  // protocol-relative "//evil.com" / "/\evil.com" to prevent open redirects.
+  const rawNext = searchParams.get('next') ?? '/me';
+  const next =
+    rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\')
+      ? rawNext
+      : '/me';
 
   if (code) {
     const supabase = getServerClient();
