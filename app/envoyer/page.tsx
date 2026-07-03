@@ -24,6 +24,7 @@ import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES } from '@/lib/constants';
+import { isVagueDescription, detectRiskKeywords } from '@/lib/safety';
 import { formatShortDate, displayName, nameInitial, formatEuros, priceBreakdown } from '@/lib/utils';
 import { countryDisplayName, cityDisplayName } from '@/lib/countries';
 import { useI18n } from '@/lib/i18n/context';
@@ -192,6 +193,9 @@ export default function EnvoyerPage() {
     if (step === 1) {
       // Title is required; description is optional.
       if (!category || !itemTitle.trim()) return false;
+      // The item name must be specific — the traveler needs to know exactly
+      // what they carry. Block "colis", "cadeau", "médicaments", etc.
+      if (isVagueDescription(itemTitle)) return false;
       // If a third party collects, their name is required.
       if (!recipientSelf && !recipientName.trim()) return false;
       return true;
@@ -650,13 +654,20 @@ export default function EnvoyerPage() {
                     </motion.div>
                   )}
 
-                  <Input
-                    label={t.send_item_name_label}
-                    placeholder={t.send_item_name_placeholder}
-                    value={itemTitle}
-                    onChange={(e) => setItemTitle(e.target.value)}
-                    maxLength={60}
-                  />
+                  <div>
+                    <Input
+                      label={t.send_item_name_label}
+                      placeholder={t.send_item_name_placeholder}
+                      value={itemTitle}
+                      onChange={(e) => setItemTitle(e.target.value)}
+                      maxLength={60}
+                    />
+                    {itemTitle.trim().length > 0 && isVagueDescription(itemTitle) && (
+                      <p className="mt-2 text-[13px] text-blush-500 leading-relaxed">
+                        {t.safety_vague_desc}
+                      </p>
+                    )}
+                  </div>
 
                   <Textarea
                     label={`${t.send_label_description} (${t.common_optional})`}
@@ -664,6 +675,15 @@ export default function EnvoyerPage() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
+
+                  {detectRiskKeywords(`${itemTitle} ${description}`).length > 0 && (
+                    <div className="bg-butter-50 border border-butter-200 rounded-2xl p-4">
+                      <p className="text-[13px] text-ink-600 leading-relaxed flex items-start gap-2">
+                        <span className="text-base flex-shrink-0">⚠️</span>
+                        <span>{t.safety_sensitive_alert}</span>
+                      </p>
+                    </div>
+                  )}
 
                   <RecipientPicker
                     self={recipientSelf}
@@ -975,6 +995,7 @@ function InstantBookModal({
  const canPay =
     !!category &&
     itemTitle.trim().length > 0 &&
+    !isVagueDescription(itemTitle) &&
     (recipientSelf || recipientName.trim().length > 0) &&
     certified;
 
@@ -1118,13 +1139,20 @@ function InstantBookModal({
                 </div>
               </div>
 
-              <Input
-                label={t.send_item_name_label}
-                placeholder={t.send_item_name_placeholder}
-                value={itemTitle}
-                onChange={(e) => setItemTitle(e.target.value)}
-                maxLength={60}
-              />
+              <div>
+                <Input
+                  label={t.send_item_name_label}
+                  placeholder={t.send_item_name_placeholder}
+                  value={itemTitle}
+                  onChange={(e) => setItemTitle(e.target.value)}
+                  maxLength={60}
+                />
+                {itemTitle.trim().length > 0 && isVagueDescription(itemTitle) && (
+                  <p className="mt-2 text-[13px] text-blush-500 leading-relaxed">
+                    {t.safety_vague_desc}
+                  </p>
+                )}
+              </div>
 
               <Textarea
                 label={`${t.env_description_label} (${t.common_optional})`}
@@ -1132,6 +1160,15 @@ function InstantBookModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+
+              {detectRiskKeywords(`${itemTitle} ${description}`).length > 0 && (
+                <div className="bg-butter-50 border border-butter-200 rounded-xl px-4 py-3">
+                  <p className="text-[12px] text-ink-600 leading-relaxed flex items-start gap-2">
+                    <span className="text-base flex-shrink-0">⚠️</span>
+                    <span>{t.safety_sensitive_alert}</span>
+                  </p>
+                </div>
+              )}
 
               <RecipientPicker
                 self={recipientSelf}

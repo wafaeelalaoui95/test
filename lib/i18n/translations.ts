@@ -508,6 +508,8 @@ export type Translations = {
   // Sender/traveler content declarations
   send_certify_label: string;
   send_certify_otc_disclaimer: string;
+  safety_vague_desc: string;
+  safety_sensitive_alert: string;
   trip_verify_content_label: string;
   
   // Urgency
@@ -1638,8 +1640,10 @@ export const translations: Record<Locale, Translations> = {
     cat_electronics_desc: 'Chargeurs, câbles, écouteurs',
     cat_otc: 'Médicaments en vente libre',
     cat_otc_desc: 'Doliprane, vitamines (sans ordonnance)',
-    send_certify_label: 'Je certifie que le contenu décrit est exact et qu\'il ne contient aucun produit interdit.',
+    send_certify_label: 'Je certifie que l\'objet décrit est légal, qu\'il correspond exactement à la description et aux photos fournies, et qu\'il peut être transporté légalement dans le pays de départ, le pays d\'arrivée et selon les règles de la compagnie aérienne. Je comprends que le voyageur devra inspecter l\'objet et pourra refuser de le transporter en cas de doute.',
     send_certify_otc_disclaimer: 'Les médicaments doivent être SANS ordonnance, dans leur emballage d\'origine fermé, max 2 unités. J\'assume la responsabilité légale du contenu.',
+    safety_vague_desc: 'Merci de décrire précisément l\'objet. Le voyageur doit savoir exactement ce qu\'il transporte.',
+    safety_sensitive_alert: 'Cet objet peut être réglementé selon le pays, la compagnie aérienne ou la douane. Le voyageur doit pouvoir vérifier le contenu et refuser sans pénalité.',
     trip_verify_content_label: 'J\'ai vérifié le contenu avant d\'accepter de le transporter.',
     urgency_standard: 'Standard',
     urgency_standard_hint: '2 semaines',
@@ -2767,8 +2771,10 @@ export const translations: Record<Locale, Translations> = {
     cat_electronics_desc: 'Chargers, cables, earphones',
     cat_otc: 'Over-the-counter medication',
     cat_otc_desc: 'Paracetamol, vitamins (no prescription)',
-    send_certify_label: 'I certify the described content is accurate and contains no prohibited item.',
+    send_certify_label: 'I certify that the described item is legal, that it matches exactly the description and photos provided, and that it can be carried legally in the departure country, the arrival country and under the airline\'s rules. I understand the traveler will inspect the item and may refuse to carry it if in doubt.',
     send_certify_otc_disclaimer: 'Medications must be over-the-counter, in sealed original packaging, max 2 units. I assume legal responsibility for the content.',
+    safety_vague_desc: 'Please describe the item precisely. The traveler must know exactly what they\'re carrying.',
+    safety_sensitive_alert: 'This item may be regulated depending on the country, airline or customs. The traveler must be able to check the contents and refuse without penalty.',
     trip_verify_content_label: 'I have verified the content before accepting to carry it.',
     urgency_standard: 'Standard',
     urgency_standard_hint: '2 weeks',
