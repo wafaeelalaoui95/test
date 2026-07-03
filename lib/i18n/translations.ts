@@ -67,6 +67,7 @@ export type Translations = {
   footer_allowed_items: string;
   footer_terms: string;
   footer_privacy: string;
+  footer_safety: string;
   cookie_text: string;
   cookie_accept: string;
   cookie_more: string;
@@ -1211,6 +1212,7 @@ export const translations: Record<Locale, Translations> = {
     footer_allowed_items: 'Objets autorisés',
     footer_terms: 'CGU',
     footer_privacy: 'Confidentialité',
+    footer_safety: 'Règles de sécurité',
     cookie_text: 'On utilise des cookies nécessaires au fonctionnement du site et, le cas échéant, à la mesure d\'audience.',
     cookie_accept: 'J\'accepte',
     cookie_more: 'En savoir plus',
@@ -2339,6 +2341,7 @@ export const translations: Record<Locale, Translations> = {
     footer_allowed_items: 'Allowed items',
     footer_terms: 'Terms',
     footer_privacy: 'Privacy',
+    footer_safety: 'Safety rules',
     cookie_text: 'We use cookies necessary for the site to work and, where applicable, for analytics.',
     cookie_accept: 'Accept',
     cookie_more: 'Learn more',

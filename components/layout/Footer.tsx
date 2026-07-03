@@ -37,6 +37,7 @@ export function Footer() {
               <li><Link href="/trust" className="hover:text-ink-600 transition-colors">{t.trust_eyebrow}</Link></li>
               <li><Link href="/trust#faq" className="hover:text-ink-600 transition-colors">FAQ</Link></li>
               <li><Link href="/objets-autorises" className="hover:text-ink-600 transition-colors">{t.footer_allowed_items}</Link></li>
+              <li><Link href="/securite" className="hover:text-ink-600 transition-colors">{t.footer_safety}</Link></li>
               <li><Link href="/cgu" className="hover:text-ink-600 transition-colors">{t.footer_terms}</Link></li>
               <li><Link href="/confidentialite" className="hover:text-ink-600 transition-colors">{t.footer_privacy}</Link></li>
             </ul>
