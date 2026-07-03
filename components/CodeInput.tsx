@@ -3,18 +3,18 @@
 import { useEffect, useRef, useState, useCallback, KeyboardEvent, ClipboardEvent } from 'react';
 
 /**
- * 6-digit confirmation code input, OTP style.
+ * Confirmation code input, OTP style (default 4 digits).
  *
  * Behaviour modelled after iOS / Stripe OTP inputs:
- *   - 6 individual single-character boxes
+ *   - one single-character box per digit
  *   - Auto-focus advance on input, backspace goes to previous box
- *   - Paste handler: pasting "123456" fills all six boxes at once
+ *   - Paste handler: pasting the full code fills all boxes at once
  *   - Numeric keyboard hint on mobile (inputMode + pattern)
  *   - autocomplete="one-time-code" so iOS Mail / SMS suggestions work
  *
- * Calls `onComplete(code)` when all 6 digits are filled. `onChange` is
- * called on every keystroke with the current partial value, useful for
- * disabling the submit button until complete.
+ * Calls `onComplete(code)` when all digits are filled. `onChange` is called
+ * on every keystroke with the current partial value, useful for disabling
+ * the submit button until complete.
  *
  * Error state highlights all boxes in blush — used after a wrong code
  * attempt. Clear it by the parent when the user starts typing again.
@@ -26,6 +26,7 @@ export function CodeInput({
   error,
   autoFocus = true,
   disabled = false,
+  length = 4,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -33,26 +34,26 @@ export function CodeInput({
   error?: boolean;
   autoFocus?: boolean;
   disabled?: boolean;
+  length?: number;
 }) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const [focused, setFocused] = useState<number | null>(autoFocus ? 0 : null);
+  const last = length - 1;
 
-  // Split the controlled `value` into 6 single-char positions. We don't
-  // hold per-cell state — the parent's `value` is the source of truth.
-  const digits = value.padEnd(6, ' ').slice(0, 6).split('');
+  // Split the controlled `value` into single-char positions. We don't hold
+  // per-cell state — the parent's `value` is the source of truth.
+  const digits = value.padEnd(length, ' ').slice(0, length).split('');
 
   useEffect(() => {
     if (autoFocus) refs.current[0]?.focus();
   }, [autoFocus]);
 
   useEffect(() => {
-    // Fire onComplete exactly once when the value reaches 6 digits.
-    // We don't loop here — the parent should clear `value` if they want
-    // to allow re-entry after a failed attempt.
-    if (value.length === 6 && /^\d{6}$/.test(value) && onComplete) {
+    // Fire onComplete exactly once when the value reaches `length` digits.
+    if (value.length === length && new RegExp(`^\\d{${length}}$`).test(value) && onComplete) {
       onComplete(value);
     }
-  }, [value, onComplete]);
+  }, [value, onComplete, length]);
 
   const setDigit = useCallback(
     (idx: number, digit: string) => {
@@ -61,38 +62,38 @@ export function CodeInput({
       const clean = digit.replace(/\D/g, '');
       if (!clean) {
         // Backspace path — clear this cell
-        const next = (value.padEnd(6, ' ').slice(0, idx) + ' ' + value.padEnd(6, ' ').slice(idx + 1)).trimEnd();
+        const next = (value.padEnd(length, ' ').slice(0, idx) + ' ' + value.padEnd(length, ' ').slice(idx + 1)).trimEnd();
         onChange(next);
         return;
       }
 
       // Multi-char paste-like: distribute across cells starting from idx
       if (clean.length > 1) {
-        const chars = clean.slice(0, 6 - idx).split('');
-        const padded = value.padEnd(6, ' ').split('');
+        const chars = clean.slice(0, length - idx).split('');
+        const padded = value.padEnd(length, ' ').split('');
         chars.forEach((c, i) => { padded[idx + i] = c; });
         const next = padded.join('').trimEnd();
         onChange(next);
         // Focus the cell after the last one filled
-        const lastIdx = Math.min(idx + chars.length, 5);
+        const lastIdx = Math.min(idx + chars.length, last);
         refs.current[lastIdx]?.focus();
         return;
       }
 
       // Single char path — set and advance
-      const padded = value.padEnd(6, ' ').split('');
+      const padded = value.padEnd(length, ' ').split('');
       padded[idx] = clean;
       const next = padded.join('').trimEnd();
       onChange(next);
-      if (idx < 5) refs.current[idx + 1]?.focus();
+      if (idx < last) refs.current[idx + 1]?.focus();
     },
-    [value, onChange]
+    [value, onChange, length, last]
   );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, idx: number) => {
     if (e.key === 'Backspace') {
       // If the current cell is empty, move focus back and clear there.
-      const padded = value.padEnd(6, ' ');
+      const padded = value.padEnd(length, ' ');
       if (padded[idx] === ' ' && idx > 0) {
         e.preventDefault();
         refs.current[idx - 1]?.focus();
@@ -101,7 +102,7 @@ export function CodeInput({
     } else if (e.key === 'ArrowLeft' && idx > 0) {
       e.preventDefault();
       refs.current[idx - 1]?.focus();
-    } else if (e.key === 'ArrowRight' && idx < 5) {
+    } else if (e.key === 'ArrowRight' && idx < last) {
       e.preventDefault();
       refs.current[idx + 1]?.focus();
     }
@@ -109,7 +110,7 @@ export function CodeInput({
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>, idx: number) => {
     const text = e.clipboardData.getData('text');
-    const digitsOnly = text.replace(/\D/g, '').slice(0, 6);
+    const digitsOnly = text.replace(/\D/g, '').slice(0, length);
     if (digitsOnly.length === 0) return;
     e.preventDefault();
     setDigit(idx, digitsOnly);
@@ -117,7 +118,7 @@ export function CodeInput({
 
   return (
     <div className="flex gap-2 justify-center">
-      {[0, 1, 2, 3, 4, 5].map((i) => {
+      {Array.from({ length }, (_, i) => i).map((i) => {
         const char = digits[i] === ' ' ? '' : digits[i];
         const isFilled = char.length > 0;
         return (

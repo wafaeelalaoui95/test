@@ -1780,13 +1780,13 @@ export const translations: Record<Locale, Translations> = {
     chat_traceability_notice:
       'Gardez vos échanges sur Jibly : c\'est ce qui nous permet d\'assurer le suivi du colis et de vous protéger en cas de litige.',
     chat_code_hint_handover_sender:
-      'À la remise du colis, transmettez le code à 6 chiffres à {name}.',
+      'À la remise du colis, transmettez le code à 4 chiffres à {name}.',
     chat_code_hint_handover_traveler:
-      'Après la remise du colis, {name} vous transmettra un code à 6 chiffres à saisir.',
+      'Après la remise du colis, {name} vous transmettra un code à 4 chiffres à saisir.',
     chat_code_hint_delivery_traveler:
-      'À la livraison du colis, transmettez le code à 6 chiffres à {name}.',
+      'À la livraison du colis, transmettez le code à 4 chiffres à {name}.',
     chat_code_hint_delivery_sender:
-      'À la réception du colis, {name} vous transmettra un code à 6 chiffres à saisir.',
+      'À la réception du colis, {name} vous transmettra un code à 4 chiffres à saisir.',
     chat_empty_line1: 'Pas encore de message.',
     chat_empty_line2: 'Dites bonjour à {name} 👋',
     chat_input_placeholder: 'Écrire à {name}…',
@@ -1813,7 +1813,7 @@ export const translations: Record<Locale, Translations> = {
     tp_pay_eyebrow: 'Paiement sécurisé',
     tp_pay_title: 'Votre argent reste',
     tp_pay_title_line2: 'en sécurité.',
-    tp_pay_body: 'Votre paiement est bloqué sur la plateforme dès la réservation. Le voyageur ne reçoit l\'argent qu\'une fois la livraison confirmée par vous-même via un code unique à 6 chiffres.',
+    tp_pay_body: 'Votre paiement est bloqué sur la plateforme dès la réservation. Le voyageur ne reçoit l\'argent qu\'une fois la livraison confirmée par vous-même via un code unique à 4 chiffres.',
     tp_pay_stripe_badge: 'Géré par Stripe - leader mondial des paiements',
     tp_pay_step1: 'Réservation confirmée',
     tp_pay_step2: 'Remise en main propre',
@@ -1828,7 +1828,7 @@ export const translations: Record<Locale, Translations> = {
     tp_pillar2_title: 'Paiement bloqué',
     tp_pillar2_body: 'Votre argent reste en escrow chez Stripe jusqu\'à confirmation de la livraison.',
     tp_pillar3_title: 'Double validation',
-    tp_pillar3_body: 'Codes uniques à 6 chiffres pour la remise et la livraison. Pas d\'ambiguïté possible.',
+    tp_pillar3_body: 'Codes uniques à 4 chiffres pour la remise et la livraison. Pas d\'ambiguïté possible.',
     tp_pillar4_title: 'Litiges traités sous 48h',
     tp_pillar4_body: 'Notre équipe intervient en cas de problème. Suspension automatique en cas d\'abus avéré.',
     tp_allowed_title: 'Tous les objets ne sont pas autorisés.',
@@ -1883,7 +1883,7 @@ export const translations: Record<Locale, Translations> = {
     cgu_s5_p1: 'Le paiement est effectué via Stripe au moment de la réservation et conservé en séquestre par Jibly. Le voyageur reçoit sa compensation uniquement après confirmation de la livraison par l\'expéditeur via le code de livraison.',
     cgu_s5_p2: 'Jibly prélève une commission sur chaque transaction réussie. Le détail du prix est affiché avant validation par chaque partie.',
     cgu_s6_title: 'Codes de remise et de livraison',
-    cgu_s6_p1: 'Chaque réservation génère deux codes confidentiels à 6 chiffres : un code de remise (détenu par l\'expéditeur) et un code de livraison (détenu par le voyageur). Ces codes ne doivent jamais être partagés en dehors du moment du rendez-vous physique. Le déblocage du paiement dépend de leur saisie correcte par la partie destinataire.',
+    cgu_s6_p1: 'Chaque réservation génère deux codes confidentiels à 4 chiffres : un code de remise (détenu par l\'expéditeur) et un code de livraison (détenu par le voyageur). Ces codes ne doivent jamais être partagés en dehors du moment du rendez-vous physique. Le déblocage du paiement dépend de leur saisie correcte par la partie destinataire.',
     cgu_s7_title: 'Comportements interdits et exclusion',
     cgu_s7_p1: 'Les comportements suivants entraînent la suspension permanente du compte, sans préavis ni remboursement :',
     cgu_s7_li1: 'Transport d\'un objet interdit (cf. article 3)',
@@ -2916,13 +2916,13 @@ export const translations: Record<Locale, Translations> = {
     chat_traceability_notice:
       'Keep your exchanges on Jibly: it lets us track the parcel and protect you in case of a dispute.',
     chat_code_hint_handover_sender:
-      'When you hand the parcel over, give the 6-digit code to {name}.',
+      'When you hand the parcel over, give the 4-digit code to {name}.',
     chat_code_hint_handover_traveler:
-      'After the hand-over, {name} will give you a 6-digit code to enter.',
+      'After the hand-over, {name} will give you a 4-digit code to enter.',
     chat_code_hint_delivery_traveler:
-      'When you deliver the parcel, give the 6-digit code to {name}.',
+      'When you deliver the parcel, give the 4-digit code to {name}.',
     chat_code_hint_delivery_sender:
-      'On delivery, {name} will give you a 6-digit code to enter.',
+      'On delivery, {name} will give you a 4-digit code to enter.',
     chat_empty_line1: 'No messages yet.',
     chat_empty_line2: 'Say hi to {name} 👋',
     chat_input_placeholder: 'Message {name}…',
@@ -2949,7 +2949,7 @@ export const translations: Record<Locale, Translations> = {
     tp_pay_eyebrow: 'Secure payment',
     tp_pay_title: 'Your money stays',
     tp_pay_title_line2: 'safe and sound.',
-    tp_pay_body: 'Your payment is held on the platform the moment you book. The traveler only receives the money once you\'ve confirmed delivery yourself, using a unique 6-digit code.',
+    tp_pay_body: 'Your payment is held on the platform the moment you book. The traveler only receives the money once you\'ve confirmed delivery yourself, using a unique 4-digit code.',
     tp_pay_stripe_badge: 'Powered by Stripe - the global leader in payments',
     tp_pay_step1: 'Booking confirmed',
     tp_pay_step2: 'Handed over in person',
@@ -2964,7 +2964,7 @@ export const translations: Record<Locale, Translations> = {
     tp_pillar2_title: 'Payment held in escrow',
     tp_pillar2_body: 'Your money stays in escrow with Stripe until delivery is confirmed.',
     tp_pillar3_title: 'Double confirmation',
-    tp_pillar3_body: 'Unique 6-digit codes for handover and delivery. No room for doubt.',
+    tp_pillar3_body: 'Unique 4-digit codes for handover and delivery. No room for doubt.',
     tp_pillar4_title: 'Disputes handled within 48h',
     tp_pillar4_body: 'Our team steps in when something goes wrong. Automatic suspension for proven abuse.',
     tp_allowed_title: 'Not everything can be sent.',
@@ -3019,7 +3019,7 @@ export const translations: Record<Locale, Translations> = {
     cgu_s5_p1: 'Payment is made via Stripe at the time of booking and held in escrow by Jibly. The traveler receives their compensation only after the sender confirms delivery using the delivery code.',
     cgu_s5_p2: 'Jibly charges a commission on each successful transaction. The price breakdown is displayed before each party confirms.',
     cgu_s6_title: 'Handover and delivery codes',
-    cgu_s6_p1: 'Each booking generates two confidential 6-digit codes: a handover code (held by the sender) and a delivery code (held by the traveler). These codes must never be shared outside the moment of the in-person meeting. The release of payment depends on their correct entry by the receiving party.',
+    cgu_s6_p1: 'Each booking generates two confidential 4-digit codes: a handover code (held by the sender) and a delivery code (held by the traveler). These codes must never be shared outside the moment of the in-person meeting. The release of payment depends on their correct entry by the receiving party.',
     cgu_s7_title: 'Prohibited conduct and exclusion',
     cgu_s7_p1: 'The following conduct results in the permanent suspension of the account, without notice or refund:',
     cgu_s7_li1: 'Transporting a forbidden item (see article 3)',

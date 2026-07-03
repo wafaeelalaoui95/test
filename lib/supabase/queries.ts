@@ -746,8 +746,8 @@ export function generateConfirmationCode(): string {
   // thus payment capture), so they must not be predictable like Math.random.
   const arr = new Uint32Array(1);
   crypto.getRandomValues(arr);
-  const n = arr[0] % 1_000_000;
-  return n.toString().padStart(6, '0');
+  const n = arr[0] % 10_000;
+  return n.toString().padStart(4, '0');
 }
 
 export async function confirmPickupWithCode(
