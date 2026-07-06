@@ -93,6 +93,7 @@ export type Translations = {
   disc_trips_count: string;
   disc_price_from: string;
   disc_can_transport: string;
+  disc_to_transport: string;
   disc_book_trip: string;
   disc_protection_included: string;
   disc_empty_travelers_route: string;
@@ -1273,6 +1274,7 @@ export const translations: Record<Locale, Translations> = {
     disc_trips_count: 'trajets',
     disc_price_from: 'À partir de',
     disc_can_transport: 'Peut transporter',
+    disc_to_transport: 'À transporter',
     disc_book_trip: 'Réserver ce trajet',
     disc_protection_included: 'protection Jibly incluse',
     disc_empty_travelers_route: 'Aucun voyageur sur cette route',
@@ -2436,6 +2438,7 @@ export const translations: Record<Locale, Translations> = {
     disc_trips_count: 'trips',
     disc_price_from: 'From',
     disc_can_transport: 'Can transport',
+    disc_to_transport: 'To transport',
     disc_book_trip: 'Book this trip',
     disc_protection_included: 'Jibly protection included',
     disc_empty_travelers_route: 'No traveler on this route',
