@@ -134,7 +134,6 @@ export default function HomePage() {
     setActiveToCountry('');
     setActiveDate('');
     setMaxBudget('');
-    setVerifiedOnly(false);
   }
 
   const filteredTrips = useMemo(() => {
