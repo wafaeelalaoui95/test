@@ -13,7 +13,6 @@ import {
   Loader2,
   SlidersHorizontal,
   X,
-  ShieldCheck,
   Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -84,7 +83,6 @@ export default function HomePage() {
   // Advanced filters (collapsible)
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [maxBudget, setMaxBudget] = useState<number | ''>('');
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,7 +160,6 @@ export default function HomePage() {
       if (!arrOk) return false;
       if (activeDate && tv.departure_date > activeDate) return false;
       if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
-      if (verifiedOnly && tv.profile?.verification_level !== 'id_verified' && tv.profile?.verification_level !== 'trusted') return false;
       return true;
     });
     // Exact city matches first, broadened (country-level) ones after.
@@ -171,7 +168,7 @@ export default function HomePage() {
       const rb = depExact(b) && arrExact(b) ? 0 : 1;
       return ra - rb;
     });
-  }, [trips, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget, verifiedOnly]);
+  }, [trips, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget]);
 
   // Same filtering logic but applied to shipping requests:
   //   - hide my own requests
@@ -199,7 +196,6 @@ export default function HomePage() {
       if (!arrOk) return false;
       if (activeDate && r.desired_delivery_date < activeDate) return false;
       if (maxBudget !== '' && r.budget < Number(maxBudget)) return false;
-      if (verifiedOnly && r.profile?.verification_level !== 'id_verified' && r.profile?.verification_level !== 'trusted') return false;
       return true;
     });
     return out.sort((a, b) => {
@@ -207,9 +203,9 @@ export default function HomePage() {
       const rb = depExact(b) && arrExact(b) ? 0 : 1;
       return ra - rb;
     });
-  }, [requests, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget, verifiedOnly]);
+  }, [requests, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget]);
 
-  const hasActiveSearch = !!(activeFrom || activeFromCountry || activeTo || activeToCountry || activeDate || maxBudget !== '' || verifiedOnly);
+  const hasActiveSearch = !!(activeFrom || activeFromCountry || activeTo || activeToCountry || activeDate || maxBudget !== '');
 
   return (
     <div>
@@ -317,9 +313,9 @@ export default function HomePage() {
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5" />
                     {showAdvanced ? t.search_filters_hide : t.search_filters_show}
-                    {(maxBudget !== '' || verifiedOnly) && (
+                    {maxBudget !== '' && (
                       <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-lavender-500 text-cream-50 text-[10px] font-bold ms-1">
-                        {[maxBudget !== '' ? '1' : '', verifiedOnly ? '1' : ''].filter(Boolean).length}
+                        1
                       </span>
                     )}
                   </button>
@@ -351,8 +347,8 @@ export default function HomePage() {
                       transition={{ duration: 0.25 }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-4 bg-white rounded-2xl border border-ink-50 p-5 grid sm:grid-cols-2 gap-5">
-                        <div>
+                      <div className="mt-4 bg-white rounded-2xl border border-ink-50 p-5">
+                        <div className="sm:max-w-xs">
                           <label className="flex items-center gap-2 text-[12px] font-semibold text-ink-500 tracking-[0.06em] uppercase mb-2">
                             <Wallet className="w-3 h-3" />
                             {t.disc_filter_budget}
@@ -366,21 +362,6 @@ export default function HomePage() {
                             placeholder="50 €"
                             className="w-full px-3 py-2.5 rounded-xl bg-cream-50 border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 num-display"
                           />
-                        </div>
-                        <div>
-                          <label className="block text-[12px] font-semibold text-ink-500 tracking-[0.06em] uppercase mb-2">
-                            {t.disc_filter_trust}
-                          </label>
-                          <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-cream-50 border border-ink-100 cursor-pointer hover:bg-cream-100">
-                            <input
-                              type="checkbox"
-                              checked={verifiedOnly}
-                              onChange={(e) => setVerifiedOnly(e.target.checked)}
-                              className="rounded accent-lavender-500"
-                            />
-                            <ShieldCheck className="w-3.5 h-3.5 text-ink-400" />
-                            <span className="text-[14px] text-ink-500 font-medium">{t.disc_filter_verified_only}</span>
-                          </label>
                         </div>
                       </div>
                     </motion.div>
