@@ -572,78 +572,93 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-30px' }}
         transition={{ duration: 0.4, delay }}
-        className="bg-white rounded-3xl p-6 border border-ink-50 group-hover:border-ink-200 group-hover:shadow-[0_8px_30px_-12px_rgba(24,20,16,0.12)] transition-all flex flex-col h-full"
+        className="bg-white rounded-2xl border border-ink-50 group-hover:border-ink-200 group-hover:shadow-[0_8px_30px_-12px_rgba(24,20,16,0.12)] transition-all flex flex-col h-full overflow-hidden"
       >
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[15px] text-lavender-700 flex-shrink-0">
-            {initial}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-ink-600 truncate text-[15px] tracking-[-0.005em]">
-              {name || '-'}
+        {/* Ticket body */}
+        <div className="p-4 flex-1 flex flex-col">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-9 h-9 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[13px] text-lavender-700 flex-shrink-0">
+              {initial}
             </div>
-            <div className="flex items-center gap-1 text-[13px] text-ink-400">
-              <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
-              <span className="font-medium text-ink-500 num-display">
-                {trip.profile?.rating?.toFixed(1) ?? '-'}
-              </span>
-              <span>· <span className="num-display">{trip.profile?.trips_completed ?? 0}</span> {t.disc_trips_count}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <div className="flex items-baseline gap-2 text-[18px] font-bold text-ink-600 mb-1.5 tracking-[-0.015em]">
-            <span>{cityDisplayName(trip.departure_city, locale)}</span>
-            <Plane className="w-4 h-4 text-ink-300" />
-            <span>{cityDisplayName(trip.arrival_city, locale)}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
-            <Calendar className="w-3 h-3" />
-            <span className="num-display">{formatShortDate(trip.departure_date)}</span>
-            {trip.flight_time && <span>· {trip.flight_time}</span>}
-          </div>
-        </div>
-
-        {categories.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 mb-5 flex-1 content-start">
-            {categories.map((cat) => {
-              const meta = ITEM_CATEGORIES.find((c) => c.value === cat);
-              if (!meta) return null;
-              return (
-                <span
-                  key={cat}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-lavender-50 text-lavender-700 rounded-full text-[12px] font-medium"
-                >
-                  <span>{meta.icon}</span>
-                  <span>{t[meta.labelKey]}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-ink-600 truncate text-[15px] tracking-[-0.005em]">
+                  {name || '-'}
                 </span>
-              );
-            })}
-          </div>
-        ) : plainNote ? (
-          <p className="text-[14px] text-ink-400 mb-5 line-clamp-2 leading-relaxed flex-1">
-            {plainNote}
-          </p>
-        ) : (
-          <div className="flex-1" />
-        )}
-
-        <div className="flex items-center justify-between pt-4 border-t border-ink-50/60 mt-auto">
-          {/* Always render the slot so the price stays right-aligned, even
-              when there's no badge to show (baseline email-only accounts). */}
-          <span>
-            {trip.profile?.verification_level && (
-              <VerificationBadge level={trip.profile.verification_level} />
-            )}
-          </span>
-          <div className="text-end">
-            <div className="text-[11px] text-ink-300 tracking-[0.04em] uppercase">{t.disc_price_from}</div>
-            <div className="font-bold text-ink-600 text-[18px] num-display tracking-[-0.015em]">
-              {formatEuros(priceBreakdown(trip.compensation_min).total)}
+                {trip.profile?.verification_level && (
+                  <span className="flex-shrink-0">
+                    <VerificationBadge level={trip.profile.verification_level} />
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 text-[13px] text-ink-400">
+                <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
+                <span className="font-medium text-ink-500 num-display">
+                  {trip.profile?.rating?.toFixed(1) ?? '-'}
+                </span>
+                <span>· <span className="num-display">{trip.profile?.trips_completed ?? 0}</span> {t.disc_trips_count}</span>
+              </div>
             </div>
-            <div className="text-[10px] text-ink-300 mt-0.5">{t.disc_protection_included}</div>
           </div>
+
+          <div className="mb-3">
+            <div className="flex items-baseline gap-2 text-[16px] font-bold text-ink-600 mb-1 tracking-[-0.015em]">
+              <span className="truncate">{cityDisplayName(trip.departure_city, locale)}</span>
+              <Plane className="w-3.5 h-3.5 text-ink-300 flex-shrink-0" />
+              <span className="truncate">{cityDisplayName(trip.arrival_city, locale)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[12px] text-ink-400">
+              <Calendar className="w-3 h-3" />
+              <span className="num-display">{formatShortDate(trip.departure_date)}</span>
+              {trip.flight_time && <span>· {trip.flight_time}</span>}
+            </div>
+          </div>
+
+          {categories.length > 0 ? (
+            <div className="flex-1 content-start">
+              <div className="text-[10px] font-semibold text-ink-400 tracking-[0.06em] uppercase mb-1.5">
+                {t.disc_can_transport}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {categories.slice(0, 3).map((cat) => {
+                  const meta = ITEM_CATEGORIES.find((c) => c.value === cat);
+                  if (!meta) return null;
+                  return (
+                    <span
+                      key={cat}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-lavender-50 text-lavender-700 rounded-full text-[11px] font-medium"
+                    >
+                      <span>{meta.icon}</span>
+                      <span>{t[meta.labelKey]}</span>
+                    </span>
+                  );
+                })}
+                {categories.length > 3 && (
+                  <span className="inline-flex items-center px-2 py-0.5 bg-cream-100 text-ink-400 rounded-full text-[11px] font-medium">
+                    +{categories.length - 3}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : plainNote ? (
+            <p className="text-[13px] text-ink-400 line-clamp-2 leading-relaxed flex-1">
+              {plainNote}
+            </p>
+          ) : (
+            <div className="flex-1" />
+          )}
+        </div>
+
+        {/* Boarding-pass stub — dashed perforation + notches + price */}
+        <div className="relative border-t-2 border-dashed border-ink-100 bg-lavender-50 px-4 py-2.5 flex items-center justify-between">
+          <div className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-cream-50" />
+          <div className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-cream-50" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-lavender-600">
+            {t.disc_price_from}
+          </span>
+          <span className="font-bold text-ink-600 text-[16px] num-display tracking-[-0.015em]">
+            {formatEuros(priceBreakdown(trip.compensation_min).total)}
+          </span>
         </div>
       </motion.article>
     </Link>
