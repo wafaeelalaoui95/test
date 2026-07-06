@@ -73,9 +73,14 @@ export async function listOpenTrips(
 ): Promise<(TravelerTripRow & { profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'> | null })[]> {
   const today = new Date().toISOString().slice(0, 10);
 
+  // Single round-trip: embed the author's public profile via the
+  // traveler_trips.user_id -> profiles.id foreign key (PostgREST auto-detects
+  // the relationship since it's the only FK to profiles on this table).
   let q = supabase
     .from('traveler_trips')
-    .select('*')
+    .select(
+      '*, profile:profiles(id, full_name, avatar_url, verification_level, rating, trips_completed)'
+    )
     .eq('status', 'open')
     .gte('departure_date', today)
     .order('departure_date', { ascending: true })
@@ -90,24 +95,7 @@ export async function listOpenTrips(
   if (tripsError) throw tripsError;
   if (!trips || trips.length === 0) return [];
 
-  const userIds = Array.from(new Set(trips.map((t) => t.user_id)));
-  const { data: profiles, error: profilesError } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, verification_level, rating, trips_completed')
-        .in('id', userIds)
-    ),
-    8000,
-    'List trip profiles'
-  );
-  if (profilesError) throw profilesError;
-
-  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-  return trips.map((t) => ({
-    ...t,
-    profile: (profileById.get(t.user_id) as any) ?? null,
-  }));
+  return trips.map((t: any) => ({ ...t, profile: t.profile ?? null }));
 }
 
 export async function listMyTrips(supabase: SB, userId: string): Promise<TravelerTripRow[]> {
@@ -159,11 +147,14 @@ export async function listOpenRequestsWithProfile(
 ): Promise<ShippingRequestWithProfile[]> {
   const today = new Date().toISOString().slice(0, 10);
 
+  // Single round-trip via the shipping_requests.user_id -> profiles.id FK.
   const { data: requests, error: reqErr } = await withTimeout(
     Promise.resolve(
       supabase
         .from('shipping_requests')
-        .select('*')
+        .select(
+          '*, profile:profiles(id, full_name, avatar_url, verification_level, rating, trips_completed)'
+        )
         .eq('status', 'pending')
         .gte('desired_delivery_date', today)
         .order('created_at', { ascending: false })
@@ -175,25 +166,7 @@ export async function listOpenRequestsWithProfile(
   if (reqErr) throw reqErr;
   if (!requests || requests.length === 0) return [];
 
-  const senderIds = Array.from(new Set(requests.map((r: ShippingRequestRow) => r.user_id)));
-  const { data: profiles } = await withTimeout(
-    Promise.resolve(
-      supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, verification_level, rating, trips_completed')
-        .in('id', senderIds)
-    ),
-    8000,
-    'List sender profiles'
-  );
-
-  const profileMap = new Map<string, Profile>();
-  (profiles ?? []).forEach((p: any) => profileMap.set(p.id, p));
-
-  return requests.map((r: ShippingRequestRow) => ({
-    ...r,
-    profile: (profileMap.get(r.user_id) as any) ?? null,
-  }));
+  return requests.map((r: any) => ({ ...r, profile: r.profile ?? null }));
 }
 
 export async function listMyRequests(supabase: SB, userId: string): Promise<ShippingRequestRow[]> {
