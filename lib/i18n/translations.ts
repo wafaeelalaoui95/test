@@ -288,6 +288,13 @@ export type Translations = {
   hiw_transport_2: string;
   hiw_transport_3: string;
   hiw_transport_cta: string;
+  hiw_eyebrow: string;
+  hiw_send_s1t: string;
+  hiw_send_s2t: string;
+  hiw_send_s3t: string;
+  hiw_transport_s1t: string;
+  hiw_transport_s2t: string;
+  hiw_transport_s3t: string;
 
   // Final CTA
   cta_ready: string;
@@ -1456,6 +1463,13 @@ export const translations: Record<Locale, Translations> = {
     hiw_transport_2: 'Acceptez et emportez l\'objet — vous pouvez toujours l\'inspecter.',
     hiw_transport_3: 'Livrez avec un code et recevez votre paiement.',
     hiw_transport_cta: 'Proposer un trajet',
+    hiw_eyebrow: 'Comment ça marche',
+    hiw_send_s1t: 'Trouvez un voyageur',
+    hiw_send_s2t: 'Réservez en sécurité',
+    hiw_send_s3t: 'Recevez votre colis',
+    hiw_transport_s1t: 'Choisissez une demande',
+    hiw_transport_s2t: 'Emportez l\'objet',
+    hiw_transport_s3t: 'Livrez et soyez payé',
 
     cta_ready: 'Prêt à commencer ?',
     cta_subtitle: 'Publiez votre demande en 2 minutes.',
@@ -2612,6 +2626,13 @@ export const translations: Record<Locale, Translations> = {
     hiw_transport_2: 'Accept and carry the item — you can always inspect it.',
     hiw_transport_3: 'Deliver with a code and get paid.',
     hiw_transport_cta: 'Post a trip',
+    hiw_eyebrow: 'How it works',
+    hiw_send_s1t: 'Find a traveler',
+    hiw_send_s2t: 'Book securely',
+    hiw_send_s3t: 'Get your parcel',
+    hiw_transport_s1t: 'Pick a request',
+    hiw_transport_s2t: 'Carry the item',
+    hiw_transport_s3t: 'Deliver and get paid',
 
     cta_ready: 'Ready to start?',
     cta_subtitle: 'Post your request in 2 minutes.',

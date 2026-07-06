@@ -499,35 +499,56 @@ export default function HomePage() {
       {(() => {
         const isSend = mode === 'travelers';
         const title = isSend ? t.hiw_send_title : t.hiw_transport_title;
-        const steps = isSend
-          ? [t.hiw_send_1, t.hiw_send_2, t.hiw_send_3]
-          : [t.hiw_transport_1, t.hiw_transport_2, t.hiw_transport_3];
         const cta = isSend ? t.hiw_send_cta : t.hiw_transport_cta;
         const href = isSend ? '/envoyer' : '/voyager';
+        const steps = isSend
+          ? [
+              { icon: '🔎', title: t.hiw_send_s1t, body: t.hiw_send_1 },
+              { icon: '🔒', title: t.hiw_send_s2t, body: t.hiw_send_2 },
+              { icon: '📦', title: t.hiw_send_s3t, body: t.hiw_send_3 },
+            ]
+          : [
+              { icon: '🧭', title: t.hiw_transport_s1t, body: t.hiw_transport_1 },
+              { icon: '🤝', title: t.hiw_transport_s2t, body: t.hiw_transport_2 },
+              { icon: '💰', title: t.hiw_transport_s3t, body: t.hiw_transport_3 },
+            ];
         return (
           <section className="border-t border-ink-50">
-            <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-20 lg:py-28">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.025em] mb-10 text-center">
-                {title}
-              </h2>
+            <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-12 sm:py-16">
+              <div className="text-center mb-10">
+                <p className="text-[12px] font-bold tracking-[0.18em] text-ink-300 uppercase mb-2">
+                  {t.hiw_eyebrow}
+                </p>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.025em]">
+                  {title}
+                </h2>
+              </div>
               <div className="grid sm:grid-cols-3 gap-5">
-                {steps.map((s, i) => (
+                {steps.map((step, i) => (
                   <motion.div
                     key={`${mode}-${i}`}
                     initial={{ opacity: 0, y: 12 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.08, duration: 0.4 }}
-                    className="bg-white rounded-2xl p-6 border border-ink-50"
+                    className="bg-white rounded-3xl p-6 border border-ink-50"
                   >
-                    <div className="w-9 h-9 rounded-full bg-lavender-100 text-lavender-700 font-bold flex items-center justify-center mb-4 num-display">
-                      {i + 1}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-11 h-11 rounded-2xl bg-cream-100 flex items-center justify-center text-2xl">
+                        {step.icon}
+                      </div>
+                      <div className="text-[32px] font-extrabold text-lavender-200 tracking-tighter leading-none num-display">
+                        {i + 1}
+                      </div>
                     </div>
-                    <p className="text-[15px] text-ink-500 leading-relaxed">{s}</p>
+                    <h3 className="text-[16px] font-bold text-ink-600 mb-1.5 tracking-[-0.01em]">
+                      {step.title}
+                    </h3>
+                    <p className="text-[14px] text-ink-500 leading-relaxed">{step.body}</p>
                   </motion.div>
                 ))}
               </div>
-              <div className="mt-10 text-center">
+              <div className="mt-9 text-center">
                 <Link href={user ? href : '/login'}>
                   <Button>
                     {cta}
