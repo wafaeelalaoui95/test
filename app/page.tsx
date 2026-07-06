@@ -774,8 +774,7 @@ function RequestCard({
   return (
     <motion.article
       initial={{ opacity: 0, y: 14 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-30px' }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
       className="bg-white rounded-2xl border border-ink-50 hover:border-ink-200 hover:shadow-[0_8px_30px_-12px_rgba(24,20,16,0.12)] transition-all flex flex-col h-full overflow-hidden"
     >
