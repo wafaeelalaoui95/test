@@ -252,17 +252,19 @@ export function ChatModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-[100] bg-ink-600/40 backdrop-blur-sm flex items-center justify-center sm:p-4"
+      className="fixed inset-0 z-[100] bg-ink-600/40 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
+      {/* Slide-in side panel (Messenger/Airbnb style), docked to the right. */}
       <motion.div
-        initial={{ y: 20, opacity: 0, scale: 0.98 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: 20, opacity: 0, scale: 0.98 }}
-        transition={{ duration: 0.2 }}
-        className="bg-cream-50 w-full h-full sm:h-[680px] sm:max-h-[90vh] sm:max-w-lg sm:rounded-3xl shadow-xl flex flex-col overflow-hidden"
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-y-0 right-0 w-full sm:w-[440px] bg-cream-50 shadow-2xl flex flex-col overflow-hidden"
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-ink-100">

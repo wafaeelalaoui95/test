@@ -7,6 +7,7 @@ import { Menu, X, User, LogOut, Wallet, Bell, MessageSquare } from 'lucide-react
 import { Logo } from '@/components/illustrations/Logo';
 import { NotificationsDropdown } from '@/components/NotificationsDropdown';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { useMessaging } from '@/components/GlobalMessaging';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { nameInitial, formatName, formatEuros } from '@/lib/utils';
@@ -24,6 +25,7 @@ export function Navbar() {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const { t } = useI18n();
   const { user, profile, loading, signOut } = useAuth();
+  const { openMessaging } = useMessaging();
 
   // Wallet balance is fetched once per session; the bell count is also
   // refreshed every 30s. The dropdown component owns its own count, so
@@ -112,15 +114,16 @@ export function Navbar() {
             {/* Messages — dedicated icon with its own unread badge, since
                 chat messages don't surface in the notifications bell. */}
             {user && (
-              <Link
-                href="/messages"
+              <button
+                type="button"
+                onClick={openMessaging}
                 className="relative p-2 text-ink-400 hover:text-ink-600 transition-colors"
                 aria-label={t.notif_my_messages}
                 title={t.notif_my_messages}
               >
                 <MessageSquare className="w-[18px] h-[18px]" />
                 <UnreadBadge count={unreadMessages} variant="desktop" />
-              </Link>
+              </button>
             )}
 
             {loading ? (
@@ -227,14 +230,15 @@ export function Navbar() {
               </Link>
             )}
             {user && (
-              <Link
-                href="/messages"
+              <button
+                type="button"
+                onClick={openMessaging}
                 className="relative p-2 text-ink-500"
                 aria-label={t.notif_my_messages}
               >
                 <MessageSquare className="h-5 w-5" />
                 <UnreadBadge count={unreadMessages} />
-              </Link>
+              </button>
             )}
             <button
               className="p-2 text-ink-500"
@@ -311,10 +315,10 @@ export function Navbar() {
                   {/* Messages — same destination as the desktop dropdown's
                       "Mes messages" entry, surfaced here since mobile has no
                       notifications dropdown. */}
-                  <Link
-                    href="/messages"
-                    className="py-3 text-base font-medium text-ink-500 flex items-center gap-2"
-                    onClick={() => setOpen(false)}
+                  <button
+                    type="button"
+                    className="w-full text-left py-3 text-base font-medium text-ink-500 flex items-center gap-2"
+                    onClick={() => { setOpen(false); openMessaging(); }}
                   >
                     <MessageSquare className="w-4 h-4" />
                     <span>{t.notif_my_messages}</span>
@@ -323,7 +327,7 @@ export function Navbar() {
                         {unreadMessages > 9 ? '9+' : unreadMessages}
                       </span>
                     )}
-                  </Link>
+                  </button>
                   {mobileTrustLink}
                   <form action="/auth/sign-out" method="post" className="mt-2">
                     <button
