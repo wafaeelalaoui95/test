@@ -3691,7 +3691,7 @@ function IntentCardInline({
   // flight — the traveler may genuinely travel earlier, so we confirm, not block.
   tripDepartureDate?: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [showProofModal, setShowProofModal] = useState(false);
   // Safety gate before accepting: the traveler must acknowledge they can
   // inspect the item and refuse without penalty.
@@ -3794,20 +3794,13 @@ function IntentCardInline({
         </div>
 
         {showAccept && (
-          <div className="flex-shrink-0 flex items-center gap-1.5">
-            <button
-              onClick={() => handle('cancelled')}
-              disabled={!!busy}
-              className="px-3 py-1.5 text-[12px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
-            >
-              {busy === 'cancel' ? '...' : t.me2_decline}
-            </button>
+          <div className="flex-shrink-0">
             <button
               onClick={() => { setAcceptAck(false); setShowAcceptModal(true); }}
               disabled={!!busy}
-              className="px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
+              className="px-3.5 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50"
             >
-              {busy === 'confirm' ? '...' : t.me2_accept}
+              {busy ? '...' : t.me2_view_request}
             </button>
           </div>
         )}
@@ -3974,9 +3967,62 @@ function IntentCardInline({
               onClick={(e) => e.stopPropagation()}
               className="bg-cream-50 rounded-3xl p-6 max-w-md w-full shadow-xl"
             >
-              <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-3">
-                {t.me2_accept_check_title}
-              </h3>
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em]">
+                  {t.me2_accept_check_title}
+                </h3>
+                <button
+                  onClick={() => setShowAcceptModal(false)}
+                  disabled={!!busy}
+                  aria-label={t.me2_accept_cancel}
+                  className="text-ink-400 hover:text-ink-600 text-lg leading-none px-1 disabled:opacity-50"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Full request details so the traveler can decide from here. */}
+              <div className="rounded-2xl bg-cream-100 p-4 mb-4 space-y-2.5 text-[13px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-ink-600 text-[14px]">{senderName}</span>
+                  {(intent.sender_profile?.verification_level === 'id_verified' ||
+                    intent.sender_profile?.verification_level === 'trusted') && (
+                    <ShieldCheck className="w-3.5 h-3.5 text-mint-500" strokeWidth={2.5} />
+                  )}
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-ink-400">{t.send_recap_route}</span>
+                  <span className="font-medium text-ink-600 text-end">
+                    {cityDisplayName(intent.pickup_city, locale)} → {cityDisplayName(intent.destination_city, locale)}
+                  </span>
+                </div>
+                {tripDepartureDate && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-ink-400">{t.send_recap_date}</span>
+                    <span className="font-medium text-ink-600 num-display">{formatShortDate(tripDepartureDate)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-3">
+                  <span className="text-ink-400">{t.send_recap_item}</span>
+                  <span className="font-medium text-ink-600 text-end">
+                    {(() => {
+                      const c = ITEM_CATEGORIES.find((x) => x.value === (intent.item_category as ItemCategory));
+                      const label = c ? `${c.icon} ${t[c.labelKey]}` : intent.item_category;
+                      return intent.item_title ? `${label} · ${intent.item_title}` : label;
+                    })()}
+                  </span>
+                </div>
+                {intent.item_description && (
+                  <p className="text-ink-500 leading-relaxed pt-1">{intent.item_description}</p>
+                )}
+                <div className="flex justify-between gap-3 pt-2 border-t border-ink-100">
+                  <span className="text-ink-400">{t.disc_you_receive}</span>
+                  <span className="font-bold text-mint-600 num-display">
+                    {formatEuros(intent.proposed_price / 1.15)}
+                  </span>
+                </div>
+              </div>
+
               <div className="rounded-xl bg-ink-500 text-cream-50 px-4 py-2.5 mb-4 text-[13px] font-semibold">
                 {t.me2_accept_doubt}
               </div>
@@ -3993,11 +4039,11 @@ function IntentCardInline({
               </label>
               <div className="flex gap-2.5">
                 <button
-                  onClick={() => setShowAcceptModal(false)}
+                  onClick={async () => { setShowAcceptModal(false); await handle('cancelled'); }}
                   disabled={!!busy}
-                  className="flex-1 px-4 py-2.5 text-[14px] font-medium text-ink-500 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 text-[14px] font-medium text-blush-600 bg-blush-50 hover:bg-blush-100 rounded-full transition-colors disabled:opacity-50"
                 >
-                  {t.me2_accept_cancel}
+                  {t.me2_decline}
                 </button>
                 <button
                   disabled={!acceptAck || !!busy}

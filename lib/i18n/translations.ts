@@ -919,6 +919,7 @@ export type Translations = {
   me2_status_delivered: string;
   me2_status_accepted: string;
   me2_accept: string;
+  me2_view_request: string;
   me2_accept_check_title: string;
   me2_accept_check_label: string;
   me2_accept_doubt: string;
@@ -2060,7 +2061,8 @@ export const translations: Record<Locale, Translations> = {
     me2_status_delivered: 'livré',
     me2_status_accepted: 'acceptée',
     me2_accept: 'Accepter',
-    me2_accept_check_title: 'Avant d\'accepter',
+    me2_view_request: 'Voir la demande',
+    me2_accept_check_title: 'Détails de la demande',
     me2_accept_check_label: 'Je confirme avoir lu la description de l\'objet, je pourrai l\'inspecter avant de partir, et je sais que je peux refuser sans pénalité si l\'objet ne correspond pas, est fermé/scellé, ou me met mal à l\'aise.',
     me2_accept_doubt: 'En cas de doute, refusez.',
     me2_accept_confirm: 'Accepter la demande',
@@ -3200,7 +3202,8 @@ export const translations: Record<Locale, Translations> = {
     me2_status_delivered: 'delivered',
     me2_status_accepted: 'accepted',
     me2_accept: 'Accept',
-    me2_accept_check_title: 'Before you accept',
+    me2_view_request: 'View request',
+    me2_accept_check_title: 'Request details',
     me2_accept_check_label: 'I confirm I\'ve read the item description, that I\'ll be able to inspect it before leaving, and that I can refuse without penalty if the item doesn\'t match, is closed/sealed, or makes me uncomfortable.',
     me2_accept_doubt: 'When in doubt, refuse.',
     me2_accept_confirm: 'Accept the request',
