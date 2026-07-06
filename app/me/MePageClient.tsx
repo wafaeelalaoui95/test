@@ -174,6 +174,45 @@ export default function MyPage(
   // When the sender accepts a traveler's proposal, we open a Stripe payment
   // modal. The proposal booking is held here while paying.
   const [proposalToPay, setProposalToPay] = useState<MyBooking | null>(null);
+  // Incoming request whose details popup is open (opened from the card's
+  // "Voir la demande" button OR deep-linked from a notification via ?booking=).
+  const [detailsFor, setDetailsFor] = useState<IncomingIntent | null>(null);
+
+  // Accept/decline an incoming request: update status, capture/cancel the
+  // Stripe hold, reflect locally. Shared by the trips list and the details
+  // popup (from a notification).
+  async function handleUpdateIntent(id: string, status: 'confirmed' | 'cancelled') {
+    await browser.updateBookingIntentStatus(id, status);
+    const intent = incomingIntents.find((i) => i.id === id);
+    if (intent?.payment_intent_id) {
+      const endpoint = status === 'confirmed' ? 'capture' : 'cancel';
+      try {
+        await fetch(`/api/stripe/${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentIntentId: intent.payment_intent_id, bookingIntentId: id }),
+        });
+      } catch (e) {
+        console.warn(`Stripe ${endpoint} error:`, e);
+      }
+    }
+    setIncomingIntents((prev) => prev.map((it) => (it.id === id ? { ...it, status } : it)));
+  }
+
+  // Deep-link from a booking notification: ?booking=<id> opens the request
+  // details popup once the incoming requests have loaded.
+  useEffect(() => {
+    if (typeof window === 'undefined' || detailsFor) return;
+    const id = new URLSearchParams(window.location.search).get('booking');
+    if (!id) return;
+    const found = incomingIntents.find((i) => i.id === id);
+    if (found) {
+      setDetailsFor(found);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('booking');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [incomingIntents, detailsFor]);
 
   // Chat modal — pick a booking to open. We stash everything the modal
   // needs so it doesn't have to re-query.
@@ -560,28 +599,7 @@ export default function MyPage(
                   trips={trips}
                   incomingIntents={incomingIntents}
                   myProposals={myProposals}
-                  onUpdateIntent={async (id, status) => {
-                    await browser.updateBookingIntentStatus(id, status);
-                    const intent = incomingIntents.find((i) => i.id === id);
-                    if (intent?.payment_intent_id) {
-                      const endpoint = status === 'confirmed' ? 'capture' : 'cancel';
-                      try {
-                        await fetch(`/api/stripe/${endpoint}`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            paymentIntentId: intent.payment_intent_id,
-                            bookingIntentId: id,
-                          }),
-                        });
-                      } catch (e) {
-                        console.warn(`Stripe ${endpoint} error:`, e);
-                      }
-                    }
-                    setIncomingIntents((prev) =>
-                      prev.map((it) => (it.id === id ? { ...it, status } : it))
-                    );
-                  }}
+                  onUpdateIntent={handleUpdateIntent}
                   onProofUploaded={(id, url, receiverName) => {
                     const patch = {
                       delivery_proof_url: url,
@@ -835,6 +853,25 @@ export default function MyPage(
           />
         )}
       </AnimatePresence>
+
+      {/* Incoming request details popup (from a card or a notification). */}
+      {detailsFor && (
+        <RequestDetailsModal
+          intent={detailsFor}
+          tripDepartureDate={trips.find((tr) => tr.id === detailsFor.traveler_trip_id)?.departure_date}
+          onClose={() => setDetailsFor(null)}
+          onAccept={async () => {
+            const id = detailsFor.id;
+            setDetailsFor(null);
+            await handleUpdateIntent(id, 'confirmed');
+          }}
+          onDecline={async () => {
+            const id = detailsFor.id;
+            setDetailsFor(null);
+            await handleUpdateIntent(id, 'cancelled');
+          }}
+        />
+      )}
 
       {/* PICKUP code — SHOW side (sender reads the code aloud) */}
       <PickupShowCodeModal
@@ -3663,6 +3700,126 @@ function TripDetailCard({
 // codes + signaler). The status pill distinguishes pickup-pending vs in-
 // transit vs delivery-handoff vs done.
 // ---------------------------------------------------------------------------
+
+// Page-level details popup for an incoming request. Same content as the
+// card's accept flow, but rendered at the page so it can be opened from a
+// notification deep-link (?booking=) regardless of which trip is selected.
+function RequestDetailsModal({
+  intent,
+  tripDepartureDate,
+  onClose,
+  onAccept,
+  onDecline,
+}: {
+  intent: IncomingIntent;
+  tripDepartureDate?: string;
+  onClose: () => void;
+  onAccept: () => void | Promise<void>;
+  onDecline: () => void | Promise<void>;
+}) {
+  const { t, locale } = useI18n();
+  const [ack, setAck] = useState(false);
+  const senderName = shortName(intent.sender_profile?.full_name) || t.me2_role_sender;
+  const verified =
+    intent.sender_profile?.verification_level === 'id_verified' ||
+    intent.sender_profile?.verification_level === 'trusted';
+  const cat = ITEM_CATEGORIES.find((x) => x.value === (intent.item_category as ItemCategory));
+  const itemLabel = cat ? `${cat.icon} ${t[cat.labelKey]}` : intent.item_category;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 20, opacity: 0, scale: 0.98 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-cream-50 rounded-3xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em]">
+            {t.me2_accept_check_title}
+          </h3>
+          <button
+            onClick={onClose}
+            aria-label={t.me2_accept_cancel}
+            className="text-ink-400 hover:text-ink-600 text-lg leading-none px-1"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="rounded-2xl bg-cream-100 p-4 mb-4 space-y-2.5 text-[13px]">
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-ink-600 text-[14px]">{senderName}</span>
+            {verified && <ShieldCheck className="w-3.5 h-3.5 text-mint-500" strokeWidth={2.5} />}
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-ink-400">{t.send_recap_route}</span>
+            <span className="font-medium text-ink-600 text-end">
+              {cityDisplayName(intent.pickup_city, locale)} → {cityDisplayName(intent.destination_city, locale)}
+            </span>
+          </div>
+          {tripDepartureDate && (
+            <div className="flex justify-between gap-3">
+              <span className="text-ink-400">{t.send_recap_date}</span>
+              <span className="font-medium text-ink-600 num-display">{formatShortDate(tripDepartureDate)}</span>
+            </div>
+          )}
+          <div className="flex justify-between gap-3">
+            <span className="text-ink-400">{t.send_recap_item}</span>
+            <span className="font-medium text-ink-600 text-end">
+              {intent.item_title ? `${itemLabel} · ${intent.item_title}` : itemLabel}
+            </span>
+          </div>
+          {intent.item_description && (
+            <p className="text-ink-500 leading-relaxed pt-1">{intent.item_description}</p>
+          )}
+          <div className="flex justify-between gap-3 pt-2 border-t border-ink-100">
+            <span className="text-ink-400">{t.disc_you_receive}</span>
+            <span className="font-bold text-mint-600 num-display">
+              {formatEuros(intent.proposed_price / 1.15)}
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-ink-500 text-cream-50 px-4 py-2.5 mb-4 text-[13px] font-semibold">
+          {t.me2_accept_doubt}
+        </div>
+        <label className="flex items-start gap-2.5 cursor-pointer mb-5">
+          <input
+            type="checkbox"
+            checked={ack}
+            onChange={(e) => setAck(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-ink-300 text-ink-500 focus:ring-2 focus:ring-lavender-500/30 cursor-pointer"
+          />
+          <span className="text-[13px] text-ink-600 leading-relaxed">{t.me2_accept_check_label}</span>
+        </label>
+        <div className="flex gap-2.5">
+          <button
+            onClick={() => onDecline()}
+            className="flex-1 px-4 py-2.5 text-[14px] font-medium text-blush-600 bg-blush-50 hover:bg-blush-100 rounded-full transition-colors"
+          >
+            {t.me2_decline}
+          </button>
+          <button
+            disabled={!ack}
+            onClick={() => onAccept()}
+            className="flex-1 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t.me2_accept_confirm}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 function IntentCardInline({
   intent,

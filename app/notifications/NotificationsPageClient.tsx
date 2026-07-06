@@ -43,7 +43,11 @@ export default function NotificationsPageClient({
       );
       browser.markNotificationRead(n.id).catch(() => {});
     }
-    if (n.link) router.push(n.link);
+    if (n.type === 'booking_request_received' && n.related_booking_id) {
+      router.push(`/me?booking=${n.related_booking_id}`);
+    } else if (n.link) {
+      router.push(n.link);
+    }
   }
 
   async function markAllRead() {

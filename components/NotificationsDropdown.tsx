@@ -115,7 +115,12 @@ export function NotificationsDropdown() {
       browser.markNotificationRead(n.id).catch(() => {});
     }
     setOpen(false);
-    if (n.link) router.push(n.link);
+    // A new incoming booking request opens the request-details popup on /me.
+    if (n.type === 'booking_request_received' && n.related_booking_id) {
+      router.push(`/me?booking=${n.related_booking_id}`);
+    } else if (n.link) {
+      router.push(n.link);
+    }
   }
 
   async function markAllRead() {
