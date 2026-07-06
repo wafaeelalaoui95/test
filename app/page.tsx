@@ -649,15 +649,21 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
           )}
         </div>
 
-        {/* Boarding-pass stub — dashed perforation + notches + price */}
-        <div className="relative border-t-2 border-dashed border-ink-100 bg-lavender-50 px-4 py-2.5 flex items-center justify-between">
+        {/* Boarding-pass stub — dashed perforation + notches + price + CTA */}
+        <div className="relative border-t-2 border-dashed border-ink-100 bg-lavender-50 px-4 py-2.5 flex items-center justify-between gap-2">
           <div className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-cream-50" />
           <div className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-cream-50" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-lavender-600">
-            {t.disc_price_from}
-          </span>
-          <span className="font-bold text-ink-600 text-[16px] num-display tracking-[-0.015em]">
-            {formatEuros(priceBreakdown(trip.compensation_min).total)}
+          <div className="min-w-0 leading-tight">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-lavender-600">
+              {t.disc_price_from}
+            </div>
+            <div className="font-bold text-ink-600 text-[16px] num-display tracking-[-0.015em]">
+              {formatEuros(priceBreakdown(trip.compensation_min).total)}
+            </div>
+          </div>
+          <span className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-ink-500 group-hover:bg-ink-600 text-cream-50 text-[12px] font-semibold transition-colors">
+            {t.disc_book_trip}
+            <ArrowRight className="w-3.5 h-3.5" />
           </span>
         </div>
       </motion.article>

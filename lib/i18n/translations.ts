@@ -93,6 +93,7 @@ export type Translations = {
   disc_trips_count: string;
   disc_price_from: string;
   disc_can_transport: string;
+  disc_book_trip: string;
   disc_protection_included: string;
   disc_empty_travelers_route: string;
   disc_empty_requests_route: string;
@@ -1254,6 +1255,7 @@ export const translations: Record<Locale, Translations> = {
     disc_trips_count: 'trajets',
     disc_price_from: 'À partir de',
     disc_can_transport: 'Peut transporter',
+    disc_book_trip: 'Réserver ce trajet',
     disc_protection_included: 'protection Jibly incluse',
     disc_empty_travelers_route: 'Aucun voyageur sur cette route',
     disc_empty_requests_route: 'Aucune demande sur cette route',
@@ -1268,7 +1270,7 @@ export const translations: Record<Locale, Translations> = {
     disc_age_days_ago: 'Il y a {n} jours',
     disc_you_receive: 'Vous recevrez',
     disc_on_paid: 'sur {total} payés',
-    disc_i_can_do_it: 'Je peux le faire',
+    disc_i_can_do_it: 'Je peux transporter pour cette personne',
     prof_not_found: 'Profil introuvable',
     prof_not_found_desc: 'Ce voyageur n\'existe plus ou son profil a été supprimé.',
     prof_back_to_travelers: 'Retour aux voyageurs',
@@ -2399,6 +2401,7 @@ export const translations: Record<Locale, Translations> = {
     disc_trips_count: 'trips',
     disc_price_from: 'From',
     disc_can_transport: 'Can transport',
+    disc_book_trip: 'Book this trip',
     disc_protection_included: 'Jibly protection included',
     disc_empty_travelers_route: 'No traveler on this route',
     disc_empty_requests_route: 'No request on this route',
@@ -2413,7 +2416,7 @@ export const translations: Record<Locale, Translations> = {
     disc_age_days_ago: '{n} days ago',
     disc_you_receive: 'You’ll receive',
     disc_on_paid: 'of {total} paid',
-    disc_i_can_do_it: 'I can do it',
+    disc_i_can_do_it: 'I can transport for this person',
     prof_not_found: 'Profile not found',
     prof_not_found_desc: 'This traveler no longer exists or their profile has been deleted.',
     prof_back_to_travelers: 'Back to travelers',
