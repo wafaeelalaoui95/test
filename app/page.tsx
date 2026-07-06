@@ -414,9 +414,9 @@ export default function HomePage() {
                 t={t}
               />
             ) : (
-              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 -mx-5 px-5 sm:mx-0 sm:px-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6">
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {filteredTrips.map((tv, i) => (
-                  <div key={tv.id} className="snap-start shrink-0 w-[80%] sm:w-auto">
+                  <div key={tv.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
                     <TripCard trip={tv} delay={(i % 6) * 0.04} t={t} />
                   </div>
                 ))}
@@ -432,9 +432,9 @@ export default function HomePage() {
                 t={t}
               />
             ) : (
-              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 -mx-5 px-5 sm:mx-0 sm:px-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6">
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {filteredRequests.map((r, i) => (
-                  <div key={r.id} className="snap-start shrink-0 w-[80%] sm:w-auto">
+                  <div key={r.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
                     <RequestCard
                       request={r}
                       delay={(i % 6) * 0.04}
