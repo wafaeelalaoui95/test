@@ -277,6 +277,17 @@ export type Translations = {
   // Testimonial
   testimonial_quote: string;
   testimonial_author: string;
+  // How it works (contextual to the discover tab)
+  hiw_send_title: string;
+  hiw_send_1: string;
+  hiw_send_2: string;
+  hiw_send_3: string;
+  hiw_send_cta: string;
+  hiw_transport_title: string;
+  hiw_transport_1: string;
+  hiw_transport_2: string;
+  hiw_transport_3: string;
+  hiw_transport_cta: string;
 
   // Final CTA
   cta_ready: string;
@@ -1435,6 +1446,16 @@ export const translations: Record<Locale, Translations> = {
 
     testimonial_quote: 'J\'ai envoyé les papiers de ma mère depuis Bruxelles. Reçus en 36h. Une magie.',
     testimonial_author: 'Salma - Casablanca',
+    hiw_send_title: 'Comment envoyer votre objet',
+    hiw_send_1: 'Choisissez un voyageur qui va dans votre direction.',
+    hiw_send_2: 'Réservez et payez en sécurité — l\'argent est bloqué jusqu\'à la livraison.',
+    hiw_send_3: 'Remettez votre objet avec un code. À la livraison, le voyageur est payé.',
+    hiw_send_cta: 'Envoyer un objet',
+    hiw_transport_title: 'Comment transporter un objet',
+    hiw_transport_1: 'Choisissez une demande sur votre trajet.',
+    hiw_transport_2: 'Acceptez et emportez l\'objet — vous pouvez toujours l\'inspecter.',
+    hiw_transport_3: 'Livrez avec un code et recevez votre paiement.',
+    hiw_transport_cta: 'Proposer un trajet',
 
     cta_ready: 'Prêt à commencer ?',
     cta_subtitle: 'Publiez votre demande en 2 minutes.',
@@ -2581,6 +2602,16 @@ export const translations: Record<Locale, Translations> = {
 
     testimonial_quote: 'I sent my mum\'s papers from Brussels. Received in 36h. Pure magic.',
     testimonial_author: 'Salma - Casablanca',
+    hiw_send_title: 'How to send your item',
+    hiw_send_1: 'Pick a traveler heading your way.',
+    hiw_send_2: 'Book and pay securely — the money is held until delivery.',
+    hiw_send_3: 'Hand over your item with a code. On delivery, the traveler is paid.',
+    hiw_send_cta: 'Send an item',
+    hiw_transport_title: 'How to transport an item',
+    hiw_transport_1: 'Pick a request along your route.',
+    hiw_transport_2: 'Accept and carry the item — you can always inspect it.',
+    hiw_transport_3: 'Deliver with a code and get paid.',
+    hiw_transport_cta: 'Post a trip',
 
     cta_ready: 'Ready to start?',
     cta_subtitle: 'Post your request in 2 minutes.',

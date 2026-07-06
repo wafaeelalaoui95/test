@@ -495,26 +495,50 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* TESTIMONIAL */}
-      <section className="border-t border-ink-50">
-        <div className="mx-auto max-w-4xl px-5 sm:px-8 lg:px-12 py-24 lg:py-32">
-          <motion.figure
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <blockquote className="text-2xl sm:text-3xl lg:text-4xl font-medium text-ink-600 leading-[1.25] tracking-[-0.02em] text-balance">
-              <span className="text-ink-200 me-1">&ldquo;</span>
-              {t.testimonial_quote}
-              <span className="text-ink-200 ms-0.5">&rdquo;</span>
-            </blockquote>
-            <figcaption className="mt-8 text-[15px] text-ink-400">
-              <span className="font-semibold text-ink-600">{t.testimonial_author}</span>
-            </figcaption>
-          </motion.figure>
-        </div>
-      </section>
+      {/* HOW IT WORKS — contextual to the active tab (send vs transport) */}
+      {(() => {
+        const isSend = mode === 'travelers';
+        const title = isSend ? t.hiw_send_title : t.hiw_transport_title;
+        const steps = isSend
+          ? [t.hiw_send_1, t.hiw_send_2, t.hiw_send_3]
+          : [t.hiw_transport_1, t.hiw_transport_2, t.hiw_transport_3];
+        const cta = isSend ? t.hiw_send_cta : t.hiw_transport_cta;
+        const href = isSend ? '/envoyer' : '/voyager';
+        return (
+          <section className="border-t border-ink-50">
+            <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-20 lg:py-28">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.025em] mb-10 text-center">
+                {title}
+              </h2>
+              <div className="grid sm:grid-cols-3 gap-5">
+                {steps.map((s, i) => (
+                  <motion.div
+                    key={`${mode}-${i}`}
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.08, duration: 0.4 }}
+                    className="bg-white rounded-2xl p-6 border border-ink-50"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-lavender-100 text-lavender-700 font-bold flex items-center justify-center mb-4 num-display">
+                      {i + 1}
+                    </div>
+                    <p className="text-[15px] text-ink-500 leading-relaxed">{s}</p>
+                  </motion.div>
+                ))}
+              </div>
+              <div className="mt-10 text-center">
+                <Link href={user ? href : '/login'}>
+                  <Button>
+                    {cta}
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* FINAL CTA */}
       <section className="border-t border-ink-50">
