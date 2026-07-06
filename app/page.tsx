@@ -208,8 +208,8 @@ export default function HomePage() {
     <div>
       {/* HERO — editorial split with paper plane + search box side by side */}
       <section className="relative">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 pt-12 sm:pt-16 lg:pt-24 pb-14 lg:pb-20">
-          <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 pt-8 sm:pt-10 lg:pt-14 pb-14 lg:pb-20">
+          <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
             {/* LEFT — claim + search box */}
             <div className="lg:col-span-7 order-2 lg:order-1">
               <motion.h1
@@ -238,7 +238,7 @@ export default function HomePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1, delay: 0.2 }}
-              className="lg:col-span-5 order-1 lg:order-2 lg:-mt-12"
+              className="lg:col-span-5 order-1 lg:order-2"
             >
               <div className="relative max-w-md mx-auto lg:max-w-none">
                 <HeroScene className="w-full" />
