@@ -85,28 +85,18 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    // Load both sides in parallel — we always need both since the user can
-    // flip the toggle at any moment, and we don't want a loading flash then.
-    Promise.allSettled([
-      browser.listOpenTrips({ limit: 50 }),
-      browser.listOpenRequestsWithProfile(),
-    ])
-      .then(([tripsRes, requestsRes]) => {
-        if (cancelled) return;
-        if (tripsRes.status === 'fulfilled') {
-          setTrips(tripsRes.value as TripWithProfile[]);
-        }
-        if (requestsRes.status === 'fulfilled') {
-          setRequests(requestsRes.value as RequestWithProfile[]);
-        }
-        if (tripsRes.status === 'rejected' && requestsRes.status === 'rejected') {
-          setError(t.sec_load_error);
-        }
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-      });
+    // Travelers is the default tab, so render it as soon as its query returns
+    // — don't block the spinner on the requests query too (that was the main
+    // source of the slow first paint). Requests load in the background.
+    browser
+      .listOpenTrips({ limit: 30 })
+      .then((d) => { if (!cancelled) setTrips(d as TripWithProfile[]); })
+      .catch(() => { if (!cancelled) setError(t.sec_load_error); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    browser
+      .listOpenRequestsWithProfile()
+      .then((d) => { if (!cancelled) setRequests(d as RequestWithProfile[]); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -424,9 +414,11 @@ export default function HomePage() {
                 t={t}
               />
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 -mx-5 px-5 sm:mx-0 sm:px-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6">
                 {filteredTrips.map((tv, i) => (
-                  <TripCard key={tv.id} trip={tv} delay={(i % 6) * 0.04} t={t} />
+                  <div key={tv.id} className="snap-start shrink-0 w-[80%] sm:w-auto">
+                    <TripCard trip={tv} delay={(i % 6) * 0.04} t={t} />
+                  </div>
                 ))}
               </div>
             )
@@ -440,15 +432,16 @@ export default function HomePage() {
                 t={t}
               />
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 -mx-5 px-5 sm:mx-0 sm:px-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6">
                 {filteredRequests.map((r, i) => (
-                  <RequestCard
-                    key={r.id}
-                    request={r}
-                    delay={(i % 6) * 0.04}
-                    t={t}
-                    onRespond={() => setRespondingTo(r)}
-                  />
+                  <div key={r.id} className="snap-start shrink-0 w-[80%] sm:w-auto">
+                    <RequestCard
+                      request={r}
+                      delay={(i % 6) * 0.04}
+                      t={t}
+                      onRespond={() => setRespondingTo(r)}
+                    />
+                  </div>
                 ))}
               </div>
             )
