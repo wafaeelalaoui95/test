@@ -208,7 +208,7 @@ export default function HomePage() {
     <div>
       {/* HERO — editorial split with paper plane + search box side by side */}
       <section className="relative">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 pt-8 sm:pt-10 lg:pt-14 pb-14 lg:pb-20">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 pt-8 sm:pt-10 lg:pt-14 pb-8 lg:pb-10">
           <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
             {/* LEFT — claim + search box */}
             <div className="lg:col-span-7 order-2 lg:order-1">
@@ -240,7 +240,7 @@ export default function HomePage() {
               transition={{ duration: 1, delay: 0.2 }}
               className="lg:col-span-5 order-1 lg:order-2"
             >
-              <div className="relative max-w-md mx-auto lg:max-w-none">
+              <div className="relative max-w-xs sm:max-w-sm mx-auto lg:max-w-sm lg:ms-auto lg:me-0">
                 <HeroScene className="w-full" />
               </div>
             </motion.div>
@@ -251,7 +251,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-8 lg:mt-12"
+            className="mt-4 lg:mt-2"
           >
             <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(24,20,16,0.10)] border border-ink-50/60 p-2">
               <div className="flex flex-col md:flex-row md:items-stretch">
