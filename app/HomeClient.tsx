@@ -576,7 +576,7 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
   }
 
   return (
-    <Link href={`/u/${trip.user_id}`} className="block group">
+    <Link href={`/u/${trip.user_id}?book=${trip.id}`} className="block group">
       <motion.article
         initial={{ opacity: 0, y: 14 }}
         whileInView={{ opacity: 1, y: 0 }}

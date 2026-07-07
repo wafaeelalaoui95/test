@@ -45,7 +45,7 @@ type PublicProfile = Pick<
 export default function PublicProfilePage({ params }: { params: { id: string } }) {
   const travelerId = params.id;
   const { t, locale } = useI18n();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [trips, setTrips] = useState<TravelerTripRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +92,25 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
     setIntentDescription('');
     setSubmitErr(null);
   }
+
+  // Deep-link support: the "Book this trip" cards on the home page link here
+  // with ?book=<tripId>. Once trips + auth have resolved, open that trip's
+  // booking modal directly (or bounce through login first, preserving intent).
+  useEffect(() => {
+    if (authLoading || trips.length === 0) return;
+    const bookId = new URLSearchParams(window.location.search).get('book');
+    if (!bookId) return;
+    const target = trips.find((tr) => tr.id === bookId);
+    if (!target) return;
+    if (!user) {
+      window.location.href = `/login?next=${encodeURIComponent(`/u/${travelerId}?book=${bookId}`)}`;
+      return;
+    }
+    openBooking(target);
+    // Clean the URL so a refresh or back-nav doesn't reopen the modal.
+    window.history.replaceState(null, '', `/u/${travelerId}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, trips]);
 
   function handleProceedToPayment() {
     if (!intentCategory) {
