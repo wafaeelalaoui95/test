@@ -41,7 +41,7 @@ import { DisputeModal } from '@/components/DisputeModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
-import { ProofThumbnail } from '@/components/ImageLightbox';
+import { ViewProofButton } from '@/components/ImageLightbox';
 // Reviews — mutual star-rating between sender and traveler once received_confirmed_at is set.
 import { ReviewModal } from '@/components/ReviewModal';
 import type { ReviewForBooking } from '@/lib/supabase/queries';
@@ -1424,18 +1424,17 @@ function BookingCard({
 
           {/* Delivery proof — visible only once the traveler has uploaded one */}
           {booking.delivery_proof_url && (
-            <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3.5 mb-3">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">📸</span>
-                <div className="text-[13px] font-bold text-mint-700">
-                  {t.me2_delivery_proof}
-                </div>
+            <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📸</span>
+                {/* Compact: a small link that opens the photo in a popup,
+                    instead of a big inline thumbnail. */}
+                <ViewProofButton
+                  url={booking.delivery_proof_url}
+                  label={t.me2_delivery_proof}
+                  className="text-[13px] font-semibold text-mint-700 hover:text-mint-800 underline"
+                />
               </div>
-              <ProofThumbnail
-                url={booking.delivery_proof_url}
-                alt={t.me2_delivery_proof}
-                className="w-full max-h-64 object-cover rounded-lg mb-3 border border-mint-200/40"
-              />
               {booking.delivery_proof_receiver_name && (
                 <div className="text-[13px] text-ink-500 mb-1">
                   <span className="text-ink-400">{t.me2_handed_to}</span>{' '}
