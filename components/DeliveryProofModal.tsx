@@ -52,6 +52,7 @@ async function compressImage(file: File): Promise<File> {
 type Props = {
   bookingIntentId: string;
   prefilledReceiverName?: string;
+  prefilledNotes?: string;
   onSuccess: (photoUrl: string) => void;
   onClose: () => void;
 };
@@ -59,6 +60,7 @@ type Props = {
 export function DeliveryProofModal({
   bookingIntentId,
   prefilledReceiverName,
+  prefilledNotes,
   onSuccess,
   onClose,
 }: Props) {
@@ -66,7 +68,7 @@ export function DeliveryProofModal({
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [receiverName, setReceiverName] = useState(prefilledReceiverName ?? '');
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(prefilledNotes ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

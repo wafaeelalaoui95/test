@@ -3825,6 +3825,7 @@ function IntentCardInline({
   // Delivery-before-flight confirmation.
   const [showEarlyModal, setShowEarlyModal] = useState(false);
   const [earlyAck, setEarlyAck] = useState(false);
+  const [earlyReason, setEarlyReason] = useState('');
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -4064,6 +4065,7 @@ function IntentCardInline({
         {showProofModal && (
           <DeliveryProofModal
             bookingIntentId={intent.id}
+            prefilledNotes={earlyReason.trim() || undefined}
             onClose={() => setShowProofModal(false)}
             onSuccess={(url) => {
               onProofUploaded(intent.id, url, '');
@@ -4214,6 +4216,18 @@ function IntentCardInline({
                   tripDepartureDate ? formatShortDate(tripDepartureDate) : ''
                 )}
               </p>
+              <div className="mb-4">
+                <label className="block text-[13px] font-semibold text-ink-600 mb-2">
+                  {t.me2_early_deliver_reason_label}
+                </label>
+                <textarea
+                  value={earlyReason}
+                  onChange={(e) => setEarlyReason(e.target.value)}
+                  placeholder={t.me2_early_deliver_reason_placeholder}
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300 resize-none"
+                />
+              </div>
               <label className="flex items-start gap-2.5 cursor-pointer mb-5">
                 <input
                   type="checkbox"
@@ -4233,7 +4247,7 @@ function IntentCardInline({
                   {t.me2_accept_cancel}
                 </button>
                 <button
-                  disabled={!earlyAck}
+                  disabled={!earlyAck || !earlyReason.trim()}
                   onClick={() => { setShowEarlyModal(false); setShowProofModal(true); }}
                   className="flex-1 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
