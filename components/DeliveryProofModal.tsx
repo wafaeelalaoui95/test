@@ -133,7 +133,9 @@ export function DeliveryProofModal({
         if (/too large|volumineuse|entity too large/i.test(serverErr)) {
           throw new Error(t.pickup_proof_err_photo_too_large);
         }
-        throw new Error(t.pickup_proof_err_upload_failed);
+        // Surface the server's actual reason (prefixed storage:/db:) so a
+        // failure is diagnosable rather than a blank "upload failed".
+        throw new Error(serverErr || t.pickup_proof_err_upload_failed);
       }
 
       onSuccess(data.url);

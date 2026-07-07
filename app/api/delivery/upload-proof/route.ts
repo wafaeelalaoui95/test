@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { getServerClient } from '@/lib/supabase/server';
+import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 
 const STORAGE_BUCKET = 'delivery-proofs';
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
@@ -38,7 +37,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unsupported image format.' }, { status: 400 });
   }
 
-  const { data: intent } = await supabase
+  // Reads + writes go through the service-role client. We authorize the
+  // caller ourselves just below (must be the trip's traveler), so bypassing
+  // RLS here is safe — and it avoids depending on storage-bucket / table RLS
+  // policies for this write path (which is what was making the upload fail).
+  const admin = getAdminClient();
+
+  const { data: intent } = await admin
     .from('booking_intents')
     .select('id, status, traveler_trip_id, delivery_proof_url')
     .eq('id', bookingIntentId)
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Proof already uploaded' }, { status: 400 });
   }
 
-  const { data: trip } = await supabase
+  const { data: trip } = await admin
     .from('traveler_trips')
     .select('user_id')
     .eq('id', intent.traveler_trip_id)
@@ -66,19 +71,19 @@ export async function POST(req: NextRequest) {
   const filename = `${bookingIntentId}/${Date.now()}.${ext}`;
 
   const bytes = await photo.arrayBuffer();
-  const { error: uploadErr } = await supabase.storage
+  const { error: uploadErr } = await admin.storage
     .from(STORAGE_BUCKET)
     .upload(filename, bytes, { contentType: photo.type, upsert: false });
   if (uploadErr) {
-    return NextResponse.json({ error: uploadErr.message }, { status: 500 });
+    return NextResponse.json({ error: `storage: ${uploadErr.message}` }, { status: 500 });
   }
 
-  const { data: publicUrlData } = supabase.storage
+  const { data: publicUrlData } = admin.storage
     .from(STORAGE_BUCKET)
     .getPublicUrl(filename);
   const publicUrl = publicUrlData.publicUrl;
 
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await admin
     .from('booking_intents')
     .update({
       delivery_proof_url: publicUrl,
@@ -89,7 +94,7 @@ export async function POST(req: NextRequest) {
     .eq('id', bookingIntentId);
 
   if (updateErr) {
-    return NextResponse.json({ error: 'Failed to save' }, { status: 500 });
+    return NextResponse.json({ error: `db: ${updateErr.message}` }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, url: publicUrl });
