@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
   const bookingIntentId = form.get('bookingIntentId');
   const receiverName = form.get('receiverName');
   const notes = form.get('notes');
+  const earlyReason = form.get('earlyReason');
   const photo = form.get('photo');
 
   if (typeof bookingIntentId !== 'string' || typeof receiverName !== 'string') {
@@ -90,6 +91,10 @@ export async function POST(req: NextRequest) {
       delivery_proof_uploaded_at: new Date().toISOString(),
       delivery_proof_receiver_name: receiverName,
       delivery_proof_notes: typeof notes === 'string' ? notes : null,
+      // Verbatim, non-editable record of the early-delivery reason (only set
+      // when the traveler delivered before the flight date).
+      delivery_early_reason:
+        typeof earlyReason === 'string' && earlyReason.trim() ? earlyReason.trim() : null,
     })
     .eq('id', bookingIntentId);
 

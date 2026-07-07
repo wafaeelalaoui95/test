@@ -53,6 +53,9 @@ type Props = {
   bookingIntentId: string;
   prefilledReceiverName?: string;
   prefilledNotes?: string;
+  // Reason captured in the "Delivering early?" modal. Sent as a separate,
+  // non-editable field so it's recorded verbatim (not merged into the note).
+  earlyReason?: string;
   onSuccess: (photoUrl: string) => void;
   onClose: () => void;
 };
@@ -61,6 +64,7 @@ export function DeliveryProofModal({
   bookingIntentId,
   prefilledReceiverName,
   prefilledNotes,
+  earlyReason,
   onSuccess,
   onClose,
 }: Props) {
@@ -105,6 +109,9 @@ export function DeliveryProofModal({
       form.append('bookingIntentId', bookingIntentId);
       form.append('receiverName', receiverName.trim());
       form.append('notes', notes.trim());
+      if (earlyReason && earlyReason.trim()) {
+        form.append('earlyReason', earlyReason.trim());
+      }
       form.append('photo', toUpload);
 
       const res = await fetch('/api/delivery/upload-proof', {

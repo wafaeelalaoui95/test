@@ -239,6 +239,7 @@ export default function EnvoyerPage() {
         weight_kg: null,
         urgency_level: 'standard',
         prescription_url: null,
+        terms_agreed_at: new Date().toISOString(),
         status: 'pending',
       });
       // Request published — clear the saved draft so it doesn't resurface.
@@ -1037,6 +1038,7 @@ function InstantBookModal({
         payment_amount: Math.round(price * 100),
         shipping_request_id: req.id || null,
         initiated_by: 'sender',
+        user_certified_at: new Date().toISOString(),
       });
       setPhase('success');
     } catch (e: any) {

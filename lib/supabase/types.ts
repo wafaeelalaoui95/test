@@ -69,6 +69,12 @@ export interface TravelerTripRow {
   flight_number: string | null;
   departure_airport: string | null;
   arrival_airport: string | null;
+  // Audit / persistence: accepted categories in a queryable column (also kept
+  // as JSON in `notes` for backward-compatible reads), and a timestamp proving
+  // the traveler ticked the terms box at creation. Optional so legacy rows and
+  // other insert paths don't need to set them.
+  accepted_categories?: string[] | null;
+  terms_agreed_at?: string | null;
 }
 
 export interface ShippingRequestRow {
@@ -91,6 +97,8 @@ export interface ShippingRequestRow {
   prescription_url: string | null;
   status: RequestStatus;
   created_at: string;
+  // Timestamp proving the sender ticked the terms box when posting the request.
+  terms_agreed_at?: string | null;
 }
 
 export interface MatchRow {

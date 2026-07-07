@@ -904,6 +904,7 @@ export type Translations = {
   me2_delivery_proof: string;
   me2_handed_to: string;
   me2_note_label: string;
+  me2_early_reason_label: string;
   me2_uploaded_on: string;
   me2_how_to_contact: string;
   me2_message: string;
@@ -2072,6 +2073,7 @@ export const translations: Record<Locale, Translations> = {
     me2_delivery_proof: 'Preuve de livraison',
     me2_handed_to: 'Remis à :',
     me2_note_label: 'Note :',
+    me2_early_reason_label: 'Raison de livraison anticipée :',
     me2_uploaded_on: 'Téléversée le {date}',
     me2_how_to_contact: 'Comment le contacter',
     me2_message: 'Message',
@@ -3239,6 +3241,7 @@ export const translations: Record<Locale, Translations> = {
     me2_delivery_proof: 'Proof of delivery',
     me2_handed_to: 'Handed to:',
     me2_note_label: 'Note:',
+    me2_early_reason_label: 'Early-delivery reason:',
     me2_uploaded_on: 'Uploaded on {date}',
     me2_how_to_contact: 'How to reach them',
     me2_message: 'Message',

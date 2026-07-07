@@ -1038,6 +1038,8 @@ export type BookingIntentInput = {
   traveler_message?: string | null;
   initiated_by?: 'sender' | 'traveler';
   traveler_user_id?: string | null;
+  // Timestamp proving the sender ticked the "I certify..." box at booking.
+  user_certified_at?: string | null;
 };
 
 export async function createBookingIntent(

@@ -237,6 +237,8 @@ export default function VoyagerPage() {
         departure_airport: departureAirport.trim().toUpperCase() || null,
         arrival_airport: arrivalAirport.trim().toUpperCase() || null,
         notes: JSON.stringify({ accepted_categories: acceptedCategories }),
+        accepted_categories: acceptedCategories,
+        terms_agreed_at: new Date().toISOString(),
         status: 'open',
       });
       // Trip published — clear the saved draft so it doesn't resurface.

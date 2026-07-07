@@ -125,6 +125,7 @@ type IncomingIntent = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
+  delivery_early_reason?: string | null;
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
@@ -1199,6 +1200,7 @@ type TravelerProposal = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
+  delivery_early_reason?: string | null;
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
@@ -1232,6 +1234,7 @@ type MyBooking = {
   delivery_proof_uploaded_at: string | null;
   delivery_proof_receiver_name: string | null;
   delivery_proof_notes: string | null;
+  delivery_early_reason?: string | null;
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
@@ -1519,6 +1522,11 @@ function BookingCard({
               {booking.delivery_proof_notes && (
                 <div className="text-[13px] text-ink-500 leading-relaxed mt-1">
                   <span className="text-ink-400">{t.me2_note_label}</span> « {booking.delivery_proof_notes} »
+                </div>
+              )}
+              {booking.delivery_early_reason && (
+                <div className="text-[13px] text-ink-500 leading-relaxed mt-1">
+                  <span className="text-ink-400">{t.me2_early_reason_label}</span> « {booking.delivery_early_reason} »
                 </div>
               )}
               {booking.delivery_proof_uploaded_at && (
@@ -4108,7 +4116,7 @@ function IntentCardInline({
         {showProofModal && (
           <DeliveryProofModal
             bookingIntentId={intent.id}
-            prefilledNotes={earlyReason.trim() || undefined}
+            earlyReason={earlyReason.trim() || undefined}
             onClose={() => setShowProofModal(false)}
             onSuccess={(url) => {
               onProofUploaded(intent.id, url, '');
