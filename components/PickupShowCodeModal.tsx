@@ -8,12 +8,12 @@ import { useI18n } from '@/lib/i18n/context';
 /**
  * Code display modal — shown at one of the two trust-handoff moments. 
  *
- * MODE `'pickup'` (default) — SENDER at the pickup meeting:
- *   1. Sender opens this modal, sees the 6-digit code
- *   2. Sender reads the code aloud to the traveler
- *   3. Traveler enters it on their own phone (PickupEnterCodeModal)
- *   4. When traveler enters correctly → DB marks pickup_confirmed_at
- *   5. Sender's card refreshes and timeline advances
+ * MODE `'pickup'` (default) — TRAVELER at the pickup meeting:
+ *   1. Traveler opens this modal, sees the 6-digit code
+ *   2. Traveler reads the code aloud to the sender (who is handing over)
+ *   3. Sender enters it on their own phone (PickupEnterCodeModal)
+ *   4. When the sender enters correctly → DB marks pickup_confirmed_at
+ *   5. Cards refresh and the timeline advances
  *
  * MODE `'delivery'` — TRAVELER at the drop-off moment:
  *   1. Traveler opens this modal, sees the delivery code

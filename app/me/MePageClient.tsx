@@ -646,10 +646,20 @@ export default function MyPage(
                     });
                   }}
                   onEnterPickupCode={(intent) => {
-                    // Traveler types the pickup code the sender just told them.
-                    setPickupEnteringFor({
+                    // Traveler (receiver) SHOWS their pickup code; the sender
+                    // enters it to confirm the handover. This way the code is
+                    // held by the person receiving the parcel, so they can't
+                    // later deny having received it. (Prop name kept for
+                    // backward compatibility.)
+                    if (!intent.pickup_code) {
+                      alert(t.me2_pickup_code_unavailable);
+                      return;
+                    }
+                    setPickupShowingFor({
                       bookingId: intent.id,
-                      senderName:
+                      code: intent.pickup_code,
+                      // Name shown = the person you read the code to (sender).
+                      travelerName:
                         shortName(intent.sender_profile?.full_name) || t.me2_role_sender_lc,
                     });
                   }}
@@ -724,17 +734,13 @@ export default function MyPage(
                     });
                   }}
                   onShowPickupCode={(booking) => {
-                    // Sender wants to see the pickup code (to speak aloud
-                    // to the traveler at handoff). The code is on the
-                    // booking row — RLS lets the sender read their own.
-                    if (!booking.pickup_code) {
-                      alert(t.me2_pickup_code_unavailable);
-                      return;
-                    }
-                    setPickupShowingFor({
+                    // Sender (hander) ENTERS the code the traveler shows them,
+                    // to confirm the handover. (Prop name kept for backward
+                    // compatibility.)
+                    setPickupEnteringFor({
                       bookingId: booking.id,
-                      code: booking.pickup_code,
-                      travelerName:
+                      // Name shown = whose code you're entering (the traveler).
+                      senderName:
                         shortName(booking.traveler_profile?.full_name) || t.me2_role_traveler_lc,
                     });
                   }}
@@ -895,7 +901,11 @@ export default function MyPage(
           if (!pickupEnteringFor || !user) return;
           const stamp = new Date().toISOString();
           const patch = { pickup_confirmed_at: stamp, pickup_confirmed_by: user.id };
-          // Row may be an incoming booking or an accepted proposal — patch both.
+          // The sender confirms from their bookings list; also patch the
+          // traveler-side lists in case the same row is present.
+          setMyBookings((prev) =>
+            prev.map((b) => (b.id === pickupEnteringFor.bookingId ? { ...b, ...patch } : b))
+          );
           setIncomingIntents((prev) =>
             prev.map((it) => (it.id === pickupEnteringFor.bookingId ? { ...it, ...patch } : it))
           );

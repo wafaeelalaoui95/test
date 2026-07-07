@@ -6,10 +6,16 @@ import { getServerClient, getAdminClient } from '@/lib/supabase/server';
  * POST /api/booking/confirm-pickup
  * Body: { bookingId: string, code: string }
  *
- * The TRAVELER confirms they've collected the parcel by entering the pickup
- * code the sender showed them. The code is verified server-side and
- * pickup_confirmed_at is written with the service-role client — the browser
- * cannot set that column directly (RLS), so the code can't be bypassed.
+ * The SENDER (who hands the parcel over) confirms the handover by entering the
+ * pickup code the TRAVELER shows them. Rationale: the receiving party (the
+ * traveler) holds the code, and the handing party (the sender) enters it — so
+ * the handover can only be recorded when both are physically present and the
+ * traveler reveals their code. This prevents the traveler from later claiming
+ * they never received the parcel.
+ *
+ * The code is verified server-side and pickup_confirmed_at is written with the
+ * service-role client — the browser cannot set that column directly (RLS), so
+ * the code can't be bypassed.
  *
  * Returns { ok: true } or { ok: false, reason } so the modal can map errors.
  */
@@ -34,26 +40,17 @@ export async function POST(req: NextRequest) {
 
   const { data: intent } = await supabase
     .from('booking_intents')
-    .select('id, pickup_code, traveler_user_id, traveler_trip_id, pickup_confirmed_at')
+    .select('id, pickup_code, sender_id, pickup_confirmed_at')
     .eq('id', body.bookingId)
     .maybeSingle();
   if (!intent) {
     return NextResponse.json({ ok: false, reason: 'unknown' }, { status: 404 });
   }
 
-  // Resolve the authorised traveler: either set directly, or the owner of the
-  // linked trip (sender-books-a-trip flow).
-  let travelerId: string | null = intent.traveler_user_id ?? null;
-  if (!travelerId && intent.traveler_trip_id) {
-    const { data: trip } = await supabase
-      .from('traveler_trips')
-      .select('user_id')
-      .eq('id', intent.traveler_trip_id)
-      .maybeSingle();
-    travelerId = trip?.user_id ?? null;
-  }
-  if (travelerId !== user.id) {
-    return NextResponse.json({ ok: false, reason: 'not_traveler' }, { status: 403 });
+  // Only the sender (the party handing the parcel over) may confirm the
+  // handover, by entering the code the traveler shows them.
+  if (intent.sender_id !== user.id) {
+    return NextResponse.json({ ok: false, reason: 'not_sender' }, { status: 403 });
   }
 
   if (intent.pickup_confirmed_at) {

@@ -10,13 +10,18 @@ import { useI18n } from '@/lib/i18n/context';
 /**
  * Code entry modal — shown at one of the two trust-handoff moments.
  *
- * MODE `'pickup'` (default) — TRAVELER at the pickup meeting:
- *   1. Traveler taps "J'ai récupéré" on their card
+ * MODE `'pickup'` (default) — SENDER at the pickup meeting:
+ *   1. Sender taps "Saisir le code" on their booking card
  *   2. This modal opens
- *   3. Sender reads them the code (from PickupShowCodeModal on their phone)
- *   4. Traveler enters it here
- *   5. We call confirmPickupWithCode → DB updates pickup_confirmed_at
+ *   3. Traveler shows them the code (from PickupShowCodeModal on their phone)
+ *   4. Sender enters it here
+ *   5. We call confirmPickupWithCode → POST /api/booking/confirm-pickup
+ *      (authorises the sender, updates pickup_confirmed_at server-side)
  *   6. Modal closes, parent refreshes the booking, timeline advances
+ *
+ *   Why the sender enters (and the traveler holds the code): the receiving
+ *   party holds the secret, so the handover is only recorded when they're
+ *   present and reveal it — the traveler can't later deny receiving it.
  *
  * MODE `'delivery'` — SENDER at the delivery moment:
  *   1. Sender taps "J'ai bien reçu" on their card
