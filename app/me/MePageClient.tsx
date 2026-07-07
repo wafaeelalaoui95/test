@@ -1511,7 +1511,8 @@ function BookingCard({
               {t.me2_how_to_contact}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* In-app messaging — primary, always available */}
+              {/* In-app messaging only — everything stays on Jibly so the
+                  exchange is traceable and covered in case of a dispute. */}
               {onOpenChat && (
                 <button
                   onClick={() => onOpenChat(booking)}
@@ -1519,14 +1520,6 @@ function BookingCard({
                 >
                   💬 {t.me2_message}
                 </button>
-              )}
-              {traveler?.phone && (
-                <a
-                  href={`tel:${traveler.phone}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
-                >
-                  {t.me2_call}
-                </a>
               )}
             </div>
           </div>
