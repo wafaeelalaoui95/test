@@ -666,19 +666,12 @@ export default function MyPage(
                     });
                   }}
                   onShowDeliveryCode={(intent) => {
-                    // Traveler reveals the delivery code at drop-off
-                    // (after proof has been uploaded). Read it aloud
-                    // to the sender so they can type it on their side.
-                    if (!intent.delivery_code) {
-                      alert(
-                        t.me2_delivery_code_unavailable
-                      );
-                      return;
-                    }
-                    setDeliveryShowingFor({
+                    // Traveler ENTERS the code the recipient (sender or their
+                    // relative) gives them at drop-off, to confirm delivery.
+                    // (Prop name kept for backward compatibility.)
+                    setDeliveryEnteringFor({
                       bookingId: intent.id,
-                      code: intent.delivery_code,
-                      senderName:
+                      travelerName:
                         shortName(intent.sender_profile?.full_name) || t.me2_role_sender_lc,
                     });
                   }}
@@ -747,11 +740,17 @@ export default function MyPage(
                     });
                   }}
                   onEnterDeliveryCode={(booking) => {
-                    // Sender confirms reception by typing the delivery
-                    // code the traveler just read aloud at drop-off.
-                    setDeliveryEnteringFor({
+                    // Sender (recipient side) SHOWS/holds the delivery code; the
+                    // traveler enters it. Share it with a relative if they
+                    // receive on your behalf. (Prop name kept for compat.)
+                    if (!booking.delivery_code) {
+                      alert(t.me2_delivery_code_unavailable);
+                      return;
+                    }
+                    setDeliveryShowingFor({
                       bookingId: booking.id,
-                      travelerName:
+                      code: booking.delivery_code,
+                      senderName:
                         shortName(booking.traveler_profile?.full_name) || t.me2_role_traveler_lc,
                     });
                   }}
@@ -943,21 +942,19 @@ export default function MyPage(
         onClose={() => setDeliveryEnteringFor(null)}
         onSuccess={async () => {
           if (!deliveryEnteringFor) return;
-          // The delivery-code modal already called /api/confirm-receipt
-          // (via confirmDeliveryWithCode), which verified the code, recorded
-          // receipt and captured the payment server-side. Here we just reflect
-          // it optimistically in local state.
+          // The traveler entered the recipient's code; /api/confirm-receipt
+          // verified it, recorded receipt and captured the payment. Reflect it
+          // optimistically across whichever list holds this booking.
           const stamp = new Date().toISOString();
+          const patch = { received_confirmed_at: stamp, payment_status: 'captured' as const };
+          setIncomingIntents((prev) =>
+            prev.map((it) => (it.id === deliveryEnteringFor.bookingId ? { ...it, ...patch } : it))
+          );
+          setMyProposals((prev) =>
+            prev.map((it) => (it.id === deliveryEnteringFor.bookingId ? { ...it, ...patch } : it))
+          );
           setMyBookings((prev) =>
-            prev.map((b) =>
-              b.id === deliveryEnteringFor.bookingId
-                ? {
-                    ...b,
-                    received_confirmed_at: stamp,
-                    payment_status: 'captured' as const,
-                  }
-                : b
-            )
+            prev.map((b) => (b.id === deliveryEnteringFor.bookingId ? { ...b, ...patch } : b))
           );
           setDeliveryEnteringFor(null);
         }}
@@ -1463,17 +1460,18 @@ function BookingCard({
             </div>
           )}
 
-          {/* Reception confirmation — once proof is uploaded, the sender
-              enters the delivery code the traveler/recipient gives them; on
-              success Stripe captures the payment via /api/confirm-receipt. */}
-          {booking.delivery_proof_url && !booking.received_confirmed_at && onEnterDeliveryCode && (
+          {/* Delivery code — the recipient side (you, or a relative receiving
+              on your behalf) holds this code and gives it to the traveler, who
+              enters it to confirm delivery and release the payment. Tap to see
+              it (and share it with your relative if they receive for you). */}
+          {booking.pickup_confirmed_at && !booking.received_confirmed_at && onEnterDeliveryCode && (
             <button
               type="button"
               onClick={() => onEnterDeliveryCode(booking)}
-              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[13px] font-semibold transition-colors mt-1"
+              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[13px] font-semibold transition-colors mt-1"
             >
               <KeyRound className="w-3.5 h-3.5" />
-              {t.me2_i_received}
+              {t.me2_view_delivery_code}
             </button>
           )}
 
@@ -4043,7 +4041,7 @@ function IntentCardInline({
               className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors"
             >
               <KeyRound className="w-3 h-3" />
-              {t.me2_view_delivery_code}
+              {t.me2_confirm_delivery}
             </button>
           </div>
         )}

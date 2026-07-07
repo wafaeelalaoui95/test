@@ -15,10 +15,12 @@ import { useI18n } from '@/lib/i18n/context';
  *   4. When the sender enters correctly → DB marks pickup_confirmed_at
  *   5. Cards refresh and the timeline advances
  *
- * MODE `'delivery'` — TRAVELER at the drop-off moment:
- *   1. Traveler opens this modal, sees the delivery code
- *   2. Traveler reads it aloud to the sender/recipient
- *   3. Sender enters it on their own phone (PickupEnterCodeModal mode=delivery)
+ * MODE `'delivery'` — RECIPIENT side (the sender, or a relative receiving on
+ * their behalf) holds the code:
+ *   1. The sender opens this modal, sees the delivery code
+ *   2. They give it to the traveler at drop-off (or share it beforehand with
+ *      the relative who receives for them)
+ *   3. The traveler enters it (PickupEnterCodeModal mode=delivery)
  *   4. On match → DB marks received_confirmed_at + Stripe captures
  *
  * Why visible up-front (and not after a "I'm here" tap):

@@ -7,10 +7,12 @@ import { getServerClient, getAdminClient } from '@/lib/supabase/server';
  * POST /api/confirm-receipt
  * Body: { bookingIntentId: string }
  *
- * Called when the sender clicks "J'ai bien reçu" on /me. This is the
- * pivotal step of the whole escrow flow: the sender confirms physical
- * receipt, which both unlocks mutual reviews AND triggers the Stripe
- * capture so the traveler actually gets paid.
+ * Called when the TRAVELER confirms delivery on /me by entering the code the
+ * recipient (the sender or their relative) gives them at drop-off. This is the
+ * pivotal step of the whole escrow flow: it records receipt, unlocks mutual
+ * reviews AND triggers the Stripe capture so the traveler gets paid. The
+ * traveler can only reach this by entering the recipient's code, so they can't
+ * self-release payment without an actual handover.
  *
  * Why do this server-side as ONE operation:
  *   - The two updates (DB + Stripe) must stay in sync. Doing them as
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
     .select(
-      'id, sender_id, payment_intent_id, payment_status, received_confirmed_at, delivery_proof_url, delivery_code'
+      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, received_confirmed_at, delivery_proof_url, delivery_code'
     )
     .eq('id', body.bookingIntentId)
     .maybeSingle();
@@ -58,9 +60,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'unknown' }, { status: 404 });
   }
 
-  // Only the sender of THIS booking can confirm receipt.
-  if (intent.sender_id !== user.id) {
-    return NextResponse.json({ ok: false, reason: 'not_sender' }, { status: 403 });
+  // Only the TRAVELER of THIS booking can confirm delivery (they enter the
+  // recipient's code). Resolve the traveler directly or via the linked trip.
+  let travelerId: string | null = intent.traveler_user_id ?? null;
+  if (!travelerId && intent.traveler_trip_id) {
+    const { data: trip } = await supabase
+      .from('traveler_trips')
+      .select('user_id')
+      .eq('id', intent.traveler_trip_id)
+      .maybeSingle();
+    travelerId = trip?.user_id ?? null;
+  }
+  if (travelerId !== user.id) {
+    return NextResponse.json({ ok: false, reason: 'not_traveler' }, { status: 403 });
   }
 
   // Sanity check: there must be a delivery proof before the sender can

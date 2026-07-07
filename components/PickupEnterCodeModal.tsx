@@ -23,13 +23,13 @@ import { useI18n } from '@/lib/i18n/context';
  *   party holds the secret, so the handover is only recorded when they're
  *   present and reveal it — the traveler can't later deny receiving it.
  *
- * MODE `'delivery'` — SENDER at the delivery moment:
- *   1. Sender taps "J'ai bien reçu" on their card
+ * MODE `'delivery'` — TRAVELER at the delivery moment:
+ *   1. Traveler taps "Confirmer la livraison" on their card
  *   2. This modal opens
- *   3. Traveler reads them the delivery code (from PickupShowCodeModal)
- *   4. Sender enters it here
- *   5. We call confirmDeliveryWithCode → DB verifies + parent triggers
- *      the existing /api/confirm-receipt to capture Stripe.
+ *   3. The recipient (sender or their relative) gives them the delivery code
+ *   4. Traveler enters it here
+ *   5. We call confirmDeliveryWithCode → POST /api/confirm-receipt, which
+ *      authorises the traveler, records receipt and captures Stripe.
  *
  * The two modes share UI but call DIFFERENT verification functions:
  *   pickup   → confirmPickupWithCode   (validates against `pickup_code`)
