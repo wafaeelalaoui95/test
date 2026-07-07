@@ -41,7 +41,7 @@ import { DisputeModal } from '@/components/DisputeModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
-import { ViewProofButton, ProofThumbnail } from '@/components/ImageLightbox';
+import { ProofThumbnail } from '@/components/ImageLightbox';
 // Reviews — mutual star-rating between sender and traveler once received_confirmed_at is set.
 import { ReviewModal } from '@/components/ReviewModal';
 import type { ReviewForBooking } from '@/lib/supabase/queries';
@@ -1369,97 +1369,11 @@ function BookingCard({
   // a server route. We'll show the phone if set, and a generic message
   // otherwise — see the "Contact" block below.
 
-  // Confirmed AND already delivered (proof uploaded) → compact "historic"
-  // Booking confirmed AND proof of delivery uploaded → compact "done"
-  // version. Just one line, with a small "Voir la preuve" link that opens
-  // the photo in a popup. PLUS: if the sender hasn't yet confirmed
-  // reception, surface a primary "J'ai bien reçu" button that opens the
-  // delivery-code entry modal. Once received_confirmed_at is set, this
-  // collapses back to the read-only view.
-  if (booking.status === 'confirmed' && booking.delivery_proof_url) {
-    const isFullyReceived = !!booking.received_confirmed_at;
-    return (
-      <div className={`bg-white rounded-xl px-3 py-2.5 border ${isFullyReceived ? 'border-ink-50' : 'border-mint-200'}`}>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
-            {cat?.icon}
-          </div>
-          <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
-            <span className="font-semibold text-ink-600">{travelerName}</span>
-            <span className="text-ink-300">·</span>
-            <span className="text-ink-500 truncate">{cityDisplayName(booking.pickup_city, locale)} → {cityDisplayName(booking.destination_city, locale)}</span>
-            <span className="text-ink-300">·</span>
-            <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
-            {isFullyReceived ? (
-              <span className="text-[11px] text-mint-600 ml-1">✓ {t.me2_delivered_confirmed}</span>
-            ) : (
-              <span className="text-[11px] text-butter-700 ml-1">📸 {t.me2_delivered_to_confirm}</span>
-            )}
-          </div>
-          <ViewProofButton url={booking.delivery_proof_url} label={t.me2_view_proof} />
-          {/* Reception confirmation by code — sender enters the delivery
-              code the traveler/recipient just gave them. Once confirmed,
-              Stripe captures the payment via /api/confirm-receipt. */}
-          {!isFullyReceived && onEnterDeliveryCode && (
-            <button
-              type="button"
-              onClick={() => onEnterDeliveryCode(booking)}
-              className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
-            >
-              <KeyRound className="w-3 h-3" />
-              {t.me2_i_received}
-            </button>
-          )}
-
-          {/* Once reception is confirmed, the sender can rate the
-              traveler. Same 3-state pattern as the traveler side:
-              show "Noter" → optimistic flip to "Vous avez noté" badge. */}
-          {isFullyReceived && onOpenReview && (
-            !hasReviewed ? (
-              <button
-                type="button"
-                onClick={() => onOpenReview(booking)}
-                className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
-              >
-                <Star className="w-3 h-3 fill-white" strokeWidth={0} />
-                {t.me2_rate}
-              </button>
-            ) : (
-              <span className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
-                <Star className="w-3 h-3 fill-current" strokeWidth={0} />
-                {t.me2_you_rated}
-              </span>
-            )
-          )}
-        </div>
-
-        {/* The traveler's review of the sender, when posted */}
-        {otherReview && (
-          <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
-            <span>{t.me2_x_rated_you.replace('{name}', travelerName.split(' ')[0])}</span>
-            <span className="inline-flex items-center gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3 h-3 ${
-                    i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
-                  }`}
-                  strokeWidth={0}
-                />
-              ))}
-            </span>
-            {otherReview.comment && (
-              <span className="text-ink-500">· « {otherReview.comment} »</span>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Confirmed BUT not yet delivered → rich view. The sender needs the
-  // contact info to coordinate the actual handover, and the celebration
-  // banner signals progress. Once delivered, we collapse it (above).
+  // Confirmed (any phase, up to fully received) → full detailed view with the
+  // progress journey. We intentionally do NOT collapse to a compact card once
+  // delivered, so the sender and the traveler always see the same level of
+  // detail (symmetry). Post-delivery actions (confirm reception, rate) live
+  // inside this view.
   if (booking.status === 'confirmed') {
     return (
       <>
@@ -1545,6 +1459,62 @@ function BookingCard({
                 <div className="text-[11px] text-ink-300 mt-2">
                   {t.me2_uploaded_on.replace('{date}', formatShortDate(booking.delivery_proof_uploaded_at))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Reception confirmation — once proof is uploaded, the sender
+              enters the delivery code the traveler/recipient gives them; on
+              success Stripe captures the payment via /api/confirm-receipt. */}
+          {booking.delivery_proof_url && !booking.received_confirmed_at && onEnterDeliveryCode && (
+            <button
+              type="button"
+              onClick={() => onEnterDeliveryCode(booking)}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[13px] font-semibold transition-colors mt-1"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              {t.me2_i_received}
+            </button>
+          )}
+
+          {/* Once reception is confirmed, the sender can rate the traveler. */}
+          {booking.received_confirmed_at && onOpenReview && (
+            <div className="mt-2 flex justify-end">
+              {!hasReviewed ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenReview(booking)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+                >
+                  <Star className="w-3 h-3 fill-white" strokeWidth={0} />
+                  {t.me2_rate}
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mint-50 text-mint-700 text-[11px] font-semibold">
+                  <Star className="w-3 h-3 fill-current" strokeWidth={0} />
+                  {t.me2_you_rated}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Traveler's review of the sender, when posted */}
+          {otherReview && (
+            <div className="mt-2 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
+              <span>{t.me2_x_rated_you.replace('{name}', travelerName.split(' ')[0])}</span>
+              <span className="inline-flex items-center gap-0.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-3 h-3 ${
+                      i < otherReview.rating ? 'fill-butter-400 text-butter-400' : 'text-ink-200'
+                    }`}
+                    strokeWidth={0}
+                  />
+                ))}
+              </span>
+              {otherReview.comment && (
+                <span className="text-ink-500">· « {otherReview.comment} »</span>
               )}
             </div>
           )}
