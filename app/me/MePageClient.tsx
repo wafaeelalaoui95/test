@@ -452,11 +452,11 @@ export default function MyPage(
       .then((v) => { if (!cancelled) { setTrips(v); flipLoadingOnce(); } });
     withTimeout(browser.listMyMatches(user.id), [] as MatchRow[])
       .then((v) => { if (!cancelled) { setMatches(v as MatchWithRefs[]); flipLoadingOnce(); } });
-    withTimeout(browser.listIncomingBookingIntents(user.id), [] as IncomingIntent[])
+    withTimeout(browser.listIncomingBookingIntents(user.id), [])
       .then((v) => { if (!cancelled) { setIncomingIntents(v as IncomingIntent[]); flipLoadingOnce(); } });
-    withTimeout(browser.listMyBookings(user.id), [] as MyBooking[])
+    withTimeout(browser.listMyBookings(user.id), [])
       .then((v) => { if (!cancelled) { setMyBookings(v as MyBooking[]); flipLoadingOnce(); } });
-    withTimeout(browser.listMyTravelerProposals(user.id), [] as TravelerProposal[])
+    withTimeout(browser.listMyTravelerProposals(user.id), [])
       .then((v) => { if (!cancelled) { setMyProposals(v as TravelerProposal[]); flipLoadingOnce(); } });
 
     // Hard ceiling: even if every single query hangs, never leave the
