@@ -5,6 +5,50 @@ import { motion } from 'framer-motion';
 import { Camera, CheckCircle2, Loader2, X, AlertCircle } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/context';
 
+// Downscale + re-encode large photos in the browser before upload. Phone
+// photos are routinely 3–12 MB, above the serverless request-body limit,
+// which made uploads fail with a cryptic "not valid JSON" error (the platform
+// returns a plain-text 413). We cap the longest edge and re-encode to JPEG.
+// HEIC/unknown types (which browsers can't draw to a canvas) are left as-is
+// and handled by the size guard + friendly error message.
+async function compressImage(file: File): Promise<File> {
+  if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) return file;
+  try {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = () => reject(new Error('read failed'));
+      r.readAsDataURL(file);
+    });
+    const img: HTMLImageElement = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('decode failed'));
+      i.src = dataUrl;
+    });
+    const MAX_EDGE = 1600;
+    const longest = Math.max(img.width, img.height);
+    if (longest <= MAX_EDGE && file.size < 1_500_000) return file; // already small
+    const scale = Math.min(1, MAX_EDGE / longest);
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.82)
+    );
+    if (!blob || blob.size >= file.size) return file;
+    const name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], name, { type: 'image/jpeg' });
+  } catch {
+    return file; // fall back to the original; the size guard/error handles it
+  }
+}
+
 type Props = {
   bookingIntentId: string;
   prefilledReceiverName?: string;
@@ -29,7 +73,9 @@ export function DeliveryProofModal({
 
   function handlePhotoSelected(file: File) {
     setErr(null);
-    if (file.size > 8 * 1024 * 1024) {
+    // Sanity ceiling only — most photos are re-compressed before upload, so we
+    // allow large originals here and shrink them at submit time.
+    if (file.size > 25 * 1024 * 1024) {
       setErr(t.pickup_proof_err_photo_too_large);
       return;
     }
@@ -50,19 +96,44 @@ export function DeliveryProofModal({
     setSubmitting(true);
     setErr(null);
 
-    const form = new FormData();
-    form.append('bookingIntentId', bookingIntentId);
-    form.append('receiverName', receiverName.trim());
-    form.append('notes', notes.trim());
-    form.append('photo', photo);
-
     try {
+      const toUpload = await compressImage(photo);
+
+      const form = new FormData();
+      form.append('bookingIntentId', bookingIntentId);
+      form.append('receiverName', receiverName.trim());
+      form.append('notes', notes.trim());
+      form.append('photo', toUpload);
+
       const res = await fetch('/api/delivery/upload-proof', {
         method: 'POST',
         body: form,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? t.pickup_proof_err_upload_failed);
+
+      // The platform rejects oversized bodies with a plain-text 413 (not
+      // JSON) before our route runs — surface a clear "image too large"
+      // message instead of a JSON parse error.
+      if (res.status === 413) {
+        throw new Error(t.pickup_proof_err_photo_too_large);
+      }
+
+      // Read as text first so a non-JSON error body can't crash JSON.parse.
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        /* non-JSON response (e.g. a server/proxy error page) */
+      }
+
+      if (!res.ok) {
+        const serverErr = typeof data?.error === 'string' ? data.error : '';
+        if (/too large|volumineuse|entity too large/i.test(serverErr)) {
+          throw new Error(t.pickup_proof_err_photo_too_large);
+        }
+        throw new Error(t.pickup_proof_err_upload_failed);
+      }
+
       onSuccess(data.url);
     } catch (e: any) {
       setErr(e?.message ?? t.pickup_proof_err_generic);
