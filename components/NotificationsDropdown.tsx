@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, Check, Inbox, Loader2 } from 'lucide-react';
+import { Bell, Check, Inbox, Loader2, X, ArrowRight } from 'lucide-react';
 import { browser, type Notification } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { useI18n } from '@/lib/i18n/context';
@@ -32,6 +32,10 @@ export function NotificationsDropdown() {
   const [items, setItems] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
+  // When set, we show a detail popup for this notification instead of
+  // navigating straight away (used for disputes, which need context before
+  // sending the user to the affected parcel).
+  const [detailNotif, setDetailNotif] = useState<Notification | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Background unread count poll — every 30s while the user is on the
@@ -104,15 +108,41 @@ export function NotificationsDropdown() {
   // update, and navigate. We don't await the DB call before navigating —
   // optimistic UX, and if it fails the worst case is the badge stays
   // until the next 30s refresh.
+  // Dispute / "a problem was reported" notifications need context before we
+  // send the user anywhere — the bare link used to dump them on a profile
+  // page with no idea which parcel/flight was affected. Detect them loosely
+  // by type so we don't depend on the exact server-side string.
+  function isDisputeNotif(type: string): boolean {
+    return /dispute|litige|problem|probleme/i.test(type);
+  }
+
+  // Where "Voir les détails" should lead: straight to the affected booking on
+  // the dashboard when we know it, otherwise the dashboard itself (never the
+  // public profile).
+  function detailTarget(n: Notification): string {
+    if (n.related_booking_id) return `/me?booking=${n.related_booking_id}`;
+    return '/me';
+  }
+
+  function markRead(n: Notification) {
+    if (n.read_at) return;
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === n.id ? { ...it, read_at: new Date().toISOString() } : it
+      )
+    );
+    setUnread((u) => Math.max(0, u - 1));
+    browser.markNotificationRead(n.id).catch(() => {});
+  }
+
   function openNotification(n: Notification) {
-    if (!n.read_at) {
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === n.id ? { ...it, read_at: new Date().toISOString() } : it
-        )
-      );
-      setUnread((u) => Math.max(0, u - 1));
-      browser.markNotificationRead(n.id).catch(() => {});
+    markRead(n);
+    // Disputes open a detail popup (with the full message + a link to the
+    // affected parcel) rather than navigating immediately.
+    if (isDisputeNotif(n.type)) {
+      setOpen(false);
+      setDetailNotif(n);
+      return;
     }
     setOpen(false);
     // A new incoming booking request opens the request-details popup on /me.
@@ -142,6 +172,7 @@ export function NotificationsDropdown() {
   // Map notification types to emojis. Falls back to a generic bell.
   // Keeps the list scannable: the icon alone hints what kind of event.
   function emojiFor(type: string): string {
+    if (isDisputeNotif(type)) return '⚠️';
     switch (type) {
       case 'booking_request_received':
         return '📦';
@@ -311,6 +342,81 @@ export function NotificationsDropdown() {
                 {t.notif_my_messages}
               </Link>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Detail popup — shown for disputes so the user sees the full message
+          and can jump straight to the affected parcel instead of landing on a
+          context-less profile page. */}
+      <AnimatePresence>
+        {detailNotif && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+            onClick={() => setDetailNotif(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <span className="flex-shrink-0 text-[22px] mt-0.5">{emojiFor(detailNotif.type)}</span>
+                  <div className="min-w-0">
+                    <h3 className="text-[16px] font-bold text-ink-600 leading-snug">
+                      {detailNotif.title}
+                    </h3>
+                    <div className="text-[11px] text-ink-300 mt-1">
+                      {relativeTime(detailNotif.created_at)}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDetailNotif(null)}
+                  className="flex-shrink-0 p-1.5 -mr-1 rounded-full hover:bg-ink-50 text-ink-400 transition-colors"
+                  aria-label={t.common_close}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {detailNotif.body && (
+                <p className="px-5 text-[14px] text-ink-500 leading-relaxed whitespace-pre-line">
+                  {detailNotif.body}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 px-5 py-4 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setDetailNotif(null)}
+                  className="px-4 py-2 rounded-full text-[13px] font-medium text-ink-500 hover:bg-ink-50 transition-colors"
+                >
+                  {t.common_close}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = detailTarget(detailNotif);
+                    setDetailNotif(null);
+                    router.push(target);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
+                >
+                  {t.notif_view_details}
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -654,6 +654,7 @@ export type Translations = {
   notif_mark_all_read: string;
   notif_empty: string;
   notif_see_all: string;
+  notif_view_details: string;
   notif_my_messages: string;
   notif_time_now: string;
   notif_time_min: string;
@@ -1814,6 +1815,7 @@ export const translations: Record<Locale, Translations> = {
     notif_mark_all_read: 'Tout marquer lu',
     notif_empty: 'Aucune notification pour le moment.',
     notif_see_all: 'Voir toutes les notifications',
+    notif_view_details: 'Voir les détails',
     notif_my_messages: 'Mes messages',
     notif_time_now: 'à l\'instant',
     notif_time_min: 'il y a {n} min',
@@ -2978,6 +2980,7 @@ export const translations: Record<Locale, Translations> = {
     notif_mark_all_read: 'Mark all read',
     notif_empty: 'No notifications yet.',
     notif_see_all: 'See all notifications',
+    notif_view_details: 'View details',
     notif_my_messages: 'My messages',
     notif_time_now: 'just now',
     notif_time_min: '{n} min ago',

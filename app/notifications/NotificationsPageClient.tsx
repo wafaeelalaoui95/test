@@ -43,8 +43,13 @@ export default function NotificationsPageClient({
       );
       browser.markNotificationRead(n.id).catch(() => {});
     }
+    // Disputes go to the affected booking on the dashboard (or the dashboard
+    // itself) — never a context-less profile page.
+    const isDispute = /dispute|litige|problem|probleme/i.test(n.type);
     if (n.type === 'booking_request_received' && n.related_booking_id) {
       router.push(`/me?booking=${n.related_booking_id}`);
+    } else if (isDispute) {
+      router.push(n.related_booking_id ? `/me?booking=${n.related_booking_id}` : '/me');
     } else if (n.link) {
       router.push(n.link);
     }
