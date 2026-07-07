@@ -1520,27 +1520,13 @@ function BookingCard({
                   💬 {t.me2_message}
                 </button>
               )}
-              {traveler?.phone ? (
-                <>
-                  <a
-                    href={`https://wa.me/${traveler.phone.replace(/[^0-9]/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[13px] font-semibold transition-colors"
-                  >
-                    WhatsApp
-                  </a>
-                  <a
-                    href={`tel:${traveler.phone}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
-                  >
-                    {t.me2_call}
-                  </a>
-                </>
-              ) : (
-                <span className="text-[12px] text-ink-400">
-                  {t.me2_whatsapp_not_provided}
-                </span>
+              {traveler?.phone && (
+                <a
+                  href={`tel:${traveler.phone}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
+                >
+                  {t.me2_call}
+                </a>
               )}
             </div>
           </div>
@@ -2632,8 +2618,8 @@ function ProposalPaymentModal({
 // ProposalCard — what the traveler sees in /me → Matches
 // ---------------------------------------------------------------------------
 // I (Yassine) responded to Wafae's public request. Now I'm waiting to see if
-// she accepts. This card shows the proposal recap + status. When accepted
-// (and paid), I see her WhatsApp here and can later upload delivery proof
+// she accepts. This card shows the proposal recap + status. Once accepted,
+// coordination happens through in-app chat; delivery proof is uploaded later
 // (handled by the existing IntentCard flow for confirmed bookings — for
 // proposals we use a simpler read-only display).
 // ===========================================================================
@@ -2669,17 +2655,6 @@ function ProposalCard({
           )}
         </div>
 
-        {/* WhatsApp shortcut inline */}
-        {accepted && proposal.sender_profile?.phone && (
-          <a
-            href={`https://wa.me/${proposal.sender_profile.phone.replace(/[^0-9]/g, '')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-mint-500 hover:bg-mint-600 text-white text-[12px] font-semibold transition-colors"
-          >
-            WhatsApp
-          </a>
-        )}
       </div>
     </div>
   );

@@ -7,8 +7,6 @@ import { browser, type MessageRowChat } from '@/lib/supabase/queries';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 
-const TRACEABILITY_NOTICE_KEY = 'jibly:chat:traceability-dismissed';
-
 type ChatModalProps = {
   bookingIntentId: string;
   senderId: string;     // the sender of the booking (who paid)
@@ -72,8 +70,6 @@ export function ChatModal({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  // Traceability reminder: shown until the user dismisses it (per-browser).
-  const [showNotice, setShowNotice] = useState(false);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -85,24 +81,6 @@ export function ChatModal({
   // which is the lag the user saw while typing.
   const onMessagesReadRef = useRef(onMessagesRead);
   useEffect(() => { onMessagesReadRef.current = onMessagesRead; }, [onMessagesRead]);
-
-  // Show the traceability reminder unless this browser already dismissed it.
-  useEffect(() => {
-    try {
-      setShowNotice(localStorage.getItem(TRACEABILITY_NOTICE_KEY) !== '1');
-    } catch {
-      setShowNotice(true);
-    }
-  }, []);
-
-  function dismissNotice() {
-    setShowNotice(false);
-    try {
-      localStorage.setItem(TRACEABILITY_NOTICE_KEY, '1');
-    } catch {
-      /* ignore — private mode etc. */
-    }
-  }
 
   // Drop a quick-reply template into the input so the user can complete
   // and review it before sending. Append to any existing draft.
@@ -293,23 +271,15 @@ export function ChatModal({
           </button>
         </div>
 
-        {/* Traceability reminder — nudges users to keep exchanges on Jibly
-            for tracking & protection. Dismissible per browser. */}
-        {showNotice && (
-          <div className="flex items-start gap-2.5 px-4 py-2.5 bg-lavender-50 border-b border-lavender-100">
-            <ShieldCheck className="w-4 h-4 text-lavender-400 flex-shrink-0 mt-0.5" />
-            <p className="flex-1 text-[12px] leading-relaxed text-ink-500">
-              {t.chat_traceability_notice}
-            </p>
-            <button
-              onClick={dismissNotice}
-              className="p-0.5 -mr-1 rounded-full hover:bg-lavender-100 text-ink-300 transition-colors flex-shrink-0"
-              aria-label={t.chat_hide}
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+        {/* Traceability reminder — always visible, in every conversation, for
+            both parties. Not dismissible: keeping exchanges on Jibly is what
+            lets us track the parcel and protect users in a dispute. */}
+        <div className="flex items-start gap-2.5 px-4 py-2.5 bg-lavender-50 border-b border-lavender-100">
+          <ShieldCheck className="w-4 h-4 text-lavender-400 flex-shrink-0 mt-0.5" />
+          <p className="flex-1 text-[12px] leading-relaxed text-ink-500">
+            {t.chat_traceability_notice}
+          </p>
+        </div>
 
         {/* Messages */}
         <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
