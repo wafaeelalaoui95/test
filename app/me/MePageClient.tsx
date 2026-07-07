@@ -1333,6 +1333,22 @@ function BookingCard({
   const travelerName = shortName(traveler?.full_name) || t.me2_role_traveler;
   const initial = nameInitial(traveler?.full_name);
 
+  // "X accepted!" is a one-time celebration: show it as a popup the first
+  // time the sender sees this booking as confirmed, then never again (gated
+  // per booking in localStorage). Keeps the card itself light.
+  const [showAcceptedPopup, setShowAcceptedPopup] = useState(false);
+  useEffect(() => {
+    if (booking.status !== 'confirmed' || booking.delivery_proof_url) return;
+    const key = `jibly:booking-accepted-seen:${booking.id}`;
+    try {
+      if (localStorage.getItem(key) === '1') return;
+      localStorage.setItem(key, '1');
+      setShowAcceptedPopup(true);
+    } catch {
+      /* private mode etc. — just skip the popup */
+    }
+  }, [booking.id, booking.status, booking.delivery_proof_url]);
+
   // Use Supabase auth.users email — we don't have it on the public profile
   // (RLS hides emails). For the contact info to be visible the simplest
   // path is to expose `phone` only, plus a "send a message" mailto via
@@ -1432,20 +1448,8 @@ function BookingCard({
   // banner signals progress. Once delivered, we collapse it (above).
   if (booking.status === 'confirmed') {
     return (
+      <>
       <div className="bg-white rounded-2xl border border-mint-200 overflow-hidden">
-        {/* Celebration banner */}
-        <div className="bg-mint-50 px-5 py-4 flex items-center gap-3 border-b border-mint-200">
-          <span className="text-2xl">🎉</span>
-          <div>
-            <div className="font-bold text-mint-700 text-[15px]">
-              {t.me2_x_accepted.replace('{name}', travelerName.split(' ')[0])}
-            </div>
-            <div className="text-[13px] text-mint-700/80">
-              {t.me2_arrange_transport_details}
-            </div>
-          </div>
-        </div>
-
         <div className="p-5">
           <div className="flex items-start gap-4 mb-5">
             <Link href={`/u/${traveler?.id}`} className="flex-shrink-0">
@@ -1470,6 +1474,16 @@ function BookingCard({
                 <span className="font-semibold text-ink-600">{booking.proposed_price}€</span>
               </div>
             </div>
+            {/* Single contact channel — Message right next to the name.
+                Everything stays on Jibly (traceable, dispute-protected). */}
+            {onOpenChat && (
+              <button
+                onClick={() => onOpenChat(booking)}
+                className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[13px] font-semibold transition-colors"
+              >
+                💬 {t.me2_message}
+              </button>
+            )}
           </div>
 
           {/* Delivery proof — visible only once the traveler has uploaded one */}
@@ -1504,25 +1518,6 @@ function BookingCard({
               )}
             </div>
           )}
-
-          {/* Contact details */}
-          <div className="rounded-xl bg-cream-50 px-4 py-3.5 space-y-2.5">
-            <div className="text-[11px] font-semibold text-ink-300 tracking-[0.12em] uppercase">
-              {t.me2_how_to_contact}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* In-app messaging only — everything stays on Jibly so the
-                  exchange is traceable and covered in case of a dispute. */}
-              {onOpenChat && (
-                <button
-                  onClick={() => onOpenChat(booking)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[13px] font-semibold transition-colors"
-                >
-                  💬 {t.me2_message}
-                </button>
-              )}
-            </div>
-          </div>
 
           {/* Pickup code block — sender's side of the trust handoff.
               Visible only BEFORE the traveler has confirmed pickup. Once
@@ -1582,6 +1577,44 @@ function BookingCard({
           )}
         </div>
       </div>
+
+      {/* One-time "X accepted!" celebration — shown once, then dismissed. */}
+      <AnimatePresence>
+        {showAcceptedPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+            onClick={() => setShowAcceptedPopup(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-cream-50 rounded-3xl p-6 shadow-2xl text-center"
+            >
+              <div className="text-4xl mb-3">🎉</div>
+              <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
+                {t.me2_x_accepted.replace('{name}', travelerName.split(' ')[0])}
+              </h3>
+              <p className="text-[14px] text-ink-500 leading-relaxed mb-5">
+                {t.me2_arrange_transport_details}
+              </p>
+              <button
+                onClick={() => setShowAcceptedPopup(false)}
+                className="w-full px-5 py-3 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[14px] font-semibold transition-colors"
+              >
+                {t.common_close}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      </>
     );
   }
 
