@@ -32,6 +32,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Badge, VerificationBadge } from '@/components/ui/Badge';
 import { DeliveryProofModal } from '@/components/DeliveryProofModal';
+import { ShipmentJourney } from '@/components/ShipmentJourney';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { ChatModal } from '@/components/ChatModal';
 import { Input } from '@/components/ui/Form';
@@ -1497,6 +1498,17 @@ function BookingCard({
                 💬 {t.me2_message}
               </button>
             )}
+          </div>
+
+          {/* Progress journey — role-aware reminders (sender side) */}
+          <div className="mb-4">
+            <ShipmentJourney
+              booking={booking}
+              role="sender"
+              otherFirstName={travelerName.split(' ')[0]}
+              departureDate={trip?.departure_date}
+              t={t}
+            />
           </div>
 
           {/* Delivery proof — visible only once the traveler has uploaded one */}
@@ -4089,6 +4101,20 @@ function IntentCardInline({
           </div>
         )}
       </div>
+
+      {/* Progress journey — role-aware reminders (traveler side). Shown once
+          the booking is accepted (not on a pending request). */}
+      {!showAccept && (
+        <div className="mt-3 ml-1">
+          <ShipmentJourney
+            booking={intent}
+            role="traveler"
+            otherFirstName={senderName.split(' ')[0]}
+            departureDate={intent.traveler_trip?.departure_date}
+            t={t}
+          />
+        </div>
+      )}
 
       {/* When the other party has already posted their review, show it
           inline below the card so the user sees how they were rated. */}

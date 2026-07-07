@@ -905,6 +905,22 @@ export type Translations = {
   me2_handed_to: string;
   me2_note_label: string;
   me2_early_reason_label: string;
+  sj_accepted: string;
+  sj_pickup: string;
+  sj_voyage: string;
+  sj_delivered: string;
+  sj_now: string;
+  sj_accepted_sub_sender: string;
+  sj_accepted_sub_traveler: string;
+  sj_pickup_done_sender: string;
+  sj_pickup_done_traveler: string;
+  sj_pickup_rem_sender_code: string;
+  sj_pickup_rem_sender_thirdparty: string;
+  sj_pickup_rem_traveler: string;
+  sj_voyage_sub: string;
+  sj_delivered_done: string;
+  sj_delivered_hint_sender: string;
+  sj_delivered_hint_traveler: string;
   me2_uploaded_on: string;
   me2_how_to_contact: string;
   me2_message: string;
@@ -2074,6 +2090,22 @@ export const translations: Record<Locale, Translations> = {
     me2_handed_to: 'Remis à :',
     me2_note_label: 'Note :',
     me2_early_reason_label: 'Raison de livraison anticipée :',
+    sj_accepted: 'Livraison acceptée',
+    sj_pickup: 'Colis transmis',
+    sj_voyage: 'Voyage',
+    sj_delivered: 'Colis remis',
+    sj_now: 'à faire',
+    sj_accepted_sub_sender: '{name} a accepté votre demande.',
+    sj_accepted_sub_traveler: 'Vous transportez pour {name}.',
+    sj_pickup_done_sender: 'Colis remis au voyageur.',
+    sj_pickup_done_traveler: 'Vous avez récupéré le colis.',
+    sj_pickup_rem_sender_code: 'Saisissez le code à 4 chiffres que le voyageur vous montre.',
+    sj_pickup_rem_sender_thirdparty: 'Un tiers réceptionne à l\'arrivée ? Prévenez-le et envoyez-lui le code.',
+    sj_pickup_rem_traveler: 'Montrez votre code à 4 chiffres à l\'expéditeur pour valider la remise.',
+    sj_voyage_sub: 'Départ le {date}.',
+    sj_delivered_done: 'Colis livré et confirmé.',
+    sj_delivered_hint_sender: 'Le destinataire communique le code au voyageur pour confirmer.',
+    sj_delivered_hint_traveler: 'Saisissez le code que le destinataire vous donne.',
     me2_uploaded_on: 'Téléversée le {date}',
     me2_how_to_contact: 'Comment le contacter',
     me2_message: 'Message',
@@ -3242,6 +3274,22 @@ export const translations: Record<Locale, Translations> = {
     me2_handed_to: 'Handed to:',
     me2_note_label: 'Note:',
     me2_early_reason_label: 'Early-delivery reason:',
+    sj_accepted: 'Delivery accepted',
+    sj_pickup: 'Parcel handed over',
+    sj_voyage: 'Trip',
+    sj_delivered: 'Parcel delivered',
+    sj_now: 'to do',
+    sj_accepted_sub_sender: '{name} accepted your request.',
+    sj_accepted_sub_traveler: 'You\'re carrying for {name}.',
+    sj_pickup_done_sender: 'Parcel handed to the traveler.',
+    sj_pickup_done_traveler: 'You picked up the parcel.',
+    sj_pickup_rem_sender_code: 'Enter the 4-digit code the traveler shows you.',
+    sj_pickup_rem_sender_thirdparty: 'A third party receives it on arrival? Tell them and send them the code.',
+    sj_pickup_rem_traveler: 'Show your 4-digit code to the sender to confirm the handover.',
+    sj_voyage_sub: 'Departs {date}.',
+    sj_delivered_done: 'Parcel delivered and confirmed.',
+    sj_delivered_hint_sender: 'The recipient gives the code to the traveler to confirm.',
+    sj_delivered_hint_traveler: 'Enter the code the recipient gives you.',
     me2_uploaded_on: 'Uploaded on {date}',
     me2_how_to_contact: 'How to reach them',
     me2_message: 'Message',
