@@ -45,7 +45,9 @@ export function SetupPayoutsButton({
         return;
       }
       if (!res.ok || !data.url) {
-        throw new Error(data.error ?? t.payout_start_failed);
+        // The route returns opaque codes, never raw Stripe text — see the
+        // catch in /api/connect/onboard for why.
+        throw new Error(t.payout_start_failed);
       }
       window.location.href = data.url;
     } catch (e: any) {

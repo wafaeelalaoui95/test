@@ -116,9 +116,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: link.url });
   } catch (e: any) {
-    console.error('[connect/onboard]', e?.message);
+    // Log the real error, return a generic one. Stripe's messages are written
+    // for the developer, not the traveler — they run to paragraphs of API
+    // advice and doc links, and rendering that in the payout modal is both
+    // alarming and a small disclosure of how the integration is built.
+    console.error('[connect/onboard]', e?.type, e?.code, e?.message);
     return NextResponse.json(
-      { error: e?.message ?? 'Could not start payout setup' },
+      { error: 'payout_setup_failed' },
       { status: 500 }
     );
   }
