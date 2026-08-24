@@ -30,10 +30,15 @@ export function SetupPayoutsButton({
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Stripe's short error code, shown small under the message. Not for the
+  // user to interpret — it's so they can quote it to support instead of
+  // "it didn't work".
+  const [errCode, setErrCode] = useState<string | null>(null);
 
   async function start() {
     setLoading(true);
     setErr(null);
+    setErrCode(null);
     try {
       const res = await fetch('/api/connect/onboard', { method: 'POST' });
       const data = await res.json();
@@ -47,6 +52,7 @@ export function SetupPayoutsButton({
       if (!res.ok || !data.url) {
         // The route returns opaque codes, never raw Stripe text — see the
         // catch in /api/connect/onboard for why.
+        if (data?.code) setErrCode(data.code);
         throw new Error(t.payout_start_failed);
       }
       window.location.href = data.url;
@@ -68,6 +74,11 @@ export function SetupPayoutsButton({
       </Button>
       {err && (
         <p className="mt-2 text-[12px] text-blush-500 text-center">{err}</p>
+      )}
+      {errCode && (
+        <p className="mt-1 text-[11px] text-ink-300 text-center font-mono">
+          {errCode}
+        </p>
       )}
     </>
   );

@@ -179,7 +179,13 @@ async function createRecipientAccount(
       `[connect] v2 account creation failed (HTTP ${res.status}, version ${V2_API_VERSION}):`,
       JSON.stringify(body?.error ?? body)
     );
-    throw new Error(body?.error?.message ?? 'Stripe account creation failed');
+    // Carry Stripe's short error CODE (not its prose) so the UI can show a
+    // reference the user can read out. Codes like
+    // `account_create_activation_required` are diagnostic, not sensitive.
+    const err: any = new Error(body?.error?.message ?? 'Stripe account creation failed');
+    err.stripeCode =
+      body?.error?.code ?? body?.error?.type ?? `http_${res.status}`;
+    throw err;
   }
 
   if (!body?.id) {

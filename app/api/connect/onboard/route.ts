@@ -121,8 +121,17 @@ export async function POST(req: NextRequest) {
     // advice and doc links, and rendering that in the payout modal is both
     // alarming and a small disclosure of how the integration is built.
     console.error('[connect/onboard]', e?.type, e?.code, e?.message);
+    // Return the short error code alongside the opaque error. Stripe's codes
+    // are diagnostic identifiers, not prose and not secrets, and having one
+    // visible in the UI turns "it doesn't work" into something answerable
+    // without a trip to the server logs. Whitelisted charset so a stray
+    // message can never ride out through this field.
+    const rawCode = e?.stripeCode ?? e?.code ?? e?.type ?? 'unknown';
+    const code = /^[a-z0-9_]{1,64}$/i.test(String(rawCode))
+      ? String(rawCode)
+      : 'unknown';
     return NextResponse.json(
-      { error: 'payout_setup_failed' },
+      { error: 'payout_setup_failed', code },
       { status: 500 }
     );
   }
