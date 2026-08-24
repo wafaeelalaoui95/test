@@ -998,6 +998,10 @@ export type Translations = {
   payout_ready_sub: string;
   payout_gate_title: string;
   payout_gate_body: string;
+  payout_countries_note: string;
+  payout_countries_show: string;
+  payout_countries_hide: string;
+  payout_country_unsupported: string;
   me2_verify_my_identity: string;
   me2_update_failed: string;
   me2_confirm_and_pay: string;
@@ -2194,6 +2198,10 @@ export const translations: Record<Locale, Translations> = {
     payout_ready_sub: 'Vous serez payé après chaque livraison confirmée.',
     payout_gate_title: 'Configurez vos paiements',
     payout_gate_body: 'Avant de publier un trajet, ajoutez vos coordonnées bancaires. C\'est ce qui nous permet de vous verser votre part une fois le colis livré. Configuration sécurisée par Stripe, quelques minutes.',
+    payout_countries_note: 'Important : votre compte bancaire doit être dans l\'un des pays pris en charge. Le Maroc n\'en fait pas partie — si vous vivez au Maroc, il vous faut un compte européen.',
+    payout_countries_show: 'Voir les pays pris en charge',
+    payout_countries_hide: 'Masquer la liste',
+    payout_country_unsupported: 'Nous ne pouvons pas encore verser de paiements vers votre pays. Il vous faut un compte bancaire dans l\'un des pays ci-dessous.',
     me2_verify_my_identity: 'Vérifier mon identité',
     me2_update_failed: 'Échec de la mise à jour. Contactez le support.',
     me2_confirm_and_pay: 'Confirmer et payer',
@@ -3389,6 +3397,10 @@ export const translations: Record<Locale, Translations> = {
     payout_ready_sub: 'You\'ll be paid after each confirmed delivery.',
     payout_gate_title: 'Set up your payouts',
     payout_gate_body: 'Before publishing a trip, add your bank details. That\'s how we send you your share once the parcel is delivered. Secured by Stripe, takes a few minutes.',
+    payout_countries_note: 'Important: your bank account must be in one of the supported countries. Morocco is not among them — if you live in Morocco, you\'ll need a European account.',
+    payout_countries_show: 'See supported countries',
+    payout_countries_hide: 'Hide the list',
+    payout_country_unsupported: 'We can\'t send payouts to your country yet. You\'ll need a bank account in one of the countries below.',
     me2_verify_my_identity: 'Verify my identity',
     me2_update_failed: 'Update failed. Please contact support.',
     me2_confirm_and_pay: 'Confirm and pay',

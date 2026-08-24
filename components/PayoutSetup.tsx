@@ -7,6 +7,57 @@ import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
+import { findCountryByName } from '@/lib/countries';
+import { isPayoutCountry, payoutCountryNames } from '@/lib/stripe/payout-countries';
+
+// =============================================================================
+// PayoutCountriesNote — tells the traveler the bank-account requirement BEFORE
+// they click through to Stripe.
+// =============================================================================
+// Without this, someone banking outside Stripe's footprint fills in a hosted
+// form and only then discovers their country isn't offered. Morocco is the case
+// that matters for Jibly: it's a core corridor and Stripe doesn't operate there
+// at all, so a Morocco-resident traveler needs a European account.
+//
+// When we can map their profile country and know it won't work, say so
+// outright. When we can't (the profile field is free text, so most values don't
+// map), fall back to stating the requirement and listing the countries.
+function PayoutCountriesNote() {
+  const { t, locale } = useI18n();
+  const { profile } = useAuth();
+  const [open, setOpen] = useState(false);
+
+  const code = profile?.country
+    ? findCountryByName(profile.country.trim())?.code ?? null
+    : null;
+  const supported = isPayoutCountry(code);
+
+  return (
+    <div className="mb-4">
+      {supported === false ? (
+        <p className="text-[13px] text-blush-500 leading-relaxed">
+          {t.payout_country_unsupported}
+        </p>
+      ) : (
+        <p className="text-[13px] text-ink-400 leading-relaxed">
+          {t.payout_countries_note}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="mt-1 text-[12px] text-ink-500 underline underline-offset-2"
+      >
+        {open ? t.payout_countries_hide : t.payout_countries_show}
+      </button>
+      {open && (
+        <p className="mt-2 text-[12px] text-ink-400 leading-relaxed">
+          {payoutCountryNames(locale).join(' · ')}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // =============================================================================
 // SetupPayoutsButton — calls /api/connect/onboard and redirects to Stripe.
@@ -221,9 +272,11 @@ function PayoutGateModal({ onClose }: { onClose: () => void }) {
         <h3 className="text-[19px] font-semibold text-ink-900 mb-2">
           {t.payout_gate_title}
         </h3>
-        <p className="text-[14px] text-ink-500 leading-relaxed mb-5">
+        <p className="text-[14px] text-ink-500 leading-relaxed mb-4">
           {t.payout_gate_body}
         </p>
+
+        <PayoutCountriesNote />
 
         {/* Payouts require a verified identity — the onboarding route refuses
             otherwise. Show the identity step first so the user is not bounced. */}
@@ -278,9 +331,10 @@ export function PayoutStatusCard() {
   return (
     <div className="py-3">
       {/* No title here — the caller supplies the heading (see /me). */}
-      <p className="text-[13px] text-ink-400 leading-relaxed mb-5">
+      <p className="text-[13px] text-ink-400 leading-relaxed mb-4">
         {t.payout_setup_sub}
       </p>
+      <PayoutCountriesNote />
       {needsIdentity || !profile?.identity_verified_at ? (
         <VerifyIdentityButton
           onAlreadyVerified={() => setNeedsIdentity(false)}
