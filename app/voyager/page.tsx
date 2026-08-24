@@ -22,6 +22,7 @@ import { Textarea, Checkbox, Input } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate } from '@/components/IdentityGate';
+import { usePayoutGate } from '@/components/PayoutSetup';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cityDisplayName } from '@/lib/countries';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
@@ -57,6 +58,7 @@ export default function VoyagerPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const gate = useIdentityGate();
+  const payoutGate = usePayoutGate();
   const STEPS = [t.trip_step_route, t.trip_step_space, t.trip_step_validation];
 
   // True once any saved draft has been restored (see effect below). Until
@@ -209,6 +211,10 @@ export default function VoyagerPage() {
     }
     // Identity must be verified before a trip can be published.
     if (!gate.ensureVerified()) return;
+    // ...and the traveler must be able to receive money. Asking now beats
+    // letting them carry a parcel and discover at delivery that we have no way
+    // to pay them.
+    if (!payoutGate.ensurePayable()) return;
     if (!fromCity || !toCity) return;
     if (
       fromCity.trim().toLowerCase() === toCity.trim().toLowerCase() &&
@@ -594,6 +600,7 @@ export default function VoyagerPage() {
         </AnimatePresence>
 
         {gate.modal}
+        {payoutGate.modal}
       </div>
     );
   }
@@ -896,6 +903,7 @@ export default function VoyagerPage() {
       </div>
 
       {gate.modal}
+      {payoutGate.modal}
     </div>
   );
 }

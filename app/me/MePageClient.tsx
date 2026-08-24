@@ -40,6 +40,7 @@ import { Input } from '@/components/ui/Form';
 import { DisputeModal } from '@/components/DisputeModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
+import { PayoutStatusCard } from '@/components/PayoutSetup';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
 import { ViewProofButton } from '@/components/ImageLightbox';
 // Reviews — mutual star-rating between sender and traveler once received_confirmed_at is set.
@@ -2352,6 +2353,18 @@ function ProfileTab({
           <VerifyIdentityButton />
         )}
       </div>
+
+      {/* Payouts — only meaningful once the identity step is done, since
+          /api/connect/onboard refuses an unverified user. Same card styling as
+          the identity block above. */}
+      <div className="bg-cream-100 rounded-2xl p-7 border border-ink-50">
+        <Wallet className="w-6 h-6 text-ink-500 mb-5" strokeWidth={1.75} />
+        <h3 className="text-lg font-bold text-ink-600 mb-4 tracking-[-0.015em]">
+          {t.payout_setup_title}
+        </h3>
+        <PayoutStatusCard />
+      </div>
+
       {/* Danger zone — full-width, subtle, lives below the form. */}
       <div className="lg:col-span-3 mt-4">
         <div className="bg-blush-50/40 border border-blush-200/60 rounded-2xl p-7">

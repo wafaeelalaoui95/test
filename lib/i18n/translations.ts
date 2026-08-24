@@ -987,6 +987,17 @@ export type Translations = {
   me2_identity_verified: string;
   me2_verify_start_failed: string;
   me2_error_retry: string;
+  // Stripe Connect payout setup (components/PayoutSetup.tsx)
+  payout_setup_cta: string;
+  payout_setup_title: string;
+  payout_setup_sub: string;
+  payout_start_failed: string;
+  payout_identity_first: string;
+  payout_checking: string;
+  payout_ready_title: string;
+  payout_ready_sub: string;
+  payout_gate_title: string;
+  payout_gate_body: string;
   me2_verify_my_identity: string;
   me2_update_failed: string;
   me2_confirm_and_pay: string;
@@ -2173,6 +2184,16 @@ export const translations: Record<Locale, Translations> = {
     me2_identity_verified: 'Identité vérifiée',
     me2_verify_start_failed: 'Échec du démarrage',
     me2_error_retry: 'Erreur - réessayez.',
+    payout_setup_cta: 'Configurer mes paiements',
+    payout_setup_title: 'Recevoir vos paiements',
+    payout_setup_sub: 'Ajoutez vos coordonnées bancaires pour être payé après chaque livraison.',
+    payout_start_failed: 'Impossible de démarrer la configuration',
+    payout_identity_first: 'Vérifiez d\'abord votre identité.',
+    payout_checking: 'Vérification en cours...',
+    payout_ready_title: 'Paiements activés',
+    payout_ready_sub: 'Vous serez payé après chaque livraison confirmée.',
+    payout_gate_title: 'Configurez vos paiements',
+    payout_gate_body: 'Avant de publier un trajet, ajoutez vos coordonnées bancaires. C\'est ce qui nous permet de vous verser votre part une fois le colis livré. Configuration sécurisée par Stripe, quelques minutes.',
     me2_verify_my_identity: 'Vérifier mon identité',
     me2_update_failed: 'Échec de la mise à jour. Contactez le support.',
     me2_confirm_and_pay: 'Confirmer et payer',
@@ -3358,6 +3379,16 @@ export const translations: Record<Locale, Translations> = {
     me2_identity_verified: 'Identity verified',
     me2_verify_start_failed: 'Couldn\'t get started',
     me2_error_retry: 'Something went wrong - please try again.',
+    payout_setup_cta: 'Set up payouts',
+    payout_setup_title: 'Get paid',
+    payout_setup_sub: 'Add your bank details to be paid after each delivery.',
+    payout_start_failed: 'Couldn\'t start payout setup',
+    payout_identity_first: 'Verify your identity first.',
+    payout_checking: 'Checking...',
+    payout_ready_title: 'Payouts enabled',
+    payout_ready_sub: 'You\'ll be paid after each confirmed delivery.',
+    payout_gate_title: 'Set up your payouts',
+    payout_gate_body: 'Before publishing a trip, add your bank details. That\'s how we send you your share once the parcel is delivered. Secured by Stripe, takes a few minutes.',
     me2_verify_my_identity: 'Verify my identity',
     me2_update_failed: 'Update failed. Please contact support.',
     me2_confirm_and_pay: 'Confirm and pay',
