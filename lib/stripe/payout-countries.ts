@@ -16,11 +16,11 @@
  * Stripe's form before being turned away.
  */
 export const PAYOUT_COUNTRIES = [
-  'AE', // United Arab Emirates
-  'AT', 'BE', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES',
-  'FI', 'FR', 'GB', 'GI', 'GR', 'HR', 'HU', 'IE', 'IT', 'LI',
-  'LT', 'LU', 'LV', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE',
-  'SI', 'SK',
+  'AE', 'AT', 'AU', 'BE', 'BG', 'CA', 'CH', 'CY', 'CZ', 'DE',
+  'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GI', 'GR', 'HK', 'HR',
+  'HU', 'IE', 'IT', 'JP', 'LI', 'LT', 'LU', 'LV', 'MT', 'MX',
+  'NL', 'NO', 'NZ', 'PL', 'PT', 'RO', 'SE', 'SG', 'SI', 'SK',
+  'TH', 'US',
 ] as const;
 
 /**
