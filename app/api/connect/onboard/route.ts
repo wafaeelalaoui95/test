@@ -1,8 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
-import { getOrCreateConnectAccount } from '@/lib/stripe/connect';
+import {
+  getOrCreateConnectAccount,
+  DEFAULT_ACCOUNT_COUNTRY,
+} from '@/lib/stripe/connect';
+import { findCountryByName } from '@/lib/countries';
 import { getServerClient } from '@/lib/supabase/server';
+
+/**
+ * Resolve whatever we hold for a user's country into an ISO-3166 alpha-2 code,
+ * which is the only thing stripe.accounts.create accepts.
+ *
+ * profiles.country is a FREE-TEXT field (see the input on /me) holding a
+ * display name like "France" or "Maroc" — passing it to Stripe unmapped is an
+ * immediate invalid_request_error. Anything we can't map confidently becomes
+ * null so the caller falls back to the platform default rather than guessing:
+ * the country is immutable on a Connect account, so a wrong guess means
+ * deleting the account and starting over.
+ */
+function toCountryCode(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  // Already a code (the client may send one explicitly).
+  if (/^[A-Za-z]{2}$/.test(trimmed)) return trimmed.toUpperCase();
+  return findCountryByName(trimmed)?.code ?? null;
+}
 
 /**
  * POST /api/connect/onboard
@@ -67,10 +91,17 @@ export async function POST(req: NextRequest) {
     'https://jibly.io';
 
   try {
+    // Precedence: what the client explicitly asked for, then the (free-text)
+    // profile country mapped to a code, then the platform's own country.
+    const country =
+      toCountryCode(body.country) ??
+      toCountryCode(profile.country) ??
+      DEFAULT_ACCOUNT_COUNTRY;
+
     const accountId = await getOrCreateConnectAccount(
       user.id,
       user.email,
-      body.country ?? profile.country ?? 'FR'
+      country
     );
 
     const stripe = getStripe();

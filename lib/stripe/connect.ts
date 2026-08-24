@@ -24,6 +24,20 @@ import { getAdminClient } from '@/lib/supabase/server';
 export const PLATFORM_FEE_BPS = 1500;
 
 /**
+ * Fallback country for a Connect account when we can't determine the
+ * traveler's own — ISO-3166 alpha-2. Set STRIPE_CONNECT_DEFAULT_COUNTRY to
+ * match wherever your Stripe platform account is registered.
+ *
+ * This matters more than it looks: a platform can only open connected accounts
+ * in another country if cross-border payouts are enabled on it, and the country
+ * is IMMUTABLE once the account exists. Defaulting to the platform's own
+ * country is the option that always works.
+ */
+export const DEFAULT_ACCOUNT_COUNTRY = (
+  process.env.STRIPE_CONNECT_DEFAULT_COUNTRY ?? 'FR'
+).toUpperCase();
+
+/**
  * Split a captured amount into what Jibly keeps and what the traveler gets.
  * Both in cents. We round the fee DOWN so rounding dust always lands in the
  * traveler's favour rather than ours — cheaper than explaining a missing cent.
