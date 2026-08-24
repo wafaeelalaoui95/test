@@ -26,8 +26,8 @@ import { getAdminClient } from '@/lib/supabase/server';
  * /api/booking/record-authorization), so that metadata field is an empty
  * string on every PaymentIntent we create.
  *
- * Env: STRIPE_WEBHOOK_SECRET (add the endpoint in Stripe → Developers →
- * Webhooks, listening to the events in the switch below).
+ * Env: STRIPE_WEBHOOK_SECRET and STRIPE_CONNECT_WEBHOOK_SECRET — see the
+ * comment on the secret list below for why there are two.
  */
 export const runtime = 'nodejs';
 
@@ -37,19 +37,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No signature' }, { status: 400 });
   }
 
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret) {
-    console.error('[stripe/webhook] STRIPE_WEBHOOK_SECRET missing');
+  // Two Stripe destinations point at this one route, each with its own signing
+  // secret:
+  //   STRIPE_WEBHOOK_SECRET         — "Your account" scope: the payment_intent.*
+  //                                   events for charges made to the platform
+  //   STRIPE_CONNECT_WEBHOOK_SECRET — "Connected accounts" scope: account.updated
+  //                                   for our travelers' Express accounts
+  //
+  // They must be separate destinations in Stripe (v1 connected-account events
+  // are not delivered to the "Your account" scope), so we try each secret and
+  // accept the event if any verifies. Only the matching one can succeed —
+  // constructEvent is an HMAC check, so this is not a weakening.
+  const secrets = [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
+  ].filter((s): s is string => !!s);
+
+  if (!secrets.length) {
+    console.error(
+      '[stripe/webhook] no signing secret configured (STRIPE_WEBHOOK_SECRET / STRIPE_CONNECT_WEBHOOK_SECRET)'
+    );
     return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
   }
 
   const rawBody = await req.text();
 
-  let event: Stripe.Event;
-  try {
-    event = getStripe().webhooks.constructEvent(rawBody, sig, secret);
-  } catch (e: any) {
-    console.error('[stripe/webhook] signature verification FAILED:', e?.message);
+  let event: Stripe.Event | null = null;
+  let lastError = '';
+  for (const secret of secrets) {
+    try {
+      event = getStripe().webhooks.constructEvent(rawBody, sig, secret);
+      break;
+    } catch (e: any) {
+      lastError = e?.message ?? 'unknown';
+    }
+  }
+
+  if (!event) {
+    console.error('[stripe/webhook] signature verification FAILED:', lastError);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
