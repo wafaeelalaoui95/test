@@ -1109,7 +1109,7 @@ export type BookingIntentRow = {
   status: 'pending' | 'confirmed' | 'cancelled';
   created_at: string;
   payment_intent_id: string | null;
-  payment_status: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed';
+  payment_status: 'unpaid' | 'authorized' | 'captured' | 'canceled' | 'failed' | 'refunded';
   payment_amount: number | null;
   delivery_proof_url: string | null;
   delivery_proof_uploaded_at: string | null;
@@ -1124,6 +1124,14 @@ export type BookingIntentRow = {
   pickup_confirmed_at: string | null;
   pickup_confirmed_by: string | null;
   received_confirmed_at: string | null;
+  // Stripe Connect payout bookkeeping. Written server-side only (see
+  // 2026-08-24-stripe-connect.sql); null until the traveler is paid.
+  transfer_id?: string | null;
+  transfer_amount?: number | null;
+  platform_fee_amount?: number | null;
+  transferred_at?: string | null;
+  refunded_amount?: number | null;
+  refunded_at?: string | null;
 };
 
 export async function listIncomingBookingIntents(

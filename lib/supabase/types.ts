@@ -44,6 +44,14 @@ export interface Profile {
   identity_verified_at: string | null;
   // Set when the user anonymises their account (soft delete). NULL = active.
   deleted_at: string | null;
+  // Stripe Connect (Express) payout account. Null for anyone who has never
+  // travelled — senders never need one. The two flags are mirrored from Stripe
+  // by /api/stripe/webhook on account.updated, and are revoked from the client
+  // role so a user cannot mark themselves payable.
+  stripe_account_id?: string | null;
+  stripe_charges_enabled?: boolean;
+  stripe_payouts_enabled?: boolean;
+  stripe_onboarded_at?: string | null;
 }
 
 export interface TravelerTripRow {

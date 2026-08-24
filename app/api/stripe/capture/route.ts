@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
+import { transferToTraveler } from '@/lib/stripe/payout';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 
 /**
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
     .select(
-      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, received_confirmed_at'
+      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, received_confirmed_at, transfer_id'
     )
     .eq('id', body.bookingIntentId)
     .maybeSingle();
@@ -63,16 +64,23 @@ export async function POST(req: NextRequest) {
   let isSender = intent.sender_id === user.id;
   let isTraveler = intent.traveler_user_id === user.id;
 
-  // Also check trip ownership if the booking is tied to a trip — covers the
-  // case where traveler_user_id wasn't set but the user owns the trip.
-  if (!isTraveler && intent.traveler_trip_id) {
+  // Who gets paid. Usually traveler_user_id, but older bookings only carry the
+  // trip, so fall back to its owner. Resolved unconditionally (not just when
+  // the caller is the traveler) because the sender-initiated capture — the
+  // normal path — still has to know where to send the money.
+  let resolvedTravelerId: string | null = intent.traveler_user_id ?? null;
+
+  if (!resolvedTravelerId && intent.traveler_trip_id) {
     const { data: trip } = await supabase
       .from('traveler_trips')
       .select('user_id')
       .eq('id', intent.traveler_trip_id)
       .maybeSingle();
-    if (trip && trip.user_id === user.id) {
-      isTraveler = true;
+    if (trip) {
+      resolvedTravelerId = trip.user_id;
+      // Covers the case where traveler_user_id wasn't set but the caller owns
+      // the trip.
+      if (trip.user_id === user.id) isTraveler = true;
     }
   }
 
@@ -112,7 +120,28 @@ export async function POST(req: NextRequest) {
       // because the money moved; the webhook will reconcile if configured.
     }
 
-    return NextResponse.json({ ok: true, status: captured.status });
+    // ===== Payout leg =====
+    // Separate charges and transfers: the capture above pulled the sender's
+    // money into the Jibly balance; this pushes the traveler's share on to
+    // their connected account, minus commission.
+    //
+    // Deliberately non-fatal. If the transfer fails (traveler never finished
+    // onboarding, Stripe hiccup) the capture still succeeded, and reporting it
+    // as a failure would invite the caller to retry a capture that already
+    // took the money. The funds sit safely in our balance and the payout is
+    // retried — see /api/stripe/webhook.
+    const payout = await transferToTraveler({
+      bookingIntentId: body.bookingIntentId,
+      travelerUserId: resolvedTravelerId,
+      existingTransferId: intent.transfer_id,
+      amountCents: captured.amount,
+      chargeId:
+        typeof captured.latest_charge === 'string'
+          ? captured.latest_charge
+          : captured.latest_charge?.id ?? null,
+    });
+
+    return NextResponse.json({ ok: true, status: captured.status, payout });
   } catch (e: any) {
     console.error('Stripe capture error:', e?.message);
     return NextResponse.json(
