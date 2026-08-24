@@ -74,7 +74,17 @@ export async function POST(req: NextRequest) {
   }
 
   if (!event) {
-    console.error('[stripe/webhook] signature verification FAILED:', lastError);
+    // Say WHICH secrets were available. "Neither matched" and "only one was
+    // configured, and the event came from the other destination" produce the
+    // identical Stripe error message, and they have completely different fixes.
+    console.error(
+      '[stripe/webhook] signature verification FAILED against %d secret(s) ' +
+        '(platform=%s, connect=%s):',
+      secrets.length,
+      process.env.STRIPE_WEBHOOK_SECRET ? 'set' : 'MISSING',
+      process.env.STRIPE_CONNECT_WEBHOOK_SECRET ? 'set' : 'MISSING',
+      lastError
+    );
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 

@@ -13,7 +13,10 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public assets
+     * - Stripe webhooks: they carry no session to refresh, and signature
+     *   verification depends on the byte-exact request body. Keeping
+     *   middleware off that path removes any chance of it interfering.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|api/identity/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
