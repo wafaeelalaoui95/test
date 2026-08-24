@@ -49,7 +49,16 @@ const schema = z.object({
   // Defaults to FR: the marketplace is French-first. A traveler banking
   // elsewhere passes their own. Stripe cannot change this after creation.
   country: z.string().length(2).toUpperCase().optional(),
+  // UI language, so Stripe's hosted onboarding renders in the language the
+  // traveler was already reading. BCP-47-ish; anything unrecognised falls back.
+  locale: z.enum(['fr', 'en']).optional(),
 });
+
+// Stripe wants a full locale tag, not the bare language code the app uses.
+const STRIPE_LOCALES: Record<string, string> = {
+  fr: 'fr-FR',
+  en: 'en-GB',
+};
 
 export async function POST(req: NextRequest) {
   const supabase = getServerClient();
@@ -101,7 +110,8 @@ export async function POST(req: NextRequest) {
     const accountId = await getOrCreateConnectAccount(
       user.id,
       user.email,
-      country
+      country,
+      STRIPE_LOCALES[body.locale ?? 'fr'] ?? 'fr-FR'
     );
 
     const stripe = getStripe();

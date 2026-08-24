@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
-import { findCountryByName } from '@/lib/countries';
+import { findCountryByName, countryDisplayName } from '@/lib/countries';
 import { isPayoutCountry, payoutCountryNames } from '@/lib/stripe/payout-countries';
 
 // =============================================================================
@@ -22,27 +22,46 @@ import { isPayoutCountry, payoutCountryNames } from '@/lib/stripe/payout-countri
 // When we can map their profile country and know it won't work, say so
 // outright. When we can't (the profile field is free text, so most values don't
 // map), fall back to stating the requirement and listing the countries.
-function PayoutCountriesNote() {
+function PayoutCountriesNote({
+  routeCountries,
+}: {
+  // Countries of the trip being published (departure, arrival), as the
+  // free-text names stored on trips. Optional: /me has no route context.
+  routeCountries?: (string | null | undefined)[];
+}) {
   const { t, locale } = useI18n();
   const { profile } = useAuth();
   const [open, setOpen] = useState(false);
 
-  const code = profile?.country
-    ? findCountryByName(profile.country.trim())?.code ?? null
-    : null;
-  const supported = isPayoutCountry(code);
+  const toCode = (v: string | null | undefined) =>
+    v ? findCountryByName(v.trim())?.code ?? null : null;
+
+  // Countries ON THIS ROUTE that Stripe can't pay into. A Paris→Casablanca
+  // trip surfaces Morocco; a Paris→Madrid trip surfaces nothing, and warning
+  // that traveler about bank-account countries is pure noise.
+  const blockedOnRoute = (routeCountries ?? [])
+    .map((name) => ({ name: name?.trim() ?? '', code: toCode(name) }))
+    .filter((c) => c.name && isPayoutCountry(c.code) === false)
+    .map((c) => countryDisplayName(c.name, locale));
+
+  const ownCountryUnsupported =
+    isPayoutCountry(toCode(profile?.country)) === false;
 
   return (
     <div className="mb-4">
-      {supported === false ? (
+      {ownCountryUnsupported ? (
+        // Strongest case: we know where they are and it won't work.
         <p className="text-[13px] text-blush-500 leading-relaxed">
           {t.payout_country_unsupported}
         </p>
-      ) : (
+      ) : blockedOnRoute.length > 0 ? (
         <p className="text-[13px] text-ink-400 leading-relaxed">
-          {t.payout_countries_note}
+          {t.payout_countries_route_note.replace(
+            '{countries}',
+            Array.from(new Set(blockedOnRoute)).join(', ')
+          )}
         </p>
-      )}
+      ) : null}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -78,7 +97,7 @@ export function SetupPayoutsButton({
   // can put the identity step in front of them.
   onIdentityRequired?: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // Stripe's short error code, shown small under the message. Not for the
@@ -91,7 +110,13 @@ export function SetupPayoutsButton({
     setErr(null);
     setErrCode(null);
     try {
-      const res = await fetch('/api/connect/onboard', { method: 'POST' });
+      const res = await fetch('/api/connect/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Carry the UI language so Stripe's hosted form isn't in English for a
+        // traveler who has been reading French the whole way here.
+        body: JSON.stringify({ locale }),
+      });
       const data = await res.json();
 
       if (res.status === 403 && data?.error === 'identity_required') {
@@ -207,7 +232,11 @@ export function usePayoutStatus(): {
 // then discovers they cannot be paid is a support problem and a trust problem.
 // Better to ask for the bank details before they commit to anything. While the
 // status is still loading we default to NOT payable — the safe direction.
-export function usePayoutGate(): {
+export function usePayoutGate(opts?: {
+  // Departure/arrival countries of the trip. Used only to decide whether the
+  // bank-account-country caveat is worth showing — see PayoutCountriesNote.
+  routeCountries?: (string | null | undefined)[];
+}): {
   payoutsEnabled: boolean;
   ensurePayable: () => boolean;
   modal: ReactNode;
@@ -226,7 +255,12 @@ export function usePayoutGate(): {
     ensurePayable,
     modal: (
       <AnimatePresence>
-        {open && <PayoutGateModal onClose={() => setOpen(false)} />}
+        {open && (
+          <PayoutGateModal
+            onClose={() => setOpen(false)}
+            routeCountries={opts?.routeCountries}
+          />
+        )}
       </AnimatePresence>
     ),
   };
@@ -234,7 +268,13 @@ export function usePayoutGate(): {
 
 // Block screen shown when a traveler tries to publish before being payable.
 // Mirrors IdentityGateModal's backdrop/card styling.
-function PayoutGateModal({ onClose }: { onClose: () => void }) {
+function PayoutGateModal({
+  onClose,
+  routeCountries,
+}: {
+  onClose: () => void;
+  routeCountries?: (string | null | undefined)[];
+}) {
   const { t } = useI18n();
   const { profile } = useAuth();
   const [needsIdentity, setNeedsIdentity] = useState(
@@ -276,7 +316,7 @@ function PayoutGateModal({ onClose }: { onClose: () => void }) {
           {t.payout_gate_body}
         </p>
 
-        <PayoutCountriesNote />
+        <PayoutCountriesNote routeCountries={routeCountries} />
 
         {/* Payouts require a verified identity — the onboarding route refuses
             otherwise. Show the identity step first so the user is not bounced. */}

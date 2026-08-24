@@ -58,7 +58,6 @@ export default function VoyagerPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const gate = useIdentityGate();
-  const payoutGate = usePayoutGate();
   const STEPS = [t.trip_step_route, t.trip_step_space, t.trip_step_validation];
 
   // True once any saved draft has been restored (see effect below). Until
@@ -74,6 +73,13 @@ export default function VoyagerPage() {
   const [toCountry, setToCountry] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+
+  // Declared after the route state it reads. The route countries feed the gate
+  // so the bank-account caveat only appears when this trip actually touches a
+  // country Stripe can't pay into — a Paris→Madrid traveler doesn't need it.
+  const payoutGate = usePayoutGate({
+    routeCountries: [fromCountry, toCountry],
+  });
 
   // Flight details — required for credibility in both modes.
   const [flightNumber, setFlightNumber] = useState('');

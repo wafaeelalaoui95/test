@@ -61,7 +61,8 @@ export function splitAmount(amountCents: number): {
 export async function getOrCreateConnectAccount(
   userId: string,
   email: string | undefined,
-  country: string
+  country: string,
+  locale: string
 ): Promise<string> {
   const admin = getAdminClient();
   const { data: profile } = await admin
@@ -72,7 +73,7 @@ export async function getOrCreateConnectAccount(
 
   if (profile?.stripe_account_id) return profile.stripe_account_id;
 
-  const accountId = await createRecipientAccount(userId, email, country);
+  const accountId = await createRecipientAccount(userId, email, country, locale);
 
   const { error } = await admin
     .from('profiles')
@@ -122,7 +123,8 @@ const V2_API_VERSION = process.env.STRIPE_V2_API_VERSION ?? '2026-07-29.dahlia';
 async function createRecipientAccount(
   userId: string,
   email: string | undefined,
-  country: string
+  country: string,
+  locale: string
 ): Promise<string> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
@@ -165,6 +167,11 @@ async function createRecipientAccount(
           fees_collector: 'application',
           losses_collector: 'application',
         },
+        // Language of Stripe's hosted onboarding. Without this the form is
+        // English regardless of who the traveler is — a poor first impression
+        // on a French-first product, and a real obstacle for anyone who
+        // doesn't read English while entering their bank details.
+        locales: [locale],
       },
       dashboard: 'express',
       metadata: { userId },

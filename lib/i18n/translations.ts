@@ -999,6 +999,7 @@ export type Translations = {
   payout_gate_title: string;
   payout_gate_body: string;
   payout_countries_note: string;
+  payout_countries_route_note: string;
   payout_countries_show: string;
   payout_countries_hide: string;
   payout_country_unsupported: string;
@@ -2199,6 +2200,7 @@ export const translations: Record<Locale, Translations> = {
     payout_gate_title: 'Configurez vos paiements',
     payout_gate_body: 'Avant de publier un trajet, ajoutez vos coordonnées bancaires. C\'est ce qui nous permet de vous verser votre part une fois le colis livré. Configuration sécurisée par Stripe, quelques minutes.',
     payout_countries_note: 'Important : votre compte bancaire doit être dans l\'un des pays pris en charge. Le Maroc n\'en fait pas partie — si vous vivez au Maroc, il vous faut un compte européen.',
+    payout_countries_route_note: 'Votre trajet passe par {countries}. Stripe n\'y verse pas de paiements — il vous faut un compte bancaire dans un pays pris en charge.',
     payout_countries_show: 'Voir les pays pris en charge',
     payout_countries_hide: 'Masquer la liste',
     payout_country_unsupported: 'Nous ne pouvons pas encore verser de paiements vers votre pays. Il vous faut un compte bancaire dans l\'un des pays ci-dessous.',
@@ -3398,6 +3400,7 @@ export const translations: Record<Locale, Translations> = {
     payout_gate_title: 'Set up your payouts',
     payout_gate_body: 'Before publishing a trip, add your bank details. That\'s how we send you your share once the parcel is delivered. Secured by Stripe, takes a few minutes.',
     payout_countries_note: 'Important: your bank account must be in one of the supported countries. Morocco is not among them — if you live in Morocco, you\'ll need a European account.',
+    payout_countries_route_note: 'Your trip involves {countries}. Stripe doesn\'t pay out there — you\'ll need a bank account in a supported country.',
     payout_countries_show: 'See supported countries',
     payout_countries_hide: 'Hide the list',
     payout_country_unsupported: 'We can\'t send payouts to your country yet. You\'ll need a bank account in one of the countries below.',
