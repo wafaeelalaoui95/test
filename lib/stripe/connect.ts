@@ -149,8 +149,10 @@ async function createRecipientAccount(
         recipient: {
           capabilities: {
             stripe_balance: {
+              // ONLY stripe_transfers belongs to the recipient configuration.
+              // stripe_balance.payouts lives under `merchant`, and requesting
+              // it here is rejected with invalid_fields.
               stripe_transfers: { requested: true },
-              payouts: { requested: true },
             },
           },
         },
