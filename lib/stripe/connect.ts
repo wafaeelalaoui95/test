@@ -148,9 +148,9 @@ const V2_API_VERSION = process.env.STRIPE_V2_API_VERSION ?? '2026-07-29.dahlia';
  * ids are accepted by the v1 endpoints, so accountLinks.create and
  * accounts.retrieve work unchanged and return v1-shaped objects.
  *
- * Configuration is `recipient`, which carries stripe_balance.stripe_transfers
- * — the capability Stripe requires for indirect charges, i.e. the separate
- * charges and transfers model this integration uses.
+ * Two configurations, one per half of the money's journey: "recipient" lets
+ * transfers arrive in the traveler's Stripe balance, "merchant" lets them be
+ * paid out to a bank. Neither works alone.
  *
  * Note on liability: dashboard 'express' requires fees_collector and
  * losses_collector to both be 'application'. That means JIBLY absorbs
@@ -203,14 +203,30 @@ async function createRecipientAccount(
         ...(country ? { country: country.toLowerCase() } : {}),
         entity_type: 'individual',
       },
+      // Both configurations are needed, and each carries exactly one half of
+      // the journey:
+      //   recipient.stripe_balance.stripe_transfers — money can arrive in the
+      //     traveler's Stripe balance (this is what indirect charges require)
+      //   merchant.stripe_balance.payouts           — money can leave it for
+      //     their bank account
+      //
+      // Requesting transfers alone is refused with
+      // capability_not_available_without_other_capability: an account that can
+      // receive funds but never pay them out is not a thing Stripe will create.
+      // Note we do NOT request card_payments — travelers never take payments,
+      // and every extra capability means more KYC to clear.
       configuration: {
         recipient: {
           capabilities: {
             stripe_balance: {
-              // ONLY stripe_transfers belongs to the recipient configuration.
-              // stripe_balance.payouts lives under `merchant`, and requesting
-              // it here is rejected with invalid_fields.
               stripe_transfers: { requested: true },
+            },
+          },
+        },
+        merchant: {
+          capabilities: {
+            stripe_balance: {
+              payouts: { requested: true },
             },
           },
         },
@@ -231,7 +247,7 @@ async function createRecipientAccount(
       },
       dashboard: 'express',
       metadata: { userId },
-      include: ['configuration.recipient', 'requirements'],
+      include: ['configuration.recipient', 'configuration.merchant', 'requirements'],
     }),
   });
 
