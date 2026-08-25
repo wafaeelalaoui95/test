@@ -7,6 +7,7 @@ import {
   isMissingAccountError,
 } from '@/lib/stripe/connect';
 import { findCountryByName } from '@/lib/countries';
+import { isPayoutCountry } from '@/lib/stripe/payout-countries';
 import { getServerClient } from '@/lib/supabase/server';
 
 /**
@@ -16,9 +17,8 @@ import { getServerClient } from '@/lib/supabase/server';
  * profiles.country is a FREE-TEXT field (see the input on /me) holding a
  * display name like "France" or "Maroc" — passing it to Stripe unmapped is an
  * immediate invalid_request_error. Anything we can't map confidently becomes
- * null so the caller can omit it entirely rather than guessing: the country is
- * immutable on a Connect account, and Stripe asks the traveler directly when we
- * don't supply one.
+ * null so the caller can reject the request rather than guessing: the country is
+ * immutable on a Connect account, so the UI asks the traveler outright.
  */
 function toCountryCode(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -47,8 +47,8 @@ function toCountryCode(value: string | null | undefined): string | null {
  * every click rather than caching.
  */
 const schema = z.object({
-  // Optional. When absent and unmappable from the profile, we send no country
-  // at all and Stripe asks the traveler during onboarding.
+  // The traveler picks this from a dropdown; Stripe requires it and freezes it
+  // permanently, so we never infer it.
   country: z.string().length(2).toUpperCase().optional(),
   // UI language, so Stripe's hosted onboarding renders in the language the
   // traveler was already reading. BCP-47-ish; anything unrecognised falls back.
@@ -101,15 +101,21 @@ export async function POST(req: NextRequest) {
     'https://jibly.io';
 
   try {
-    // Only pass a country we actually know: what the client asked for, or the
-    // (free-text) profile country if it maps cleanly. Otherwise send nothing
-    // and let Stripe ask during onboarding.
-    //
-    // Deliberately NOT falling back to the platform's country: it is immutable
-    // once set, so defaulting to GB would permanently make a French traveler a
-    // UK account holder and force a UK home address on them.
+    // What the traveler chose, or the (free-text) profile country when it maps
+    // cleanly. Never the platform's own country: defaulting to GB is what made
+    // every traveler a UK account holder, permanently.
     const country =
       toCountryCode(body.country) ?? toCountryCode(profile.country) ?? '';
+
+    // Stripe rejects a v2 account without one (identity_country_required), and
+    // it can never be changed afterwards — so refuse here rather than let a
+    // guess become permanent. The UI asks the traveler directly.
+    if (!isPayoutCountry(country)) {
+      return NextResponse.json(
+        { error: 'payout_setup_failed', code: 'country_required' },
+        { status: 400 }
+      );
+    }
 
     const stripeLocale = STRIPE_LOCALES[body.locale ?? 'fr'] ?? 'fr-FR';
     const stripe = getStripe();

@@ -997,15 +997,13 @@ export type Translations = {
   payout_ready_title: string;
   payout_ready_sub: string;
   me2_tab_payouts: string;
+  payout_country_label: string;
+  payout_country_placeholder: string;
+  payout_country_hint: string;
   payout_manage_cta: string;
   payout_manage_failed: string;
   payout_reminder_body: string;
   payout_reminder_link: string;
-  payout_countries_note: string;
-  payout_countries_route_note: string;
-  payout_countries_show: string;
-  payout_countries_hide: string;
-  payout_country_unsupported: string;
   me2_verify_my_identity: string;
   me2_update_failed: string;
   me2_confirm_and_pay: string;
@@ -2201,15 +2199,13 @@ export const translations: Record<Locale, Translations> = {
     payout_ready_title: 'Paiements activés',
     payout_ready_sub: 'Vous serez payé après chaque livraison confirmée.',
     me2_tab_payouts: 'Paiements',
+    payout_country_label: 'Pays de votre compte bancaire',
+    payout_country_placeholder: 'Choisissez un pays',
+    payout_country_hint: 'Ce choix est définitif et ne pourra pas être modifié. Seuls les pays où Stripe peut verser des paiements sont proposés — le Maroc n\'en fait pas partie.',
     payout_manage_cta: 'Gérer mes coordonnées bancaires',
     payout_manage_failed: 'Impossible d\'ouvrir votre espace paiements',
     payout_reminder_body: 'Vos paiements ne sont pas encore configurés. Vous pouvez publier sans, mais il faudra les ajouter avant d\'être payé.',
     payout_reminder_link: 'Configurer maintenant',
-    payout_countries_note: 'Important : votre compte bancaire doit être dans l\'un des pays pris en charge. Le Maroc n\'en fait pas partie — si vous vivez au Maroc, il vous faut un compte européen.',
-    payout_countries_route_note: 'Votre trajet passe par {countries}. Stripe n\'y verse pas de paiements — il vous faut un compte bancaire dans un pays pris en charge.',
-    payout_countries_show: 'Voir les pays pris en charge',
-    payout_countries_hide: 'Masquer la liste',
-    payout_country_unsupported: 'Nous ne pouvons pas encore verser de paiements vers votre pays. Il vous faut un compte bancaire dans l\'un des pays ci-dessous.',
     me2_verify_my_identity: 'Vérifier mon identité',
     me2_update_failed: 'Échec de la mise à jour. Contactez le support.',
     me2_confirm_and_pay: 'Confirmer et payer',
@@ -3404,15 +3400,13 @@ export const translations: Record<Locale, Translations> = {
     payout_ready_title: 'Payouts enabled',
     payout_ready_sub: 'You\'ll be paid after each confirmed delivery.',
     me2_tab_payouts: 'Payouts',
+    payout_country_label: 'Country of your bank account',
+    payout_country_placeholder: 'Choose a country',
+    payout_country_hint: 'This choice is permanent and can\'t be changed later. Only countries Stripe can pay out to are listed — Morocco isn\'t one of them.',
     payout_manage_cta: 'Manage my bank details',
     payout_manage_failed: 'Couldn\'t open your payouts area',
     payout_reminder_body: 'Your payouts aren\'t set up yet. You can publish without them, but you\'ll need to add them before you can be paid.',
     payout_reminder_link: 'Set up now',
-    payout_countries_note: 'Important: your bank account must be in one of the supported countries. Morocco is not among them — if you live in Morocco, you\'ll need a European account.',
-    payout_countries_route_note: 'Your trip involves {countries}. Stripe doesn\'t pay out there — you\'ll need a bank account in a supported country.',
-    payout_countries_show: 'See supported countries',
-    payout_countries_hide: 'Hide the list',
-    payout_country_unsupported: 'We can\'t send payouts to your country yet. You\'ll need a bank account in one of the countries below.',
     me2_verify_my_identity: 'Verify my identity',
     me2_update_failed: 'Update failed. Please contact support.',
     me2_confirm_and_pay: 'Confirm and pay',

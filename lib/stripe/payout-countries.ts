@@ -40,6 +40,21 @@ export function isPayoutCountry(code: string | null | undefined): boolean | null
  * locale. Uses Intl rather than a hand-maintained translation table — 32
  * country names in every locale is exactly the sort of list that rots.
  */
+export function payoutCountryOptions(
+  locale: string
+): { code: string; name: string }[] {
+  let display: Intl.DisplayNames | null = null;
+  try {
+    display = new Intl.DisplayNames([locale], { type: 'region' });
+  } catch {
+    display = null;
+  }
+  return PAYOUT_COUNTRIES.map((code) => ({
+    code,
+    name: display?.of(code) ?? code,
+  })).sort((a, b) => a.name.localeCompare(b.name, locale));
+}
+
 export function payoutCountryNames(locale: string): string[] {
   let display: Intl.DisplayNames | null = null;
   try {

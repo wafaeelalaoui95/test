@@ -8,76 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
-import { findCountryByName, countryDisplayName } from '@/lib/countries';
-import { isPayoutCountry, payoutCountryNames } from '@/lib/stripe/payout-countries';
-
-// =============================================================================
-// PayoutCountriesNote — tells the traveler the bank-account requirement BEFORE
-// they click through to Stripe.
-// =============================================================================
-// Without this, someone banking outside Stripe's footprint fills in a hosted
-// form and only then discovers their country isn't offered. Morocco is the case
-// that matters for Jibly: it's a core corridor and Stripe doesn't operate there
-// at all, so a Morocco-resident traveler needs a European account.
-//
-// When we can map their profile country and know it won't work, say so
-// outright. When we can't (the profile field is free text, so most values don't
-// map), fall back to stating the requirement and listing the countries.
-function PayoutCountriesNote({
-  routeCountries,
-}: {
-  // Countries of the trip being published (departure, arrival), as the
-  // free-text names stored on trips. Optional: /me has no route context.
-  routeCountries?: (string | null | undefined)[];
-}) {
-  const { t, locale } = useI18n();
-  const { profile } = useAuth();
-  const [open, setOpen] = useState(false);
-
-  const toCode = (v: string | null | undefined) =>
-    v ? findCountryByName(v.trim())?.code ?? null : null;
-
-  // Countries ON THIS ROUTE that Stripe can't pay into. A Paris→Casablanca
-  // trip surfaces Morocco; a Paris→Madrid trip surfaces nothing, and warning
-  // that traveler about bank-account countries is pure noise.
-  const blockedOnRoute = (routeCountries ?? [])
-    .map((name) => ({ name: name?.trim() ?? '', code: toCode(name) }))
-    .filter((c) => c.name && isPayoutCountry(c.code) === false)
-    .map((c) => countryDisplayName(c.name, locale));
-
-  const ownCountryUnsupported =
-    isPayoutCountry(toCode(profile?.country)) === false;
-
-  return (
-    <div className="mb-4">
-      {ownCountryUnsupported ? (
-        // Strongest case: we know where they are and it won't work.
-        <p className="text-[13px] text-blush-500 leading-relaxed">
-          {t.payout_country_unsupported}
-        </p>
-      ) : blockedOnRoute.length > 0 ? (
-        <p className="text-[13px] text-ink-400 leading-relaxed">
-          {t.payout_countries_route_note.replace(
-            '{countries}',
-            Array.from(new Set(blockedOnRoute)).join(', ')
-          )}
-        </p>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="mt-1 text-[12px] text-ink-500 underline underline-offset-2"
-      >
-        {open ? t.payout_countries_hide : t.payout_countries_show}
-      </button>
-      {open && (
-        <p className="mt-2 text-[12px] text-ink-400 leading-relaxed">
-          {payoutCountryNames(locale).join(' · ')}
-        </p>
-      )}
-    </div>
-  );
-}
+import { findCountryByName } from '@/lib/countries';
+import { payoutCountryOptions } from '@/lib/stripe/payout-countries';
 
 // =============================================================================
 // SetupPayoutsButton — calls /api/connect/onboard and redirects to Stripe.
@@ -99,12 +31,26 @@ export function SetupPayoutsButton({
   onIdentityRequired?: () => void;
 }) {
   const { t, locale } = useI18n();
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // Stripe's short error code, shown small under the message. Not for the
   // user to interpret — it's so they can quote it to support instead of
   // "it didn't work".
   const [errCode, setErrCode] = useState<string | null>(null);
+
+  // Stripe requires identity.country on a v2 account (identity_country_required)
+  // and it can never be changed afterwards. So we ask outright rather than
+  // inferring: guessing from the platform's own country silently made every
+  // traveler a UK account holder, and the profile's country field is free text
+  // that mostly doesn't map. Prefilled when it happens to map cleanly.
+  const options = payoutCountryOptions(locale);
+  const prefill = profile?.country
+    ? findCountryByName(profile.country.trim())?.code ?? ''
+    : '';
+  const [country, setCountry] = useState(
+    options.some((o) => o.code === prefill) ? prefill : ''
+  );
 
   async function start() {
     setLoading(true);
@@ -116,7 +62,7 @@ export function SetupPayoutsButton({
         headers: { 'Content-Type': 'application/json' },
         // Carry the UI language so Stripe's hosted form isn't in English for a
         // traveler who has been reading French the whole way here.
-        body: JSON.stringify({ locale }),
+        body: JSON.stringify({ locale, country }),
       });
       const data = await res.json();
 
@@ -141,7 +87,36 @@ export function SetupPayoutsButton({
 
   return (
     <>
-      <Button onClick={start} disabled={loading} size="sm" fullWidth>
+      <label className="block mb-4">
+        <span className="block text-[13px] font-medium text-ink-600 mb-1.5">
+          {t.payout_country_label}
+        </span>
+        <select
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          className="w-full rounded-xl border border-ink-100 bg-white px-3.5 py-2.5 text-[14px] text-ink-600"
+        >
+          <option value="">{t.payout_country_placeholder}</option>
+          {options.map((o) => (
+            <option key={o.code} value={o.code}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+        {/* Immutable on the Stripe side, so warn before rather than support
+            after. Only these countries appear because Stripe opens connected
+            accounts nowhere else — Morocco included. */}
+        <span className="block mt-1.5 text-[12px] text-ink-400 leading-relaxed">
+          {t.payout_country_hint}
+        </span>
+      </label>
+
+      <Button
+        onClick={start}
+        disabled={loading || !country}
+        size="sm"
+        fullWidth
+      >
         {loading ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
@@ -342,7 +317,6 @@ export function PayoutStatusCard() {
       <p className="text-[13px] text-ink-400 leading-relaxed mb-4">
         {t.payout_setup_sub}
       </p>
-      <PayoutCountriesNote />
       {needsIdentity || !profile?.identity_verified_at ? (
         <VerifyIdentityButton
           onAlreadyVerified={() => setNeedsIdentity(false)}
