@@ -22,7 +22,7 @@ import { Textarea, Checkbox, Input } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate } from '@/components/IdentityGate';
-import { usePayoutGate } from '@/components/PayoutSetup';
+import { PayoutReminder } from '@/components/PayoutSetup';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cityDisplayName } from '@/lib/countries';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
@@ -73,13 +73,6 @@ export default function VoyagerPage() {
   const [toCountry, setToCountry] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
-
-  // Declared after the route state it reads. The route countries feed the gate
-  // so the bank-account caveat only appears when this trip actually touches a
-  // country Stripe can't pay into — a Paris→Madrid traveler doesn't need it.
-  const payoutGate = usePayoutGate({
-    routeCountries: [fromCountry, toCountry],
-  });
 
   // Flight details — required for credibility in both modes.
   const [flightNumber, setFlightNumber] = useState('');
@@ -217,11 +210,9 @@ export default function VoyagerPage() {
     }
     // Identity must be verified before a trip can be published.
     if (!gate.ensureVerified()) return;
-    // NOTE: no payout gate here. Publishing a trip is not a commitment — it is
-    // someone wondering whether their Paris flight could earn them something.
-    // Demanding a passport and bank details at that moment kills the flow. The
-    // payout gate lives on the propose action instead, which is where the
-    // traveler actually agrees to carry a stranger's parcel.
+    // No payout gate anywhere in this flow — see PayoutReminder. Travelers
+    // publish and propose freely; unpaid-out money waits safely in the platform
+    // balance until they finish setup, and the webhook releases it then.
     if (!fromCity || !toCity) return;
     if (
       fromCity.trim().toLowerCase() === toCity.trim().toLowerCase() &&
@@ -524,14 +515,9 @@ export default function VoyagerPage() {
                       key={req.id}
                       request={req}
                       onPropose={() => {
-                        // Both gates sit here rather than on publishing: this
-                        // is the commitment point. Beyond it the traveler is
-                        // agreeing to carry a real parcel for a real person,
-                        // and discovering at delivery that we can't pay them
-                        // is a support problem we can't fix afterwards.
-                        if (!gate.ensureVerified()) return;
-                        if (!payoutGate.ensurePayable()) return;
-                        setRequestToHelp(req);
+                        // Identity is still required — that one is about who
+                        // is carrying the parcel, not about getting paid.
+                        if (gate.ensureVerified()) setRequestToHelp(req);
                       }}
                       flightNumberRequired={!isValidFlightNumber(flightNumber)}
                       alreadyProposed={proposedRequestIds.includes(req.id)}
@@ -613,7 +599,6 @@ export default function VoyagerPage() {
         </AnimatePresence>
 
         {gate.modal}
-        {payoutGate.modal}
       </div>
     );
   }
@@ -881,6 +866,10 @@ export default function VoyagerPage() {
                   <div className="pt-2">
                     <Checkbox name="terms" checked={terms} onChange={(e) => setTerms(e.target.checked)} label={<span>{t.trip_engagement_terms}</span>} />
                   </div>
+
+                  {/* Informative, never blocking: publishing goes ahead either
+                      way. Renders nothing once payouts are set up. */}
+                  <PayoutReminder />
                 </div>
               )}
             </motion.div>
@@ -916,7 +905,6 @@ export default function VoyagerPage() {
       </div>
 
       {gate.modal}
-      {payoutGate.modal}
     </div>
   );
 }

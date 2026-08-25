@@ -996,8 +996,10 @@ export type Translations = {
   payout_checking: string;
   payout_ready_title: string;
   payout_ready_sub: string;
-  payout_gate_title: string;
-  payout_gate_body: string;
+  payout_manage_cta: string;
+  payout_manage_failed: string;
+  payout_reminder_body: string;
+  payout_reminder_link: string;
   payout_countries_note: string;
   payout_countries_route_note: string;
   payout_countries_show: string;
@@ -2197,8 +2199,10 @@ export const translations: Record<Locale, Translations> = {
     payout_checking: 'Vérification en cours...',
     payout_ready_title: 'Paiements activés',
     payout_ready_sub: 'Vous serez payé après chaque livraison confirmée.',
-    payout_gate_title: 'Configurez vos paiements',
-    payout_gate_body: 'Vous êtes sur le point de vous engager à transporter un colis. Ajoutez vos coordonnées bancaires pour que nous puissions vous verser votre part une fois la livraison confirmée. Configuration sécurisée par Stripe, quelques minutes.',
+    payout_manage_cta: 'Gérer mes coordonnées bancaires',
+    payout_manage_failed: 'Impossible d\'ouvrir votre espace paiements',
+    payout_reminder_body: 'Vos paiements ne sont pas encore configurés. Vous pouvez publier sans, mais il faudra les ajouter avant d\'être payé.',
+    payout_reminder_link: 'Configurer maintenant',
     payout_countries_note: 'Important : votre compte bancaire doit être dans l\'un des pays pris en charge. Le Maroc n\'en fait pas partie — si vous vivez au Maroc, il vous faut un compte européen.',
     payout_countries_route_note: 'Votre trajet passe par {countries}. Stripe n\'y verse pas de paiements — il vous faut un compte bancaire dans un pays pris en charge.',
     payout_countries_show: 'Voir les pays pris en charge',
@@ -3397,8 +3401,10 @@ export const translations: Record<Locale, Translations> = {
     payout_checking: 'Checking...',
     payout_ready_title: 'Payouts enabled',
     payout_ready_sub: 'You\'ll be paid after each confirmed delivery.',
-    payout_gate_title: 'Set up your payouts',
-    payout_gate_body: 'You\'re about to commit to carrying a parcel. Add your bank details so we can send you your share once delivery is confirmed. Secured by Stripe, takes a few minutes.',
+    payout_manage_cta: 'Manage my bank details',
+    payout_manage_failed: 'Couldn\'t open your payouts area',
+    payout_reminder_body: 'Your payouts aren\'t set up yet. You can publish without them, but you\'ll need to add them before you can be paid.',
+    payout_reminder_link: 'Set up now',
     payout_countries_note: 'Important: your bank account must be in one of the supported countries. Morocco is not among them — if you live in Morocco, you\'ll need a European account.',
     payout_countries_route_note: 'Your trip involves {countries}. Stripe doesn\'t pay out there — you\'ll need a bank account in a supported country.',
     payout_countries_show: 'See supported countries',

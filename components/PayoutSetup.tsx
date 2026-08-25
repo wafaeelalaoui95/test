@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Wallet, X, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+
+import { Loader2, Wallet, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
@@ -161,6 +162,81 @@ export function SetupPayoutsButton({
 }
 
 // =============================================================================
+// ManagePayoutsButton — opens the traveler's Stripe Express dashboard.
+// =============================================================================
+// Where an already-onboarded traveler goes to check or change their bank
+// details. Stripe hosts it; we never see an account number.
+export function ManagePayoutsButton() {
+  const { t } = useI18n();
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function open() {
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await fetch('/api/connect/dashboard', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(t.payout_manage_failed);
+      window.location.href = data.url;
+    } catch (e: any) {
+      setErr(e.message ?? t.me2_error_retry);
+      setLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={open}
+        disabled={loading}
+        className="text-[13px] text-ink-600 underline underline-offset-2 disabled:opacity-50"
+      >
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : null}
+        {t.payout_manage_cta}
+      </button>
+      {err && <p className="mt-2 text-[12px] text-blush-500">{err}</p>}
+    </>
+  );
+}
+
+// =============================================================================
+// PayoutReminder — non-blocking notice that payouts aren't set up yet.
+// =============================================================================
+// Replaces the hard gate that used to stand in front of publishing a trip.
+// Publishing is not a commitment, and blocking it cost far more than the
+// occasional traveler who sorts their bank details late. The backend already
+// tolerates that case: transferToTraveler skips with 'not_onboarded', the money
+// waits in the platform balance, and the account.updated webhook pays them the
+// moment they finish. So this only has to be visible, not enforced.
+//
+// Renders nothing once payouts work, and while we're still checking.
+export function PayoutReminder({ className }: { className?: string }) {
+  const { t } = useI18n();
+  const { user } = useAuth();
+  const { payoutsEnabled, loading } = usePayoutStatus();
+
+  if (!user || loading || payoutsEnabled) return null;
+
+  return (
+    <div
+      className={`rounded-2xl bg-cream-100 border border-ink-50 px-4 py-3 flex items-start gap-3 ${className ?? ''}`}
+    >
+      <Wallet className="w-4 h-4 text-ink-400 mt-0.5 shrink-0" strokeWidth={1.75} />
+      <p className="text-[13px] text-ink-500 leading-relaxed">
+        {t.payout_reminder_body}{' '}
+        <Link
+          href="/me"
+          className="text-ink-900 underline underline-offset-2 font-medium"
+        >
+          {t.payout_reminder_link}
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+// =============================================================================
 // usePayoutStatus — is the current user able to receive money?
 // =============================================================================
 // Reads the cached flag from the profile first (auth-provider selects '*', so
@@ -221,120 +297,6 @@ export function usePayoutStatus(): {
 }
 
 // =============================================================================
-// usePayoutGate — blocks publishing a trip until the traveler can be paid.
-// =============================================================================
-// Same shape as useIdentityGate:
-//   const gate = usePayoutGate();
-//   {gate.modal}
-//   if (!gate.ensurePayable()) return;
-//
-// Why gate at all: a traveler who publishes a trip, carries a parcel and only
-// then discovers they cannot be paid is a support problem and a trust problem.
-// Better to ask for the bank details before they commit to anything. While the
-// status is still loading we default to NOT payable — the safe direction.
-export function usePayoutGate(opts?: {
-  // Departure/arrival countries of the trip. Used only to decide whether the
-  // bank-account-country caveat is worth showing — see PayoutCountriesNote.
-  routeCountries?: (string | null | undefined)[];
-}): {
-  payoutsEnabled: boolean;
-  ensurePayable: () => boolean;
-  modal: ReactNode;
-} {
-  const { payoutsEnabled } = usePayoutStatus();
-  const [open, setOpen] = useState(false);
-
-  function ensurePayable() {
-    if (payoutsEnabled) return true;
-    setOpen(true);
-    return false;
-  }
-
-  return {
-    payoutsEnabled,
-    ensurePayable,
-    modal: (
-      <AnimatePresence>
-        {open && (
-          <PayoutGateModal
-            onClose={() => setOpen(false)}
-            routeCountries={opts?.routeCountries}
-          />
-        )}
-      </AnimatePresence>
-    ),
-  };
-}
-
-// Block screen shown when a traveler tries to publish before being payable.
-// Mirrors IdentityGateModal's backdrop/card styling.
-function PayoutGateModal({
-  onClose,
-  routeCountries,
-}: {
-  onClose: () => void;
-  routeCountries?: (string | null | undefined)[];
-}) {
-  const { t } = useI18n();
-  const { profile } = useAuth();
-  const [needsIdentity, setNeedsIdentity] = useState(
-    !profile?.identity_verified_at
-  );
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink-900/40 backdrop-blur-sm p-0 sm:p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ y: 40, opacity: 0, scale: 0.98 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: 40, opacity: 0 }}
-        transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-        className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 relative"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-ink-300 hover:text-ink-500"
-          aria-label={t.common_close}
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="w-12 h-12 rounded-full bg-mint-50 flex items-center justify-center mb-4">
-          <Wallet className="w-6 h-6 text-mint-500" />
-        </div>
-
-        <h3 className="text-[19px] font-semibold text-ink-900 mb-2">
-          {t.payout_gate_title}
-        </h3>
-        <p className="text-[14px] text-ink-500 leading-relaxed mb-4">
-          {t.payout_gate_body}
-        </p>
-
-        <PayoutCountriesNote routeCountries={routeCountries} />
-
-        {/* Payouts require a verified identity — the onboarding route refuses
-            otherwise. Show the identity step first so the user is not bounced. */}
-        {needsIdentity ? (
-          <VerifyIdentityButton
-            onAlreadyVerified={() => setNeedsIdentity(false)}
-          />
-        ) : (
-          <SetupPayoutsButton
-            onIdentityRequired={() => setNeedsIdentity(true)}
-          />
-        )}
-      </motion.div>
-    </motion.div>
-  );
-}
-
-// =============================================================================
 // PayoutStatusCard — the settings-row version shown on /me.
 // =============================================================================
 export function PayoutStatusCard() {
@@ -354,16 +316,22 @@ export function PayoutStatusCard() {
 
   if (payoutsEnabled) {
     return (
-      <div className="flex items-center gap-2.5 py-3">
-        <div className="w-8 h-8 rounded-full bg-mint-50 flex items-center justify-center shrink-0">
-          <Check className="w-4 h-4 text-mint-500" />
+      <div className="py-3">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-full bg-mint-50 flex items-center justify-center shrink-0">
+            <Check className="w-4 h-4 text-mint-500" />
+          </div>
+          <div>
+            <p className="text-[14px] font-medium text-ink-900">
+              {t.payout_ready_title}
+            </p>
+            <p className="text-[12px] text-ink-400">{t.payout_ready_sub}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-[14px] font-medium text-ink-900">
-            {t.payout_ready_title}
-          </p>
-          <p className="text-[12px] text-ink-400">{t.payout_ready_sub}</p>
-        </div>
+        {/* Payout setup has to be revisitable — someone changes bank two months
+            later and must not need support to do it. Stripe's Express dashboard
+            owns that screen, so we just mint a login link. */}
+        <ManagePayoutsButton />
       </div>
     );
   }
