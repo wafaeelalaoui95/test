@@ -145,14 +145,19 @@ export function ManagePayoutsButton() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [errCode, setErrCode] = useState<string | null>(null);
 
   async function open() {
     setLoading(true);
     setErr(null);
+    setErrCode(null);
     try {
       const res = await fetch('/api/connect/dashboard', { method: 'POST' });
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(t.payout_manage_failed);
+      if (!res.ok || !data.url) {
+        if (data?.code) setErrCode(data.code);
+        throw new Error(t.payout_manage_failed);
+      }
       window.location.href = data.url;
     } catch (e: any) {
       setErr(e.message ?? t.me2_error_retry);
@@ -171,6 +176,9 @@ export function ManagePayoutsButton() {
         {t.payout_manage_cta}
       </button>
       {err && <p className="mt-2 text-[12px] text-blush-500">{err}</p>}
+      {errCode && (
+        <p className="mt-1 text-[11px] text-ink-300 font-mono">{errCode}</p>
+      )}
     </>
   );
 }

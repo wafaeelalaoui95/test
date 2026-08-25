@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/server';
-import { clearConnectAccount, isMissingAccountError } from '@/lib/stripe/connect';
 import { getServerClient } from '@/lib/supabase/server';
 
 /**
@@ -42,16 +41,19 @@ export async function POST() {
     );
     return NextResponse.json({ url: link.url });
   } catch (e: any) {
-    // Same stale-id case as onboarding: an account from another mode, or one
-    // deleted in the Dashboard. Forget it so the UI falls back to setup.
-    if (isMissingAccountError(e)) {
-      console.warn(
-        `[connect/dashboard] stale account for user ${user.id}; clearing`
-      );
-      await clearConnectAccount(user.id);
-      return NextResponse.json({ error: 'not_onboarded' }, { status: 409 });
-    }
     console.error('[connect/dashboard]', e?.type, e?.code, e?.message);
-    return NextResponse.json({ error: 'dashboard_failed' }, { status: 500 });
+    // Deliberately NOT clearing stripe_account_id here, even when the error
+    // looks like a missing account. Opening a dashboard is a read-only action;
+    // wiping a working payout account because a login link failed would be a
+    // catastrophic response to a minor failure. Onboarding is where a stale id
+    // gets repaired, because there the user is asking to create one anyway.
+    const rawCode = e?.code ?? e?.raw?.code ?? e?.type ?? 'unknown';
+    const code = /^[a-z0-9_]{1,64}$/i.test(String(rawCode))
+      ? String(rawCode)
+      : 'unknown';
+    return NextResponse.json(
+      { error: 'dashboard_failed', code },
+      { status: 500 }
+    );
   }
 }
