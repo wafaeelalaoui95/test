@@ -128,7 +128,12 @@ export function isMissingAccountError(e: any): boolean {
   return (
     code === 'resource_missing' ||
     code === 'account_invalid' ||
-    /no such account/i.test(message)
+    // Stripe populates no code for this one and phrases it several ways.
+    // accountLinks.create on a foreign/dead id says "You requested an account
+    // link for an account that is not connected to your platform or does not
+    // exist"; accounts.retrieve says "No such account".
+    /no such account/i.test(message) ||
+    /not connected to your platform/i.test(message)
   );
 }
 
