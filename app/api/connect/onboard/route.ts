@@ -148,7 +148,10 @@ export async function POST(req: NextRequest) {
         user.id,
         user.email,
         country,
-        stripeLocale
+        stripeLocale,
+        // recreate: forces a fresh idempotency key, so Stripe doesn't replay
+        // the cached response and hand back the dead account id again.
+        true
       );
       link = await makeLink(fresh);
     }

@@ -48,7 +48,10 @@ export async function getOrCreateConnectAccount(
   userId: string,
   email: string | undefined,
   country: string,
-  locale: string
+  locale: string,
+  // Set when deliberately replacing an account we've just discovered is dead.
+  // See the idempotency note in createRecipientAccount.
+  recreate = false
 ): Promise<string> {
   const admin = getAdminClient();
   const { data: profile } = await admin
@@ -59,7 +62,13 @@ export async function getOrCreateConnectAccount(
 
   if (profile?.stripe_account_id) return profile.stripe_account_id;
 
-  const accountId = await createRecipientAccount(userId, email, country, locale);
+  const accountId = await createRecipientAccount(
+    userId,
+    email,
+    country,
+    locale,
+    recreate
+  );
 
   const { error } = await admin
     .from('profiles')
@@ -155,10 +164,20 @@ async function createRecipientAccount(
   // Empty string means "we don't know" — Stripe then asks the traveler during
   // onboarding instead of us guessing wrong and locking it forever.
   country: string,
-  locale: string
+  locale: string,
+  recreate = false
 ): Promise<string> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
+
+  // Stripe caches a response against an idempotency key for 24 hours, and
+  // replays it even if the account has since been DELETED. So a deliberate
+  // recreate must not reuse the key: it would get handed back the id of the
+  // dead account, fail again, and loop forever. Salting only on recreate keeps
+  // the double-click protection intact on the normal path.
+  const idempotencyKey = recreate
+    ? `connect_account_${userId}_${Date.now()}`
+    : `connect_account_${userId}`;
 
   const res = await fetch('https://api.stripe.com/v2/core/accounts', {
     method: 'POST',
@@ -168,7 +187,7 @@ async function createRecipientAccount(
       'Stripe-Version': V2_API_VERSION,
       // Two travelers double-clicking the button would otherwise get two
       // accounts; the DB check above is not a lock.
-      'Idempotency-Key': `connect_account_${userId}`,
+      'Idempotency-Key': idempotencyKey,
     },
     body: JSON.stringify({
       contact_email: email,
