@@ -65,7 +65,7 @@ import type {
   VerificationLevel,
 } from '@/lib/supabase/types';
 
-type TabId = 'trips' | 'sends' | 'profile';
+type TabId = 'trips' | 'sends' | 'payouts' | 'profile';
 
 // ─── NAME DISPLAY HELPERS ─────────────────────────────────────────────────
 // User-entered names come in unpredictable casing ("wafae el alaoui",
@@ -164,6 +164,25 @@ export default function MyPage(
   const { t, locale } = useI18n();
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const [tab, setTab] = useState<TabId>('trips');
+
+  // Land on the Payouts tab when we arrive from Stripe's hosted onboarding
+  // (?payouts=done or ?payouts=refresh) or from the reminder link on /voyager
+  // (?tab=payouts). Without this the traveler finishes at Stripe, comes back,
+  // and sees their trips — with no sign anything happened. The param is then
+  // stripped so a later refresh doesn't yank them off whatever tab they moved
+  // to, matching how the `booking` param is handled below.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    const wantsPayouts =
+      url.searchParams.has('payouts') ||
+      url.searchParams.get('tab') === 'payouts';
+    if (!wantsPayouts) return;
+    setTab('payouts');
+    url.searchParams.delete('payouts');
+    url.searchParams.delete('tab');
+    window.history.replaceState({}, '', url.toString());
+  }, []);
 
   const [requests, setRequests] = useState<ShippingRequestRow[]>([]);
   const [trips, setTrips] = useState<TravelerTripRow[]>([]);
@@ -514,6 +533,7 @@ export default function MyPage(
   const TABS: { id: TabId; label: string; icon: typeof Plane }[] = [
     { id: 'trips', label: t.me2_tab_trips, icon: Plane },
     { id: 'sends', label: t.me2_tab_sends, icon: Package },
+    { id: 'payouts', label: t.me2_tab_payouts, icon: Wallet },
     { id: 'profile', label: t.me_tab_profile, icon: User },
   ];
 
@@ -771,6 +791,18 @@ export default function MyPage(
                   reviewFromOther={reviewFromOther}
                   t={t}
                 />
+              )}
+
+              {tab === 'payouts' && (
+                <div className="max-w-xl">
+                  <div className="bg-cream-100 rounded-2xl p-7 border border-ink-50">
+                    <Wallet className="w-6 h-6 text-ink-500 mb-5" strokeWidth={1.75} />
+                    <h3 className="text-lg font-bold text-ink-600 mb-4 tracking-[-0.015em]">
+                      {t.payout_setup_title}
+                    </h3>
+                    <PayoutStatusCard />
+                  </div>
+                </div>
               )}
 
               {tab === 'profile' && (
@@ -2352,17 +2384,6 @@ function ProfileTab({
         ) : (
           <VerifyIdentityButton />
         )}
-      </div>
-
-      {/* Payouts — only meaningful once the identity step is done, since
-          /api/connect/onboard refuses an unverified user. Same card styling as
-          the identity block above. */}
-      <div className="bg-cream-100 rounded-2xl p-7 border border-ink-50">
-        <Wallet className="w-6 h-6 text-ink-500 mb-5" strokeWidth={1.75} />
-        <h3 className="text-lg font-bold text-ink-600 mb-4 tracking-[-0.015em]">
-          {t.payout_setup_title}
-        </h3>
-        <PayoutStatusCard />
       </div>
 
       {/* Danger zone — full-width, subtle, lives below the form. */}

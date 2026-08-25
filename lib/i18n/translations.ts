@@ -996,6 +996,7 @@ export type Translations = {
   payout_checking: string;
   payout_ready_title: string;
   payout_ready_sub: string;
+  me2_tab_payouts: string;
   payout_manage_cta: string;
   payout_manage_failed: string;
   payout_reminder_body: string;
@@ -2199,6 +2200,7 @@ export const translations: Record<Locale, Translations> = {
     payout_checking: 'Vérification en cours...',
     payout_ready_title: 'Paiements activés',
     payout_ready_sub: 'Vous serez payé après chaque livraison confirmée.',
+    me2_tab_payouts: 'Paiements',
     payout_manage_cta: 'Gérer mes coordonnées bancaires',
     payout_manage_failed: 'Impossible d\'ouvrir votre espace paiements',
     payout_reminder_body: 'Vos paiements ne sont pas encore configurés. Vous pouvez publier sans, mais il faudra les ajouter avant d\'être payé.',
@@ -3401,6 +3403,7 @@ export const translations: Record<Locale, Translations> = {
     payout_checking: 'Checking...',
     payout_ready_title: 'Payouts enabled',
     payout_ready_sub: 'You\'ll be paid after each confirmed delivery.',
+    me2_tab_payouts: 'Payouts',
     payout_manage_cta: 'Manage my bank details',
     payout_manage_failed: 'Couldn\'t open your payouts area',
     payout_reminder_body: 'Your payouts aren\'t set up yet. You can publish without them, but you\'ll need to add them before you can be paid.',

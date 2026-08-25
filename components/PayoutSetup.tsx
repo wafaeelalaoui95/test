@@ -226,7 +226,7 @@ export function PayoutReminder({ className }: { className?: string }) {
       <p className="text-[13px] text-ink-500 leading-relaxed">
         {t.payout_reminder_body}{' '}
         <Link
-          href="/me"
+          href="/me?tab=payouts"
           className="text-ink-900 underline underline-offset-2 font-medium"
         >
           {t.payout_reminder_link}
