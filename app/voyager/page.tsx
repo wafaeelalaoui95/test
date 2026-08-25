@@ -217,10 +217,11 @@ export default function VoyagerPage() {
     }
     // Identity must be verified before a trip can be published.
     if (!gate.ensureVerified()) return;
-    // ...and the traveler must be able to receive money. Asking now beats
-    // letting them carry a parcel and discover at delivery that we have no way
-    // to pay them.
-    if (!payoutGate.ensurePayable()) return;
+    // NOTE: no payout gate here. Publishing a trip is not a commitment — it is
+    // someone wondering whether their Paris flight could earn them something.
+    // Demanding a passport and bank details at that moment kills the flow. The
+    // payout gate lives on the propose action instead, which is where the
+    // traveler actually agrees to carry a stranger's parcel.
     if (!fromCity || !toCity) return;
     if (
       fromCity.trim().toLowerCase() === toCity.trim().toLowerCase() &&
@@ -523,8 +524,14 @@ export default function VoyagerPage() {
                       key={req.id}
                       request={req}
                       onPropose={() => {
-                        // Block the propose flow until identity is verified.
-                        if (gate.ensureVerified()) setRequestToHelp(req);
+                        // Both gates sit here rather than on publishing: this
+                        // is the commitment point. Beyond it the traveler is
+                        // agreeing to carry a real parcel for a real person,
+                        // and discovering at delivery that we can't pay them
+                        // is a support problem we can't fix afterwards.
+                        if (!gate.ensureVerified()) return;
+                        if (!payoutGate.ensurePayable()) return;
+                        setRequestToHelp(req);
                       }}
                       flightNumberRequired={!isValidFlightNumber(flightNumber)}
                       alreadyProposed={proposedRequestIds.includes(req.id)}
