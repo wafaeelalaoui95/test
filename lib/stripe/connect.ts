@@ -170,14 +170,17 @@ async function createRecipientAccount(
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
 
-  // Stripe caches a response against an idempotency key for 24 hours, and
-  // replays it even if the account has since been DELETED. So a deliberate
-  // recreate must not reuse the key: it would get handed back the id of the
-  // dead account, fail again, and loop forever. Salting only on recreate keeps
-  // the double-click protection intact on the normal path.
-  const idempotencyKey = recreate
-    ? `connect_account_${userId}_${Date.now()}`
-    : `connect_account_${userId}`;
+  // Stripe caches a response against an idempotency key for 24 hours and
+  // replays it even if the account has since been deleted — so a key that is
+  // stable per user makes a genuine retry impossible for a whole day, whether
+  // the account was deleted in the Dashboard or the id was cleared from our
+  // database.
+  //
+  // Bucketing by the minute gets both properties: rapid double-clicks share a
+  // key and produce one account, while a deliberate retry a minute later is a
+  // fresh request. `recreate` forces uniqueness for the known-dead case.
+  const bucket = recreate ? Date.now() : Math.floor(Date.now() / 60_000);
+  const idempotencyKey = `connect_account_${userId}_${bucket}`;
 
   const res = await fetch('https://api.stripe.com/v2/core/accounts', {
     method: 'POST',
