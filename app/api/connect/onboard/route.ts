@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import {
   getOrCreateConnectAccount,
+  clearConnectAccount,
+  isMissingAccountError,
   DEFAULT_ACCOUNT_COUNTRY,
 } from '@/lib/stripe/connect';
 import { findCountryByName } from '@/lib/countries';
@@ -107,22 +109,47 @@ export async function POST(req: NextRequest) {
       toCountryCode(profile.country) ??
       DEFAULT_ACCOUNT_COUNTRY;
 
+    const stripeLocale = STRIPE_LOCALES[body.locale ?? 'fr'] ?? 'fr-FR';
+    const stripe = getStripe();
+
+    const makeLink = (account: string) =>
+      stripe.accountLinks.create({
+        account,
+        // Where Stripe sends them if the link died before they finished. The UI
+        // treats this as "click the button again" — a fresh link is minted.
+        refresh_url: `${baseUrl}/me?payouts=refresh`,
+        return_url: `${baseUrl}/me?payouts=done`,
+        type: 'account_onboarding',
+      });
+
     const accountId = await getOrCreateConnectAccount(
       user.id,
       user.email,
       country,
-      STRIPE_LOCALES[body.locale ?? 'fr'] ?? 'fr-FR'
+      stripeLocale
     );
 
-    const stripe = getStripe();
-    const link = await stripe.accountLinks.create({
-      account: accountId,
-      // Where Stripe sends them if the link died before they finished. The UI
-      // treats this as "click the button again" — a fresh link is minted.
-      refresh_url: `${baseUrl}/me?payouts=refresh`,
-      return_url: `${baseUrl}/me?payouts=done`,
-      type: 'account_onboarding',
-    });
+    let link;
+    try {
+      link = await makeLink(accountId);
+    } catch (e: any) {
+      // The stored account doesn't exist under the current keys — almost always
+      // a sandbox id left behind by the switch to live mode. Forget it and
+      // create a real one rather than making the traveler wait for someone to
+      // clear a database column.
+      if (!isMissingAccountError(e)) throw e;
+      console.warn(
+        `[connect/onboard] stale account ${accountId} for user ${user.id}; recreating`
+      );
+      await clearConnectAccount(user.id);
+      const fresh = await getOrCreateConnectAccount(
+        user.id,
+        user.email,
+        country,
+        stripeLocale
+      );
+      link = await makeLink(fresh);
+    }
 
     return NextResponse.json({ url: link.url });
   } catch (e: any) {
@@ -136,7 +163,10 @@ export async function POST(req: NextRequest) {
     // visible in the UI turns "it doesn't work" into something answerable
     // without a trip to the server logs. Whitelisted charset so a stray
     // message can never ride out through this field.
-    const rawCode = e?.stripeCode ?? e?.code ?? e?.type ?? 'unknown';
+    // e.type on an SDK error is the class name (StripeInvalidRequestError),
+    // which says nothing useful. Prefer the actual codes.
+    const rawCode =
+      e?.stripeCode ?? e?.code ?? e?.raw?.code ?? e?.type ?? 'unknown';
     const code = /^[a-z0-9_]{1,64}$/i.test(String(rawCode))
       ? String(rawCode)
       : 'unknown';

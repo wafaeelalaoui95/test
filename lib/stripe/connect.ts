@@ -95,6 +95,44 @@ export async function getOrCreateConnectAccount(
 }
 
 /**
+ * Forget the Connect account we have on file for this user, so the next
+ * onboarding attempt creates a fresh one.
+ *
+ * The case this exists for: switching Stripe from test keys to live. Account
+ * ids are per-mode, so every stripe_account_id captured in a sandbox is a
+ * dangling reference the moment live keys are deployed — and the failure
+ * surfaces confusingly, as an invalid request when creating the account link
+ * rather than anything mentioning modes.
+ */
+export async function clearConnectAccount(userId: string): Promise<void> {
+  const { error } = await getAdminClient()
+    .from('profiles')
+    .update({
+      stripe_account_id: null,
+      stripe_charges_enabled: false,
+      stripe_payouts_enabled: false,
+      stripe_onboarded_at: null,
+    })
+    .eq('id', userId);
+  if (error) console.error('[connect] clearConnectAccount failed:', error);
+}
+
+/**
+ * Does this Stripe error mean "the account you named doesn't exist here"?
+ * Covers both the typed code and the message, since the SDK isn't consistent
+ * about which it populates for cross-mode id lookups.
+ */
+export function isMissingAccountError(e: any): boolean {
+  const code = e?.code ?? e?.raw?.code ?? '';
+  const message = e?.message ?? e?.raw?.message ?? '';
+  return (
+    code === 'resource_missing' ||
+    code === 'account_invalid' ||
+    /no such account/i.test(message)
+  );
+}
+
+/**
  * API version for the /v2 endpoints. Overridable without a deploy because
  * Stripe ships these often and the value that works is account-specific —
  * check Developers → API versions in the Dashboard if creation starts failing.
