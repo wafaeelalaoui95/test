@@ -74,8 +74,14 @@ export function SetupPayoutsButton({
       }
       if (!res.ok || !data.url) {
         // The route returns opaque codes, never raw Stripe text — see the
-        // catch in /api/connect/onboard for why.
-        if (data?.code) setErrCode(data.code);
+        // catch in /api/connect/onboard for why. Field paths ride along when
+        // the code alone doesn't say what's wrong (invalid_fields).
+        if (data?.code) {
+          const fields: string[] = Array.isArray(data.fields) ? data.fields : [];
+          setErrCode(
+            fields.length ? `${data.code}: ${fields.join(', ')}` : data.code
+          );
+        }
         throw new Error(t.payout_start_failed);
       }
       window.location.href = data.url;

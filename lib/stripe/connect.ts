@@ -149,6 +149,36 @@ export function isMissingAccountError(e: any): boolean {
 }
 
 /**
+ * Pull the offending field paths out of a Stripe v2 error.
+ *
+ * "invalid_fields" on its own is unactionable — the whole question is which
+ * ones. Stripe puts them under different keys depending on the error, so walk
+ * the object and collect anything that looks like a field path rather than
+ * relying on a single shape. Paths like "configuration.merchant.capabilities"
+ * are structural, not user data.
+ */
+function extractFieldPaths(error: any): string[] {
+  const found = new Set<string>();
+  const visit = (node: any, depth: number) => {
+    if (!node || depth > 4 || found.size >= 8) return;
+    if (Array.isArray(node)) {
+      node.forEach((n) => visit(n, depth + 1));
+      return;
+    }
+    if (typeof node !== 'object') return;
+    for (const key of ['path', 'field', 'param', 'parameter']) {
+      const v = node[key];
+      if (typeof v === 'string' && /^[a-z0-9_.\[\]]+$/i.test(v)) found.add(v);
+    }
+    for (const key of ['details', 'invalid_fields', 'fields', 'errors']) {
+      if (node[key]) visit(node[key], depth + 1);
+    }
+  };
+  visit(error, 0);
+  return [...found];
+}
+
+/**
  * API version for the /v2 endpoints. Overridable without a deploy because
  * Stripe ships these often and the value that works is account-specific —
  * check Developers → API versions in the Dashboard if creation starts failing.
@@ -282,6 +312,10 @@ async function createRecipientAccount(
     const err: any = new Error(body?.error?.message ?? 'Stripe account creation failed');
     err.stripeCode =
       body?.error?.code ?? body?.error?.type ?? `http_${res.status}`;
+    // invalid_fields is useless without knowing WHICH fields. Stripe nests
+    // them differently across error shapes, so collect any path-like strings
+    // rather than betting on one key.
+    err.stripeFields = extractFieldPaths(body?.error);
     throw err;
   }
 

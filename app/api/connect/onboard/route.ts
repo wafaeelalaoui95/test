@@ -216,8 +216,16 @@ export async function POST(req: NextRequest) {
     const code = /^[a-z0-9_]{1,64}$/i.test(String(rawCode))
       ? String(rawCode)
       : 'unknown';
+    // Field paths for invalid_fields — structural, not user data, and the only
+    // thing that makes that code actionable.
+    const fields: string[] = Array.isArray(e?.stripeFields)
+      ? e.stripeFields
+          .filter((f: unknown) => typeof f === 'string')
+          .filter((f: string) => /^[a-z0-9_.\[\]]{1,80}$/i.test(f))
+          .slice(0, 8)
+      : [];
     return NextResponse.json(
-      { error: 'payout_setup_failed', code },
+      { error: 'payout_setup_failed', code, fields },
       { status: 500 }
     );
   }
