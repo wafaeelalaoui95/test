@@ -27,10 +27,14 @@ export function VerifyIdentityButton({
   const { refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Stripe's short error code, shown small under the message so a failure is
+  // reportable without digging through server logs.
+  const [errCode, setErrCode] = useState<string | null>(null);
 
   async function start() {
     setLoading(true);
     setErr(null);
+    setErrCode(null);
     try {
       // Tell the API where to send the user back after Stripe — the page
       // they're on right now (e.g. /voyager) so their in-progress form is
@@ -54,7 +58,10 @@ export function VerifyIdentityButton({
         return;
       }
       if (!res.ok || !data.url) {
-        throw new Error(data.error ?? t.me2_verify_start_failed);
+        // The route returns opaque codes, never Stripe's prose — see the catch
+        // in /api/identity/create-session.
+        if (data?.code) setErrCode(data.code);
+        throw new Error(t.me2_verify_start_failed);
       }
       // Redirect to Stripe's hosted flow
       window.location.href = data.url;
@@ -76,6 +83,11 @@ export function VerifyIdentityButton({
       </Button>
       {err && (
         <p className="mt-2 text-[12px] text-blush-500 text-center">{err}</p>
+      )}
+      {errCode && (
+        <p className="mt-1 text-[11px] text-ink-300 text-center font-mono">
+          {errCode}
+        </p>
       )}
     </>
   );

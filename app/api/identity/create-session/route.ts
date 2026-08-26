@@ -100,9 +100,17 @@ export async function POST(req: NextRequest) {
       url: session.url,
     });
   } catch (e: any) {
-    console.error('[identity/create-session] Stripe error:', e?.message);
+    console.error('[identity/create-session] Stripe error:', e?.type, e?.code, e?.message);
+    // Never return Stripe's prose. Its messages are addressed to whoever runs
+    // the integration, not to the person in front of the screen — a user was
+    // shown "have an account admin visit dashboard.stripe.com/identity/…",
+    // which is both confusing and a disclosure of how this is wired.
+    const rawCode = e?.code ?? e?.raw?.code ?? e?.type ?? 'unknown';
+    const code = /^[a-z0-9_]{1,64}$/i.test(String(rawCode))
+      ? String(rawCode)
+      : 'unknown';
     return NextResponse.json(
-      { error: e?.message ?? 'Could not create verification session' },
+      { error: 'identity_start_failed', code },
       { status: 500 }
     );
   }
