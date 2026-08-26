@@ -217,15 +217,14 @@ async function createRecipientAccount(
         ...(isCrossBorder(country)
           ? { tos_acceptance: { service_agreement: 'recipient' as const } }
           : {}),
-        // Answered on the traveler's behalf. It is the same for all of them,
-        // so asking would be pointless even if Stripe insisted.
-        business_profile: {
-          // 4215 — Courier Services.
-          mcc: '4215',
-          url: 'https://jibly.io',
-          product_description:
-            'Transporte des colis pour des particuliers via la plateforme Jibly.',
-        },
+        // Deliberately NOT prefilling business_profile. Stripe's docs suggest
+        // a platform can fill it in, and it did suppress the questions — but
+        // this is the TRAVELER's profile, not Jibly's. Putting our website and
+        // a courier trade code on it presents a private individual as a
+        // logistics business they are not, to Stripe and to anyone who reads
+        // their account later.
+        //
+        // If the questions have to be asked, the traveler answers them.
         metadata: { userId },
       },
       { idempotencyKey: `connect_account_${userId}_${bucket}` }
