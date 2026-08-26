@@ -6,7 +6,6 @@ import {
   ConnectAccountOnboarding,
   ConnectComponentsProvider,
 } from '@stripe/react-connect-js';
-import { Loader2 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/context';
 
 // =============================================================================
@@ -86,14 +85,13 @@ export function PayoutOnboarding({
       <ConnectComponentsProvider connectInstance={connect}>
         <ConnectAccountOnboarding
           onExit={onExit}
-          // Stripe renders a loading state of its own, but only once it has a
-          // session; this covers the gap before that.
-          fallback={
-            <div className="flex items-center justify-center gap-2 py-12 text-[13px] text-ink-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              {t.payout_checking}
-            </div>
-          }
+          // Same stance as the redirect flow: collect what Stripe currently
+          // requires and nothing it merely anticipates. For a French traveler
+          // that is a name, an address and an IBAN.
+          collectionOptions={{
+            fields: 'currently_due',
+            futureRequirements: 'omit',
+          }}
         />
       </ConnectComponentsProvider>
     </div>
