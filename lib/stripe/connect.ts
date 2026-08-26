@@ -291,7 +291,17 @@ async function createRecipientAccount(
         // doesn't read English while entering their bank details.
         locales: [locale],
       },
-      dashboard: 'express',
+      // 'none' is what Stripe calls a Custom account, and their support
+      // recommends it for payouts-only connected accounts: no Stripe dashboard,
+      // the platform drives everything.
+      //
+      // This previously failed with
+      // account_creation_requirement_collection_unacknowledged. Their reply
+      // said the acknowledgment lives in Dashboard settings, but not where —
+      // so the point of this attempt is to read the FULL error message rather
+      // than just its code. The v1 deprecation error carried a Dashboard URL;
+      // this one may too.
+      dashboard: 'none',
       metadata: { userId },
       include: ['configuration.recipient', 'requirements'],
     }),
