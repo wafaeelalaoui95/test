@@ -20,12 +20,10 @@
  * route already have.
  */
 export const PAYOUT_COUNTRIES = [
-  // EEA
-  'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI',
-  'FR', 'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LI', 'LT', 'LU',
-  'LV', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK',
-  // Plus the rest of the transfer zone
-  'CH', 'GB',
+  'AT', 'BE', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES',
+  'FI', 'FR', 'GB', 'GI', 'GR', 'HR', 'HU', 'IE', 'IT', 'LI',
+  'LT', 'LU', 'LV', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE',
+  'SI', 'SK',
 ] as const;
 
 /**
