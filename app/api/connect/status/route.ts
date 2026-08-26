@@ -44,6 +44,13 @@ export async function GET() {
 
   let payoutsEnabled = profile.stripe_payouts_enabled === true;
   let requirementsDue: string[] = [];
+  // The full requirements hash, echoed back for diagnosis. This is what
+  // actually answers "why is Stripe asking for a website?" — if
+  // business_profile.url isn't in here, the hosted flow is collecting more
+  // than Stripe requires, which is a different problem with a different fix.
+  // Opening this route in a browser while logged in is the quickest way to
+  // read it; no Stripe key or CLI needed.
+  let requirements: Record<string, unknown> | null = null;
 
   if (!payoutsEnabled) {
     try {
@@ -61,6 +68,18 @@ export async function GET() {
         ...(account.requirements?.currently_due ?? []),
         ...(account.requirements?.past_due ?? []),
       ];
+      requirements = {
+        currently_due: account.requirements?.currently_due ?? [],
+        eventually_due: account.requirements?.eventually_due ?? [],
+        past_due: account.requirements?.past_due ?? [],
+        disabled_reason: account.requirements?.disabled_reason ?? null,
+        // Handy context when reading the list: which of these actually block
+        // money moving, and what shape of account we ended up creating.
+        capabilities: account.capabilities ?? null,
+        business_type: account.business_type ?? null,
+        country: account.country ?? null,
+        tos_acceptance: account.tos_acceptance ?? null,
+      };
     } catch (e: any) {
       console.error('[connect/status] retrieve failed:', e?.message);
       // Fall through to the cached values — a Stripe outage should degrade to
@@ -74,5 +93,6 @@ export async function GET() {
     identityVerified: !!profile.identity_verified_at,
     needsOnboarding: !payoutsEnabled,
     requirementsDue,
+    requirements,
   });
 }
