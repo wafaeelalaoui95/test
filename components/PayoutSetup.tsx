@@ -10,33 +10,40 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
 import { findCountryByName } from '@/lib/countries';
 import { payoutCountryOptions } from '@/lib/stripe/payout-countries';
-import { PayoutOnboarding } from '@/components/PayoutOnboarding';
 
 // =============================================================================
-// SetupPayoutsButton — pick a country, then onboard without leaving Jibly.
+// SetupPayoutsButton — calls /api/connect/onboard and redirects to Stripe.
 // =============================================================================
-// The country choice is ours (Stripe freezes it permanently, so the traveler
-// must make it deliberately). Everything after is Stripe's embedded onboarding,
-// rendered in place — no redirect to a co-branded hand-off page.
+// Mirrors VerifyIdentityButton: POST to our route, receive a Stripe-hosted URL,
+// send the user there. Stripe returns them to /me?payouts=done, and the
+// account.updated webhook flips profiles.stripe_payouts_enabled shortly after.
+//
+// AccountLinks are single-use and short-lived, so we mint a fresh one on every
+// click rather than caching the URL.
 export function SetupPayoutsButton({
   label,
-  onCompleted,
+  onIdentityRequired,
 }: {
   label?: string;
-  // Called when the traveler leaves Stripe's embedded flow, so the caller can
-  // re-read the payout status. Not a success signal on its own.
-  onCompleted?: () => void;
+  // The server refuses onboarding for an unverified user (403 identity_required).
+  // Rather than showing a dead-end error, hand control back to the caller so it
+  // can put the identity step in front of them.
+  onIdentityRequired?: () => void;
 }) {
   const { t, locale } = useI18n();
   const { profile } = useAuth();
-  // Whether Stripe's embedded onboarding is showing. Everything before it is
-  // just picking a country.
-  const [started, setStarted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  // Stripe's short error code, shown small under the message. Not for the
+  // user to interpret — it's so they can quote it to support instead of
+  // "it didn't work".
+  const [errCode, setErrCode] = useState<string | null>(null);
 
-  // Stripe requires the account's country and freezes it permanently, so we ask
-  // outright rather than inferring: guessing from the platform's own country
-  // silently made every traveler a UK account holder, and the profile's country
-  // field is free text that mostly doesn't map. Prefilled when it maps cleanly.
+  // Stripe requires identity.country on a v2 account (identity_country_required)
+  // and it can never be changed afterwards. So we ask outright rather than
+  // inferring: guessing from the platform's own country silently made every
+  // traveler a UK account holder, and the profile's country field is free text
+  // that mostly doesn't map. Prefilled when it happens to map cleanly.
   const options = payoutCountryOptions(locale);
   const prefill = profile?.country
     ? findCountryByName(profile.country.trim())?.code ?? ''
@@ -44,6 +51,45 @@ export function SetupPayoutsButton({
   const [country, setCountry] = useState(
     options.some((o) => o.code === prefill) ? prefill : ''
   );
+
+  async function start() {
+    setLoading(true);
+    setErr(null);
+    setErrCode(null);
+    try {
+      const res = await fetch('/api/connect/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Carry the UI language so Stripe's hosted form isn't in English for a
+        // traveler who has been reading French the whole way here.
+        body: JSON.stringify({ locale, country }),
+      });
+      const data = await res.json();
+
+      if (res.status === 403 && data?.error === 'identity_required') {
+        setLoading(false);
+        if (onIdentityRequired) onIdentityRequired();
+        else setErr(t.payout_identity_first);
+        return;
+      }
+      if (!res.ok || !data.url) {
+        // The route returns opaque codes, never raw Stripe text — see the
+        // catch in /api/connect/onboard for why. Field paths ride along when
+        // the code alone doesn't say what's wrong (invalid_fields).
+        if (data?.code) {
+          const fields: string[] = Array.isArray(data.fields) ? data.fields : [];
+          setErrCode(
+            fields.length ? `${data.code}: ${fields.join(', ')}` : data.code
+          );
+        }
+        throw new Error(t.payout_start_failed);
+      }
+      window.location.href = data.url;
+    } catch (e: any) {
+      setErr(e.message ?? t.me2_error_retry);
+      setLoading(false);
+    }
+  }
 
   return (
     <>
@@ -71,30 +117,26 @@ export function SetupPayoutsButton({
         </span>
       </label>
 
-      {/* Once started, Stripe's onboarding renders here rather than replacing
-          the page. The traveler never leaves Jibly — that hand-off to a
-          "Jibly UK partners with Stripe" page was the real objection to this
-          flow, more than any individual field on it. */}
-      {started ? (
-        <PayoutOnboarding
-          country={country}
-          onExit={() => {
-            // Leaving the component doesn't prove every requirement is
-            // satisfied, so re-read the status rather than declaring success.
-            setStarted(false);
-            onCompleted?.();
-          }}
-        />
-      ) : (
-        <Button
-          onClick={() => setStarted(true)}
-          disabled={!country}
-          size="sm"
-          fullWidth
-        >
+      <Button
+        onClick={start}
+        disabled={loading || !country}
+        size="sm"
+        fullWidth
+      >
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
           <Wallet className="w-4 h-4" />
-          {label ?? t.payout_setup_cta}
-        </Button>
+        )}
+        {label ?? t.payout_setup_cta}
+      </Button>
+      {err && (
+        <p className="mt-2 text-[12px] text-blush-500 text-center">{err}</p>
+      )}
+      {errCode && (
+        <p className="mt-1 text-[11px] text-ink-300 text-center font-mono">
+          {errCode}
+        </p>
       )}
     </>
   );
@@ -248,7 +290,7 @@ export function usePayoutStatus(): {
 // =============================================================================
 export function PayoutStatusCard() {
   const { t } = useI18n();
-  const { payoutsEnabled, loading, refresh } = usePayoutStatus();
+  const { payoutsEnabled, loading } = usePayoutStatus();
   const { profile } = useAuth();
   const [needsIdentity, setNeedsIdentity] = useState(false);
 
@@ -294,7 +336,7 @@ export function PayoutStatusCard() {
           onAlreadyVerified={() => setNeedsIdentity(false)}
         />
       ) : (
-        <SetupPayoutsButton onCompleted={refresh} />
+        <SetupPayoutsButton onIdentityRequired={() => setNeedsIdentity(true)} />
       )}
     </div>
   );
