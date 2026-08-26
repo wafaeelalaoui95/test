@@ -194,11 +194,9 @@ const V2_API_VERSION = process.env.STRIPE_V2_API_VERSION ?? '2026-07-29.dahlia';
  * ids are accepted by the v1 endpoints, so accountLinks.create and
  * accounts.retrieve work unchanged and return v1-shaped objects.
  *
- * Recipient configuration only, and no Stripe dashboard. Travelers are private
- * individuals carrying a parcel: they receive transfers and nothing else. The
- * merchant configuration would make them a merchant of record, and Stripe then
- * asks them for an industry, a website and a product description — questions
- * with no answer for a person with a suitcase.
+ * Express dashboard, recipient + merchant configurations. The merchant half is
+ * unwanted and its cost is real — see the comment on it below — but it is the
+ * only shape Stripe accepts today for an account that receives transfers.
  *
  * Note on liability: fees_collector and losses_collector are 'application'.
  * That means JIBLY absorbs
@@ -270,13 +268,27 @@ async function createRecipientAccount(
             },
           },
         },
-        // NO merchant configuration. Requesting card_payments here did satisfy
-        // stripe_transfers' dependency, but at an unacceptable price: merchant
-        // means "this account takes payments", so Stripe's onboarding then
-        // asked travelers for an industry, a website and a product
-        // description. They are private individuals carrying a parcel, not
-        // businesses, and being asked to describe their company is the moment
-        // they give up.
+        // KNOWN BAD, KEPT DELIBERATELY. merchant means "this account takes
+        // payments", so Stripe's onboarding asks travelers for an industry, a
+        // website and a product description — questions a person with a
+        // suitcase cannot answer.
+        //
+        // It is here because stripe_transfers refuses to stand alone
+        // (capability_not_available_without_other_capability) and card_payments
+        // is the only capability that pairs with it. Removing merchant and
+        // using dashboard 'none' instead looked promising, but that path needs
+        // an "acknowledgment" of who collects requirements which is not
+        // settable at creation — defaults.responsibilities.requirements_collector
+        // comes back as invalid_fields, and Stripe documents no alternative.
+        //
+        // Ask Stripe support how to create a payouts-only account for a private
+        // individual without the merchant configuration. Until then, this is
+        // the configuration that actually works.
+        merchant: {
+          capabilities: {
+            card_payments: { requested: true },
+          },
+        },
       },
       defaults: {
         // Deliberately no `currency`: it must be valid for the account's
@@ -285,13 +297,6 @@ async function createRecipientAccount(
         responsibilities: {
           fees_collector: 'application',
           losses_collector: 'application',
-          // Must be stated explicitly once there is no Stripe dashboard —
-          // otherwise creation fails with
-          // account_creation_requirement_collection_unacknowledged. 'stripe'
-          // means Stripe hosts the verification form and chases the traveler
-          // for missing documents, which is the whole point of using their
-          // hosted onboarding: we are not equipped to collect identity papers.
-          requirements_collector: 'stripe',
         },
         // Language of Stripe's hosted onboarding. Without this the form is
         // English regardless of who the traveler is — a poor first impression
@@ -299,14 +304,9 @@ async function createRecipientAccount(
         // doesn't read English while entering their bank details.
         locales: [locale],
       },
-      // 'none', not 'express'. The Express dashboard is what appears to drag
-      // the merchant configuration in — and it was buying us very little: the
-      // one thing it offered, the "manage my bank details" login link, has
-      // never worked on these accounts anyway. Stripe still hosts the
-      // onboarding form; the traveler just doesn't get a Stripe dashboard.
-      dashboard: 'none',
+      dashboard: 'express',
       metadata: { userId },
-      include: ['configuration.recipient', 'requirements'],
+      include: ['configuration.recipient', 'configuration.merchant', 'requirements'],
     }),
   });
 
