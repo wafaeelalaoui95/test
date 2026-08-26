@@ -179,18 +179,11 @@ function extractFieldPaths(error: any): string[] {
 }
 
 /**
- * API version for the /v2 endpoints.
- *
- * The PREVIEW string, not the stable one: combining Express Dashboard access
- * with Stripe-owned liability for negative balances is in public preview, and
- * Stripe's docs require this version when creating such accounts.
- *
- * Overridable without a deploy because Stripe ships these often and the value
- * that works is account-specific — check Developers → API versions in the
- * Dashboard if creation starts failing.
+ * API version for the /v2 endpoints. Overridable without a deploy because
+ * Stripe ships these often and the value that works is account-specific —
+ * check Developers → API versions in the Dashboard if creation starts failing.
  */
-const V2_API_VERSION =
-  process.env.STRIPE_V2_API_VERSION ?? '2026-07-29.preview';
+const V2_API_VERSION = process.env.STRIPE_V2_API_VERSION ?? '2026-07-29.dahlia';
 
 /**
  * Create a v2 connected account for a traveler.
@@ -201,14 +194,15 @@ const V2_API_VERSION =
  * ids are accepted by the v1 endpoints, so accountLinks.create and
  * accounts.retrieve work unchanged and return v1-shaped objects.
  *
- * No Stripe dashboard, recipient configuration only, and Stripe carries the
- * loss liability. Travelers are private individuals who receive transfers and
- * nothing else — they are never merchants, and must never be asked to describe
- * a business they do not have.
+ * Express dashboard, recipient + merchant configurations. The merchant half is
+ * unwanted and its cost is real — see the comment on it below — but it is the
+ * only shape Stripe accepts today for an account that receives transfers.
  *
- * Note on liability: Stripe carries chargebacks and negative balances on these
- * accounts, not Jibly. That is both the safer arrangement for a small platform
- * and, we believe, what removes the merchant configuration requirement.
+ * Note on liability: fees_collector and losses_collector are 'application'.
+ * That means JIBLY absorbs
+ * chargebacks and negative balances on these accounts, not Stripe. It is the
+ * normal arrangement for a marketplace that adjudicates its own deliveries,
+ * but it is real exposure.
  */
 async function createRecipientAccount(
   userId: string,
@@ -255,9 +249,17 @@ async function createRecipientAccount(
         ...(country ? { country: country.toLowerCase() } : {}),
         entity_type: 'individual',
       },
-      // recipient only. Its single capability, stripe_balance.stripe_transfers,
-      // is what lets money ARRIVE in the traveler's Stripe balance — exactly
-      // what indirect charges require, and all a traveler ever needs.
+      // Both configurations are present, for different reasons.
+      //
+      // recipient carries stripe_balance.stripe_transfers — the only capability
+      // it has, and the one indirect charges require: it lets money ARRIVE in
+      // the traveler's Stripe balance.
+      //
+      // merchant is applied but requests nothing. Recipient alone is refused
+      // with capability_not_available_without_other_capability — an account
+      // that can receive funds but never release them isn't something Stripe
+      // will create — and payouts to a bank hang off the merchant
+      // configuration existing.
       configuration: {
         recipient: {
           capabilities: {
@@ -266,36 +268,35 @@ async function createRecipientAccount(
             },
           },
         },
-        // No merchant configuration. It exists only to make an account a
-        // merchant of record, and Stripe then asks travelers for an industry, a
-        // website and a product description — questions a private individual
-        // carrying a parcel cannot answer, and the point at which they give up.
+        // KNOWN BAD, KEPT DELIBERATELY. merchant means "this account takes
+        // payments", so Stripe's onboarding asks travelers for an industry, a
+        // website and a product description — questions a person with a
+        // suitcase cannot answer.
         //
-        // We previously needed it: stripe_transfers was refused on its own with
-        // capability_not_available_without_other_capability. That should no
-        // longer apply now that Stripe, not Jibly, carries the loss liability
-        // (see defaults.responsibilities above).
+        // It is here because stripe_transfers refuses to stand alone
+        // (capability_not_available_without_other_capability) and card_payments
+        // is the only capability that pairs with it. Removing merchant and
+        // using dashboard 'none' instead looked promising, but that path needs
+        // an "acknowledgment" of who collects requirements which is not
+        // settable at creation — defaults.responsibilities.requirements_collector
+        // comes back as invalid_fields, and Stripe documents no alternative.
+        //
+        // Ask Stripe support how to create a payouts-only account for a private
+        // individual without the merchant configuration. Until then, this is
+        // the configuration that actually works.
+        merchant: {
+          capabilities: {
+            card_payments: { requested: true },
+          },
+        },
       },
       defaults: {
         // Deliberately no `currency`: it must be valid for the account's
         // country, and Stripe picks correctly from it. Setting it ourselves
         // only creates a way to fail (account_country_unsupported_currency).
         responsibilities: {
-          // STRIPE, not us. Two reasons, and the second is the one that
-          // matters today.
-          //
-          // 1. Liability. With 'application', Jibly absorbs chargebacks and
-          //    negative balances on every traveler account. Stripe's own guide
-          //    calls Stripe-owned liability the right default for platforms
-          //    that aren't equipped to monitor risk — which is us.
-          // 2. It should let us drop the merchant configuration. card_payments
-          //    was only there to satisfy stripe_transfers' dependency, and
-          //    that dependency appears to come from the platform being liable:
-          //    Stripe wants a merchant relationship before letting an account
-          //    it isn't backing hold a balance.
-          //
-          fees_collector: 'stripe',
-          losses_collector: 'stripe',
+          fees_collector: 'application',
+          losses_collector: 'application',
         },
         // Language of Stripe's hosted onboarding. Without this the form is
         // English regardless of who the traveler is — a poor first impression
@@ -303,20 +304,9 @@ async function createRecipientAccount(
         // doesn't read English while entering their bank details.
         locales: [locale],
       },
-      // 'none', because 'express' forces the platform to carry losses and fees
-      // (account_controller_express_dash_without_application_losses_or_fees),
-      // and platform liability is what pulled in the merchant configuration and
-      // its business questions. Without a dashboard, Stripe can be liable — and
-      // being liable makes Stripe the requirements collector, which is what the
-      // earlier "unacknowledged" error was complaining about.
-      //
-      // The traveler loses the Express dashboard. It only ever powered the
-      // "manage my bank details" link, which has never worked on these
-      // accounts; Connect embedded components are the supported replacement if
-      // we want it back.
-      dashboard: 'none',
+      dashboard: 'express',
       metadata: { userId },
-      include: ['configuration.recipient', 'requirements'],
+      include: ['configuration.recipient', 'configuration.merchant', 'requirements'],
     }),
   });
 
