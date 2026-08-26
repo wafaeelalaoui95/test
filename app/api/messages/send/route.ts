@@ -1,3 +1,4 @@
+import { getSiteUrl } from '@/lib/site-url';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerClient } from '@/lib/supabase/server';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
@@ -178,8 +179,7 @@ async function sendNotificationEmail(params: {
     // Pick a deep link to the booking. The user lands on /me which is
     // where the modal will reopen via the URL hash. We pass the
     // booking id so the dashboard can open the matching chat modal.
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL || 'https://jibly.io';
+    const baseUrl = getSiteUrl();
     const link = `${baseUrl}/me?chat=${bookingIntentId}`;
 
     const resend = getResend();

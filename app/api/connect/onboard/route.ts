@@ -8,6 +8,7 @@ import {
 } from '@/lib/stripe/connect';
 import { findCountryByName } from '@/lib/countries';
 import { isPayoutCountry } from '@/lib/stripe/payout-countries';
+import { getSiteUrl } from '@/lib/site-url';
 import { getServerClient } from '@/lib/supabase/server';
 
 /**
@@ -95,10 +96,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    'https://jibly.io';
+  // Where Stripe's "return to Jibly" button sends the traveler. Must be the
+  // real domain — this is the one the user complained about landing on a
+  // vercel.app address.
+  const baseUrl = getSiteUrl();
 
   try {
     // What the traveler chose, or the (free-text) profile country when it maps

@@ -6,8 +6,9 @@ import { CookieConsent } from '@/components/CookieConsent';
 import { MessagingProvider } from '@/components/GlobalMessaging';
 import { I18nProvider } from '@/lib/i18n/context';
 import { AuthProvider } from '@/lib/supabase/auth-provider';
+import { getSiteUrl } from '@/lib/site-url';
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://jibly.io';
+const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

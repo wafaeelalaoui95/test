@@ -1,3 +1,4 @@
+import { getSiteUrl } from '@/lib/site-url';
 // lib/email/templates.ts
 //
 // HTML templates for transactional emails. Kept inline (no React Email
@@ -18,7 +19,7 @@ const BRAND = {
   mint: '#3FB985',
 };
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://jibly.io';
+const BASE_URL = getSiteUrl();
 
 // Shared HTML scaffold — used by every email template
 function wrapHtml(content: string, preheader: string): string {
