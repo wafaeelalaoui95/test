@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
+import { transferToTraveler } from '@/lib/stripe/payout';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 
 /**
@@ -10,9 +11,15 @@ import { getServerClient, getAdminClient } from '@/lib/supabase/server';
  * Called when the TRAVELER confirms delivery on /me by entering the code the
  * recipient (the sender or their relative) gives them at drop-off. This is the
  * pivotal step of the whole escrow flow: it records receipt, unlocks mutual
- * reviews AND triggers the Stripe capture so the traveler gets paid. The
- * traveler can only reach this by entering the recipient's code, so they can't
- * self-release payment without an actual handover.
+ * reviews, and RELEASES THE MONEY to the traveler. The traveler can only reach
+ * this by entering the recipient's code, so they can't self-release payment
+ * without an actual handover.
+ *
+ * The funds were captured earlier, when the traveler accepted the booking
+ * (/api/stripe/capture) — that avoids the card authorisation expiring during a
+ * long trip. But they stop in the Jibly balance until this route runs. Capture
+ * and transfer being two separate steps is precisely what makes the escrow
+ * real, and why the integration uses separate charges and transfers.
  *
  * Why do this server-side as ONE operation:
  *   - The two updates (DB + Stripe) must stay in sync. Doing them as
@@ -52,7 +59,7 @@ export async function POST(req: NextRequest) {
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
     .select(
-      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, received_confirmed_at, delivery_proof_url, delivery_code'
+      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, payment_amount, transfer_id, received_confirmed_at, delivery_proof_url, delivery_code'
     )
     .eq('id', body.bookingIntentId)
     .maybeSingle();
@@ -113,8 +120,39 @@ export async function POST(req: NextRequest) {
   if (!intent.payment_intent_id) {
     return NextResponse.json({ ok: true, captured: false, reason: 'no_payment_intent' });
   }
+
+  const stripe = getStripe();
+
+  // Release the traveler's share. THIS is the moment the escrow opens: the
+  // money has been sitting in the Jibly balance since the traveler accepted,
+  // and only a confirmed delivery lets it go. /api/stripe/capture deliberately
+  // does not do this — paying at acceptance would fund an undelivered parcel.
+  const releaseToTraveler = (amountCents: number, chargeId: string | null) =>
+    transferToTraveler({
+      bookingIntentId: intent.id,
+      travelerUserId: travelerId,
+      existingTransferId: intent.transfer_id,
+      amountCents,
+      chargeId,
+    });
+
+  // Already captured — the normal case, since capture happens at acceptance.
+  // Re-read the PaymentIntent for the charge id and the authoritative amount,
+  // then pay out.
   if (intent.payment_status === 'captured') {
-    return NextResponse.json({ ok: true, captured: true, alreadyCaptured: true });
+    const pi = await stripe.paymentIntents.retrieve(intent.payment_intent_id);
+    const payout = await releaseToTraveler(
+      pi.amount_received || intent.payment_amount || pi.amount,
+      typeof pi.latest_charge === 'string'
+        ? pi.latest_charge
+        : pi.latest_charge?.id ?? null
+    );
+    return NextResponse.json({
+      ok: true,
+      captured: true,
+      alreadyCaptured: true,
+      payout,
+    });
   }
   if (intent.payment_status !== 'authorized') {
     // unpaid / canceled / failed — we don't try to capture
@@ -125,7 +163,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const stripe = getStripe();
   try {
     const captured = await stripe.paymentIntents.capture(intent.payment_intent_id);
 
@@ -146,10 +183,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const payout = await releaseToTraveler(
+      captured.amount,
+      typeof captured.latest_charge === 'string'
+        ? captured.latest_charge
+        : captured.latest_charge?.id ?? null
+    );
+
     return NextResponse.json({
       ok: true,
       captured: true,
       stripeStatus: captured.status,
+      payout,
     });
   } catch (e: any) {
     console.error('[confirm-receipt] Stripe capture error:', e?.message);

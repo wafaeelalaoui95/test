@@ -162,6 +162,11 @@ async function retryPendingPayouts(travelerUserId: string): Promise<void> {
     .eq('traveler_user_id', travelerUserId)
     .eq('payment_status', 'captured')
     .is('transfer_id', null)
+    // DELIVERED ONLY. Capture happens when the traveler accepts, so 'captured'
+    // on its own says nothing about whether the parcel arrived — without this
+    // filter, a traveler finishing payout setup would be paid for every parcel
+    // they had merely agreed to carry.
+    .not('received_confirmed_at', 'is', null)
     .limit(50);
 
   if (!pending?.length) return;
