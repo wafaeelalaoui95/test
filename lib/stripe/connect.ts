@@ -285,6 +285,13 @@ async function createRecipientAccount(
         responsibilities: {
           fees_collector: 'application',
           losses_collector: 'application',
+          // Must be stated explicitly once there is no Stripe dashboard —
+          // otherwise creation fails with
+          // account_creation_requirement_collection_unacknowledged. 'stripe'
+          // means Stripe hosts the verification form and chases the traveler
+          // for missing documents, which is the whole point of using their
+          // hosted onboarding: we are not equipped to collect identity papers.
+          requirements_collector: 'stripe',
         },
         // Language of Stripe's hosted onboarding. Without this the form is
         // English regardless of who the traveler is — a poor first impression
