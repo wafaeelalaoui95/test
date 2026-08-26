@@ -268,12 +268,21 @@ async function createRecipientAccount(
             },
           },
         },
-        // Applied with NO capabilities requested. stripe_balance is not a
-        // requestable field here — Stripe returns "Unknown field" — it only
-        // appears in the response once the configuration exists. Requesting
-        // card_payments instead would work but drags in merchant-of-record KYC
-        // that travelers have no use for: they never take payments.
-        merchant: {},
+        // card_payments is requested reluctantly. An empty merchant
+        // configuration did not satisfy stripe_transfers' dependency, and
+        // card_payments is the only capability that can: recipient offers
+        // nothing but stripe_transfers, customer only offers tax, and
+        // merchant's remaining capabilities are all payment methods.
+        //
+        // The cost is real — it pulls merchant-of-record verification onto
+        // travelers who will never take a payment. Worth revisiting with
+        // Stripe support, since the pairing isn't documented anywhere we could
+        // find.
+        merchant: {
+          capabilities: {
+            card_payments: { requested: true },
+          },
+        },
       },
       defaults: {
         // Deliberately no `currency`: it must be valid for the account's
