@@ -201,16 +201,14 @@ const V2_API_VERSION =
  * ids are accepted by the v1 endpoints, so accountLinks.create and
  * accounts.retrieve work unchanged and return v1-shaped objects.
  *
- * Express dashboard, recipient configuration only, and Stripe carries the loss
- * liability. Travelers are private individuals who receive transfers and
+ * No Stripe dashboard, recipient configuration only, and Stripe carries the
+ * loss liability. Travelers are private individuals who receive transfers and
  * nothing else — they are never merchants, and must never be asked to describe
  * a business they do not have.
  *
- * Note on liability: fees_collector and losses_collector are 'application'.
- * That means JIBLY absorbs
- * chargebacks and negative balances on these accounts, not Stripe. It is the
- * normal arrangement for a marketplace that adjudicates its own deliveries,
- * but it is real exposure.
+ * Note on liability: Stripe carries chargebacks and negative balances on these
+ * accounts, not Jibly. That is both the safer arrangement for a small platform
+ * and, we believe, what removes the merchant configuration requirement.
  */
 async function createRecipientAccount(
   userId: string,
@@ -296,7 +294,6 @@ async function createRecipientAccount(
           //    Stripe wants a merchant relationship before letting an account
           //    it isn't backing hold a balance.
           //
-          // Requires the preview API version — see V2_API_VERSION.
           fees_collector: 'stripe',
           losses_collector: 'stripe',
         },
@@ -306,7 +303,18 @@ async function createRecipientAccount(
         // doesn't read English while entering their bank details.
         locales: [locale],
       },
-      dashboard: 'express',
+      // 'none', because 'express' forces the platform to carry losses and fees
+      // (account_controller_express_dash_without_application_losses_or_fees),
+      // and platform liability is what pulled in the merchant configuration and
+      // its business questions. Without a dashboard, Stripe can be liable — and
+      // being liable makes Stripe the requirements collector, which is what the
+      // earlier "unacknowledged" error was complaining about.
+      //
+      // The traveler loses the Express dashboard. It only ever powered the
+      // "manage my bank details" link, which has never worked on these
+      // accounts; Connect embedded components are the supported replacement if
+      // we want it back.
+      dashboard: 'none',
       metadata: { userId },
       include: ['configuration.recipient', 'requirements'],
     }),
