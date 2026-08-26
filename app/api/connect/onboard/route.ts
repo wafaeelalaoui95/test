@@ -131,6 +131,20 @@ export async function POST(req: NextRequest) {
         refresh_url: `${baseUrl}/me?payouts=refresh`,
         return_url: `${baseUrl}/me?payouts=done`,
         type: 'account_onboarding',
+        collection_options: {
+          // Ask only for what Stripe requires RIGHT NOW, not everything it will
+          // eventually want. This is the difference between our form and the
+          // ones people are used to: Vinted and Airbnb collect the minimum up
+          // front and come back for documents only when a threshold or a risk
+          // signal makes them necessary. Stripe supports the same thing; the
+          // default just isn't it.
+          //
+          // The tradeoff is real — a traveler can be asked for more later, and
+          // that second ask can arrive at an awkward moment. Worth it: most
+          // travelers never reach the threshold, and the ones who do have money
+          // waiting for them by then.
+          fields: 'currently_due',
+        },
       });
 
     // An account we already hold is reused as-is, country included — it is
