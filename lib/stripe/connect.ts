@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import { getStripe } from './server';
 import { getAdminClient } from '@/lib/supabase/server';
+import { PAYOUT_COUNTRIES } from './payout-countries';
 
 /**
  * Stripe Connect helpers — the traveler payout side of the money flow.
@@ -150,27 +151,31 @@ export function isMissingAccountError(e: any): boolean {
 }
 
 /**
+ * Is paying this country a cross-border payout for us?
+ *
+ * Our platform is UK-registered, so anywhere in the UK/EEA/Switzerland transfer
+ * zone is ordinary. Everything else — Morocco, the countries Custom accounts
+ * reach beyond Europe — goes through Stripe's cross-border payouts, which is
+ * where the recipient service agreement applies.
+ */
+function isCrossBorder(country: string): boolean {
+  return !(PAYOUT_COUNTRIES as readonly string[]).includes(
+    country.toUpperCase()
+  );
+}
+
 /**
  * Create a connected account for a traveler.
  *
- * Accounts v1, `type: 'custom'`, under the RECIPIENT service agreement — the
- * shape Stripe support directed us to after a long detour through v2.
+ * Accounts v1, `type: 'custom'`. Custom means no Stripe dashboard and no direct
+ * contact between Stripe and the traveler — their relationship is with Jibly
+ * alone. The cost is that we own communication: when Stripe later needs a
+ * document, Jibly must ask for it. The account.updated webhook carries that
+ * signal.
  *
- * Why this and nothing else: an account on the recipient agreement cannot
- * process payments and cannot request card_payments. Because no
- * payment-processing capability exists, Stripe never asks the traveler for an
- * industry, a website or a product description. Those questions were the
- * single biggest obstacle in the whole flow, and this is what removes them.
- *
- * Custom also means no Stripe dashboard and no direct contact between Stripe
- * and the traveler: their relationship is with Jibly alone. The cost is that we
- * own communication — when Stripe later needs a document, Jibly must ask for
- * it. The account.updated webhook already gives us that signal.
- *
- * The recipient agreement is only expressible in v1 (`tos_acceptance`), which
- * is why this is not the v2 endpoint despite v2 being the default for new
- * integrations. It is one of the compatibility scenarios v1 remains available
- * for.
+ * v1 rather than /v2/core/accounts because the service agreement below has no
+ * v2 expression, and because v1 is what Stripe support directed us to for a
+ * payouts-only account.
  */
 async function createRecipientAccount(
   userId: string,
@@ -202,8 +207,16 @@ async function createRecipientAccount(
         business_type: 'individual',
         // The only capability a traveler needs: money arriving from us.
         capabilities: { transfers: { requested: true } },
-        // The line that does the work.
-        tos_acceptance: { service_agreement: 'recipient' },
+        // The recipient agreement is CROSS-BORDER ONLY. Stripe refuses it for
+        // a GB platform creating an FR account: "The recipient ToS agreement is
+        // not supported for platforms in GB creating accounts in FR."
+        //
+        // So it is not the lighter-onboarding lever we hoped for inside
+        // Europe — it is the mechanism for paying travelers OUTSIDE the
+        // transfer zone, Morocco above all. Applied only there.
+        ...(isCrossBorder(country)
+          ? { tos_acceptance: { service_agreement: 'recipient' as const } }
+          : {}),
         // Answered on the traveler's behalf. It is the same for all of them,
         // so asking would be pointless even if Stripe insisted.
         business_profile: {
