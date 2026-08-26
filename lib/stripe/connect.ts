@@ -194,12 +194,14 @@ const V2_API_VERSION = process.env.STRIPE_V2_API_VERSION ?? '2026-07-29.dahlia';
  * ids are accepted by the v1 endpoints, so accountLinks.create and
  * accounts.retrieve work unchanged and return v1-shaped objects.
  *
- * Express dashboard, recipient + merchant configurations. The merchant half is
- * unwanted and its cost is real — see the comment on it below — but it is the
- * only shape Stripe accepts today for an account that receives transfers.
+ * Express dashboard, recipient configuration only. Travelers are private
+ * individuals who receive transfers and nothing else — never merchants, and
+ * never to be asked about a business they do not have. This depends on the
+ * platform being set to the RECIPIENT service agreement in the Dashboard; see
+ * the comment in the configuration block below.
  *
- * Note on liability: fees_collector and losses_collector are 'application'.
- * That means JIBLY absorbs
+ * Note on liability: fees_collector and losses_collector are 'application', as
+ * Stripe support confirmed is required here. JIBLY absorbs
  * chargebacks and negative balances on these accounts, not Stripe. It is the
  * normal arrangement for a marketplace that adjudicates its own deliveries,
  * but it is real exposure.
@@ -250,16 +252,10 @@ async function createRecipientAccount(
         entity_type: 'individual',
       },
       // Both configurations are present, for different reasons.
-      //
-      // recipient carries stripe_balance.stripe_transfers — the only capability
-      // it has, and the one indirect charges require: it lets money ARRIVE in
-      // the traveler's Stripe balance.
-      //
-      // merchant is applied but requests nothing. Recipient alone is refused
-      // with capability_not_available_without_other_capability — an account
-      // that can receive funds but never release them isn't something Stripe
-      // will create — and payouts to a bank hang off the merchant
-      // configuration existing.
+      // recipient carries stripe_balance.stripe_transfers — its only
+      // capability, and the one indirect charges require. It lets money ARRIVE
+      // in the traveler's Stripe balance; requesting it also requests
+      // stripe_balance.payouts automatically, so the money can leave again.
       configuration: {
         recipient: {
           capabilities: {
@@ -268,27 +264,18 @@ async function createRecipientAccount(
             },
           },
         },
-        // KNOWN BAD, KEPT DELIBERATELY. merchant means "this account takes
-        // payments", so Stripe's onboarding asks travelers for an industry, a
-        // website and a product description — questions a person with a
-        // suitcase cannot answer.
+        // No merchant configuration, and there must not be one: accounts under
+        // the RECIPIENT service agreement cannot process payments or request
+        // card_payments at all. That agreement is the answer to the problem we
+        // spent a day on — it describes an account that only ever receives
+        // money, so Stripe stops asking travelers for an industry, a website
+        // and a product description.
         //
-        // It is here because stripe_transfers refuses to stand alone
-        // (capability_not_available_without_other_capability) and card_payments
-        // is the only capability that pairs with it. Removing merchant and
-        // using dashboard 'none' instead looked promising, but that path needs
-        // an "acknowledgment" of who collects requirements which is not
-        // settable at creation — defaults.responsibilities.requirements_collector
-        // comes back as invalid_fields, and Stripe documents no alternative.
-        //
-        // Ask Stripe support how to create a payouts-only account for a private
-        // individual without the merchant configuration. Until then, this is
-        // the configuration that actually works.
-        merchant: {
-          capabilities: {
-            card_payments: { requested: true },
-          },
-        },
+        // The agreement is selected at the PLATFORM level, not here: Stripe
+        // Dashboard → Connect → Express configuration → Transfers with
+        // Restricted Capability Access. Without that setting, this payload
+        // fails with capability_not_available_without_other_capability, exactly
+        // as it did before.
       },
       defaults: {
         // Deliberately no `currency`: it must be valid for the account's
@@ -306,7 +293,7 @@ async function createRecipientAccount(
       },
       dashboard: 'express',
       metadata: { userId },
-      include: ['configuration.recipient', 'configuration.merchant', 'requirements'],
+      include: ['configuration.recipient', 'requirements'],
     }),
   });
 
