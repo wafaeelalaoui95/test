@@ -1,26 +1,28 @@
 /**
- * Countries where a traveler can be onboarded to receive payouts.
+ * Countries a traveler's bank account can be in for us to pay them.
  *
- * This mirrors Connect → Settings → Onboarding options → Countries in the
- * Stripe Dashboard. It is NOT a Jibly policy choice: Stripe simply does not
- * offer connected accounts anywhere else, so a traveler banking outside this
- * list cannot be paid through the platform at all.
+ * This is NARROWER than the Dashboard's onboarding country list, and
+ * deliberately so. Stripe will happily create a connected account in, say, the
+ * UAE or Japan — but our platform is UK-registered, and cross-border transfers
+ * only work within the UK, EEA, Switzerland, US and Canada. Anywhere else fails
+ * with capability_not_available_in_country, AFTER the traveler has chosen a
+ * country that can never be changed.
  *
- * Notably absent: MOROCCO. Stripe does not operate there in any form, which
- * matters because Morocco is a core Jibly corridor. A Morocco-resident
- * traveler needs a bank account in one of the countries below — typically a
- * French one, which many France-based travelers on this route already have.
+ * So this list is the transfer zone, not the account-creation zone. If the
+ * platform's own country ever changes, the zone changes with it.
  *
- * Keep this in sync by hand if you change the selection in the Dashboard.
- * Divergence fails late and confusingly: the traveler gets all the way to
- * Stripe's form before being turned away.
+ * Notably absent: MOROCCO, a core Jibly corridor. Stripe doesn't operate there
+ * at all. A Morocco-resident traveler needs an account in one of these
+ * countries — typically a French one, which many France-based travelers on that
+ * route already have.
  */
 export const PAYOUT_COUNTRIES = [
-  'AE', 'AT', 'AU', 'BE', 'BG', 'CA', 'CH', 'CY', 'CZ', 'DE',
-  'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GI', 'GR', 'HK', 'HR',
-  'HU', 'IE', 'IT', 'JP', 'LI', 'LT', 'LU', 'LV', 'MT', 'MX',
-  'NL', 'NO', 'NZ', 'PL', 'PT', 'RO', 'SE', 'SG', 'SI', 'SK',
-  'TH', 'US',
+  // EEA
+  'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI',
+  'FR', 'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LI', 'LT', 'LU',
+  'LV', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK',
+  // Plus the rest of the cross-border transfer zone
+  'CA', 'CH', 'GB', 'US',
 ] as const;
 
 /**
