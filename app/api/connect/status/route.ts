@@ -88,6 +88,10 @@ export async function GET() {
   }
 
   return NextResponse.json({
+    // Echoed so it can be compared against the acct_ in the Stripe onboarding
+    // URL — the quickest way to catch the app sending someone to an older
+    // account than the one it reports on.
+    accountId: profile.stripe_account_id,
     onboarded: payoutsEnabled,
     payoutsEnabled,
     identityVerified: !!profile.identity_verified_at,
