@@ -194,12 +194,14 @@ const V2_API_VERSION = process.env.STRIPE_V2_API_VERSION ?? '2026-07-29.dahlia';
  * ids are accepted by the v1 endpoints, so accountLinks.create and
  * accounts.retrieve work unchanged and return v1-shaped objects.
  *
- * Two configurations, one per half of the money's journey: "recipient" lets
- * transfers arrive in the traveler's Stripe balance, "merchant" lets them be
- * paid out to a bank. Neither works alone.
+ * Recipient configuration only, and no Stripe dashboard. Travelers are private
+ * individuals carrying a parcel: they receive transfers and nothing else. The
+ * merchant configuration would make them a merchant of record, and Stripe then
+ * asks them for an industry, a website and a product description — questions
+ * with no answer for a person with a suitcase.
  *
- * Note on liability: dashboard 'express' requires fees_collector and
- * losses_collector to both be 'application'. That means JIBLY absorbs
+ * Note on liability: fees_collector and losses_collector are 'application'.
+ * That means JIBLY absorbs
  * chargebacks and negative balances on these accounts, not Stripe. It is the
  * normal arrangement for a marketplace that adjudicates its own deliveries,
  * but it is real exposure.
@@ -268,21 +270,13 @@ async function createRecipientAccount(
             },
           },
         },
-        // card_payments is requested reluctantly. An empty merchant
-        // configuration did not satisfy stripe_transfers' dependency, and
-        // card_payments is the only capability that can: recipient offers
-        // nothing but stripe_transfers, customer only offers tax, and
-        // merchant's remaining capabilities are all payment methods.
-        //
-        // The cost is real — it pulls merchant-of-record verification onto
-        // travelers who will never take a payment. Worth revisiting with
-        // Stripe support, since the pairing isn't documented anywhere we could
-        // find.
-        merchant: {
-          capabilities: {
-            card_payments: { requested: true },
-          },
-        },
+        // NO merchant configuration. Requesting card_payments here did satisfy
+        // stripe_transfers' dependency, but at an unacceptable price: merchant
+        // means "this account takes payments", so Stripe's onboarding then
+        // asked travelers for an industry, a website and a product
+        // description. They are private individuals carrying a parcel, not
+        // businesses, and being asked to describe their company is the moment
+        // they give up.
       },
       defaults: {
         // Deliberately no `currency`: it must be valid for the account's
@@ -298,9 +292,14 @@ async function createRecipientAccount(
         // doesn't read English while entering their bank details.
         locales: [locale],
       },
-      dashboard: 'express',
+      // 'none', not 'express'. The Express dashboard is what appears to drag
+      // the merchant configuration in — and it was buying us very little: the
+      // one thing it offered, the "manage my bank details" login link, has
+      // never worked on these accounts anyway. Stripe still hosts the
+      // onboarding form; the traveler just doesn't get a Stripe dashboard.
+      dashboard: 'none',
       metadata: { userId },
-      include: ['configuration.recipient', 'configuration.merchant', 'requirements'],
+      include: ['configuration.recipient', 'requirements'],
     }),
   });
 
