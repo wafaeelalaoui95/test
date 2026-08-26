@@ -249,18 +249,17 @@ async function createRecipientAccount(
         ...(country ? { country: country.toLowerCase() } : {}),
         entity_type: 'individual',
       },
-      // Both configurations are needed, and each carries exactly one half of
-      // the journey:
-      //   recipient.stripe_balance.stripe_transfers — money can arrive in the
-      //     traveler's Stripe balance (this is what indirect charges require)
-      //   merchant.stripe_balance.payouts           — money can leave it for
-      //     their bank account
+      // Both configurations are present, for different reasons.
       //
-      // Requesting transfers alone is refused with
-      // capability_not_available_without_other_capability: an account that can
-      // receive funds but never pay them out is not a thing Stripe will create.
-      // Note we do NOT request card_payments — travelers never take payments,
-      // and every extra capability means more KYC to clear.
+      // recipient carries stripe_balance.stripe_transfers — the only capability
+      // it has, and the one indirect charges require: it lets money ARRIVE in
+      // the traveler's Stripe balance.
+      //
+      // merchant is applied but requests nothing. Recipient alone is refused
+      // with capability_not_available_without_other_capability — an account
+      // that can receive funds but never release them isn't something Stripe
+      // will create — and payouts to a bank hang off the merchant
+      // configuration existing.
       configuration: {
         recipient: {
           capabilities: {
@@ -269,13 +268,12 @@ async function createRecipientAccount(
             },
           },
         },
-        merchant: {
-          capabilities: {
-            stripe_balance: {
-              payouts: { requested: true },
-            },
-          },
-        },
+        // Applied with NO capabilities requested. stripe_balance is not a
+        // requestable field here — Stripe returns "Unknown field" — it only
+        // appears in the response once the configuration exists. Requesting
+        // card_payments instead would work but drags in merchant-of-record KYC
+        // that travelers have no use for: they never take payments.
+        merchant: {},
       },
       defaults: {
         // Deliberately no `currency`: it must be valid for the account's
