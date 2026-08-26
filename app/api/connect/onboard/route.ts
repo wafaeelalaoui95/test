@@ -3,8 +3,10 @@ import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import {
   getOrCreateConnectAccount,
+  getStoredConnectAccountId,
   clearConnectAccount,
   isMissingAccountError,
+  isAccountPayable,
 } from '@/lib/stripe/connect';
 import { findCountryByName } from '@/lib/countries';
 import { isPayoutCountry } from '@/lib/stripe/payout-countries';
@@ -131,11 +133,43 @@ export async function POST(req: NextRequest) {
         type: 'account_onboarding',
       });
 
+    // An account we already hold is reused as-is, country included — it is
+    // immutable. So if the traveler has just asked for a different one, the
+    // choice they made would be silently ignored and Stripe would show them a
+    // country they didn't pick.
+    //
+    // Unfinished account → replace it with one in the right country. Finished
+    // account → refuse, because recreating would throw away completed KYC.
+    const existingId = await getStoredConnectAccountId(user.id);
+    if (existingId) {
+      try {
+        const existing = await stripe.accounts.retrieve(existingId);
+        if (existing.country && existing.country.toUpperCase() !== country) {
+          if (isAccountPayable(existing)) {
+            return NextResponse.json(
+              { error: 'payout_setup_failed', code: 'country_locked' },
+              { status: 409 }
+            );
+          }
+          console.warn(
+            `[connect/onboard] replacing unfinished ${existing.country} account for user ${user.id} with ${country}`
+          );
+          await clearConnectAccount(user.id);
+        }
+      } catch (e: any) {
+        // Missing account: leave it to the recovery path below.
+        if (!isMissingAccountError(e)) throw e;
+      }
+    }
+
     const accountId = await getOrCreateConnectAccount(
       user.id,
       user.email,
       country,
-      stripeLocale
+      stripeLocale,
+      // The account we just cleared was created moments ago, so its idempotency
+      // key would still be cached and replay the old country.
+      true
     );
 
     let link;

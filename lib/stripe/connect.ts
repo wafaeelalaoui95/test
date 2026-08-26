@@ -90,6 +90,22 @@ export async function getOrCreateConnectAccount(
 }
 
 /**
+ * The Connect account id on file, if any. Read separately from
+ * getOrCreateConnectAccount so a caller can inspect the existing account —
+ * notably its country, which is immutable — before deciding to reuse it.
+ */
+export async function getStoredConnectAccountId(
+  userId: string
+): Promise<string | null> {
+  const { data } = await getAdminClient()
+    .from('profiles')
+    .select('stripe_account_id')
+    .eq('id', userId)
+    .maybeSingle();
+  return data?.stripe_account_id ?? null;
+}
+
+/**
  * Forget the Connect account we have on file for this user, so the next
  * onboarding attempt creates a fresh one.
  *
