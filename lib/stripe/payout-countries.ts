@@ -3,13 +3,16 @@
  *
  * This is NARROWER than the Dashboard's onboarding country list, and
  * deliberately so. Stripe will happily create a connected account in, say, the
- * UAE or Japan — but our platform is UK-registered, and cross-border transfers
- * only work within the UK, EEA, Switzerland, US and Canada. Anywhere else fails
- * with capability_not_available_in_country, AFTER the traveler has chosen a
- * country that can never be changed.
+ * UAE or Japan, but transfers can't reach it — the account gets the payments
+ * capability instead, which is useless to us and turns the traveler into a
+ * merchant. Picking such a country fails with
+ * capability_not_available_in_country AFTER the traveler has chosen something
+ * that can never be changed.
  *
- * So this list is the transfer zone, not the account-creation zone. If the
- * platform's own country ever changes, the zone changes with it.
+ * The authoritative list is in the Dashboard, under Connect → Onboarding
+ * options → Countries: the "Transfers" product names exactly the countries it
+ * can be added to, and warns about the rest. This mirrors it. Notably the US
+ * and Canada are NOT in it, despite being in the cross-border payouts docs.
  *
  * Notably absent: MOROCCO, a core Jibly corridor. Stripe doesn't operate there
  * at all. A Morocco-resident traveler needs an account in one of these
@@ -21,8 +24,8 @@ export const PAYOUT_COUNTRIES = [
   'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI',
   'FR', 'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LI', 'LT', 'LU',
   'LV', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK',
-  // Plus the rest of the cross-border transfer zone
-  'CA', 'CH', 'GB', 'US',
+  // Plus the rest of the transfer zone
+  'CH', 'GB',
 ] as const;
 
 /**
