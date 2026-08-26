@@ -278,6 +278,30 @@ async function createRecipientAccount(
 }
 
 /**
+ * Can this account actually be paid, with nothing left for the traveler to do?
+ *
+ * payouts_enabled ALONE is not that answer. Stripe turns it on optimistically
+ * while requirements are still outstanding, giving the account a deadline
+ * rather than blocking it — so a traveler who abandons onboarding halfway is
+ * reported as payouts-enabled and shown "Paiements activés". They then believe
+ * they are done, never finish, and the transfer is skipped at delivery.
+ *
+ * So we also require: the form was actually submitted, nothing is currently or
+ * past due, and Stripe hasn't disabled the account for any reason.
+ */
+export function isAccountPayable(account: Stripe.Account): boolean {
+  if (account.payouts_enabled !== true) return false;
+  if (account.details_submitted !== true) return false;
+
+  const req = account.requirements;
+  if (!req) return true;
+  if (req.disabled_reason) return false;
+  if (req.currently_due?.length) return false;
+  if (req.past_due?.length) return false;
+  return true;
+}
+
+/**
  * Mirror a Stripe Account's capability flags into profiles. Called from the
  * account.updated webhook and after the user returns from onboarding (so the
  * UI updates immediately instead of waiting on the webhook).
@@ -289,18 +313,14 @@ export async function syncConnectAccount(account: Stripe.Account): Promise<void>
     return;
   }
 
-  const chargesEnabled = account.charges_enabled === true;
-  const payoutsEnabled = account.payouts_enabled === true;
-  // "Onboarded" means Stripe has everything it needs — details_submitted alone
-  // is not enough, since a submitted account can still be blocked on review.
-  const onboarded = payoutsEnabled && account.details_submitted === true;
+  const payable = isAccountPayable(account);
 
   const { error } = await getAdminClient()
     .from('profiles')
     .update({
-      stripe_charges_enabled: chargesEnabled,
-      stripe_payouts_enabled: payoutsEnabled,
-      stripe_onboarded_at: onboarded ? new Date().toISOString() : null,
+      stripe_charges_enabled: account.charges_enabled === true,
+      stripe_payouts_enabled: payable,
+      stripe_onboarded_at: payable ? new Date().toISOString() : null,
     })
     .eq('id', userId);
 

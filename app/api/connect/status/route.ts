@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/server';
-import { syncConnectAccount } from '@/lib/stripe/connect';
+import { syncConnectAccount, isAccountPayable } from '@/lib/stripe/connect';
 import { getServerClient } from '@/lib/supabase/server';
 
 /**
@@ -51,10 +51,16 @@ export async function GET() {
         profile.stripe_account_id
       );
       await syncConnectAccount(account);
-      payoutsEnabled = account.payouts_enabled === true;
+      // isAccountPayable, not account.payouts_enabled: Stripe sets that flag
+      // while requirements are still outstanding, so trusting it tells a
+      // traveler who abandoned onboarding that they are all set.
+      payoutsEnabled = isAccountPayable(account);
       // Surfaced so the UI can say *what* Stripe is still waiting on rather
       // than a bare "incomplete".
-      requirementsDue = account.requirements?.currently_due ?? [];
+      requirementsDue = [
+        ...(account.requirements?.currently_due ?? []),
+        ...(account.requirements?.past_due ?? []),
+      ];
     } catch (e: any) {
       console.error('[connect/status] retrieve failed:', e?.message);
       // Fall through to the cached values — a Stripe outage should degrade to
