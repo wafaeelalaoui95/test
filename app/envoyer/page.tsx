@@ -23,7 +23,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
-import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES } from '@/lib/constants';
+import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
 import { isVagueDescription, detectRiskKeywords } from '@/lib/safety';
 import { formatShortDate, displayName, nameInitial, formatEuros, priceBreakdown } from '@/lib/utils';
 import { countryDisplayName, cityDisplayName } from '@/lib/countries';
@@ -721,7 +721,7 @@ export default function EnvoyerPage() {
                             const digits = e.target.value.replace(/[^0-9]/g, '');
                             setBudget(digits === '' ? 0 : Math.min(Number(digits), 20000));
                           }}
-                          onBlur={() => setBudget((b) => Math.max(10, Math.min(b, 20000)))}
+                          onBlur={() => setBudget((b) => Math.max(MIN_COMPENSATION_EUR, Math.min(b, 20000)))}
                           style={{ width: `${String(budget).length + 0.5}ch` }}
                           className="bg-transparent text-end outline-none focus:text-mint-700"
                         />
@@ -730,7 +730,7 @@ export default function EnvoyerPage() {
                     </div>
                     <input
                       type="range"
-                      min={10}
+                      min={MIN_COMPENSATION_EUR}
                       max={200}
                       step={5}
                       value={Math.min(budget, 200)}
@@ -738,7 +738,7 @@ export default function EnvoyerPage() {
                       className="w-full h-1.5 bg-ink-100 rounded-full appearance-none accent-ink-500"
                     />
                     <div className="flex justify-between text-[12px] text-ink-300 mt-2">
-                      <span>10{t.common_eur}</span>
+                      <span>{MIN_COMPENSATION_EUR}{t.common_eur}</span>
                       <span>200{t.common_eur}+</span>
                     </div>
                     {budget > 80 && (

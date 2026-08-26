@@ -23,7 +23,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { PayoutReminder } from '@/components/PayoutSetup';
-import { ITEM_CATEGORIES } from '@/lib/constants';
+import { ITEM_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
 import { cityDisplayName } from '@/lib/countries';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -197,7 +197,7 @@ export default function VoyagerPage() {
 
   const canNext = () => {
     if (step === 0) return fromCity && toCity && date && isValidFlightNumber(flightNumber);
-    if (step === 1) return acceptedCategories.length > 0 && minComp >= 10;
+    if (step === 1) return acceptedCategories.length > 0 && minComp >= MIN_COMPENSATION_EUR;
     if (step === 2) return terms;
     return false;
   };
@@ -827,7 +827,7 @@ export default function VoyagerPage() {
                     </div>
                     <input
                       type="range"
-                      min={10}
+                      min={MIN_COMPENSATION_EUR}
                       max={200}
                       step={5}
                       value={Math.min(minComp, 200)}
@@ -835,7 +835,7 @@ export default function VoyagerPage() {
                       className="w-full h-1.5 bg-ink-100 rounded-full appearance-none accent-ink-500"
                     />
                     <div className="flex justify-between text-[12px] text-ink-300 mt-2">
-                      <span>10{t.common_eur}</span>
+                      <span>{MIN_COMPENSATION_EUR}{t.common_eur}</span>
                       <span>200{t.common_eur}+</span>
                     </div>
                     {minComp > 80 ? (

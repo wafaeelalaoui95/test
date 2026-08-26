@@ -4,6 +4,18 @@ import type { Translations } from '@/lib/i18n/translations';
 // The i18n keys cat_medication and cat_medication_desc are kept in
 // translations.ts for now (they don't bloat anything) — they'll be cleaned
 // up in a later pass if we never re-introduce medication transport.
+/**
+ * Lowest compensation, in euros, a sender can offer or a traveler can ask for.
+ *
+ * TEMPORARILY 5 (was 10) so a live end-to-end test can be run with real money
+ * without spending much. Put it back to 10 once testing is done — a 5 € parcel
+ * leaves the traveler 4.25 € after commission, which isn't worth anyone's trip.
+ *
+ * There is no matching database constraint (compensation_min only checks >= 0),
+ * so this is the single place that decides it.
+ */
+export const MIN_COMPENSATION_EUR = 5;
+
 export const ITEM_CATEGORIES: {
   value: ItemCategory;
   labelKey: keyof Translations;
