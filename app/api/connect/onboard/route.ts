@@ -144,6 +144,10 @@ export async function POST(req: NextRequest) {
           // travelers never reach the threshold, and the ones who do have money
           // waiting for them by then.
           fields: 'currently_due',
+          // Explicit, though 'omit' is the documented default — with the
+          // hosted form showing more than currently_due contains, we want no
+          // ambiguity about what we asked for.
+          future_requirements: 'omit',
         },
       });
 
