@@ -87,47 +87,7 @@ export async function getOrCreateConnectAccount(
     throw new Error('Could not save your payout account. Please try again.');
   }
 
-  await prefillBusinessProfile(accountId);
-
   return accountId;
-}
-
-/**
- * Answer Stripe's business questions on the traveler's behalf.
- *
- * Stripe's hosted onboarding asks every connected account what it does — an
- * industry code, a website, a description of what it sells. A person carrying a
- * parcel has no answer, and that screen is where they abandon the flow.
- *
- * But we know what they do: they carry parcels for Jibly's senders. It is the
- * same answer for every traveler, so asking is pointless. Stripe's guidance is
- * explicit that prefilled information simplifies onboarding — the traveler is
- * asked to confirm rather than invent.
- *
- * Sent through the v1 endpoint because business_profile has no v2 equivalent
- * for a recipient-only account; v2 account ids are accepted there.
- *
- * Non-fatal: an account without this is still usable, it just asks more
- * questions. Failing account creation over a prefill would be worse.
- */
-async function prefillBusinessProfile(accountId: string): Promise<void> {
-  try {
-    await getStripe().accounts.update(accountId, {
-      business_profile: {
-        // 4215 — Courier Services. The closest honest description of carrying
-        // someone else's parcel between two cities.
-        mcc: '4215',
-        url: 'https://jibly.io',
-        product_description:
-          'Transporte des colis pour des particuliers via la plateforme Jibly.',
-      },
-    });
-  } catch (e: any) {
-    console.warn(
-      `[connect] could not prefill business profile for ${accountId}:`,
-      e?.message
-    );
-  }
 }
 
 /**
@@ -190,192 +150,86 @@ export function isMissingAccountError(e: any): boolean {
 }
 
 /**
- * Pull the offending field paths out of a Stripe v2 error.
- *
- * "invalid_fields" on its own is unactionable — the whole question is which
- * ones. Stripe puts them under different keys depending on the error, so walk
- * the object and collect anything that looks like a field path rather than
- * relying on a single shape. Paths like "configuration.merchant.capabilities"
- * are structural, not user data.
- */
-function extractFieldPaths(error: any): string[] {
-  const found = new Set<string>();
-  const visit = (node: any, depth: number) => {
-    if (!node || depth > 4 || found.size >= 8) return;
-    if (Array.isArray(node)) {
-      node.forEach((n) => visit(n, depth + 1));
-      return;
-    }
-    if (typeof node !== 'object') return;
-    for (const key of ['path', 'field', 'param', 'parameter']) {
-      const v = node[key];
-      if (typeof v === 'string' && /^[a-z0-9_.\[\]]+$/i.test(v)) found.add(v);
-    }
-    for (const key of ['details', 'invalid_fields', 'fields', 'errors']) {
-      if (node[key]) visit(node[key], depth + 1);
-    }
-  };
-  visit(error, 0);
-  return [...found];
-}
-
 /**
- * API version for the /v2 endpoints. Overridable without a deploy because
- * Stripe ships these often and the value that works is account-specific —
- * check Developers → API versions in the Dashboard if creation starts failing.
- */
-const V2_API_VERSION = process.env.STRIPE_V2_API_VERSION ?? '2026-07-29.dahlia';
-
-/**
- * Create a v2 connected account for a traveler.
+ * Create a connected account for a traveler.
  *
- * Called over raw fetch rather than the SDK: stripe@17.3.1 predates the
- * /v2/core/accounts surface, and this avoids an SDK bump we cannot test
- * locally. Everything AFTER creation still goes through the SDK — v2 account
- * ids are accepted by the v1 endpoints, so accountLinks.create and
- * accounts.retrieve work unchanged and return v1-shaped objects.
+ * Accounts v1, `type: 'custom'`, under the RECIPIENT service agreement — the
+ * shape Stripe support directed us to after a long detour through v2.
  *
- * Express dashboard, recipient configuration only. Travelers are private
- * individuals who receive transfers and nothing else — never merchants, and
- * never to be asked about a business they do not have. This depends on the
- * platform being set to the RECIPIENT service agreement in the Dashboard; see
- * the comment in the configuration block below.
+ * Why this and nothing else: an account on the recipient agreement cannot
+ * process payments and cannot request card_payments. Because no
+ * payment-processing capability exists, Stripe never asks the traveler for an
+ * industry, a website or a product description. Those questions were the
+ * single biggest obstacle in the whole flow, and this is what removes them.
  *
- * Note on liability: fees_collector and losses_collector are 'application', as
- * Stripe support confirmed is required here. JIBLY absorbs
- * chargebacks and negative balances on these accounts, not Stripe. It is the
- * normal arrangement for a marketplace that adjudicates its own deliveries,
- * but it is real exposure.
+ * Custom also means no Stripe dashboard and no direct contact between Stripe
+ * and the traveler: their relationship is with Jibly alone. The cost is that we
+ * own communication — when Stripe later needs a document, Jibly must ask for
+ * it. The account.updated webhook already gives us that signal.
+ *
+ * The recipient agreement is only expressible in v1 (`tos_acceptance`), which
+ * is why this is not the v2 endpoint despite v2 being the default for new
+ * integrations. It is one of the compatibility scenarios v1 remains available
+ * for.
  */
 async function createRecipientAccount(
   userId: string,
   email: string | undefined,
-  // Empty string means "we don't know" — Stripe then asks the traveler during
-  // onboarding instead of us guessing wrong and locking it forever.
   country: string,
-  locale: string,
+  // Unused: v1 accounts have no locale field. Stripe's hosted onboarding picks
+  // the language from the traveler's browser instead. Kept in the signature so
+  // callers don't have to care which API version is underneath.
+  _locale: string,
   recreate = false
 ): Promise<string> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
-
   // Stripe caches a response against an idempotency key for 24 hours and
   // replays it even if the account has since been deleted — so a key that is
-  // stable per user makes a genuine retry impossible for a whole day, whether
-  // the account was deleted in the Dashboard or the id was cleared from our
-  // database.
+  // stable per user makes a genuine retry impossible for a whole day.
   //
   // Bucketing by the minute gets both properties: rapid double-clicks share a
   // key and produce one account, while a deliberate retry a minute later is a
   // fresh request. `recreate` forces uniqueness for the known-dead case.
   const bucket = recreate ? Date.now() : Math.floor(Date.now() / 60_000);
-  const idempotencyKey = `connect_account_${userId}_${bucket}`;
 
-  const res = await fetch('https://api.stripe.com/v2/core/accounts', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'Stripe-Version': V2_API_VERSION,
-      // Two travelers double-clicking the button would otherwise get two
-      // accounts; the DB check above is not a lock.
-      'Idempotency-Key': idempotencyKey,
-    },
-    body: JSON.stringify({
-      contact_email: email,
-      identity: {
-        // Country is set ONLY when we actually know the traveler's — it is
-        // immutable after creation, and Stripe's hosted onboarding lets the
-        // account owner pick from the countries enabled in the Dashboard when
-        // we leave it out. Imposing the platform's own country here forced
-        // every traveler into a UK account with a UK-only address field.
-        ...(country ? { country: country.toLowerCase() } : {}),
-        entity_type: 'individual',
-      },
-      // Both configurations are present, for different reasons.
-      // recipient carries stripe_balance.stripe_transfers — its only
-      // capability, and the one indirect charges require. It lets money ARRIVE
-      // in the traveler's Stripe balance; requesting it also requests
-      // stripe_balance.payouts automatically, so the money can leave again.
-      configuration: {
-        recipient: {
-          capabilities: {
-            stripe_balance: {
-              stripe_transfers: { requested: true },
-            },
-          },
+  try {
+    const account = await getStripe().accounts.create(
+      {
+        type: 'custom',
+        // Immutable after creation. The traveler picks it from a dropdown for
+        // exactly that reason — see /api/connect/onboard.
+        country: country.toUpperCase(),
+        email,
+        business_type: 'individual',
+        // The only capability a traveler needs: money arriving from us.
+        capabilities: { transfers: { requested: true } },
+        // The line that does the work.
+        tos_acceptance: { service_agreement: 'recipient' },
+        // Answered on the traveler's behalf. It is the same for all of them,
+        // so asking would be pointless even if Stripe insisted.
+        business_profile: {
+          // 4215 — Courier Services.
+          mcc: '4215',
+          url: 'https://jibly.io',
+          product_description:
+            'Transporte des colis pour des particuliers via la plateforme Jibly.',
         },
-        // No merchant configuration, and there must not be one: accounts under
-        // the RECIPIENT service agreement cannot process payments or request
-        // card_payments at all. That agreement is the answer to the problem we
-        // spent a day on — it describes an account that only ever receives
-        // money, so Stripe stops asking travelers for an industry, a website
-        // and a product description.
-        //
-        // The agreement is selected at the PLATFORM level, not here: Stripe
-        // Dashboard → Connect → Express configuration → Transfers with
-        // Restricted Capability Access. Without that setting, this payload
-        // fails with capability_not_available_without_other_capability, exactly
-        // as it did before.
+        metadata: { userId },
       },
-      defaults: {
-        // Deliberately no `currency`: it must be valid for the account's
-        // country, and Stripe picks correctly from it. Setting it ourselves
-        // only creates a way to fail (account_country_unsupported_currency).
-        responsibilities: {
-          fees_collector: 'application',
-          losses_collector: 'application',
-        },
-        // Language of Stripe's hosted onboarding. Without this the form is
-        // English regardless of who the traveler is — a poor first impression
-        // on a French-first product, and a real obstacle for anyone who
-        // doesn't read English while entering their bank details.
-        locales: [locale],
-      },
-      // 'none' is what Stripe calls a Custom account, and their support
-      // recommends it for payouts-only connected accounts: no Stripe dashboard,
-      // the platform drives everything.
-      //
-      // This previously failed with
-      // account_creation_requirement_collection_unacknowledged. Their reply
-      // said the acknowledgment lives in Dashboard settings, but not where —
-      // so the point of this attempt is to read the FULL error message rather
-      // than just its code. The v1 deprecation error carried a Dashboard URL;
-      // this one may too.
-      dashboard: 'none',
-      metadata: { userId },
-      include: ['configuration.recipient', 'requirements'],
-    }),
-  });
-
-  const body = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    // Surface the version too — a version mismatch and a genuine rejection look
-    // nothing alike once you can see both.
-    console.error(
-      `[connect] v2 account creation failed (HTTP ${res.status}, version ${V2_API_VERSION}):`,
-      JSON.stringify(body?.error ?? body)
+      { idempotencyKey: `connect_account_${userId}_${bucket}` }
     );
-    // Carry Stripe's short error CODE (not its prose) so the UI can show a
-    // reference the user can read out. Codes like
-    // `account_create_activation_required` are diagnostic, not sensitive.
-    const err: any = new Error(body?.error?.message ?? 'Stripe account creation failed');
-    err.stripeCode =
-      body?.error?.code ?? body?.error?.type ?? `http_${res.status}`;
-    // invalid_fields is useless without knowing WHICH fields. Stripe nests
-    // them differently across error shapes, so collect any path-like strings
-    // rather than betting on one key.
-    err.stripeFields = extractFieldPaths(body?.error);
+
+    return account.id;
+  } catch (e: any) {
+    console.error(
+      '[connect] account creation failed:',
+      e?.type,
+      e?.code,
+      e?.message
+    );
+    const err: any = new Error(e?.message ?? 'Stripe account creation failed');
+    err.stripeCode = e?.code ?? e?.raw?.code ?? e?.type ?? 'unknown';
     throw err;
   }
-
-  if (!body?.id) {
-    console.error('[connect] v2 account creation returned no id:', JSON.stringify(body));
-    throw new Error('Stripe account creation returned no id');
-  }
-
-  return body.id as string;
 }
 
 /**
