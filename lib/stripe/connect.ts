@@ -1,4 +1,5 @@
 import type Stripe from 'stripe';
+import { getStripe } from './server';
 import { getAdminClient } from '@/lib/supabase/server';
 
 /**
@@ -86,7 +87,47 @@ export async function getOrCreateConnectAccount(
     throw new Error('Could not save your payout account. Please try again.');
   }
 
+  await prefillBusinessProfile(accountId);
+
   return accountId;
+}
+
+/**
+ * Answer Stripe's business questions on the traveler's behalf.
+ *
+ * Stripe's hosted onboarding asks every connected account what it does — an
+ * industry code, a website, a description of what it sells. A person carrying a
+ * parcel has no answer, and that screen is where they abandon the flow.
+ *
+ * But we know what they do: they carry parcels for Jibly's senders. It is the
+ * same answer for every traveler, so asking is pointless. Stripe's guidance is
+ * explicit that prefilled information simplifies onboarding — the traveler is
+ * asked to confirm rather than invent.
+ *
+ * Sent through the v1 endpoint because business_profile has no v2 equivalent
+ * for a recipient-only account; v2 account ids are accepted there.
+ *
+ * Non-fatal: an account without this is still usable, it just asks more
+ * questions. Failing account creation over a prefill would be worse.
+ */
+async function prefillBusinessProfile(accountId: string): Promise<void> {
+  try {
+    await getStripe().accounts.update(accountId, {
+      business_profile: {
+        // 4215 — Courier Services. The closest honest description of carrying
+        // someone else's parcel between two cities.
+        mcc: '4215',
+        url: 'https://jibly.io',
+        product_description:
+          'Transporte des colis pour des particuliers via la plateforme Jibly.',
+      },
+    });
+  } catch (e: any) {
+    console.warn(
+      `[connect] could not prefill business profile for ${accountId}:`,
+      e?.message
+    );
+  }
 }
 
 /**
