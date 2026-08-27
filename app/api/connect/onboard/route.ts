@@ -7,6 +7,7 @@ import {
   clearConnectAccount,
   isMissingAccountError,
   isAccountPayable,
+  ensureBusinessProfile,
 } from '@/lib/stripe/connect';
 import { findCountryByName } from '@/lib/countries';
 import { isPayoutCountry } from '@/lib/stripe/payout-countries';
@@ -173,6 +174,11 @@ export async function POST(req: NextRequest) {
             `[connect/onboard] replacing unfinished ${existing.country} account for user ${user.id} with ${country}`
           );
           await clearConnectAccount(user.id);
+        } else {
+          // Keeping this account. If it was opened before we started
+          // prefilling, Stripe would still ask its owner to describe a
+          // business — so fill it in now, on the way to the form.
+          await ensureBusinessProfile(existing);
         }
       } catch (e: any) {
         // Missing account: leave it to the recovery path below.

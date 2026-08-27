@@ -165,6 +165,65 @@ function isCrossBorder(country: string): boolean {
 }
 
 /**
+ * What a traveler's Stripe account says the traveler does.
+ *
+ * Prefilled so Stripe's hosted onboarding stops asking a private individual to
+ * describe a business. Stripe confirmed the "Business details" step is shown
+ * regardless of collection_options.fields — it is not driven by the
+ * requirements hash, so 'currently_due' cannot suppress it. Prefilling is the
+ * documented alternative: "If the business doesn't have a URL, you can prefill
+ * its business_profile.product_description instead."
+ *
+ * What goes in matters. An earlier attempt put JIBLY's website and trade code
+ * here, which was wrong — this is the traveler's account, and it would have
+ * described them as a logistics company they are not. What is below describes
+ * what the traveler actually does: carry a parcel, get paid on delivery. That
+ * is true of every one of them, and it is what Stripe's reviewers need.
+ *
+ * No `url`: the traveler has no website, and Stripe requires one only for
+ * accounts requesting card_payments. Ours request transfers only.
+ */
+const TRAVELER_BUSINESS_PROFILE = {
+  // 4215 — Courier Services, Air and Ground, Freight Forwarders.
+  mcc: '4215',
+  product_description:
+    'Receives payment for hand-carrying a parcel on a trip they were already taking, on behalf of a private individual. Paid once the recipient confirms delivery. Not a business; no goods are sold.',
+} as const;
+
+/**
+ * Backfill the business profile on an account that predates the prefill.
+ *
+ * business_profile is only set at creation, so every account opened before it
+ * would still face the Business details step. This closes that gap on the way
+ * into onboarding.
+ *
+ * Only fills a profile that is genuinely EMPTY. If the traveler already
+ * answered those questions themselves, their answer stands — overwriting what
+ * someone told Stripe about themselves is not ours to do, and it would rewrite
+ * KYC data behind their back.
+ *
+ * Never throws: this is a nicety on the way to onboarding, and failing it must
+ * not stop a traveler from being paid.
+ */
+export async function ensureBusinessProfile(
+  account: Stripe.Account
+): Promise<void> {
+  const bp = account.business_profile;
+  if (bp?.product_description || bp?.url || bp?.mcc) return;
+
+  try {
+    await getStripe().accounts.update(account.id, {
+      business_profile: { ...TRAVELER_BUSINESS_PROFILE },
+    });
+  } catch (e: any) {
+    console.warn(
+      `[connect] could not backfill business_profile on ${account.id}:`,
+      e?.message
+    );
+  }
+}
+
+/**
  * Create a connected account for a traveler.
  *
  * Accounts v1, `type: 'custom'`. Custom means no Stripe dashboard and no direct
@@ -217,29 +276,9 @@ async function createRecipientAccount(
         ...(isCrossBorder(country)
           ? { tos_acceptance: { service_agreement: 'recipient' as const } }
           : {}),
-        // Prefilled so Stripe's hosted onboarding stops asking a private
-        // individual to describe a business. Stripe confirmed the Business
-        // details step is shown regardless of collection_options.fields — it
-        // is not driven by the requirements hash, so 'currently_due' cannot
-        // suppress it. Prefilling is the documented alternative: "If the
-        // business doesn't have a URL, you can prefill its
-        // business_profile.product_description instead."
-        //
-        // What goes in matters. An earlier attempt put JIBLY's website and
-        // trade code here, which was wrong — this is the traveler's account,
-        // and that would have described them as a logistics company they are
-        // not. What is below describes what the traveler actually does: carry
-        // a parcel for someone, and get paid on delivery. That is true of
-        // every one of them, and it is what Stripe's reviewers need to know.
-        //
-        // No `url`: the traveler has no website, and Stripe only requires one
-        // for accounts requesting card_payments. Ours request transfers only.
-        business_profile: {
-          // 4215 — Courier Services, Air and Ground, Freight Forwarders.
-          mcc: '4215',
-          product_description:
-            'Receives payment for hand-carrying a parcel on a trip they were already taking, on behalf of a private individual. Paid once the recipient confirms delivery. Not a business; no goods are sold.',
-        },
+        // See TRAVELER_BUSINESS_PROFILE — this is what stops hosted onboarding
+        // asking a private individual to describe a business.
+        business_profile: { ...TRAVELER_BUSINESS_PROFILE },
         metadata: { userId },
       },
       { idempotencyKey: `connect_account_${userId}_${bucket}` }
