@@ -12,7 +12,9 @@
 begin;
 
 -- What is about to be cleared. Read it before committing.
-select id, email, stripe_account_id, stripe_payouts_enabled, stripe_onboarded_at
+-- full_name, not email: profiles has no email column — the address lives in
+-- auth.users, which the SQL editor can join to if you need it.
+select id, full_name, stripe_account_id, stripe_payouts_enabled, stripe_onboarded_at
 from public.profiles
 where stripe_account_id is not null;
 
