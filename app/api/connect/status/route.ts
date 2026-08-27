@@ -64,9 +64,13 @@ export async function GET() {
       payoutsEnabled = isAccountPayable(account);
       // Surfaced so the UI can say *what* Stripe is still waiting on rather
       // than a bare "incomplete".
+      // Deduplicated: past_due is a SUBSET of currently_due, not a separate
+      // list, so concatenating them showed every field twice.
       requirementsDue = [
-        ...(account.requirements?.currently_due ?? []),
-        ...(account.requirements?.past_due ?? []),
+        ...new Set([
+          ...(account.requirements?.currently_due ?? []),
+          ...(account.requirements?.past_due ?? []),
+        ]),
       ];
       requirements = {
         currently_due: account.requirements?.currently_due ?? [],
