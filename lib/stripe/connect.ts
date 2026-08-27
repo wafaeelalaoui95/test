@@ -217,14 +217,29 @@ async function createRecipientAccount(
         ...(isCrossBorder(country)
           ? { tos_acceptance: { service_agreement: 'recipient' as const } }
           : {}),
-        // Deliberately NOT prefilling business_profile. Stripe's docs suggest
-        // a platform can fill it in, and it did suppress the questions — but
-        // this is the TRAVELER's profile, not Jibly's. Putting our website and
-        // a courier trade code on it presents a private individual as a
-        // logistics business they are not, to Stripe and to anyone who reads
-        // their account later.
+        // Prefilled so Stripe's hosted onboarding stops asking a private
+        // individual to describe a business. Stripe confirmed the Business
+        // details step is shown regardless of collection_options.fields — it
+        // is not driven by the requirements hash, so 'currently_due' cannot
+        // suppress it. Prefilling is the documented alternative: "If the
+        // business doesn't have a URL, you can prefill its
+        // business_profile.product_description instead."
         //
-        // If the questions have to be asked, the traveler answers them.
+        // What goes in matters. An earlier attempt put JIBLY's website and
+        // trade code here, which was wrong — this is the traveler's account,
+        // and that would have described them as a logistics company they are
+        // not. What is below describes what the traveler actually does: carry
+        // a parcel for someone, and get paid on delivery. That is true of
+        // every one of them, and it is what Stripe's reviewers need to know.
+        //
+        // No `url`: the traveler has no website, and Stripe only requires one
+        // for accounts requesting card_payments. Ours request transfers only.
+        business_profile: {
+          // 4215 — Courier Services, Air and Ground, Freight Forwarders.
+          mcc: '4215',
+          product_description:
+            'Receives payment for hand-carrying a parcel on a trip they were already taking, on behalf of a private individual. Paid once the recipient confirms delivery. Not a business; no goods are sold.',
+        },
         metadata: { userId },
       },
       { idempotencyKey: `connect_account_${userId}_${bucket}` }
