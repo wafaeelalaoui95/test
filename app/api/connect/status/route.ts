@@ -79,6 +79,17 @@ export async function GET() {
         business_type: account.business_type ?? null,
         country: account.country ?? null,
         tos_acceptance: account.tos_acceptance ?? null,
+        // The two fields that answer "why is Stripe emailing my traveler?".
+        // A Custom account has no dashboard and Stripe owns no relationship
+        // with its holder — the platform does. So if these come back
+        // type: 'express' or stripe_dashboard.type: 'express', the account is
+        // not what the code asked for, and Stripe writing to the traveler is
+        // the correct behaviour for what it actually is.
+        //
+        // controller.requirement_collection says who Stripe chases for missing
+        // documents: 'application' is us, 'stripe' is the traveler directly.
+        type: account.type ?? null,
+        controller: account.controller ?? null,
       };
     } catch (e: any) {
       console.error('[connect/status] retrieve failed:', e?.message);
