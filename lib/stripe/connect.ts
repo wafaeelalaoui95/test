@@ -181,21 +181,27 @@ function isCrossBorder(country: string): boolean {
  * what the traveler actually does: carry a parcel, get paid on delivery. That
  * is true of every one of them, and it is what Stripe's reviewers need.
  *
- * The `url` is the traveler's OWN page on Jibly — /u/<their id>, the public
- * profile listing their trips — not Jibly's corporate site. Stripe's docs ask
- * for exactly this: "If you onboard an account and your platform provides it
- * with a URL, prefill the account's business_profile.url." Jibly does provide
- * one. Leaving it empty left the Business details section incomplete, which is
- * the likeliest reason Stripe kept presenting the step at all.
+ * DELIBERATELY NO `url`, and this was tested both ways. Filling it with the
+ * traveler's own /u/<id> profile page made the form WORSE: "Your website"
+ * reappeared as a visible field. Stripe hides a field it doesn't require and
+ * that is empty, but shows a filled one so a human can confirm it — and the
+ * website field carries its own validation ("Placeholder or under-construction
+ * sites aren't supported"), so it always wants a look. Empty is fewer
+ * questions on screen, which is the whole point here.
  */
-function travelerBusinessProfile(userId: string | null) {
+function travelerBusinessProfile() {
   return {
     // 4215 — Courier Services, Air and Ground, Freight Forwarders.
     mcc: '4215',
     product_description:
       'Receives payment for hand-carrying a parcel on a trip they were already taking, on behalf of a private individual. Paid once the recipient confirms delivery. Not a business; no goods are sold.',
-    ...(userId ? { url: `${getSiteUrl()}/u/${userId}` } : {}),
   };
+}
+
+/** Is this a url WE wrote, rather than something the traveler typed? */
+function isOurProfileUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return url.startsWith(`${getSiteUrl()}/u/`);
 }
 
 /**
@@ -219,18 +225,17 @@ export async function ensureBusinessProfile(
   account: Stripe.Account
 ): Promise<void> {
   const bp = account.business_profile;
-  // metadata.userId is set at creation; without it we can't name the
-  // traveler's profile page, so the url is simply left out.
-  const wanted = travelerBusinessProfile(
-    typeof account.metadata?.userId === 'string' ? account.metadata.userId : null
-  );
+  const wanted = travelerBusinessProfile();
 
   const patch: Record<string, string> = {};
-  if (!bp?.mcc && wanted.mcc) patch.mcc = wanted.mcc;
-  if (!bp?.product_description && wanted.product_description) {
+  if (!bp?.mcc) patch.mcc = wanted.mcc;
+  if (!bp?.product_description) {
     patch.product_description = wanted.product_description;
   }
-  if (!bp?.url && wanted.url) patch.url = wanted.url;
+  // Undo a url an earlier version of this code wrote. Filling it put "Your
+  // website" back on the form, which is the opposite of what we want. Only
+  // ours is cleared — a url the traveler typed themselves is left alone.
+  if (isOurProfileUrl(bp?.url)) patch.url = '';
   if (!Object.keys(patch).length) return;
 
   try {
@@ -300,7 +305,7 @@ async function createRecipientAccount(
           : {}),
         // See travelerBusinessProfile — this is what stops hosted onboarding
         // asking a private individual to describe a business.
-        business_profile: travelerBusinessProfile(userId),
+        business_profile: travelerBusinessProfile(),
         metadata: { userId },
       },
       { idempotencyKey: `connect_account_${userId}_${bucket}` }
