@@ -2,6 +2,7 @@ import type Stripe from 'stripe';
 import { getStripe } from './server';
 import { getAdminClient } from '@/lib/supabase/server';
 import { PAYOUT_COUNTRIES } from './payout-countries';
+import { getSiteUrl } from '@/lib/site-url';
 
 /**
  * Stripe Connect helpers — the traveler payout side of the money flow.
@@ -180,15 +181,22 @@ function isCrossBorder(country: string): boolean {
  * what the traveler actually does: carry a parcel, get paid on delivery. That
  * is true of every one of them, and it is what Stripe's reviewers need.
  *
- * No `url`: the traveler has no website, and Stripe requires one only for
- * accounts requesting card_payments. Ours request transfers only.
+ * The `url` is the traveler's OWN page on Jibly — /u/<their id>, the public
+ * profile listing their trips — not Jibly's corporate site. Stripe's docs ask
+ * for exactly this: "If you onboard an account and your platform provides it
+ * with a URL, prefill the account's business_profile.url." Jibly does provide
+ * one. Leaving it empty left the Business details section incomplete, which is
+ * the likeliest reason Stripe kept presenting the step at all.
  */
-const TRAVELER_BUSINESS_PROFILE = {
-  // 4215 — Courier Services, Air and Ground, Freight Forwarders.
-  mcc: '4215',
-  product_description:
-    'Receives payment for hand-carrying a parcel on a trip they were already taking, on behalf of a private individual. Paid once the recipient confirms delivery. Not a business; no goods are sold.',
-} as const;
+function travelerBusinessProfile(userId: string | null) {
+  return {
+    // 4215 — Courier Services, Air and Ground, Freight Forwarders.
+    mcc: '4215',
+    product_description:
+      'Receives payment for hand-carrying a parcel on a trip they were already taking, on behalf of a private individual. Paid once the recipient confirms delivery. Not a business; no goods are sold.',
+    ...(userId ? { url: `${getSiteUrl()}/u/${userId}` } : {}),
+  };
+}
 
 /**
  * Backfill the business profile on an account that predates the prefill.
@@ -197,10 +205,12 @@ const TRAVELER_BUSINESS_PROFILE = {
  * would still face the Business details step. This closes that gap on the way
  * into onboarding.
  *
- * Only fills a profile that is genuinely EMPTY. If the traveler already
- * answered those questions themselves, their answer stands — overwriting what
+ * Fills FIELD BY FIELD, and only what is empty. If the traveler already
+ * answered one of these themselves, their answer stands — overwriting what
  * someone told Stripe about themselves is not ours to do, and it would rewrite
- * KYC data behind their back.
+ * KYC data behind their back. Per-field rather than all-or-nothing so accounts
+ * created after the first prefill (mcc + description, no url) still pick up
+ * the url they are missing.
  *
  * Never throws: this is a nicety on the way to onboarding, and failing it must
  * not stop a traveler from being paid.
@@ -209,11 +219,23 @@ export async function ensureBusinessProfile(
   account: Stripe.Account
 ): Promise<void> {
   const bp = account.business_profile;
-  if (bp?.product_description || bp?.url || bp?.mcc) return;
+  // metadata.userId is set at creation; without it we can't name the
+  // traveler's profile page, so the url is simply left out.
+  const wanted = travelerBusinessProfile(
+    typeof account.metadata?.userId === 'string' ? account.metadata.userId : null
+  );
+
+  const patch: Record<string, string> = {};
+  if (!bp?.mcc && wanted.mcc) patch.mcc = wanted.mcc;
+  if (!bp?.product_description && wanted.product_description) {
+    patch.product_description = wanted.product_description;
+  }
+  if (!bp?.url && wanted.url) patch.url = wanted.url;
+  if (!Object.keys(patch).length) return;
 
   try {
     await getStripe().accounts.update(account.id, {
-      business_profile: { ...TRAVELER_BUSINESS_PROFILE },
+      business_profile: patch,
     });
   } catch (e: any) {
     console.warn(
@@ -276,9 +298,9 @@ async function createRecipientAccount(
         ...(isCrossBorder(country)
           ? { tos_acceptance: { service_agreement: 'recipient' as const } }
           : {}),
-        // See TRAVELER_BUSINESS_PROFILE — this is what stops hosted onboarding
+        // See travelerBusinessProfile — this is what stops hosted onboarding
         // asking a private individual to describe a business.
-        business_profile: { ...TRAVELER_BUSINESS_PROFILE },
+        business_profile: travelerBusinessProfile(userId),
         metadata: { userId },
       },
       { idempotencyKey: `connect_account_${userId}_${bucket}` }
