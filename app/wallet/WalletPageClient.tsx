@@ -23,31 +23,13 @@ import { cityDisplayName } from '@/lib/countries';
 const COPY = {
   fr: {
     heroTitle: 'Tes gains',
-    earnedLabel: 'Total gagné avec Jibly',
-    earnedNone: 'Tu n’as pas encore été payé.',
-    earnedCountSingular: 'sur {count} livraison',
-    earnedCountPlural: 'sur {count} livraisons',
-    heldLabel: 'En attente de livraison',
-    heldNone: 'Rien en attente pour le moment.',
-    heldCountSingular: '{count} livraison à confirmer',
-    heldCountPlural: '{count} livraisons à confirmer',
-    autoPayout:
-      'Dès qu’une livraison est confirmée, ton paiement part automatiquement vers ton compte bancaire. Rien à demander.',
-    autoPayoutLink: 'Voir mes coordonnées bancaires',
+    earnedLabel: 'Versés',
+    heldLabel: 'En attente',
   },
   en: {
     heroTitle: 'Your earnings',
-    earnedLabel: 'Total earned with Jibly',
-    earnedNone: 'You haven’t been paid yet.',
-    earnedCountSingular: 'across {count} delivery',
-    earnedCountPlural: 'across {count} deliveries',
-    heldLabel: 'Awaiting delivery',
-    heldNone: 'Nothing pending right now.',
-    heldCountSingular: '{count} delivery to confirm',
-    heldCountPlural: '{count} deliveries to confirm',
-    autoPayout:
-      'As soon as a delivery is confirmed, your payment goes to your bank account automatically. Nothing to request.',
-    autoPayoutLink: 'See my bank details',
+    earnedLabel: 'Paid out',
+    heldLabel: 'Pending',
   },
 } as const;
 
@@ -148,58 +130,27 @@ export default function WalletPageClient({
               <div className="pointer-events-none absolute -top-12 -right-12 w-48 h-48 rounded-full bg-mint-500/20 blur-2xl" />
               <div className="pointer-events-none absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-butter-500/15 blur-2xl" />
 
-              <div className="relative">
-                <div className="flex items-center gap-2 text-[12px] font-semibold text-cream-50/60 tracking-[0.12em] uppercase mb-3">
-                  <WalletIcon className="w-3.5 h-3.5" />
-                  {w.earnedLabel}
+              {/* Two numbers, nothing else. Every explanation that used to sit
+                  here — the counts, how payouts reach the bank, where to set
+                  them up — was answering a question nobody had asked yet, and
+                  buried the only two figures a traveler opens this page for. */}
+              <div className="relative flex flex-wrap gap-x-12 gap-y-6">
+                <div>
+                  <div className="text-[12px] font-semibold text-cream-50/60 tracking-[0.12em] uppercase mb-2">
+                    {w.earnedLabel}
+                  </div>
+                  <div className="text-4xl lg:text-5xl font-extrabold tracking-[-0.03em] num-display">
+                    {formatEuros(paidEuros)}
+                  </div>
                 </div>
-                <div className="text-5xl lg:text-6xl font-extrabold tracking-[-0.03em] num-display mb-1">
-                  {formatEuros(paidEuros)}
-                </div>
-                <p className="text-[13px] text-cream-50/70">
-                  {paid.length === 0
-                    ? w.earnedNone
-                    : (paid.length > 1 ? w.earnedCountPlural : w.earnedCountSingular).replace(
-                        '{count}',
-                        String(paid.length)
-                      )}
-                </p>
-
-                {/* Second figure, not a footnote: money still in escrow is the
-                    thing a traveler most wants to know is coming. */}
-                <div className="mt-6 pt-5 border-t border-cream-50/15">
-                  <div className="text-[12px] font-semibold text-cream-50/60 tracking-[0.12em] uppercase mb-1.5">
+                <div>
+                  <div className="text-[12px] font-semibold text-cream-50/60 tracking-[0.12em] uppercase mb-2">
                     {w.heldLabel}
                   </div>
-                  <div className="text-2xl font-extrabold tracking-[-0.02em] num-display">
+                  <div className="text-4xl lg:text-5xl font-extrabold tracking-[-0.03em] num-display">
                     {formatEuros(heldEuros)}
                   </div>
-                  <p className="text-[12px] text-cream-50/60 mt-0.5">
-                    {held.length === 0
-                      ? w.heldNone
-                      : (held.length > 1 ? w.heldCountPlural : w.heldCountSingular).replace(
-                          '{count}',
-                          String(held.length)
-                        )}
-                  </p>
                 </div>
-
-                {/* No withdraw button. There is nothing to withdraw FROM: once
-                    delivery is confirmed the money is transferred to the
-                    traveler's own Stripe account and paid out to their bank on
-                    Stripe's schedule. The page used to show a disabled IBAN
-                    field and a "coming soon" badge for a feature that Connect
-                    replaced. */}
-                <p className="mt-6 text-[13px] text-cream-50/70 leading-relaxed max-w-md">
-                  {w.autoPayout}{' '}
-                  <Link
-                    href="/me?tab=payouts"
-                    className="underline font-semibold hover:text-cream-50 transition-colors"
-                  >
-                    {w.autoPayoutLink}
-                  </Link>
-                </p>
-
               </div>
             </div>
           </section>
