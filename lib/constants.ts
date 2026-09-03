@@ -67,16 +67,37 @@ export const ITEM_CATEGORIES: {
   { value: 'otc', labelKey: 'cat_otc', descKey: 'cat_otc_desc', icon: '💊' },
 ];
 
-export const FORBIDDEN_CATEGORIES = [
-  'Espèces',
-  'Médicaments sur ordonnance',
-  'Drogues et stupéfiants',
-  'Armes',
-  'Contrefaçons',
-  'Bijoux de grande valeur',
-  'Produits dangereux',
-  'Alcool, tabac et produits réglementés',
-];
+/**
+ * Bilingual inline rather than translation keys, unlike ITEM_CATEGORIES.
+ *
+ * These are eight short nouns rendered in exactly one place, and keeping them
+ * as a pair of lists means a language can never end up half-translated: adding
+ * an item forces both. They were French-only, so an English sender read
+ * "Espèces · Médicaments sur ordonnance" — a list of what will get them stopped
+ * at customs, in a language they might not read.
+ */
+export const FORBIDDEN_CATEGORIES: Record<'fr' | 'en', string[]> = {
+  fr: [
+    'Espèces',
+    'Médicaments sur ordonnance',
+    'Drogues et stupéfiants',
+    'Armes',
+    'Contrefaçons',
+    'Bijoux de grande valeur',
+    'Produits dangereux',
+    'Alcool, tabac et produits réglementés',
+  ],
+  en: [
+    'Cash',
+    'Prescription medication',
+    'Drugs and narcotics',
+    'Weapons',
+    'Counterfeit goods',
+    'High-value jewellery',
+    'Hazardous goods',
+    'Alcohol, tobacco and regulated products',
+  ],
+};
 export const URGENCY_LEVELS: {
   value: Urgency;
   labelKey: keyof Translations;

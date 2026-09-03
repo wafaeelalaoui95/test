@@ -699,7 +699,7 @@ export default function EnvoyerPage() {
                       {t.send_forbidden_title}
                     </p>
                     <p className="text-[14px] text-ink-500 leading-relaxed">
-                      {FORBIDDEN_CATEGORIES.join(' · ')}
+                      {FORBIDDEN_CATEGORIES[locale === 'en' ? 'en' : 'fr'].join(' · ')}
                     </p>
                   </div>
                 </div>
