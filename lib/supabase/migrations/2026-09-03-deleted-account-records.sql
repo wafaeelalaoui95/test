@@ -71,3 +71,33 @@ update public.profiles
 set full_name = null
 where deleted_at is not null
   and full_name in ('Utilisateur supprimé', 'Deleted user');
+
+-- ---------------------------------------------------------------------------
+-- Backfill from auth metadata, then clear it
+-- ---------------------------------------------------------------------------
+-- The old deletion scrambled auth.users.email but left the sign-up payload in
+-- raw_user_meta_data, which still held the original address and full name. So
+-- accounts deleted before this migration ARE recoverable — and, less happily,
+-- were never really erased.
+--
+-- Recover what is there:
+
+update public.deleted_account_records d
+set full_name = coalesce(d.full_name, u.raw_user_meta_data->>'full_name'),
+    email     = coalesce(d.email,     u.raw_user_meta_data->>'email')
+from auth.users u
+where u.id = d.user_id;
+
+-- Then remove it from the place that has no purge date, so the governed row
+-- above is the only copy left. New deletions do this in the route.
+
+update auth.users
+set raw_user_meta_data = raw_user_meta_data
+      - 'full_name' - 'name' - 'email' - 'phone' - 'avatar_url' - 'picture'
+where id in (select user_id from public.deleted_account_records);
+
+-- Check: names and emails present here, and gone from auth.
+select d.user_id, d.full_name, d.email, d.purge_after::date,
+       u.raw_user_meta_data
+from public.deleted_account_records d
+join auth.users u on u.id = d.user_id;

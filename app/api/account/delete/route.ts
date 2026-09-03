@@ -185,7 +185,23 @@ export async function POST() {
   const { error: authErr } = await admin.auth.admin.updateUserById(user.id, {
     email: `deleted+${user.id}@account-deleted.invalid`,
     ban_duration: '876000h', // ~100 years
-    user_metadata: { deleted: true },
+    // Clearing the metadata matters as much as scrambling the address.
+    // Supabase MERGES this object, and the sign-up payload sitting in it kept
+    // the original e-mail and full name — so deletion was scrambling one copy
+    // of the address while leaving another beside it, in a place no retention
+    // policy covers and no purge date reaches. Null removes a key.
+    //
+    // After this, the only surviving copy is the row in
+    // deleted_account_records, which is service-role only and expires.
+    user_metadata: {
+      deleted: true,
+      full_name: null,
+      name: null,
+      email: null,
+      phone: null,
+      avatar_url: null,
+      picture: null,
+    },
   });
 
   if (authErr) {
