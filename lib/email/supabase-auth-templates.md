@@ -15,8 +15,17 @@ for the same reason (there is no `locale` on `profiles` yet), but these two
 reach people who have never signed in and may not read French at all. French
 first, English under a rule.
 
-Supabase substitutes `{{ .ConfirmationURL }}` itself. Leave it exactly as
-written, including the spaces inside the braces.
+**The links are built by hand, NOT with `{{ .ConfirmationURL }}`.** That one
+produces a PKCE link, which needs a `code_verifier` cookie left in the browser
+that started the signup. Open the email anywhere else — Gmail's in-app browser,
+a private tab, a laptop when you signed up on your phone — and the first click
+fails; clicking again from the right browser works. That was the "you have to
+do it twice" both Wafae and her brother hit.
+
+`{{ .TokenHash }}` carries the whole proof in the URL, so the link works from
+any browser on any device, first time. `/auth/callback` accepts both.
+
+Leave the `{{ ... }}` exactly as written, spaces inside the braces included.
 
 ---
 
@@ -67,7 +76,7 @@ Say it in the body too, where the same rule applies:
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
                 <tr>
                   <td style="background:#1A1614;border-radius:999px;">
-                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+                    <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next=/me" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
                       Confirmer mon adresse
                     </a>
                   </td>
@@ -132,7 +141,7 @@ Say it in the body too, where the same rule applies:
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
                 <tr>
                   <td style="background:#1A1614;border-radius:999px;">
-                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+                    <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password/update" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
                       Réinitialiser mon mot de passe
                     </a>
                   </td>
