@@ -25,32 +25,37 @@ select id,
 from public.booking_intents
 order by created_at desc;
 
--- Copy the id of the row you are keeping. It goes in EVERY query below,
--- in place of PASTE_ID_HERE. Do not skip one — an id left as the placeholder
--- makes that statement delete everything.
+-- Copy the id of the row you are keeping. In each section below it is written
+-- ONCE, at the top, and everything else refers back to it — so there is no
+-- way to update one occurrence and miss another.
+--
+-- KEEP THE QUOTES. `where id <> 9d1ab5ed-...` without them is read as
+-- arithmetic and fails with "trailing junk after numeric literal".
 
 -- ---------------------------------------------------------------------------
 -- 2. PREVIEW WHAT WOULD GO
 -- ---------------------------------------------------------------------------
--- Run this before deleting anything. If a row you care about appears here,
--- stop.
+-- Run this before deleting anything. If a count surprises you, stop.
 
-select 'booking' as kind, count(*)
-from public.booking_intents
-where id <> 'PASTE_ID_HERE'
+with keep as (select 'PASTE_ID_HERE'::uuid as id)
+select 'bookings to delete' as kind, count(*)
+from public.booking_intents b, keep
+where b.id <> keep.id
 union all
-select 'trip', count(*)
-from public.traveler_trips
-where id not in (
-  select traveler_trip_id from public.booking_intents
-  where id = 'PASTE_ID_HERE' and traveler_trip_id is not null
+select 'trips to delete', count(*)
+from public.traveler_trips t
+where t.id not in (
+  select b.traveler_trip_id
+  from public.booking_intents b, keep
+  where b.id = keep.id and b.traveler_trip_id is not null
 )
 union all
-select 'request', count(*)
-from public.shipping_requests
-where id not in (
-  select shipping_request_id from public.booking_intents
-  where id = 'PASTE_ID_HERE' and shipping_request_id is not null
+select 'requests to delete', count(*)
+from public.shipping_requests r
+where r.id not in (
+  select b.shipping_request_id
+  from public.booking_intents b, keep
+  where b.id = keep.id and b.shipping_request_id is not null
 );
 
 -- ---------------------------------------------------------------------------
@@ -73,7 +78,10 @@ delete from public.notifications;
 delete from public.disputes;
 delete from public.reports;
 
--- The bookings themselves, except the one being kept.
+-- The bookings themselves, except the one being kept. This is the ONLY place
+-- in the deletion block where the id appears: the trip and request deletes
+-- below work from whatever bookings are left, so once this has run they need
+-- no id of their own.
 delete from public.booking_intents
 where id <> 'PASTE_ID_HERE';
 
