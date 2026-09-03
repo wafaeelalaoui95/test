@@ -107,7 +107,12 @@ export default function VoyagerPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const FLIGHT_NUMBER_PATTERN = /^[A-Z]{2,3}\s?\d{1,4}$/i;
-  const isValidFlightNumber = (s: string) => FLIGHT_NUMBER_PATTERN.test(s.trim());
+  // Optional. A flight number reassures a sender, but requiring it turned an
+  // easy first post into a hunt through a booking confirmation — and a traveler
+  // who hasn't booked yet cannot publish at all. Empty passes; only a value
+  // that is present AND malformed is rejected.
+  const isValidFlightNumber = (s: string) =>
+    s.trim() === '' || FLIGHT_NUMBER_PATTERN.test(s.trim());
 
   function toggleCategory(value: string) {
     setAcceptedCategories((prev) =>
@@ -237,7 +242,9 @@ export default function VoyagerPage() {
         available_weight_kg: null,
         available_space: space ?? 'pochette',
         flight_time: time || null,
-        flight_number: flightNumber.trim().toUpperCase().replace(/\s+/g, ' '),
+        flight_number: flightNumber.trim()
+          ? flightNumber.trim().toUpperCase().replace(/\s+/g, ' ')
+          : null,
         departure_airport: departureAirport.trim().toUpperCase() || null,
         arrival_airport: arrivalAirport.trim().toUpperCase() || null,
         notes: JSON.stringify({ accepted_categories: acceptedCategories }),
@@ -1104,7 +1111,9 @@ function InstantProposeModal({
           available_weight_kg: null,
           available_space: 'pochette',
           flight_time: time || null,
-          flight_number: flightNumber.trim().toUpperCase().replace(/\s+/g, ' '),
+          flight_number: flightNumber.trim()
+          ? flightNumber.trim().toUpperCase().replace(/\s+/g, ' ')
+          : null,
           departure_airport: departureAirport.trim().toUpperCase() || null,
           arrival_airport: arrivalAirport.trim().toUpperCase() || null,
           notes: null,
