@@ -1,20 +1,24 @@
 import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/server';
 import { syncConnectAccount, isAccountPayable } from '@/lib/stripe/connect';
+import { unsupportedRequirements } from '@/lib/stripe/onboarding';
 import { getServerClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/connect/status
  *
- * Where does the current user stand on payouts? Returns the cached DB flags,
- * and — when they are not yet payable — re-reads the live Stripe account and
- * re-syncs first.
+ * Where does the current user stand on payouts? Re-reads the live Stripe
+ * account, re-syncs the cached flags, and reports what remains.
  *
- * The re-read exists for the return-from-onboarding moment: the user lands on
- * /me?payouts=done possibly before account.updated arrives, and showing them
- * "setup incomplete" right after they completed setup is the kind of thing
- * that generates support mail. Once payouts are enabled we trust the cache and
- * skip the API call.
+ * The re-read matters for the moment a traveler finishes onboarding: they are
+ * looking at the screen possibly before account.updated arrives, and telling
+ * them setup is incomplete right after they completed it is how you generate
+ * support mail.
+ *
+ * It runs even for an account that is already payable, because the payouts tab
+ * needs the account's country to know whether changing bank should ask for an
+ * IBAN or a sort code. This route is only hit from the payouts screen, so the
+ * extra call is not on any hot path.
  */
 export async function GET() {
   const supabase = getServerClient();
@@ -51,55 +55,64 @@ export async function GET() {
   // Opening this route in a browser while logged in is the quickest way to
   // read it; no Stripe key or CLI needed.
   let requirements: Record<string, unknown> | null = null;
+  // Requirements our own forms can't satisfy — empty means the traveler can
+  // finish on Jibly.
+  let unsupported: string[] = [];
+  // Needed even for a finished account: it decides whether changing bank asks
+  // for an IBAN or a sort code. It is immutable, so it is safe to trust.
+  let country: string | null = null;
 
-  if (!payoutsEnabled) {
-    try {
-      const account = await getStripe().accounts.retrieve(
-        profile.stripe_account_id
-      );
-      await syncConnectAccount(account);
-      // isAccountPayable, not account.payouts_enabled: Stripe sets that flag
-      // while requirements are still outstanding, so trusting it tells a
-      // traveler who abandoned onboarding that they are all set.
-      payoutsEnabled = isAccountPayable(account);
-      // Surfaced so the UI can say *what* Stripe is still waiting on rather
-      // than a bare "incomplete".
-      // Deduplicated: past_due is a SUBSET of currently_due, not a separate
-      // list, so concatenating them showed every field twice.
-      requirementsDue = [
-        ...new Set([
-          ...(account.requirements?.currently_due ?? []),
-          ...(account.requirements?.past_due ?? []),
-        ]),
-      ];
-      requirements = {
-        currently_due: account.requirements?.currently_due ?? [],
-        eventually_due: account.requirements?.eventually_due ?? [],
-        past_due: account.requirements?.past_due ?? [],
-        disabled_reason: account.requirements?.disabled_reason ?? null,
-        // Handy context when reading the list: which of these actually block
-        // money moving, and what shape of account we ended up creating.
-        capabilities: account.capabilities ?? null,
-        business_type: account.business_type ?? null,
-        country: account.country ?? null,
-        tos_acceptance: account.tos_acceptance ?? null,
-        // The two fields that answer "why is Stripe emailing my traveler?".
-        // A Custom account has no dashboard and Stripe owns no relationship
-        // with its holder — the platform does. So if these come back
-        // type: 'express' or stripe_dashboard.type: 'express', the account is
-        // not what the code asked for, and Stripe writing to the traveler is
-        // the correct behaviour for what it actually is.
-        //
-        // controller.requirement_collection says who Stripe chases for missing
-        // documents: 'application' is us, 'stripe' is the traveler directly.
-        type: account.type ?? null,
-        controller: account.controller ?? null,
-      };
-    } catch (e: any) {
-      console.error('[connect/status] retrieve failed:', e?.message);
-      // Fall through to the cached values — a Stripe outage should degrade to
-      // stale data, not a broken /me page.
-    }
+  try {
+    const account = await getStripe().accounts.retrieve(
+      profile.stripe_account_id
+    );
+    await syncConnectAccount(account);
+    country = account.country ?? null;
+    // isAccountPayable, not account.payouts_enabled: Stripe sets that flag
+    // while requirements are still outstanding, so trusting it tells a
+    // traveler who abandoned onboarding that they are all set.
+    payoutsEnabled = isAccountPayable(account);
+    // Surfaced so the UI can say *what* Stripe is still waiting on rather
+    // than a bare "incomplete".
+    // Deduplicated: past_due is a SUBSET of currently_due, not a separate
+    // list, so concatenating them showed every field twice.
+    requirementsDue = [
+      ...new Set([
+        ...(account.requirements?.currently_due ?? []),
+        ...(account.requirements?.past_due ?? []),
+      ]),
+    ];
+    requirements = {
+      currently_due: account.requirements?.currently_due ?? [],
+      eventually_due: account.requirements?.eventually_due ?? [],
+      past_due: account.requirements?.past_due ?? [],
+      disabled_reason: account.requirements?.disabled_reason ?? null,
+      // Handy context when reading the list: which of these actually block
+      // money moving, and what shape of account we ended up creating.
+      capabilities: account.capabilities ?? null,
+      business_type: account.business_type ?? null,
+      country: account.country ?? null,
+      tos_acceptance: account.tos_acceptance ?? null,
+      // The two fields that answer "why is Stripe emailing my traveler?".
+      // A Custom account has no dashboard and Stripe owns no relationship
+      // with its holder — the platform does. So if these come back
+      // type: 'express' or stripe_dashboard.type: 'express', the account is
+      // not what the code asked for, and Stripe writing to the traveler is
+      // the correct behaviour for what it actually is.
+      //
+      // controller.requirement_collection says who Stripe chases for missing
+      // documents: 'application' is us, 'stripe' is the traveler directly.
+      type: account.type ?? null,
+      controller: account.controller ?? null,
+    };
+    // Which requirements our own screens can't collect. Drives two things in
+    // PayoutOnboarding: whether to hand this traveler the hosted form, and
+    // which step to resume them at rather than restarting from the country.
+    unsupported = unsupportedRequirements(account);
+  } catch (e: any) {
+    console.error('[connect/status] retrieve failed:', e?.message);
+    // Fall through to the cached values — a Stripe outage should degrade to
+    // stale data, not a broken /me page.
   }
 
   return NextResponse.json({
@@ -111,7 +124,10 @@ export async function GET() {
     payoutsEnabled,
     identityVerified: !!profile.identity_verified_at,
     needsOnboarding: !payoutsEnabled,
+    country,
     requirementsDue,
+    unsupported,
+    canSelfServe: unsupported.length === 0,
     requirements,
   });
 }

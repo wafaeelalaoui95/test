@@ -150,43 +150,26 @@ export function SetupPayoutsButton({
 // details. Stripe hosts it; we never see an account number.
 export function ManagePayoutsButton() {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [errCode, setErrCode] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
-  async function open() {
-    setLoading(true);
-    setErr(null);
-    setErrCode(null);
-    try {
-      const res = await fetch('/api/connect/dashboard', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        if (data?.code) setErrCode(data.code);
-        throw new Error(t.payout_manage_failed);
-      }
-      window.location.href = data.url;
-    } catch (e: any) {
-      setErr(e.message ?? t.me2_error_retry);
-      setLoading(false);
-    }
-  }
+  // This used to call /api/connect/dashboard, which mints a Stripe Express
+  // login link — and Express dashboards don't exist for Custom accounts, so it
+  // could never have worked. It failed with StripeInvalidRequestError every
+  // time it was pressed.
+  //
+  // Removing it wasn't right either: someone changes bank two months later and
+  // must not need support to do it. Now that the bank step is ours, reuse it.
+  // createExternalAccount(default_for_currency: true) replaces the destination
+  // rather than adding a second one.
+  if (open) return <PayoutOnboarding bankOnly onDone={() => setOpen(false)} />;
 
   return (
-    <>
-      <button
-        onClick={open}
-        disabled={loading}
-        className="text-[13px] text-ink-600 underline underline-offset-2 disabled:opacity-50"
-      >
-        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : null}
-        {t.payout_manage_cta}
-      </button>
-      {err && <p className="mt-2 text-[12px] text-blush-500">{err}</p>}
-      {errCode && (
-        <p className="mt-1 text-[11px] text-ink-300 font-mono">{errCode}</p>
-      )}
-    </>
+    <button
+      onClick={() => setOpen(true)}
+      className="text-[13px] text-ink-600 underline underline-offset-2"
+    >
+      {t.payout_manage_cta}
+    </button>
   );
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Elements, IbanElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Loader2, Check, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -132,17 +132,53 @@ function usesIban(country: string): boolean {
   return !['GB', 'GI'].includes(country.toUpperCase());
 }
 
-type Step = 'country' | 'identity' | 'bank' | 'terms' | 'done' | 'fallback';
+type Step =
+  | 'resuming'
+  | 'country'
+  | 'identity'
+  | 'bank'
+  | 'terms'
+  | 'done'
+  | 'fallback';
 
-export function PayoutOnboarding({ onDone }: { onDone?: () => void }) {
+/** Where does this traveler actually stand? Anything already satisfied is a
+ *  step they must not be made to repeat — leaving the page mid-form and coming
+ *  back to the very first question is how people give up. */
+function stepFromStatus(d: any): Step {
+  if (!d?.accountId) return 'country';
+  if (d.payoutsEnabled) return 'done';
+  if (d.canSelfServe === false) return 'fallback';
+  const due: string[] = d.requirementsDue ?? [];
+  if (due.some((r) => r.startsWith('individual.'))) return 'identity';
+  if (due.includes('external_account')) return 'bank';
+  if (due.some((r) => r.startsWith('tos_acceptance'))) return 'terms';
+  return 'done';
+}
+
+const DRAFT_KEY = 'jibly.payout.draft';
+
+export function PayoutOnboarding({
+  onDone,
+  bankOnly,
+}: {
+  onDone?: () => void;
+  /** Skip straight to the bank step — for changing bank later, not onboarding. */
+  bankOnly?: boolean;
+}) {
   return (
     <Elements stripe={getStripeClient()}>
-      <Flow onDone={onDone} />
+      <Flow onDone={onDone} bankOnly={bankOnly} />
     </Elements>
   );
 }
 
-function Flow({ onDone }: { onDone?: () => void }) {
+function Flow({
+  onDone,
+  bankOnly,
+}: {
+  onDone?: () => void;
+  bankOnly?: boolean;
+}) {
   const { locale } = useI18n();
   const { profile } = useAuth();
   const c = COPY[locale === 'en' ? 'en' : 'fr'];
@@ -154,7 +190,7 @@ function Flow({ onDone }: { onDone?: () => void }) {
     ? findCountryByName(profile.country.trim())?.code ?? ''
     : '';
 
-  const [step, setStep] = useState<Step>('country');
+  const [step, setStep] = useState<Step>(bankOnly ? 'bank' : 'resuming');
   const [country, setCountry] = useState(
     options.some((o) => o.code === prefill) ? prefill : ''
   );
@@ -183,6 +219,75 @@ function Flow({ onDone }: { onDone?: () => void }) {
   // ours to explain. "Something went wrong" is a lie when Stripe said exactly
   // what was wrong — an incomplete IBAN is the person's to fix, not a fault,
   // and telling them so is the difference between a correction and a dead end.
+  // Resume where Stripe says this traveler actually is. Without this, leaving
+  // the page for any reason drops them back at "which country?" with an
+  // account already created — the complaint that prompted it.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/connect/status')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        // Needed in both modes: it decides IBAN versus sort code.
+        if (typeof d?.country === 'string') setCountry(d.country.toUpperCase());
+        if (bankOnly) return;
+        setStep(stepFromStatus(d));
+      })
+      .catch(() => {
+        // Status is a convenience, not a gate. If it fails, start from the top
+        // rather than showing a spinner forever.
+        if (!cancelled) setStep('country');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bankOnly]);
+
+  // Keep what they've typed across a navigation. Only the plain identity
+  // fields: the bank number is inside Stripe's element and never lives here,
+  // so there is nothing sensitive to leak. sessionStorage rather than
+  // localStorage so it dies with the tab, and cleared once submitted.
+  useEffect(() => {
+    if (bankOnly || step !== 'identity') return;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.firstName) setFirstName(d.firstName);
+      if (d.lastName) setLastName(d.lastName);
+      if (d.dobDay) setDobDay(d.dobDay);
+      if (d.dobMonth) setDobMonth(d.dobMonth);
+      if (d.dobYear) setDobYear(d.dobYear);
+      if (d.line1) setLine1(d.line1);
+      if (d.line2) setLine2(d.line2);
+      if (d.city) setCity(d.city);
+      if (d.postalCode) setPostalCode(d.postalCode);
+    } catch {
+      /* private mode, cleared storage — not worth failing over */
+    }
+    // Restoring once on entering the step is the point; re-running on every
+    // keystroke would fight the user's typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, bankOnly]);
+
+  useEffect(() => {
+    if (bankOnly || step !== 'identity') return;
+    try {
+      sessionStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          firstName, lastName, dobDay, dobMonth, dobYear,
+          line1, line2, city, postalCode,
+        })
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [
+    bankOnly, step, firstName, lastName, dobDay, dobMonth, dobYear,
+    line1, line2, city, postalCode,
+  ]);
+
   function fail(code?: string) {
     const known = code && (c as Record<string, string>)[code];
     setErr(known ?? c.error);
@@ -247,6 +352,11 @@ function Flow({ onDone }: { onDone?: () => void }) {
         postalCode: postalCode.trim(),
       });
       if (!holder) setHolder(`${firstName.trim()} ${lastName.trim()}`.trim());
+      try {
+        sessionStorage.removeItem(DRAFT_KEY);
+      } catch {
+        /* ignore */
+      }
       setStep('bank');
     } catch (e: any) {
       fail(e.code);
@@ -290,7 +400,13 @@ function Flow({ onDone }: { onDone?: () => void }) {
       }
 
       await post('/api/connect/bank', { token: token!.id });
-      setStep('terms');
+      // Changing bank later doesn't re-accept the terms — they already did.
+      if (bankOnly) {
+        setStep('done');
+        onDone?.();
+      } else {
+        setStep('terms');
+      }
     } catch (e: any) {
       fail(e.code);
     } finally {
@@ -348,7 +464,13 @@ function Flow({ onDone }: { onDone?: () => void }) {
 
   return (
     <div>
-      {step !== 'country' && step !== 'done' && (
+      {step === 'resuming' && (
+        <div className="flex items-center gap-2 text-[13px] text-ink-400 py-3">
+          <Loader2 className="w-4 h-4 animate-spin" />
+        </div>
+      )}
+
+      {!bankOnly && step !== 'resuming' && step !== 'country' && step !== 'done' && (
         <button
           onClick={() =>
             setStep(
