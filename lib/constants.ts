@@ -16,6 +16,23 @@ import type { Translations } from '@/lib/i18n/translations';
  */
 export const MIN_COMPENSATION_EUR = 5;
 
+/**
+ * Jibly's commission, in basis points (1 bp = 0.01%). 1500 = 15%.
+ *
+ * It lives HERE, imported by both sides of the money flow, because it used to
+ * live in two places and the two halves drifted apart in meaning rather than
+ * value. Checkout added 15% ON TOP of the traveler's price (5.00 → 5.75) while
+ * the payout took 15% OFF the total charged (5.75 → 4.89), so the fee was
+ * effectively applied twice and the traveler received less than the amount
+ * they had been promised on their own listing.
+ *
+ * The rule, once: the traveler's price is what the traveler receives. The
+ * sender pays that plus the commission. See priceBreakdown() for the forward
+ * direction and splitAmount() for the inverse — they must stay inverses of
+ * each other.
+ */
+export const PLATFORM_FEE_BPS = 1500;
+
 export const ITEM_CATEGORIES: {
   value: ItemCategory;
   labelKey: keyof Translations;

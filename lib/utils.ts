@@ -1,3 +1,4 @@
+import { PLATFORM_FEE_BPS } from '@/lib/constants';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -97,9 +98,12 @@ export function displayName(name: string | null | undefined): string {
 /**
  * Jibly fee model.
  * Traveler sets a price (e.g. 50€) — that's what they receive.
- * Sender pays that price PLUS 15% service fee on top.
+ * Sender pays that price PLUS the service fee on top.
+ *
+ * Derived from PLATFORM_FEE_BPS rather than written out, so this and
+ * splitAmount() (which inverts it at payout time) can never disagree again.
  */
-export const JIBLY_FEE_RATE = 0.15;
+export const JIBLY_FEE_RATE = PLATFORM_FEE_BPS / 10000;
 
 export type PriceBreakdown = {
   traveler: number;

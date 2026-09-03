@@ -2,6 +2,7 @@ import type Stripe from 'stripe';
 import { getStripe } from './server';
 import { getAdminClient } from '@/lib/supabase/server';
 import { PAYOUT_COUNTRIES } from './payout-countries';
+import { PLATFORM_FEE_BPS } from '@/lib/constants';
 import { getSiteUrl } from '@/lib/site-url';
 
 /**
@@ -19,23 +20,32 @@ import { getSiteUrl } from '@/lib/site-url';
  * booking without unwinding the whole thing.
  */
 
-/**
- * Jibly's commission, in basis points (1 bp = 0.01%). 1500 = 15%.
- * Single source of truth — change this one number to reprice the marketplace.
- */
-export const PLATFORM_FEE_BPS = 1500;
+export { PLATFORM_FEE_BPS };
 
 /**
  * Split a captured amount into what Jibly keeps and what the traveler gets.
- * Both in cents. We round the fee DOWN so rounding dust always lands in the
- * traveler's favour rather than ours — cheaper than explaining a missing cent.
+ * Both in cents.
+ *
+ * This is the INVERSE of priceBreakdown(), and it has to be. The sender was
+ * charged the traveler's price PLUS the commission, so recovering the
+ * traveler's share means dividing that total back out — not taking a
+ * percentage off it.
+ *
+ *   traveler asks 5.00 → sender pays 5.75 → traveler receives 5.00
+ *
+ * Subtracting 15% from 5.75 gives 4.89, which is what this function used to
+ * do: the commission was charged on top and then deducted again, so every
+ * traveler was quietly paid less than their own listing promised. The error
+ * grows with the amount.
  */
 export function splitAmount(amountCents: number): {
   feeCents: number;
   travelerCents: number;
 } {
-  const feeCents = Math.floor((amountCents * PLATFORM_FEE_BPS) / 10000);
-  return { feeCents, travelerCents: amountCents - feeCents };
+  const travelerCents = Math.round(
+    (amountCents * 10000) / (10000 + PLATFORM_FEE_BPS)
+  );
+  return { feeCents: amountCents - travelerCents, travelerCents };
 }
 
 /**
