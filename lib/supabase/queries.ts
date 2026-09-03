@@ -988,6 +988,10 @@ export async function getPublicProfile(
         .from('profiles')
        .select('id, full_name, avatar_url, verification_level, rating, trips_completed, city, country, identity_verified_at, created_at')
         .eq('id', userId)
+        // A deleted account has no public profile. The row survives so reviews
+        // about that person are not erased with them, but nobody should land
+        // on a page for someone who asked to be gone.
+        .is('deleted_at', null)
         .maybeSingle()
     ),
     8000,

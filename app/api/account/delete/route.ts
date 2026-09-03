@@ -118,11 +118,53 @@ export async function POST() {
       .in('status', ['draft', 'pending']),
   ]);
 
-  // 3. Anonymise the profile row (keep it — received reviews reference it).
+  // 3. Keep the minimal identity record BEFORE anonymising, or it is gone.
+  //
+  //    The right to erasure has limits: GDPR Art. 17(3) preserves what is
+  //    needed to establish or defend legal claims, and AML rules require KYC
+  //    retention outright for a platform that holds third-party funds. Without
+  //    this, someone could behave badly, delete, and become unidentifiable —
+  //    while Jibly still owed an authority an answer about them.
+  //
+  //    Service-role only, RLS denies everyone, five-year purge date on the row.
+  //    See 2026-09-03-deleted-account-records.sql.
+  const { data: current } = await admin
+    .from('profiles')
+    .select('full_name, phone, identity_verification_id, stripe_account_id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const { error: recordErr } = await admin
+    .from('deleted_account_records')
+    .upsert({
+      user_id: user.id,
+      full_name: current?.full_name ?? null,
+      email: user.email ?? null,
+      phone: current?.phone ?? null,
+      identity_verification_id: current?.identity_verification_id ?? null,
+      stripe_account_id: current?.stripe_account_id ?? null,
+      deleted_at: new Date().toISOString(),
+    });
+
+  if (recordErr) {
+    // Refuse rather than proceed. Anonymising without keeping the record is
+    // the one outcome that cannot be undone, and it is the outcome that leaves
+    // Jibly unable to answer for this person later.
+    console.error('[account/delete] retention record failed:', recordErr);
+    return NextResponse.json(
+      { error: 'retention_record_failed' },
+      { status: 500 }
+    );
+  }
+
+  // 4. Anonymise the profile row (keep it — received reviews reference it).
+  //    full_name goes to NULL, not to "Utilisateur supprimé": deleted_at
+  //    already carries that meaning, and writing the label into the data made
+  //    it redundant, destructive and French-only. The UI derives it now.
   const { error: profErr } = await admin
     .from('profiles')
     .update({
-      full_name: 'Utilisateur supprimé',
+      full_name: null,
       avatar_url: null,
       phone: null,
       city: null,
@@ -138,7 +180,7 @@ export async function POST() {
     return NextResponse.json({ error: profErr.message }, { status: 500 });
   }
 
-  // 4. Free the e-mail + block login. Scramble to a reserved .invalid address
+  // 5. Free the e-mail + block login. Scramble to a reserved .invalid address
   //    (RFC 6761 — guaranteed never to resolve / collide) and ban the user.
   const { error: authErr } = await admin.auth.admin.updateUserById(user.id, {
     email: `deleted+${user.id}@account-deleted.invalid`,
@@ -155,7 +197,7 @@ export async function POST() {
     );
   }
 
-  // 5. Clear the session cookies.
+  // 6. Clear the session cookies.
   await supabase.auth.signOut();
 
   return NextResponse.json({ ok: true });
