@@ -1,4 +1,4 @@
-import { PLATFORM_FEE_BPS } from '@/lib/constants';
+import { PLATFORM_FEE_BPS, PLATFORM_FEE_FIXED_CENTS } from '@/lib/constants';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -104,6 +104,7 @@ export function displayName(name: string | null | undefined): string {
  * splitAmount() (which inverts it at payout time) can never disagree again.
  */
 export const JIBLY_FEE_RATE = PLATFORM_FEE_BPS / 10000;
+export const JIBLY_FEE_FIXED = PLATFORM_FEE_FIXED_CENTS / 100;
 
 export type PriceBreakdown = {
   traveler: number;
@@ -111,8 +112,16 @@ export type PriceBreakdown = {
   total: number;
 };
 
+/**
+ * What the sender pays for a trip priced at `travelerEuros`.
+ *
+ * Percentage PLUS a flat amount, because Stripe's fee has a flat part too —
+ * see PLATFORM_FEE_FIXED_CENTS. splitAmount() is the exact inverse of this and
+ * must stay so: the traveler receives `traveler`, not a percentage of `total`.
+ */
 export function priceBreakdown(travelerEuros: number): PriceBreakdown {
-  const fees = Math.round(travelerEuros * JIBLY_FEE_RATE * 100) / 100;
+  const fees =
+    Math.round(travelerEuros * JIBLY_FEE_RATE * 100) / 100 + JIBLY_FEE_FIXED;
   return {
     traveler: travelerEuros,
     fees,

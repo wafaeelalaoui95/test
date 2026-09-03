@@ -2,7 +2,7 @@ import type Stripe from 'stripe';
 import { getStripe } from './server';
 import { getAdminClient } from '@/lib/supabase/server';
 import { PAYOUT_COUNTRIES } from './payout-countries';
-import { PLATFORM_FEE_BPS } from '@/lib/constants';
+import { PLATFORM_FEE_BPS, PLATFORM_FEE_FIXED_CENTS } from '@/lib/constants';
 import { getSiteUrl } from '@/lib/site-url';
 
 /**
@@ -37,13 +37,16 @@ export { PLATFORM_FEE_BPS };
  * do: the commission was charged on top and then deducted again, so every
  * traveler was quietly paid less than their own listing promised. The error
  * grows with the amount.
+ *
+ * The flat part comes off FIRST, mirroring the order priceBreakdown adds it.
  */
 export function splitAmount(amountCents: number): {
   feeCents: number;
   travelerCents: number;
 } {
+  const afterFlat = Math.max(0, amountCents - PLATFORM_FEE_FIXED_CENTS);
   const travelerCents = Math.round(
-    (amountCents * 10000) / (10000 + PLATFORM_FEE_BPS)
+    (afterFlat * 10000) / (10000 + PLATFORM_FEE_BPS)
   );
   return { feeCents: amountCents - travelerCents, travelerCents };
 }

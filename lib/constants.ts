@@ -34,6 +34,25 @@ export const MIN_COMPENSATION_EUR = 5;
  */
 export const PLATFORM_FEE_BPS = 1500;
 
+/**
+ * Flat part of the commission, in cents, added on top of the percentage.
+ *
+ * Stripe's own fee has a fixed component of roughly 25 cents per payment, and
+ * a purely percentage commission has none — so on small parcels the flat cost
+ * ate most of the margin. A 5 € parcel charged 5.75, of which Stripe took 0.44
+ * and Jibly kept 0.31: the processor earned more than the marketplace.
+ *
+ * Matching the shape of the cost fixes that where it hurts and barely moves
+ * anything else — a 50 € parcel's economics are unchanged. Every C2C
+ * marketplace prices this way (Vinted, eBay, Etsy) for the same reason.
+ *
+ * Charged to the SENDER only. The traveler is the scarce side of this
+ * marketplace — they have to actually be on the flight — and taxing the scarce
+ * side while short of it is how you slow supply. It also protects the promise
+ * that a traveler receives exactly what their listing says.
+ */
+export const PLATFORM_FEE_FIXED_CENTS = 50;
+
 export const ITEM_CATEGORIES: {
   value: ItemCategory;
   labelKey: keyof Translations;
