@@ -12,9 +12,38 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import type { WalletTransaction } from '@/lib/supabase/queries';
-import { formatEuros, formatShortDate, displayName, nameInitial } from '@/lib/utils';
+import { formatEuros, formatShortDate, displayName, nameInitial, travelerNetFromTotal } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
+
+// Copy for the parts this page rewrote. Kept local rather than added to
+// translations.ts because the old keys described a withdrawable balance that
+// no longer exists, and inventing replacements for them there would leave the
+// obsolete ones sitting alongside. Fold in when the wording has settled.
+const COPY = {
+  fr: {
+    heldTitle: 'En route vers toi',
+    heldLabel: 'En attente de livraison',
+    heldNone: 'Rien en attente pour le moment.',
+    heldCountSingular: '{count} livraison à confirmer',
+    heldCountPlural: '{count} livraisons à confirmer',
+    autoPayout:
+      'Dès qu’une livraison est confirmée, ton paiement part automatiquement vers ton compte bancaire. Rien à demander.',
+    autoPayoutLink: 'Voir mes coordonnées bancaires',
+    paidSoFar: 'Déjà versé : {amount}',
+  },
+  en: {
+    heldTitle: 'On its way to you',
+    heldLabel: 'Awaiting delivery',
+    heldNone: 'Nothing pending right now.',
+    heldCountSingular: '{count} delivery to confirm',
+    heldCountPlural: '{count} deliveries to confirm',
+    autoPayout:
+      'As soon as a delivery is confirmed, your payment goes to your bank account automatically. Nothing to request.',
+    autoPayoutLink: 'See my bank details',
+    paidSoFar: 'Paid out so far: {amount}',
+  },
+} as const;
 
 // Props now come pre-filled from the Server Component, so no useEffect/loading
 // dance on mount — the page renders fully on first paint.
@@ -26,10 +55,10 @@ export default function WalletPageClient({
   initialTransactions: WalletTransaction[];
 }) {
   const user = initialUser;
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const w = COPY[locale === 'en' ? 'en' : 'fr'];
   const [transactions] = useState<WalletTransaction[]>(initialTransactions);
   const [error] = useState<string | null>(null);
-  const [showWithdrawForm, setShowWithdrawForm] = useState(false);
 
   // Partition transactions by status. Sender→traveler bookings I made are
   // also in this list (since I appear in traveler_user_id), but for those
@@ -43,12 +72,34 @@ export default function WalletPageClient({
     (t) => t.payment_status === 'canceled' || t.payment_status === 'failed'
   );
 
-  // Balances: traveler net = payment_amount / 1.15 (because the stored
-  // amount is the TTC the sender paid; Jibly's cut is 15%).
-  const sumCents = (rows: WalletTransaction[]) =>
-    rows.reduce((s, r) => s + (r.payment_amount ?? 0), 0);
-  const availableEuros = sumCents(captured) / 100 / 1.15;
-  const pendingEuros = sumCents(authorized) / 100 / 1.15;
+  // Three states, and the distinction that was missing before.
+  //
+  // PAID: delivery was confirmed, so the money was transferred to this
+  // traveler's own Stripe account and Stripe pays it out to their bank on its
+  // own schedule. It is no longer ours and there is nothing to withdraw.
+  //
+  // HELD: the sender has paid and we are holding it until the recipient
+  // confirms delivery. This is the only figure Jibly actually owes.
+  //
+  // The old page summed every captured booking ever, divided by 1.15, and
+  // called the result a withdrawable balance — so money already sitting in a
+  // traveler's bank account was counted again, forever, next to a button that
+  // promised to send it a second time.
+  const paid = incoming.filter((t) => t.transfer_id);
+  const held = captured.filter((t) => !t.transfer_id);
+
+  const netEuros = (rows: WalletTransaction[]) =>
+    rows.reduce(
+      (s, r) => s + travelerNetFromTotal((r.payment_amount ?? 0) / 100),
+      0
+    );
+
+  // transfer_amount is what Stripe actually moved — the record of the payout,
+  // not a re-derivation of it.
+  const paidEuros =
+    paid.reduce((s, r) => s + (r.transfer_amount ?? 0), 0) / 100;
+  const heldEuros = netEuros(held);
+  const pendingEuros = netEuros(authorized);
 
   return (
     <div className="min-h-screen py-10 lg:py-16">
@@ -81,11 +132,11 @@ export default function WalletPageClient({
             </div>
           )}
 
-          {/* DISPONIBLE — hero card with the main balance */}
+          {/* EN ROUTE — what Jibly is actually holding for this traveler. */}
           <section className="mb-10">
             <h2 className="flex items-center gap-2 text-[12px] font-semibold text-ink-400 tracking-[0.12em] uppercase mb-3">
-              <CheckCircle2 className="w-3.5 h-3.5 text-mint-500" />
-              {t.sec_wallet_available}
+              <Clock className="w-3.5 h-3.5 text-butter-500" />
+              {w.heldTitle}
             </h2>
             <div className="bg-gradient-to-br from-ink-500 to-ink-600 rounded-3xl p-7 lg:p-9 text-cream-50 relative overflow-hidden">
               <div className="pointer-events-none absolute -top-12 -right-12 w-48 h-48 rounded-full bg-mint-500/20 blur-2xl" />
@@ -94,68 +145,40 @@ export default function WalletPageClient({
               <div className="relative">
                 <div className="flex items-center gap-2 text-[12px] font-semibold text-cream-50/60 tracking-[0.12em] uppercase mb-3">
                   <WalletIcon className="w-3.5 h-3.5" />
-                  {t.sec_wallet_balance_label}
+                  {w.heldLabel}
                 </div>
                 <div className="text-5xl lg:text-6xl font-extrabold tracking-[-0.03em] num-display mb-1">
-                  {formatEuros(availableEuros)}
+                  {formatEuros(heldEuros)}
                 </div>
                 <p className="text-[13px] text-cream-50/70">
-                  {(captured.length > 1 ? t.sec_wallet_tx_count_plural : t.sec_wallet_tx_count_singular).replace('{count}', String(captured.length))}
+                  {held.length === 0
+                    ? w.heldNone
+                    : (held.length > 1 ? w.heldCountPlural : w.heldCountSingular).replace(
+                        '{count}',
+                        String(held.length)
+                      )}
                 </p>
 
-                <button
-                  onClick={() => setShowWithdrawForm(!showWithdrawForm)}
-                  disabled={availableEuros <= 0}
-                  className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-cream-50 text-ink-600 hover:bg-cream-100 transition-colors text-[14px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {t.sec_wallet_withdraw}
-                </button>
-
-                {showWithdrawForm && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="mt-5 rounded-2xl bg-cream-50/10 backdrop-blur-sm border border-cream-50/20 p-5"
+                {/* No withdraw button. There is nothing to withdraw FROM: once
+                    delivery is confirmed the money is transferred to the
+                    traveler's own Stripe account and paid out to their bank on
+                    Stripe's schedule. The page used to show a disabled IBAN
+                    field and a "coming soon" badge for a feature that Connect
+                    replaced. */}
+                <p className="mt-6 text-[13px] text-cream-50/70 leading-relaxed max-w-md">
+                  {w.autoPayout}{' '}
+                  <Link
+                    href="/me?tab=payouts"
+                    className="underline font-semibold hover:text-cream-50 transition-colors"
                   >
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-butter-500/20 text-butter-200 text-[10px] font-bold tracking-wider uppercase mb-3">
-                      {t.sec_wallet_coming_soon}
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-cream-50/70 tracking-[0.06em] uppercase mb-1.5">
-                          IBAN
-                        </label>
-                        <input
-                          type="text"
-                          disabled
-                          placeholder="FR76 …"
-                          className="w-full px-4 py-2.5 rounded-xl bg-cream-50/10 border border-cream-50/20 text-cream-50 placeholder:text-cream-50/40 text-[14px] num-display disabled:opacity-60 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-cream-50/70 tracking-[0.06em] uppercase mb-1.5">
-                          {t.sec_wallet_account_holder}
-                        </label>
-                        <input
-                          type="text"
-                          disabled
-                          placeholder={t.sec_wallet_account_holder_placeholder}
-                          className="w-full px-4 py-2.5 rounded-xl bg-cream-50/10 border border-cream-50/20 text-cream-50 placeholder:text-cream-50/40 text-[14px] disabled:opacity-60 cursor-not-allowed"
-                        />
-                      </div>
-                      <p className="text-[12px] text-cream-50/60 leading-relaxed pt-1">
-                        {t.sec_wallet_withdraw_note_before}{' '}
-                        <a
-                          href={`mailto:hello@jibly.io?subject=${encodeURIComponent(t.sec_wallet_withdraw_subject)}`}
-                          className="underline font-semibold hover:text-cream-50 transition-colors"
-                        >
-                          hello@jibly.io
-                        </a>{' '}
-                        {t.sec_wallet_withdraw_note_after}
-                      </p>
-                    </div>
-                  </motion.div>
+                    {w.autoPayoutLink}
+                  </Link>
+                </p>
+
+                {paidEuros > 0 && (
+                  <p className="mt-4 text-[12px] text-cream-50/50">
+                    {w.paidSoFar.replace('{amount}', formatEuros(paidEuros))}
+                  </p>
                 )}
               </div>
             </div>

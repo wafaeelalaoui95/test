@@ -11,6 +11,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getBrowserClient } from './client';
 import { withTimeout } from './timeout';
+import { travelerNetFromTotal } from '@/lib/utils';
 import type {
   Database,
   Profile,
@@ -1421,12 +1422,30 @@ export async function listWalletTransactions(
   }));
 }
 
+/**
+ * What Jibly is currently HOLDING for this traveler, in euros.
+ *
+ * This used to sum every captured booking, ever, and divide by 1.15 — so it
+ * counted money that had long since reached the traveler's bank, and kept
+ * counting it forever. It showed a three-figure "solde disponible" that
+ * existed nowhere, next to a "withdraw" button for an action that no longer
+ * exists: since Connect, a delivered booking is transferred to the traveler's
+ * own Stripe account and paid out to their bank automatically.
+ *
+ * What is genuinely ours to report is the escrow: the sender has paid, the
+ * recipient hasn't confirmed delivery, so nothing has been transferred yet.
+ * transfer_id IS NULL is exactly that state.
+ */
 export async function getWalletBalance(supabase: SB, travelerId: string): Promise<number> {
   const txs = await listWalletTransactions(supabase, travelerId);
   const incoming = txs.filter((t) => t.sender_id !== travelerId);
-  const captured = incoming.filter((t) => t.payment_status === 'captured');
-  const totalCents = captured.reduce((sum, t) => sum + (t.payment_amount ?? 0), 0);
-  return totalCents / 100 / 1.15;
+  const held = incoming.filter(
+    (t) => t.payment_status === 'captured' && !t.transfer_id
+  );
+  return held.reduce(
+    (sum, t) => sum + travelerNetFromTotal((t.payment_amount ?? 0) / 100),
+    0
+  );
 }
 
 export async function countActiveBookingsForTrip(
