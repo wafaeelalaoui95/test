@@ -196,15 +196,25 @@ export function PayoutReminder({ className }: { className?: string }) {
       className={`rounded-2xl bg-cream-100 border border-ink-50 px-4 py-3 flex items-start gap-3 ${className ?? ''}`}
     >
       <Wallet className="w-4 h-4 text-ink-400 mt-0.5 shrink-0" strokeWidth={1.75} />
-      <p className="text-[13px] text-ink-500 leading-relaxed">
-        {t.payout_reminder_body}{' '}
-        <Link
-          href="/me?tab=payouts"
-          className="text-ink-900 underline underline-offset-2 font-medium"
-        >
-          {t.payout_reminder_link}
-        </Link>
-      </p>
+      <div className="text-[13px] text-ink-500 leading-relaxed">
+        <p>
+          {t.payout_reminder_body}{' '}
+          <Link
+            href="/me?tab=payouts"
+            className="text-ink-900 underline underline-offset-2 font-medium"
+          >
+            {t.payout_reminder_link}
+          </Link>
+        </p>
+        {/* Said here, before the trip is published, because this is the first
+            moment a traveler invests effort and the last one before they start
+            counting on the money. Someone whose only bank account is Moroccan
+            would otherwise find out after carrying a parcel.
+            Phrased as what IS needed rather than what is refused, and without
+            naming the processor: whose limitation it is doesn't help them, and
+            pointing at a supplier reads as passing the blame. */}
+        <p className="mt-2 text-ink-400">{t.payout_reminder_countries}</p>
+      </div>
     </div>
   );
 }

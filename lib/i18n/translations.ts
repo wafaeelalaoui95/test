@@ -999,6 +999,7 @@ export type Translations = {
   payout_country_hint: string;
   payout_manage_cta: string;
   payout_manage_failed: string;
+  payout_reminder_countries: string;
   payout_reminder_body: string;
   payout_reminder_link: string;
   me2_verify_my_identity: string;
@@ -2195,9 +2196,10 @@ export const translations: Record<Locale, Translations> = {
     me2_tab_payouts: 'Paiements',
     payout_country_label: 'Pays de votre compte bancaire',
     payout_country_placeholder: 'Choisissez un pays',
-    payout_country_hint: 'Ce choix est définitif et ne pourra pas être modifié. Seuls les pays où Stripe peut verser des paiements sont proposés.',
+    payout_country_hint: 'Le paiement arrive sur un compte bancaire en Europe, au Royaume-Uni ou en Suisse. Beaucoup de voyageurs sur ces lignes en ont un, même s'ils vivent ailleurs. Ce choix est définitif.',
     payout_manage_cta: 'Gérer mes coordonnées bancaires',
     payout_manage_failed: 'Impossible d\'ouvrir votre espace paiements',
+    payout_reminder_countries: 'Le versement se fait sur un compte bancaire en Europe, au Royaume-Uni ou en Suisse. Si le vôtre est ailleurs, mieux vaut le savoir avant de transporter.',
     payout_reminder_body: 'Vos paiements ne sont pas encore configurés. Votre trajet est publié quand même, et si vous transportez un colis votre argent sera mis de côté. Il vous sera versé dès que vous aurez ajouté vos coordonnées bancaires.',
     payout_reminder_link: 'Configurer maintenant',
     me2_verify_my_identity: 'Vérifier mon identité',
@@ -3393,9 +3395,10 @@ export const translations: Record<Locale, Translations> = {
     me2_tab_payouts: 'Payouts',
     payout_country_label: 'Country of your bank account',
     payout_country_placeholder: 'Choose a country',
-    payout_country_hint: 'This choice is permanent and can\'t be changed later. Only countries Stripe can pay out to are listed.',
+    payout_country_hint: 'Payment arrives in a bank account in Europe, the UK or Switzerland. Many travellers on these routes have one even if they live elsewhere. This choice is permanent.',
     payout_manage_cta: 'Manage my bank details',
     payout_manage_failed: 'Couldn\'t open your payouts area',
+    payout_reminder_countries: 'Payment goes to a bank account in Europe, the UK or Switzerland. If yours is elsewhere, better to know before you carry anything.',
     payout_reminder_body: 'Your payouts are not set up yet. Your trip is published anyway, and if you carry a parcel your money is set aside for you. It will be sent as soon as you add your bank details.',
     payout_reminder_link: 'Set up now',
     me2_verify_my_identity: 'Verify my identity',
