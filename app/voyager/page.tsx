@@ -286,7 +286,16 @@ export default function VoyagerPage() {
           <h1 className="text-3xl sm:text-4xl font-extrabold text-ink-600 mb-4 tracking-[-0.025em]">
             {t.trip_success_title}
           </h1>
-          <p className="text-[16px] text-ink-400 mb-9 leading-relaxed">{t.trip_success_text}</p>
+          <p className="text-[16px] text-ink-400 mb-7 leading-relaxed">{t.trip_success_text}</p>
+
+          {/* The moment a traveler is most likely to leave, and the last one
+              where telling them costs nothing. The reminder inside the wizard
+              sits under the terms checkbox, where someone about to publish is
+              not reading carefully. Renders nothing once payouts are set up. */}
+          <div className="mb-7 text-start">
+            <PayoutReminder />
+          </div>
+
           <div className="flex flex-col gap-2.5">
             <Link href="/me">
               <Button variant="secondary" fullWidth>{t.nav_my_space}</Button>
