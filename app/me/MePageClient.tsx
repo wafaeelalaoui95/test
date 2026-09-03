@@ -47,7 +47,7 @@ import { ViewProofButton } from '@/components/ImageLightbox';
 import { ReviewModal } from '@/components/ReviewModal';
 import type { ReviewForBooking } from '@/lib/supabase/queries';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
-import { formatShortDate, nameInitial, formatEuros } from '@/lib/utils';
+import { formatShortDate, nameInitial, formatEuros, travelerNetFromTotal } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
 import { useAuth } from '@/lib/supabase/auth-provider';
@@ -2690,8 +2690,8 @@ function ProposalCard({
   const { t, locale } = useI18n();
   const senderName = shortName(proposal.sender_profile?.full_name) || t.me2_role_sender;
   const initial = nameInitial(proposal.sender_profile?.full_name);
-  // What I'll actually receive after Jibly's 15% fee
-  const netTraveler = Math.round((proposal.proposed_price / 1.15) * 100) / 100;
+  // What I will actually receive — see travelerNetFromTotal.
+  const netTraveler = travelerNetFromTotal(proposal.proposed_price);
 
   return (
     <div className={`bg-white rounded-xl px-3 py-2.5 border ${accepted ? 'border-mint-200' : 'border-ink-50'}`}>

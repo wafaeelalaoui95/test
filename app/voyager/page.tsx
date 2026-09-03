@@ -25,7 +25,7 @@ import { useIdentityGate } from '@/components/IdentityGate';
 import { PayoutReminder } from '@/components/PayoutSetup';
 import { ITEM_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
 import { cityDisplayName } from '@/lib/countries';
-import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
+import { formatShortDate, displayName, nameInitial, formatEuros, travelerNetFromTotal } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
@@ -941,8 +941,8 @@ function RequestHelpableCard({
     request.user?.verification_level === 'id_verified' ||
     request.user?.verification_level === 'trusted';
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
-  // What the traveler nets after the 15% Jibly fee.
-  const netTraveler = Math.round((request.budget / 1.15) * 100) / 100;
+  // What the traveler nets — see travelerNetFromTotal.
+  const netTraveler = travelerNetFromTotal(request.budget);
 
   // ----- Locked state: proposal already sent -----
   if (alreadyProposed) {

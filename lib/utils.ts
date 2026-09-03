@@ -130,6 +130,26 @@ export function priceBreakdown(travelerEuros: number): PriceBreakdown {
 }
 
 /**
+ * Given what the SENDER pays, what does the traveler receive?
+ *
+ * The client-side mirror of splitAmount() — which lives in lib/stripe/connect
+ * and can't be imported into a component, since it pulls in the service-role
+ * Supabase client. Both must stay the exact inverse of priceBreakdown().
+ *
+ * This existed as `price / 1.15` written out in two components, which was
+ * already the wrong shape once the commission gained a flat part, and was the
+ * kind of duplication that let the payout and the checkout disagree in the
+ * first place.
+ */
+export function travelerNetFromTotal(totalEuros: number): number {
+  const cents = Math.round(totalEuros * 100);
+  const afterFlat = Math.max(0, cents - PLATFORM_FEE_FIXED_CENTS);
+  return (
+    Math.round((afterFlat * 10000) / (10000 + PLATFORM_FEE_BPS)) / 100
+  );
+}
+
+/**
  * Format euro amount with French decimal separator.
  */
 export function formatEuros(amount: number): string {
