@@ -145,8 +145,12 @@ export async function POST(req: Request) {
         bookingId: booking.id,
       });
     } else if (body.event === 'booking-confirmed-sender') {
-      if (!booking.pickup_code) {
-        return NextResponse.json({ ok: false, reason: 'no_pickup_code' });
+      // The SENDER holds the DELIVERY code — they, or whoever collects at the
+      // other end, read it to the traveler at drop-off. They must NOT receive
+      // the pickup code: that one is the traveler's, and if both parties hold
+      // it the sender can confirm a handover that never happened.
+      if (!booking.delivery_code) {
+        return NextResponse.json({ ok: false, reason: 'no_delivery_code' });
       }
       template = bookingConfirmedSenderEmail({
         senderFirstName: firstName(senderProfile?.full_name),
@@ -154,12 +158,14 @@ export async function POST(req: Request) {
         pickupCity: booking.pickup_city,
         destinationCity: booking.destination_city,
         proposedPrice: booking.proposed_price,
-        pickupCode: booking.pickup_code,
+        code: booking.delivery_code,
         bookingId: booking.id,
       });
     } else if (body.event === 'booking-confirmed-traveler') {
-      if (!booking.delivery_code) {
-        return NextResponse.json({ ok: false, reason: 'no_delivery_code' });
+      // The TRAVELER holds the PICKUP code and reads it to the sender when
+      // they collect the parcel. Mirror image of the sender above.
+      if (!booking.pickup_code) {
+        return NextResponse.json({ ok: false, reason: 'no_pickup_code' });
       }
       template = bookingConfirmedTravelerEmail({
         travelerFirstName: firstName(travelerProfile?.full_name),
@@ -167,7 +173,7 @@ export async function POST(req: Request) {
         pickupCity: booking.pickup_city,
         destinationCity: booking.destination_city,
         travelerReceives: travelerNetFromTotal(booking.proposed_price),
-        deliveryCode: booking.delivery_code,
+        code: booking.pickup_code,
         bookingId: booking.id,
       });
     } else {
