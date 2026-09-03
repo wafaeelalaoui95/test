@@ -9,7 +9,7 @@ import { getBrowserClient } from '@/lib/supabase/client';
 import { useI18n } from '@/lib/i18n/context';
 
 export default function ResetPasswordPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -47,7 +47,14 @@ export default function ResetPasswordPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.02em] mb-3">
               {t.reset_title}
             </h1>
-            <p className="text-[15px] text-ink-400 leading-relaxed mb-8">{t.reset_sent}</p>
+            <p className="text-[15px] text-ink-400 leading-relaxed mb-4">{t.reset_sent}</p>
+            {/* Same reason as the signup screen: spam is where it usually is,
+                and saying so costs nothing. */}
+            <p className="text-[14px] text-ink-400 leading-relaxed mb-8">
+              {locale === 'en'
+                ? 'Nothing after a minute or two? Check your spam or junk folder.'
+                : 'Rien au bout d’une minute ou deux ? Regardez dans vos spams.'}
+            </p>
             <Link href="/login">
               <Button variant="secondary" fullWidth>{t.reset_back_login}</Button>
             </Link>

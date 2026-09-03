@@ -117,6 +117,14 @@ export default function SignupPage() {
           <p className="text-[16px] text-ink-400 leading-relaxed">
             {t.auth_check_email_text} <span className="font-semibold text-ink-600">{email}</span>
           </p>
+          {/* Said out loud because most people who write to support about a
+              missing confirmation find it in spam. Cheaper here than in a
+              reply. */}
+          <p className="mt-5 text-[14px] text-ink-400 leading-relaxed">
+            {locale === 'en'
+              ? 'Nothing after a minute or two? Check your spam or junk folder — that is where it usually is.'
+              : 'Rien au bout d’une minute ou deux ? Regardez dans vos spams ou courriers indésirables, c’est presque toujours là qu’il se trouve.'}
+          </p>
         </div>
       </div>
     );
