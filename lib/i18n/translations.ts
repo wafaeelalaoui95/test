@@ -2196,7 +2196,7 @@ export const translations: Record<Locale, Translations> = {
     me2_tab_payouts: 'Paiements',
     payout_country_label: 'Pays de votre compte bancaire',
     payout_country_placeholder: 'Choisissez un pays',
-    payout_country_hint: 'Le paiement arrive sur un compte bancaire en Europe, au Royaume-Uni ou en Suisse. Beaucoup de voyageurs sur ces lignes en ont un, même s'ils vivent ailleurs. Ce choix est définitif.',
+    payout_country_hint: 'Le paiement arrive sur un compte bancaire en Europe, au Royaume-Uni ou en Suisse. Beaucoup de voyageurs sur ces lignes en ont un, même s’ils vivent ailleurs. Ce choix est définitif.',
     payout_manage_cta: 'Gérer mes coordonnées bancaires',
     payout_manage_failed: 'Impossible d\'ouvrir votre espace paiements',
     payout_reminder_countries: 'Le versement se fait sur un compte bancaire en Europe, au Royaume-Uni ou en Suisse. Si le vôtre est ailleurs, mieux vaut le savoir avant de transporter.',
