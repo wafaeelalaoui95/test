@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
   Plane,
-  Star,
   Calendar,
   MapPin,
   Search,
@@ -599,13 +598,12 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1 text-[13px] text-ink-400">
-                <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
-                <span className="font-medium text-ink-500 num-display">
-                  {trip.profile?.rating?.toFixed(1) ?? '-'}
-                </span>
-                <span>· <span className="num-display">{trip.profile?.trips_completed ?? 0}</span> {t.disc_trips_count}</span>
-              </div>
+              {/* Rating and trip count hidden until they are real. Neither
+                  profiles.rating nor profiles.trips_completed is computed from
+                  anything — the migration that revoked them from clients left
+                  the trigger to write them "TODO", so every star on the site
+                  showed a number nobody earned. Verification badges carry trust
+                  in the meantime; they at least mean something. */}
             </div>
           </div>
 
@@ -787,12 +785,10 @@ function RequestCard({
                 </span>
               )}
             </div>
+            {/* See above: no star until it means something. The age of the
+                request is real, so it stays. */}
             <div className="flex items-center gap-1 text-[13px] text-ink-400">
-              <Star className="w-3 h-3 fill-butter-400 text-butter-400" strokeWidth={0} />
-              <span className="font-medium text-ink-500 num-display">
-                {request.profile?.rating?.toFixed(1) ?? '-'}
-              </span>
-              <span>· {ageLabel}</span>
+              <span>{ageLabel}</span>
             </div>
           </div>
         </div>

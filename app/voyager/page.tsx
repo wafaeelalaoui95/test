@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   Sparkles,
   Calendar,
-  Star,
   ShieldCheck,
   X,
 } from 'lucide-react';
@@ -999,12 +998,7 @@ function RequestHelpableCard({
             {verified && (
               <ShieldCheck className="w-3.5 h-3.5 text-mint-500" strokeWidth={2.5} />
             )}
-            {(request.user?.rating ?? 0) > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[12px] text-ink-400">
-                <Star className="w-3 h-3 fill-butter-500 text-butter-500" />
-                <span className="num-display">{request.user!.rating.toFixed(1)}</span>
-              </span>
-            )}
+            {/* Rating hidden until it is computed — see ProfileClient. */}
           </div>
           <div className="flex items-center gap-1.5 text-[12px] text-ink-400 mt-0.5 flex-wrap">
             {category && (

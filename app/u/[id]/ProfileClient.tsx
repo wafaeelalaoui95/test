@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plane,
-  Star,
   Clock,
   Loader2,
   ArrowLeft,
@@ -243,16 +242,11 @@ export function ProfileClient({
                 {publicName}
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] text-ink-400">
-                <div className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-butter-500 fill-butter-500" />
-                  <span className="font-bold text-ink-600 num-display">
-                    {(profile.rating ?? 0).toFixed(1)}
-                  </span>
-                  <span className="text-ink-300">·</span>
-                  <span>
-                    <span className="num-display font-semibold text-ink-500">{profile.trips_completed ?? 0}</span> {profile.trips_completed === 1 ? t.prof_transports_done_one : t.prof_transports_done_other}
-                  </span>
-                </div>
+                {/* Rating and completed-trip count hidden until they are
+                    computed. Neither column is written by anything, so this
+                    showed a 0.0 to every real user and a seeded score to the
+                    rest — on the page where a sender decides who to trust with
+                    their parcel, which is the worst place to invent one. */}
                 {profile.city && (
                   <div className="flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5" />

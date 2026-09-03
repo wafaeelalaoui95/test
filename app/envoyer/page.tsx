@@ -11,7 +11,6 @@ import {
   Loader2,
   Sparkles,
   Plane,
-  Star,
   ShieldCheck,
   X,
   Calendar,
@@ -918,12 +917,9 @@ function TripBookableCard({
             {verified && (
               <ShieldCheck className="w-3.5 h-3.5 text-mint-500" strokeWidth={2.5} />
             )}
-            {(trip.user?.rating ?? 0) > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[12px] text-ink-400">
-                <Star className="w-3 h-3 fill-butter-500 text-butter-500" />
-                <span className="num-display">{trip.user!.rating.toFixed(1)}</span>
-              </span>
-            )}
+            {/* Rating hidden until it is computed from reviews — see
+                ProfileClient. The `> 0` guard was not enough: a seeded score
+                still shows, and it is earned by nobody. */}
             {(trip.user?.trips_completed ?? 0) > 0 && (
               <span className="text-[11px] text-ink-300">
                 {t.env_trips_completed.replace('{count}', String(trip.user!.trips_completed))}
