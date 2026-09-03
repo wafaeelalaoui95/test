@@ -12,7 +12,7 @@ import { useI18n } from '@/lib/i18n/context';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,6 +20,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,6 +42,20 @@ export default function SignupPage() {
       );
       if (error) throw error;
 
+      // ALREADY REGISTERED. Supabase does not say so — telling an anonymous
+      // caller which addresses exist would let anyone enumerate the user base
+      // — so it returns a success-shaped response with an obfuscated user, no
+      // new account, and NO EMAIL SENT. An empty `identities` array is the
+      // documented tell.
+      //
+      // Without this check the page said "check your inbox" to someone who
+      // already had an account, and they waited for a message nobody had
+      // written. That is how a returning user is lost in silence.
+      if (data.user && (data.user.identities?.length ?? 0) === 0) {
+        setAlreadyRegistered(true);
+        return;
+      }
+
       if (data.session) {
         // Auto-confirmed (email confirmation disabled in Supabase settings)
         router.push('/me');
@@ -54,6 +69,39 @@ export default function SignupPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (alreadyRegistered) {
+    const fr = locale !== 'en';
+    return (
+      <div className="min-h-screen flex items-center justify-center px-5 py-16">
+        <div className="max-w-md w-full text-center">
+          <div className="w-14 h-14 rounded-full bg-lavender-100 mx-auto flex items-center justify-center mb-7">
+            <ArrowRight className="w-7 h-7 text-lavender-700" strokeWidth={2.5} />
+          </div>
+          <h1 className="text-3xl font-extrabold text-ink-600 mb-3 tracking-[-0.025em]">
+            {fr ? 'Vous avez déjà un compte' : 'You already have an account'}
+          </h1>
+          <p className="text-[16px] text-ink-400 leading-relaxed mb-8">
+            {fr
+              ? 'Cette adresse est déjà inscrite. Connectez-vous plutôt que de créer un nouveau compte.'
+              : 'This address is already registered. Sign in instead of creating a new account.'}{' '}
+            <span className="font-semibold text-ink-600">{email}</span>
+          </p>
+          <Link href="/login">
+            <Button fullWidth>
+              {fr ? 'Se connecter' : 'Sign in'}
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
+          <p className="mt-4 text-[13px] text-ink-400">
+            {fr
+              ? "Mot de passe oublié ? Le lien est sur la page de connexion."
+              : "Forgotten your password? The link is on the sign-in page."}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (needsConfirmation) {
