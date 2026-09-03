@@ -28,6 +28,7 @@ import { cityDisplayName } from '@/lib/countries';
 import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
+import { useIdentityGate } from '@/components/IdentityGate';
 import type { Profile, TravelerTripRow } from '@/lib/supabase/types';
 
 type PublicProfile = Pick<
@@ -52,6 +53,7 @@ export function ProfileClient({
 }) {
   const { t, locale } = useI18n();
   const { user, loading: authLoading } = useAuth();
+  const gate = useIdentityGate();
   // Seeded from the server render so the profile paints immediately — no
   // download-JS → hydrate → fetch waterfall on first load.
   const [profile] = useState<PublicProfile | null>(initialProfile);
@@ -70,6 +72,12 @@ export function ProfileClient({
 
 
   function openBooking(trip: TravelerTripRow) {
+    // Identity gate, same as /envoyer and /voyager. This page was the way
+    // around it: someone could sign up, land on a traveler's profile from the
+    // home page, and book a stranger's flight without ever proving who they
+    // are — which is precisely the person a traveler is trusting when they put
+    // a sealed parcel in their bag.
+    if (!gate.ensureVerified()) return;
     setBookingTrip(trip);
     setBookingStep('details');
     setIntentCategory('');
@@ -605,6 +613,10 @@ export function ProfileClient({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Without this the gate refuses silently — the button would simply do
+          nothing for an unverified user. */}
+      {gate.modal}
     </div>
   );
 }

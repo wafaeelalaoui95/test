@@ -32,6 +32,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Identity, enforced HERE and not only in the UI. The gate on /envoyer,
+  // /voyager and the traveler profile is a courtesy — it explains why the
+  // button did nothing. This is the part that cannot be walked around by
+  // calling the endpoint directly, and it is the right place for it: no
+  // PaymentIntent means no booking, whatever the client does.
+  //
+  // A traveler putting a stranger's sealed parcel in their bag is trusting
+  // that Jibly checked who the sender is. That promise has to hold on the
+  // server.
+  const { data: senderProfile } = await supabase
+    .from('profiles')
+    .select('identity_verified_at')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!senderProfile?.identity_verified_at) {
+    return NextResponse.json({ error: 'identity_required' }, { status: 403 });
+  }
+
   let body: z.infer<typeof schema>;
   try {
     body = schema.parse(await req.json());
