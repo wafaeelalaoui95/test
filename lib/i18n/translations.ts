@@ -1860,8 +1860,8 @@ export const translations: Record<Locale, Translations> = {
     chat_qr_parcel_text: 'À propos du colis : ',
     chat_qr_arriving_label: '🕐 J\'arrive bientôt',
     chat_qr_arriving_text: 'J\'arrive bientôt 🙂',
-    chat_qr_code_label: '🔑 Code de récupération',
-    chat_qr_code_text: 'Quel est le code de récupération ?',
+    chat_qr_code_label: '🔑 Code de remise',
+    chat_qr_code_text: 'Quel est le code de remise ?',
     chat_traceability_notice:
       'Gardez vos échanges sur Jibly : c\'est ce qui nous permet d\'assurer le suivi du colis et de vous protéger en cas de litige.',
     chat_code_hint_handover_sender:
@@ -3058,8 +3058,8 @@ export const translations: Record<Locale, Translations> = {
     chat_qr_parcel_text: 'About the parcel: ',
     chat_qr_arriving_label: '🕐 Almost there',
     chat_qr_arriving_text: 'Almost there 🙂',
-    chat_qr_code_label: '🔑 Pickup code',
-    chat_qr_code_text: 'What is the pickup code?',
+    chat_qr_code_label: '🔑 Handover code',
+    chat_qr_code_text: 'What is the handover code?',
     chat_traceability_notice:
       'Keep your exchanges on Jibly: it lets us track the parcel and protect you in case of a dispute.',
     chat_code_hint_handover_sender:

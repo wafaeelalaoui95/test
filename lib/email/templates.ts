@@ -312,12 +312,12 @@ export function bookingConfirmedTravelerEmail(input: {
       Mission acceptée
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      ${travelerName}, voici votre <strong>code de retrait</strong>. Vous le donnerez à ${senderName} au moment où il vous confie le colis : c'est sa preuve de vous l'avoir remis. Ne le communiquez qu'une fois le colis entre vos mains.
+      ${travelerName}, voici votre <strong>code de remise</strong>. Vous le donnerez à ${senderName} au moment où il vous confie le colis : c'est sa preuve de vous l'avoir remis. Ne le communiquez qu'une fois le colis entre vos mains.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#E6F5EE;border-radius:12px;margin-bottom:24px;">
       <tr>
         <td style="padding:24px 20px;text-align:center;">
-          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Code de retrait</p>
+          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Code de remise</p>
           <p style="margin:0;font-size:36px;font-weight:700;color:${BRAND.ink};letter-spacing:0.2em;font-family:'SF Mono',Monaco,Consolas,monospace;">${input.code}</p>
         </td>
       </tr>
@@ -347,9 +347,9 @@ export function bookingConfirmedTravelerEmail(input: {
   `;
 
   return {
-    subject: `Confirmé · ${route} · code de retrait ${input.code}`,
-    html: wrapHtml(content, `Vous transportez pour ${senderName} — voici votre code de retrait`),
-    text: `${travelerName},\n\nVous transportez un colis pour ${senderName} ${route}.\n\nVotre code de retrait : ${input.code}\nÀ donner à ${senderName} au moment où il vous confie le colis.\n\nVoir mes trajets : ${url}\n\n— L'équipe Jibly`,
+    subject: `Confirmé · ${route} · code de remise ${input.code}`,
+    html: wrapHtml(content, `Vous transportez pour ${senderName} — voici votre code de remise`),
+    text: `${travelerName},\n\nVous transportez un colis pour ${senderName} ${route}.\n\nVotre code de remise : ${input.code}\nÀ donner à ${senderName} au moment où il vous confie le colis.\n\nVoir mes trajets : ${url}\n\n— L'équipe Jibly`,
   };
 }
 function escapeHtml(s: string): string {
