@@ -137,6 +137,11 @@ type IncomingIntent = {
   pickup_confirmed_at?: string | null;
   pickup_confirmed_by?: string | null;
   received_confirmed_at?: string | null;
+  // Set once the payout actually left for the traveler's Stripe account. Null
+  // after delivery means the money is still on the platform balance, waiting
+  // for them to finish payout setup.
+  transfer_id?: string | null;
+  transferred_at?: string | null;
   sender_profile: { id: string; full_name: string | null; avatar_url: string | null; rating: number; trips_completed: number; verification_level: VerificationLevel } | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string } | null;
 };
@@ -4003,9 +4008,19 @@ function IntentCardInline({
   if (intent.status === 'pending') {
     statusText = t.me2_pill_new_request;
     statusClass = 'text-butter-700 bg-butter-50';
-  } else if (intent.status === 'confirmed' && intent.delivery_proof_url && intent.received_confirmed_at) {
-    statusText = `✓ ${t.me2_pill_delivery_confirmed}`;
+  } else if (intent.status === 'confirmed' && intent.received_confirmed_at && intent.transfer_id) {
+    // Delivered AND paid. "Livraison confirmée" alone left the traveler
+    // wondering where their money was; this is the state they actually want
+    // to see, and transfer_id is proof it left.
+    statusText = locale === 'en' ? '✓ Paid' : '✓ Payé';
     statusClass = 'text-mint-700 bg-mint-50';
+  } else if (intent.status === 'confirmed' && intent.received_confirmed_at) {
+    // Delivered, no transfer. Almost always because the traveler hasn't
+    // finished their payout setup — transferToTraveler skips with
+    // 'not_onboarded' and the money waits on the platform balance until the
+    // account.updated webhook retries. Say so rather than showing a bare tick.
+    statusText = locale === 'en' ? '⏳ Payment on the way' : '⏳ Paiement en route';
+    statusClass = 'text-butter-700 bg-butter-50';
   } else if (intent.status === 'confirmed' && intent.delivery_proof_url) {
     statusText = `📸 ${t.me2_pill_delivered_give_code}`;
     statusClass = 'text-butter-700 bg-butter-50';
