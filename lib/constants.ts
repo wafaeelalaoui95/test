@@ -8,8 +8,9 @@ import type { Translations } from '@/lib/i18n/translations';
  * Lowest compensation, in euros, a sender can offer or a traveler can ask for.
  *
  * TEMPORARILY 5 (was 10) so a live end-to-end test can be run with real money
- * without spending much. Put it back to 10 once testing is done — a 5 € parcel
- * leaves the traveler 4.25 € after commission, which isn't worth anyone's trip.
+ * without spending much. Put it back to 10 once testing is done — this is the
+ * amount the TRAVELER receives (the sender pays it plus the commission), and
+ * 5 € is not worth anyone's trip.
  *
  * There is no matching database constraint (compensation_min only checks >= 0),
  * so this is the single place that decides it.
