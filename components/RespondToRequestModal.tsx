@@ -57,7 +57,6 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
   // them, not a total to divide back out — the fee is added on top of it, and
   // is the sender's to pay.
   const netTraveler = request.budget;
-  const jiblyFee = priceBreakdown(request.budget).fees;
 
   // Load my future, non-cancelled trips. Auto-select one that matches
   // the route if any; otherwise default to "new trip".
@@ -321,10 +320,11 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
               {formatEuros(netTraveler)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-[12px] text-ink-400">
-            <span>{t.rev_respond_jibly_protection}</span>
-            <span className="num-display">{formatEuros(jiblyFee)}</span>
-          </div>
+          {/* No fee line here. The commission is the SENDER's, added on top of
+              what they offered, and showing it to a traveler beside "vous
+              recevrez" implies it comes out of their share — the exact
+              confusion that the 3,91 bug created. They receive what the
+              listing says; the rest is not their business. */}
         </div>
 
         {/* Optional message */}
