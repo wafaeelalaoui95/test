@@ -17,7 +17,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerClient } from '@/lib/supabase/server';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
-import { travelerNetFromTotal } from '@/lib/utils';
+import { travelerNetFromTotal, formatName } from '@/lib/utils';
 import {
   senderGotProposalEmail,
   travelerGotBookingEmail,
@@ -102,9 +102,11 @@ export async function POST(req: Request) {
     const senderProfile = profiles?.find((p) => p.id === booking.sender_id);
     const travelerProfile = profiles?.find((p) => p.id === travelerId);
 
-    // Helper: extract the first name (or null if we can't)
+    // First name, title-cased. Splitting alone printed exactly what was typed,
+    // so someone who signed up as "yassine" was greeted as "yassine" in every
+    // email Jibly ever sent them — while seeing "Yassine" on their own profile.
     const firstName = (full?: string | null) =>
-      full ? full.split(' ')[0] : null;
+      full ? formatName(full).split(' ')[0] : null;
 
     // Look up the recipient's auth email (only the service role can read
     // auth.users; that's why we use the service-role client above).

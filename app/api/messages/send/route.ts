@@ -2,6 +2,7 @@ import { getSiteUrl } from '@/lib/site-url';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerClient } from '@/lib/supabase/server';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
+import { formatName } from '@/lib/utils';
 
 /**
  * POST /api/messages/send
@@ -173,8 +174,12 @@ async function sendNotificationEmail(params: {
       .select('full_name')
       .eq('id', senderId)
       .maybeSingle();
+    // Title-cased, like everywhere else a name is shown. See the same fix in
+    // app/api/notify/route.ts.
     const senderFirstName =
-      senderProfile?.full_name?.split(' ')[0] ?? 'Quelqu\'un';
+      (senderProfile?.full_name
+        ? formatName(senderProfile.full_name).split(' ')[0]
+        : '') || 'Quelqu\'un';
 
     // Pick a deep link to the booking. The user lands on /me which is
     // where the modal will reopen via the URL hash. We pass the
