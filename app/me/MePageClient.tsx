@@ -802,6 +802,18 @@ export default function MyPage(
                     </h3>
                     <PayoutStatusCard />
                   </div>
+
+                  {/* The only way into /wallet now that the header pill is
+                      gone. It belongs here rather than in the top bar: nobody
+                      needs their earnings on every page, but everybody looking
+                      at their payout settings is thinking about them. */}
+                  <Link
+                    href="/wallet"
+                    className="mt-4 inline-flex items-center gap-2 text-[13px] text-ink-600 underline underline-offset-2"
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    {locale === 'en' ? 'See my earnings' : 'Voir mes gains'}
+                  </Link>
                 </div>
               )}
 

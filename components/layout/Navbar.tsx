@@ -26,9 +26,8 @@ export function Navbar() {
   const { user, profile, loading, signOut } = useAuth();
   const { openMessaging } = useMessaging();
 
-  // Wallet balance is fetched once per session; the bell count is also
-  // refreshed every 30s. The dropdown component owns its own count, so
-  // here we only need it for the mobile-collapsed bell icon.
+  // The bell count is refreshed every 30s. The dropdown component owns its own
+  // count, so here we only need it for the mobile-collapsed bell icon.
   useEffect(() => {
     if (!user) {
       setMobileUnread(0);
@@ -140,14 +139,6 @@ export function Navbar() {
               </>
             ) : user ? (
               <>
-                {/* Wallet pill — Vinted style */}
-                <Link
-                  href="/wallet"
-                  className="ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 transition-colors"
-                  title={t.nav_wallet_title}
-                >
-                  <Wallet className="w-3.5 h-3.5" />
-                </Link>
 
                 <Link
                   href="/me"
@@ -187,21 +178,11 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile right-side cluster — wallet pill + bell + messages + burger.
+          {/* Mobile right-side cluster — bell + messages + burger.
               The dropdown is full-featured on desktop, but on mobile we
               just link to the dedicated /notifications page when the bell
               is tapped — a small popover doesn't work well on phone. */}
           <div className="flex md:hidden items-center gap-1">
-            {user && (
-              <Link
-                href="/wallet"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-ink-500 text-cream-50"
-                aria-label={t.nav_wallet_title}
-                title={t.nav_wallet_title}
-              >
-                <Wallet className="w-3.5 h-3.5" />
-              </Link>
-            )}
             {user && (
               <Link
                 href="/notifications"
