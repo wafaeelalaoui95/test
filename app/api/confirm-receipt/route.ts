@@ -29,8 +29,10 @@ import { getServerClient, getAdminClient } from '@/lib/supabase/server';
  *   - Stripe's API is idempotent for capture (re-calling on an already-
  *     captured intent is a no-op), so it's safe to retry.
  *
- * Authorisation: only the SENDER of this booking can call this. We re-
- * verify server-side because RLS doesn't apply to Stripe calls.
+ * Authorisation: only the TRAVELER of this booking can call it, and only
+ * with the recipient's delivery code plus an uploaded proof of handover. Both
+ * are re-checked server-side, because RLS does not apply to Stripe calls and
+ * the code check used to live only in the browser.
  */
 
 const schema = z.object({
@@ -82,14 +84,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'not_traveler' }, { status: 403 });
   }
 
-  // Sanity check: there must be a delivery proof before the sender can
-  // claim receipt. Protects against accidental clicks pre-delivery.
+  // There must be a delivery proof before anyone can claim receipt. Protects
+  // against an accidental click before the parcel has actually changed hands.
   if (!intent.delivery_proof_url) {
     return NextResponse.json({ ok: false, reason: 'no_proof' }, { status: 400 });
   }
 
-  // The handover gate: to release payment for the first time, the sender must
-  // present the traveler's delivery code. Enforced here (server-side) so it
+  // The handover gate: to release payment for the first time, the traveler
+  // must present the code the RECIPIENT gives them at drop-off. Enforced here (server-side) so it
   // can't be bypassed by calling the endpoint directly. Skipped once already
   // received (idempotent retries).
   if (!intent.received_confirmed_at && intent.delivery_code && body.code !== intent.delivery_code) {
