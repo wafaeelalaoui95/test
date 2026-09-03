@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Form';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { withTimeout } from '@/lib/supabase/timeout';
 import { useI18n } from '@/lib/i18n/context';
+import { formatName } from '@/lib/utils';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -33,7 +34,11 @@ export default function SignupPage() {
           email,
           password,
           options: {
-            data: { full_name: fullName },
+            // Title-cased before it leaves: this value becomes the profile's
+            // name AND is what Supabase substitutes into the confirmation
+            // email, so "yassine" typed in a hurry would greet them as
+            // "yassine" in the first message they ever get from Jibly.
+            data: { full_name: formatName(fullName) },
             emailRedirectTo: `${window.location.origin}/auth/callback?next=/me`,
           },
         }),

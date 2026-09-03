@@ -22,7 +22,21 @@ written, including the spaces inside the braces.
 
 ## 1. Confirm signup
 
-**Subject:** `Confirmez votre adresse · Confirm your email`
+**Subject:** `Bienvenue sur Jibly {{ .Data.full_name }}`
+
+`.Data` is the user metadata from `signUp({ options: { data } })`, so
+`full_name` is there because the signup page sends it. It is title-cased before
+it leaves, so a hurried "yassine" arrives as "Yassine".
+
+The name goes at the END on purpose. Supabase renders nothing for a missing
+key rather than erroring, so a subject built as `{{ .Data.full_name }},
+confirmez…` becomes `, confirmez…` for any account created without one — via
+the dashboard, a future OAuth provider, a seed. At the end it simply reads
+"Bienvenue sur Jibly", which is a fine subject line on its own.
+
+Say it in the body too, where the same rule applies:
+`Bonjour {{ .Data.full_name }},` sits on its own line and degrades to
+"Bonjour," — awkward. Prefer weaving it in after a word that stands alone.
 
 ```html
 <!DOCTYPE html>
@@ -48,7 +62,7 @@ written, including the spaces inside the braces.
                 Confirmez votre adresse
               </h1>
               <p style="margin:0 0 24px;font-size:15px;color:#5A524A;line-height:1.6;">
-                Un dernier clic et votre compte est prêt. Ce lien expire dans 24&nbsp;heures.
+                Ravis de vous compter parmi nous {{ .Data.full_name }}. Un dernier clic et votre compte est prêt : ce lien expire dans 24&nbsp;heures.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
                 <tr>
