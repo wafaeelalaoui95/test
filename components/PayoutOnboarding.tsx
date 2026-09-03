@@ -69,6 +69,13 @@ const COPY = {
       'Stripe a besoin d’un document que nous ne collectons pas ici. Tu vas être redirigé vers leur page sécurisée pour cette étape.',
     fallbackCta: 'Continuer sur Stripe',
     error: 'Une erreur est survenue. Réessaie.',
+    incomplete_iban: 'Cet IBAN est incomplet.',
+    invalid_iban: 'Cet IBAN n’est pas valide.',
+    invalid_iban_country_code: 'Cet IBAN n’est pas dans une zone acceptée.',
+    invalid_bank_account_iban: 'Ta banque a refusé cet IBAN.',
+    account_number_invalid: 'Ce numéro de compte n’est pas valide.',
+    routing_number_invalid: 'Ce sort code n’est pas valide.',
+    invalid_dob: 'Cette date de naissance n’est pas valide.',
   },
   en: {
     country: 'Which country is your bank account in?',
@@ -110,6 +117,13 @@ const COPY = {
       'Stripe needs a document we don’t collect here. You’ll be sent to their secure page for that step.',
     fallbackCta: 'Continue on Stripe',
     error: 'Something went wrong. Please try again.',
+    incomplete_iban: 'This IBAN is incomplete.',
+    invalid_iban: 'This IBAN isn’t valid.',
+    invalid_iban_country_code: 'This IBAN isn’t from a supported country.',
+    invalid_bank_account_iban: 'Your bank rejected this IBAN.',
+    account_number_invalid: 'This account number isn’t valid.',
+    routing_number_invalid: 'This sort code isn’t valid.',
+    invalid_dob: 'This date of birth isn’t valid.',
   },
 } as const;
 
@@ -165,9 +179,15 @@ function Flow({ onDone }: { onDone?: () => void }) {
   const [sortCode, setSortCode] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
 
+  // Collecting the fields ourselves means Stripe's validation errors are now
+  // ours to explain. "Something went wrong" is a lie when Stripe said exactly
+  // what was wrong — an incomplete IBAN is the person's to fix, not a fault,
+  // and telling them so is the difference between a correction and a dead end.
   function fail(code?: string) {
-    setErr(c.error);
-    if (code) setErrCode(code);
+    const known = code && (c as Record<string, string>)[code];
+    setErr(known ?? c.error);
+    // The raw code only helps when we had nothing better to say.
+    setErrCode(known ? null : code ?? null);
   }
 
   async function post(path: string, body?: unknown) {
