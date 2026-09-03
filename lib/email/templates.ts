@@ -234,7 +234,10 @@ export function bookingConfirmedSenderEmail(input: {
       ${travelerName} prend en charge votre colis
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      ${senderName}, c'est confirmé. Voici votre <strong>code de livraison</strong>, à donner au voyageur au moment où il vous remet le colis. C'est ce code qui déclenche son paiement, alors ne le communiquez qu'une fois le colis entre vos mains.
+      ${senderName}, c'est confirmé. Voici votre <strong>code de livraison</strong>, à donner au voyageur après la remise de votre colis à destination, à vous ou à votre proche qui le récupère. C'est ce code qui déclenche son paiement : ne le communiquez qu'une fois le colis réceptionné.
+    </p>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      <strong style="color:${BRAND.ink};">Si ce n'est pas vous qui réceptionnez le colis, pensez à transmettre ce code à votre proche.</strong> Sans lui, le voyageur ne peut pas confirmer la livraison.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:24px;">
       <tr>
@@ -271,7 +274,7 @@ export function bookingConfirmedSenderEmail(input: {
   return {
     subject: `Confirmé · ${route} · code de livraison ${input.code}`,
     html: wrapHtml(content, `${travelerName} a accepté votre demande — voici votre code de remise`),
-    text: `${senderName},\n\n${travelerName} prend en charge votre colis ${route}.\n\nVotre code de livraison : ${input.code}\nÀ donner au voyageur au moment où il vous remet le colis.\n\nVoir mes envois : ${url}\n\n— L'équipe Jibly`,
+    text: `${senderName},\n\n${travelerName} prend en charge votre colis ${route}.\n\nVotre code de livraison : ${input.code}\nÀ donner au voyageur après la remise de votre colis à destination, à vous ou à votre proche qui le récupère. C'est ce code qui déclenche son paiement : ne le communiquez qu'une fois le colis réceptionné.\n\nSi ce n'est pas vous qui réceptionnez le colis, pensez à transmettre ce code à votre proche. Sans lui, le voyageur ne peut pas confirmer la livraison.\n\nVoir mes envois : ${url}\n\n— L'équipe Jibly`,
   };
 }
 
