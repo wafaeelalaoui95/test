@@ -376,6 +376,7 @@ export default function EnvoyerPage() {
                 </label>
                 <CountryCityPicker
                   country={toCountry}
+                  excludeCountry={fromCountry}
                   city={toCity}
                   onChange={({ country, city }) => {
                     setToCountry(country);
@@ -601,6 +602,7 @@ export default function EnvoyerPage() {
                       <label className="block text-[13px] font-medium text-ink-500 mb-2">{t.send_label_to}</label>
                       <CountryCityPicker
                         country={toCountry}
+                        excludeCountry={fromCountry}
                         city={toCity}
                         onChange={({ country, city }) => {
                           setToCountry(country);

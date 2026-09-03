@@ -27,6 +27,12 @@ type Props = {
   cityPlaceholder?: string;
   countryPlaceholder?: string;
   enableNearby?: boolean;
+  /**
+   * Stored (French) country name to keep OUT of the default suggestions —
+   * pass the departure country on an arrival field. Only affects the
+   * suggestions; a typed search still finds it.
+   */
+  excludeCountry?: string;
 };
 
 export function CountryCityPicker({
@@ -35,6 +41,7 @@ export function CountryCityPicker({
   onChange,
   countryPlaceholder,
   enableNearby = false,
+  excludeCountry,
 }: Props) {
   const { t, locale } = useI18n();
   const [open, setOpen] = useState(false);
@@ -48,10 +55,32 @@ export function CountryCityPicker({
   const allCities = useMemo(() => getAllCities(), []);
 
   // Cities matching the query (by city OR country name, either language).
-  // Empty query → a short list of suggestions so the panel isn't blank.
+  //
+  // Empty query → suggestions. This used to be allCities.slice(0, 8), and
+  // since getAllCities() groups by country and Morocco is first with exactly
+  // eight cities, the panel always opened on the same eight Moroccan cities —
+  // which read as "it keeps suggesting the country I just picked".
+  //
+  // One city per country instead, so eight suggestions mean eight
+  // destinations. excludeCountry drops the departure from the arrival field:
+  // these trips almost always cross a border, and the one place the traveler
+  // certainly isn't flying to is where they're flying from.
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return allCities.slice(0, 8);
+    if (!q) {
+      const seen = new Set<string>();
+      const spread: typeof allCities = [];
+      for (const loc of allCities) {
+        if (seen.has(loc.countryCode)) continue;
+        if (excludeCountry && loc.countryName === excludeCountry) continue;
+        seen.add(loc.countryCode);
+        spread.push(loc);
+        if (spread.length === 8) break;
+      }
+      return spread;
+    }
+    // A typed query is NOT filtered by excludeCountry. Domestic trips are rare,
+    // not forbidden — someone searching for Lyon after picking Paris means it.
     return allCities
       .filter(
         (loc) =>
@@ -62,7 +91,7 @@ export function CountryCityPicker({
           countryDisplayName(loc.countryName, 'en').toLowerCase().includes(q)
       )
       .slice(0, 10);
-  }, [query, allCities]);
+  }, [query, allCities, excludeCountry]);
 
   // Close on click-outside or Escape.
   useEffect(() => {
