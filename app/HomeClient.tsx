@@ -19,7 +19,7 @@ import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { getCitiesForCountry, cityDisplayName } from '@/lib/countries';
-import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
+import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros, travelerNetFromTotal } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import type { TravelerTripRow, Profile, ShippingRequestRow } from '@/lib/supabase/types';
@@ -763,9 +763,9 @@ function RequestCard({
       : t.disc_age_days_ago.replace('{n}', String(ageDays));
 
   // For the traveler we show what they'll receive (net), since the budget
-  // stored is the TTC total the sender is willing to pay. Net = budget / 1.15.
+  // stored is the TTC total the sender is willing to pay. Net comes from travelerNetFromTotal.
   // We use Math.round to keep round numbers; the exact figure shows in the modal.
-  const netTraveler = Math.round(request.budget / 1.15);
+  const netTraveler = travelerNetFromTotal(request.budget);
 
   return (
     <motion.article

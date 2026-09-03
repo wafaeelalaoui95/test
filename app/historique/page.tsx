@@ -15,6 +15,7 @@ import {
   nameInitial,
   formatShortDate,
   formatEuros,
+  travelerNetFromTotal,
 } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import type { ItemCategory } from '@/lib/types';
@@ -280,7 +281,7 @@ function HistoryRow({
   const priceLabel =
     kind === 'booking'
       ? formatEuros(row.proposed_price)
-      : formatEuros((row.proposed_price ?? 0) / 1.15);
+      : formatEuros(travelerNetFromTotal(row.proposed_price ?? 0));
 
   const statusLabel = (() => {
     if (row.status === 'cancelled') return { text: t.sec_hist_status_declined, tone: 'text-ink-300' };

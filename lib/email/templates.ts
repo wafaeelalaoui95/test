@@ -1,3 +1,4 @@
+import { formatEuros } from '@/lib/utils';
 import { getSiteUrl } from '@/lib/site-url';
 // lib/email/templates.ts
 //
@@ -129,7 +130,8 @@ export function travelerGotBookingEmail(input: {
   senderFirstName: string | null;
   pickupCity: string;
   destinationCity: string;
-  proposedPrice: number;
+  /** What the TRAVELER receives — see bookingConfirmedTravelerEmail. */
+  travelerReceives: number;
   itemDescription: string | null;
   bookingId: string;
 }) {
@@ -159,8 +161,8 @@ export function travelerGotBookingEmail(input: {
         <td style="padding:18px 20px;">
           <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Trajet</p>
           <p style="margin:0 0 14px;font-size:17px;font-weight:600;color:${BRAND.ink};">${route}</p>
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Compensation</p>
-          <p style="margin:0 0 ${priceMarginBottom};font-size:17px;font-weight:600;color:${BRAND.ink};">${input.proposedPrice}€</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Vous recevrez</p>
+          <p style="margin:0 0 ${priceMarginBottom};font-size:17px;font-weight:600;color:${BRAND.ink};">${formatEuros(input.travelerReceives)}</p>
           ${itemBlock}
         </td>
       </tr>
@@ -182,7 +184,7 @@ export function travelerGotBookingEmail(input: {
   return {
     subject: `${senderName} a réservé votre trajet ${route}`,
     html: wrapHtml(content, `Nouvelle réservation sur votre trajet ${route}`),
-    text: `${travelerName},\n\n${senderName} a réservé votre trajet ${route} pour ${input.proposedPrice}€.\n\nVoir la réservation : ${url}\n\n— L'équipe Jibly`,
+    text: `${travelerName},\n\n${senderName} a réservé votre trajet ${route}. Vous recevrez ${formatEuros(input.travelerReceives)}.\n\nVoir la réservation : ${url}\n\n— L'équipe Jibly`,
   };
 }
 
@@ -235,8 +237,8 @@ export function bookingConfirmedSenderEmail(input: {
         <td style="padding:16px 20px;">
           <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Trajet</p>
           <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.ink};">${route}</p>
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Montant</p>
-          <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};">${input.proposedPrice}€</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Montant payé</p>
+          <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};">${formatEuros(input.proposedPrice)}</p>
         </td>
       </tr>
     </table>
@@ -276,7 +278,15 @@ export function bookingConfirmedTravelerEmail(input: {
   senderFirstName: string | null;
   pickupCity: string;
   destinationCity: string;
-  proposedPrice: number;
+  /**
+   * What the TRAVELER receives — not what the sender paid.
+   *
+   * This used to take proposedPrice, the total charged, and print it under
+   * "Vous recevrez": a 5 € trip told its traveler they would get 5.75, the
+   * figure the sender was billed. Named for what it means so the two cannot be
+   * confused again at the call site.
+   */
+  travelerReceives: number;
   deliveryCode: string;
   bookingId: string;
 }) {
@@ -307,7 +317,7 @@ export function bookingConfirmedTravelerEmail(input: {
           <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Trajet</p>
           <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.ink};">${route}</p>
           <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Vous recevrez</p>
-          <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};">${input.proposedPrice}€</p>
+          <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};">${formatEuros(input.travelerReceives)}</p>
         </td>
       </tr>
     </table>

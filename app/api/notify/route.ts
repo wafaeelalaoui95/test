@@ -17,6 +17,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerClient } from '@/lib/supabase/server';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
+import { travelerNetFromTotal } from '@/lib/utils';
 import {
   senderGotProposalEmail,
   travelerGotBookingEmail,
@@ -139,7 +140,7 @@ export async function POST(req: Request) {
         senderFirstName: firstName(senderProfile?.full_name),
         pickupCity: booking.pickup_city,
         destinationCity: booking.destination_city,
-        proposedPrice: booking.proposed_price,
+        travelerReceives: travelerNetFromTotal(booking.proposed_price),
         itemDescription: booking.item_description,
         bookingId: booking.id,
       });
@@ -165,7 +166,7 @@ export async function POST(req: Request) {
         senderFirstName: firstName(senderProfile?.full_name),
         pickupCity: booking.pickup_city,
         destinationCity: booking.destination_city,
-        proposedPrice: booking.proposed_price,
+        travelerReceives: travelerNetFromTotal(booking.proposed_price),
         deliveryCode: booking.delivery_code,
         bookingId: booking.id,
       });

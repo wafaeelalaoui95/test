@@ -1085,7 +1085,7 @@ function InstantProposeModal({
 
   const senderName = displayName(request.user?.full_name) || t.voy_sender_fallback_def;
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
-  const netTraveler = Math.round((request.budget / 1.15) * 100) / 100;
+  const netTraveler = travelerNetFromTotal(request.budget);
 
   async function handleSubmit() {
     setBusy(true);

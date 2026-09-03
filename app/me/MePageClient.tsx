@@ -2105,7 +2105,7 @@ function IntentCard({
           <span className="text-ink-300">·</span>
           <span className="text-ink-500 truncate">{cityDisplayName(intent.pickup_city, locale)} → {cityDisplayName(intent.destination_city, locale)}</span>
           <span className="text-ink-300">·</span>
-          <span className="font-semibold text-mint-600 num-display">{formatEuros(intent.proposed_price / 1.15)}</span>
+          <span className="font-semibold text-mint-600 num-display">{formatEuros(travelerNetFromTotal(intent.proposed_price))}</span>
           {intent.payment_status === 'authorized' && !historic && (
             <span className="text-[11px] text-mint-600 ml-1">💳</span>
           )}
@@ -3615,7 +3615,7 @@ function TripDetailCard({
   const { t, locale } = useI18n();
   const totalNet = packages.reduce((sum, p) => {
     const ttc = p.row.proposed_price ?? 0;
-    return sum + ttc / 1.15;
+    return sum + travelerNetFromTotal(ttc);
   }, 0);
   const count = packages.length;
   const isCancelable = packages.every((p) => p.row.status !== 'confirmed');
@@ -3828,7 +3828,7 @@ function RequestDetailsModal({
           <div className="flex justify-between gap-3 pt-2 border-t border-ink-100">
             <span className="text-ink-400">{t.disc_you_receive}</span>
             <span className="font-bold text-mint-600 num-display">
-              {formatEuros(intent.proposed_price / 1.15)}
+              {formatEuros(travelerNetFromTotal(intent.proposed_price))}
             </span>
           </div>
         </div>
@@ -3986,7 +3986,7 @@ function IntentCardInline({
           <span className="font-semibold text-ink-600">{senderName}</span>
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-mint-600 num-display">
-            {formatEuros(intent.proposed_price / 1.15)}
+            {formatEuros(travelerNetFromTotal(intent.proposed_price))}
           </span>
           {statusText && (
             <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${statusClass}`}>
@@ -4235,7 +4235,7 @@ function IntentCardInline({
                 <div className="flex justify-between gap-3 pt-2 border-t border-ink-100">
                   <span className="text-ink-400">{t.disc_you_receive}</span>
                   <span className="font-bold text-mint-600 num-display">
-                    {formatEuros(intent.proposed_price / 1.15)}
+                    {formatEuros(travelerNetFromTotal(intent.proposed_price))}
                   </span>
                 </div>
               </div>
@@ -4356,7 +4356,7 @@ function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
   const { t } = useI18n();
   const senderName = shortName(proposal.sender_profile?.full_name) || t.me2_role_sender;
   const initial = nameInitial(proposal.sender_profile?.full_name);
-  const netTraveler = proposal.proposed_price / 1.15;
+  const netTraveler = travelerNetFromTotal(proposal.proposed_price);
 
   const accepted = proposal.status === 'confirmed';
   const statusText = accepted ? `✓ ${t.me2_status_accepted}` : proposal.status === 'cancelled' ? `✕ ${t.me2_status_declined}` : `⏳ ${t.me2_status_pending}`;

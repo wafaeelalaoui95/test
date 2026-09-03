@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight, Loader2, X, AlertCircle, ShieldCheck, Plane, Plus,
 } from 'lucide-react';
-import { formatShortDate, formatEuros, nameInitial, displayName } from '@/lib/utils';
+import { formatShortDate, formatEuros, nameInitial, displayName, travelerNetFromTotal } from '@/lib/utils';
 import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { ITEM_CATEGORIES } from '@/lib/constants';
@@ -53,7 +53,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
   const initial = nameInitial(request.profile?.full_name);
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
 
-  const netTraveler = Math.round((request.budget / 1.15) * 100) / 100;
+  const netTraveler = travelerNetFromTotal(request.budget);
   const jiblyFee = Math.round((request.budget - netTraveler) * 100) / 100;
 
   // Load my future, non-cancelled trips. Auto-select one that matches
