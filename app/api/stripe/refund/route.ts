@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
+import { isAdminUserId } from '@/lib/admin';
 
 /**
  * POST /api/stripe/refund
@@ -18,16 +19,36 @@ import { getServerClient, getAdminClient } from '@/lib/supabase/server';
  * the same operation, otherwise a refund would come entirely out of the Jibly
  * balance while the traveler keeps a fee for an undelivered parcel.
  *
- * Authorisation is deliberately NARROWER than capture/cancel: only the sender
- * may ask for their money back. A traveler refunding themselves makes no
- * sense, and self-service refunds by either party would be an obvious abuse
- * vector. Operator-initiated refunds go through the Stripe dashboard for now.
+ * WHO MAY CALL THIS. The sender, or an operator (see lib/admin.ts). Not the
+ * traveler: refunding themselves makes no sense, and self-service refunds by
+ * the paid party are an obvious abuse vector.
+ *
+ * The sender's own access is itself narrow by accident of state, and worth
+ * understanding before widening it: capture happens when the traveler ACCEPTS,
+ * and release happens when the recipient CONFIRMS DELIVERY. So between those
+ * two moments a sender can refund money for a service the traveler may already
+ * have performed. That is why no self-service refund button exists in the UI —
+ * a disputed delivery is a decision, not a click, and it belongs to an
+ * operator.
+ *
+ * Refunding here rather than in the Stripe dashboard matters: the dashboard
+ * refunds the sender but does NOT reverse the traveler's transfer and does NOT
+ * update refunded_amount, so the money comes out of the Jibly balance and the
+ * booking's record silently diverges from Stripe.
  */
-const schema = z.object({
-  bookingIntentId: z.string().uuid(),
-  amountCents: z.number().int().positive().max(1000000).optional(),
-  reason: z.string().max(500).optional(),
-});
+const schema = z
+  .object({
+    bookingIntentId: z.string().uuid().optional(),
+    // What an operator actually has in front of them is the Stripe dashboard,
+    // where a booking is identified by its PaymentIntent — not by a Supabase
+    // UUID they'd have to go and look up. Accept either.
+    paymentIntentId: z.string().regex(/^pi_[A-Za-z0-9_]+$/).optional(),
+    amountCents: z.number().int().positive().max(1000000).optional(),
+    reason: z.string().max(500).optional(),
+  })
+  .refine((b) => b.bookingIntentId || b.paymentIntentId, {
+    message: 'bookingIntentId or paymentIntentId is required',
+  });
 
 export async function POST(req: NextRequest) {
   const supabase = getServerClient();
@@ -45,18 +66,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { data: intent } = await supabase
+  // Decided BEFORE the read, because it decides which client does the reading:
+  // an operator is not the sender, so RLS would hide the row from the
+  // user-scoped client and the request would fail as "not found" rather than
+  // working. isAdminUserId needs no row of its own.
+  const actingAsAdmin = isAdminUserId(user.id);
+
+  const query = (actingAsAdmin ? getAdminClient() : supabase)
     .from('booking_intents')
     .select(
       'id, sender_id, payment_intent_id, payment_status, payment_amount, transfer_id, transfer_amount, refunded_amount'
-    )
-    .eq('id', body.bookingIntentId)
-    .maybeSingle();
+    );
+
+  const { data: intent } = await (body.bookingIntentId
+    ? query.eq('id', body.bookingIntentId)
+    : query.eq('payment_intent_id', body.paymentIntentId!)
+  ).maybeSingle();
 
   if (!intent) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
-  if (intent.sender_id !== user.id) {
+  if (intent.sender_id !== user.id && !actingAsAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (intent.payment_status !== 'captured') {
@@ -143,9 +173,16 @@ export async function POST(req: NextRequest) {
       totalRefundedCents: total,
     });
   } catch (e: any) {
-    console.error('[refund]', e?.message);
+    // Log the real error, return a short code. Stripe's messages are written
+    // for developers and can name internal ids — same reasoning as
+    // /api/connect/onboard.
+    console.error('[refund]', e?.type, e?.code, e?.message);
+    const rawCode = e?.code ?? e?.raw?.code ?? 'refund_failed';
+    const code = /^[a-z0-9_]{1,64}$/i.test(String(rawCode))
+      ? String(rawCode)
+      : 'refund_failed';
     return NextResponse.json(
-      { error: e?.message ?? 'Refund failed' },
+      { error: 'refund_failed', code },
       { status: 500 }
     );
   }
