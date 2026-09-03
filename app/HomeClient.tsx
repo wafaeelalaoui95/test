@@ -18,7 +18,7 @@ import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { getCitiesForCountry, cityDisplayName } from '@/lib/countries';
-import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros, travelerNetFromTotal } from '@/lib/utils';
+import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import type { TravelerTripRow, Profile, ShippingRequestRow } from '@/lib/supabase/types';
@@ -758,10 +758,12 @@ function RequestCard({
       : ageDays === 1 ? t.disc_age_yesterday
       : t.disc_age_days_ago.replace('{n}', String(ageDays));
 
-  // For the traveler we show what they'll receive (net), since the budget
-  // stored is the TTC total the sender is willing to pay. Net comes from travelerNetFromTotal.
-  // We use Math.round to keep round numbers; the exact figure shows in the modal.
-  const netTraveler = travelerNetFromTotal(request.budget);
+  // A request's budget IS the traveler's amount — what the sender chose to
+  // give them. The commission rides on top and is the sender's to pay, so
+  // there is nothing to divide back out here. Doing so showed "~3,91 €" on a
+  // 5 € offer, which is neither what the sender offered nor what the traveler
+  // would get.
+  const netTraveler = request.budget;
 
   return (
     <motion.article
@@ -833,7 +835,7 @@ function RequestCard({
             {t.disc_you_receive}
           </span>
           <span className="font-bold text-mint-600 text-[16px] num-display tracking-[-0.015em]">
-            ~{formatEuros(netTraveler)}
+            {formatEuros(netTraveler)}
           </span>
         </div>
         <button

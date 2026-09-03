@@ -24,7 +24,7 @@ import { useIdentityGate } from '@/components/IdentityGate';
 import { PayoutReminder } from '@/components/PayoutSetup';
 import { ITEM_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
 import { cityDisplayName } from '@/lib/countries';
-import { formatShortDate, displayName, nameInitial, formatEuros, travelerNetFromTotal } from '@/lib/utils';
+import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
@@ -956,8 +956,8 @@ function RequestHelpableCard({
     request.user?.verification_level === 'id_verified' ||
     request.user?.verification_level === 'trusted';
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
-  // What the traveler nets — see travelerNetFromTotal.
-  const netTraveler = travelerNetFromTotal(request.budget);
+  // budget IS the traveler's amount; the fee is added on top for the sender.
+  const netTraveler = request.budget;
 
   // ----- Locked state: proposal already sent -----
   if (alreadyProposed) {
@@ -1088,7 +1088,7 @@ function InstantProposeModal({
 
   const senderName = displayName(request.user?.full_name) || t.voy_sender_fallback_def;
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
-  const netTraveler = travelerNetFromTotal(request.budget);
+  const netTraveler = request.budget; // budget is already the traveler's amount
 
   async function handleSubmit() {
     setBusy(true);

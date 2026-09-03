@@ -742,6 +742,25 @@ export default function EnvoyerPage() {
                       <span>{MIN_COMPENSATION_EUR}{t.common_eur}</span>
                       <span>200{t.common_eur}+</span>
                     </div>
+
+                    {/* What the sender actually pays. The number above is what
+                        the TRAVELER receives — the fee rides on top and is the
+                        sender's — so showing only the budget meant the total
+                        first appeared at the payment screen. */}
+                    <div className="mt-4 rounded-xl bg-cream-100 border border-ink-50 px-4 py-3 space-y-1.5">
+                      <div className="flex justify-between text-[13px] text-ink-500">
+                        <span>{locale === 'en' ? 'The traveller receives' : 'Le voyageur reçoit'}</span>
+                        <span className="num-display">{formatEuros(budget)}</span>
+                      </div>
+                      <div className="flex justify-between text-[13px] text-ink-500">
+                        <span>{t.prof_jibly_protection_fee}</span>
+                        <span className="num-display">{formatEuros(priceBreakdown(budget).fees)}</span>
+                      </div>
+                      <div className="flex justify-between text-[14px] font-semibold text-ink-900 pt-1.5 border-t border-ink-100">
+                        <span>{locale === 'en' ? 'You pay' : 'Vous payez'}</span>
+                        <span className="num-display">{formatEuros(priceBreakdown(budget).total)}</span>
+                      </div>
+                    </div>
                     {budget > 80 && (
                       <p className="flex items-start gap-2 text-[13px] text-butter-700 bg-butter-50 border border-butter-200 rounded-xl px-3.5 py-2.5 mt-4 leading-relaxed">
                         <span className="flex-shrink-0">💡</span>

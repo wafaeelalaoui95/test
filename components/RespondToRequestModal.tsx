@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight, Loader2, X, AlertCircle, ShieldCheck, Plane, Plus,
 } from 'lucide-react';
-import { formatShortDate, formatEuros, nameInitial, displayName, travelerNetFromTotal } from '@/lib/utils';
+import { formatShortDate, formatEuros, nameInitial, displayName, priceBreakdown } from '@/lib/utils';
 import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { ITEM_CATEGORIES } from '@/lib/constants';
@@ -53,8 +53,11 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
   const initial = nameInitial(request.profile?.full_name);
   const category = ITEM_CATEGORIES.find((c) => c.value === request.item_category);
 
-  const netTraveler = travelerNetFromTotal(request.budget);
-  const jiblyFee = Math.round((request.budget - netTraveler) * 100) / 100;
+  // The budget IS the traveler's amount. It is what the sender chose to give
+  // them, not a total to divide back out — the fee is added on top of it, and
+  // is the sender's to pay.
+  const netTraveler = request.budget;
+  const jiblyFee = priceBreakdown(request.budget).fees;
 
   // Load my future, non-cancelled trips. Auto-select one that matches
   // the route if any; otherwise default to "new trip".
@@ -136,12 +139,20 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
         traveler_trip_id: tripId,
         item_category: request.item_category,
         item_description: request.item_description,
-        proposed_price: request.budget,
+        // budget is what the sender offers the TRAVELER. proposed_price is
+        // what the sender PAYS, which is that plus the commission — the same
+        // total priceBreakdown() produces everywhere else.
+        //
+        // Passing budget straight through charged the sender 5.00 instead of
+        // 6.25 and then, because splitAmount() correctly divides a total back
+        // out, paid the traveler 3.91. Both sides short, and Jibly quietly
+        // taking the difference.
+        proposed_price: priceBreakdown(request.budget).total,
         pickup_city: request.pickup_city,
         destination_city: request.destination_city,
         payment_status: 'unpaid',
         payment_intent_id: null,
-        payment_amount: Math.round(request.budget * 100),
+        payment_amount: Math.round(priceBreakdown(request.budget).total * 100),
         shipping_request_id: request.id,
         traveler_message: message.trim() || null,
         initiated_by: 'traveler',
