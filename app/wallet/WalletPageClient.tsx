@@ -22,7 +22,11 @@ import { cityDisplayName } from '@/lib/countries';
 // obsolete ones sitting alongside. Fold in when the wording has settled.
 const COPY = {
   fr: {
-    heldTitle: 'En route vers toi',
+    heroTitle: 'Tes gains',
+    earnedLabel: 'Total gagné avec Jibly',
+    earnedNone: 'Tu n’as pas encore été payé.',
+    earnedCountSingular: 'sur {count} livraison',
+    earnedCountPlural: 'sur {count} livraisons',
     heldLabel: 'En attente de livraison',
     heldNone: 'Rien en attente pour le moment.',
     heldCountSingular: '{count} livraison à confirmer',
@@ -30,10 +34,13 @@ const COPY = {
     autoPayout:
       'Dès qu’une livraison est confirmée, ton paiement part automatiquement vers ton compte bancaire. Rien à demander.',
     autoPayoutLink: 'Voir mes coordonnées bancaires',
-    paidSoFar: 'Déjà versé : {amount}',
   },
   en: {
-    heldTitle: 'On its way to you',
+    heroTitle: 'Your earnings',
+    earnedLabel: 'Total earned with Jibly',
+    earnedNone: 'You haven’t been paid yet.',
+    earnedCountSingular: 'across {count} delivery',
+    earnedCountPlural: 'across {count} deliveries',
     heldLabel: 'Awaiting delivery',
     heldNone: 'Nothing pending right now.',
     heldCountSingular: '{count} delivery to confirm',
@@ -41,7 +48,6 @@ const COPY = {
     autoPayout:
       'As soon as a delivery is confirmed, your payment goes to your bank account automatically. Nothing to request.',
     autoPayoutLink: 'See my bank details',
-    paidSoFar: 'Paid out so far: {amount}',
   },
 } as const;
 
@@ -132,11 +138,11 @@ export default function WalletPageClient({
             </div>
           )}
 
-          {/* EN ROUTE — what Jibly is actually holding for this traveler. */}
+          {/* Earnings: what has actually been paid, and what is still in escrow. */}
           <section className="mb-10">
             <h2 className="flex items-center gap-2 text-[12px] font-semibold text-ink-400 tracking-[0.12em] uppercase mb-3">
-              <Clock className="w-3.5 h-3.5 text-butter-500" />
-              {w.heldTitle}
+              <CheckCircle2 className="w-3.5 h-3.5 text-mint-500" />
+              {w.heroTitle}
             </h2>
             <div className="bg-gradient-to-br from-ink-500 to-ink-600 rounded-3xl p-7 lg:p-9 text-cream-50 relative overflow-hidden">
               <div className="pointer-events-none absolute -top-12 -right-12 w-48 h-48 rounded-full bg-mint-500/20 blur-2xl" />
@@ -145,19 +151,38 @@ export default function WalletPageClient({
               <div className="relative">
                 <div className="flex items-center gap-2 text-[12px] font-semibold text-cream-50/60 tracking-[0.12em] uppercase mb-3">
                   <WalletIcon className="w-3.5 h-3.5" />
-                  {w.heldLabel}
+                  {w.earnedLabel}
                 </div>
                 <div className="text-5xl lg:text-6xl font-extrabold tracking-[-0.03em] num-display mb-1">
-                  {formatEuros(heldEuros)}
+                  {formatEuros(paidEuros)}
                 </div>
                 <p className="text-[13px] text-cream-50/70">
-                  {held.length === 0
-                    ? w.heldNone
-                    : (held.length > 1 ? w.heldCountPlural : w.heldCountSingular).replace(
+                  {paid.length === 0
+                    ? w.earnedNone
+                    : (paid.length > 1 ? w.earnedCountPlural : w.earnedCountSingular).replace(
                         '{count}',
-                        String(held.length)
+                        String(paid.length)
                       )}
                 </p>
+
+                {/* Second figure, not a footnote: money still in escrow is the
+                    thing a traveler most wants to know is coming. */}
+                <div className="mt-6 pt-5 border-t border-cream-50/15">
+                  <div className="text-[12px] font-semibold text-cream-50/60 tracking-[0.12em] uppercase mb-1.5">
+                    {w.heldLabel}
+                  </div>
+                  <div className="text-2xl font-extrabold tracking-[-0.02em] num-display">
+                    {formatEuros(heldEuros)}
+                  </div>
+                  <p className="text-[12px] text-cream-50/60 mt-0.5">
+                    {held.length === 0
+                      ? w.heldNone
+                      : (held.length > 1 ? w.heldCountPlural : w.heldCountSingular).replace(
+                          '{count}',
+                          String(held.length)
+                        )}
+                  </p>
+                </div>
 
                 {/* No withdraw button. There is nothing to withdraw FROM: once
                     delivery is confirmed the money is transferred to the
@@ -175,11 +200,6 @@ export default function WalletPageClient({
                   </Link>
                 </p>
 
-                {paidEuros > 0 && (
-                  <p className="mt-4 text-[12px] text-cream-50/50">
-                    {w.paidSoFar.replace('{amount}', formatEuros(paidEuros))}
-                  </p>
-                )}
               </div>
             </div>
           </section>
@@ -274,8 +294,14 @@ function TxRow({
   const { t, locale } = useI18n();
   const senderName = displayName(tx.sender_profile?.full_name) || t.sec_wallet_sender_fallback;
   const initial = nameInitial(tx.sender_profile?.full_name);
-  const netCents = tx.payment_amount ?? 0;
-  const netEuros = netCents / 100 / 1.15;
+  // What was actually PAID takes precedence over what we would compute: once a
+  // transfer exists, transfer_amount is the real figure and re-deriving it from
+  // payment_amount can only disagree with it — as it did, showing "5 €" beside
+  // a transfer that had actually sent 4.89.
+  const netEuros =
+    tx.transfer_amount != null
+      ? tx.transfer_amount / 100
+      : travelerNetFromTotal((tx.payment_amount ?? 0) / 100);
 
   const statusStyle =
     kind === 'captured'
