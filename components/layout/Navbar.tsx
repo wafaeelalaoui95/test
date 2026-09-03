@@ -307,19 +307,23 @@ export function Navbar() {
               ) : (
                 <>
                   {mobileTrustLink}
-                  <Link
-                    href="/login"
-                    onClick={() => setOpen(false)}
-                    className="py-3 text-base font-medium text-ink-500"
-                  >
-                    {t.auth_login_btn}
-                  </Link>
+                  {/* Same shape and size for both. They used to be a plain
+                      text link beside a filled pill, which read as a menu item
+                      next to a button rather than as two ways in. Emphasis
+                      comes from the fill, not from the format. */}
                   <Link
                     href="/signup"
                     onClick={() => setOpen(false)}
                     className="mt-4 inline-flex items-center justify-center px-5 py-3 text-[15px] font-semibold text-cream-50 bg-ink-500 rounded-full"
                   >
                     {t.nav_start}
+                  </Link>
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="mt-2 inline-flex items-center justify-center px-5 py-3 text-[15px] font-semibold text-ink-600 border border-ink-200 rounded-full"
+                  >
+                    {t.auth_login_btn}
                   </Link>
                 </>
               )}
