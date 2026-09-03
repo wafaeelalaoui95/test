@@ -69,17 +69,33 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
       .then((rows) => {
         if (cancelled) return;
         const today = new Date().toISOString().slice(0, 10);
+        // Only trips that actually go where the parcel goes. The list used to
+        // show every upcoming trip, so a Casablanca → Dubaï flight was offered
+        // for a Casablanca → Madrid parcel — and picking it would have sent
+        // someone's documents to the wrong continent.
+        //
+        // Lenient matching on both ends, because a trip's city and a request's
+        // city are free text that rarely agree exactly ("Paris" vs "Paris CDG").
+        const sameRoute = (tr: TravelerTripRow) => {
+          const a = tr.departure_city.toLowerCase();
+          const b = tr.arrival_city.toLowerCase();
+          const from = request.pickup_city.toLowerCase();
+          const to = request.destination_city.toLowerCase();
+          return (
+            (a.includes(from) || from.includes(a)) &&
+            (b.includes(to) || to.includes(b))
+          );
+        };
+
         const usable = rows.filter(
-          (tr) => tr.status !== 'cancelled' && tr.departure_date >= today
+          (tr) =>
+            tr.status !== 'cancelled' &&
+            tr.departure_date >= today &&
+            sameRoute(tr)
         );
         setTrips(usable);
 
-        const matching = usable.find(
-          (tr) =>
-            tr.departure_city.toLowerCase().includes(request.pickup_city.toLowerCase()) &&
-            tr.arrival_city.toLowerCase().includes(request.destination_city.toLowerCase())
-        );
-        if (matching) setSelectedTripId(matching.id);
+        if (usable.length === 1) setSelectedTripId(usable[0].id);
         else if (usable.length === 0) setSelectedTripId('new');
       })
       .catch(() => {})
