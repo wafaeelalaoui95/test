@@ -92,7 +92,7 @@ const CONTENT: Record<'fr' | 'en', {
       {
         title: '8. Cookies',
         paragraphs: [
-          'Nous utilisons des cookies strictement nécessaires au fonctionnement (session d’authentification) ainsi que, le cas échéant, des cookies de mesure. Vous pouvez configurer votre navigateur pour les limiter.',
+          'Nous utilisons uniquement des cookies strictement nécessaires au fonctionnement du service : la session qui vous garde connecté, et le stockage local qui conserve un formulaire en cours. Aucun cookie publicitaire, aucune mesure d’audience, aucun traceur tiers. C’est pourquoi aucune bannière de consentement ne vous est présentée : la loi n’en exige pas pour ces cookies-là. Si nous ajoutons un jour un outil de mesure, nous vous demanderons votre accord avant de le déposer.',
         ],
       },
     ],
@@ -161,7 +161,7 @@ const CONTENT: Record<'fr' | 'en', {
       {
         title: '8. Cookies',
         paragraphs: [
-          'We use cookies strictly necessary for operation (authentication session) and, where applicable, measurement cookies. You can configure your browser to limit them.',
+          'We only use cookies strictly necessary to run the service: the session that keeps you signed in, and local storage that preserves a form you are part-way through. No advertising cookies, no analytics, no third-party trackers. That is why you are not shown a consent banner — the law does not require one for these. If we ever add a measurement tool, we will ask before setting it.',
         ],
       },
     ],
