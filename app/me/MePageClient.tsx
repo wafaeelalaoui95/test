@@ -828,6 +828,7 @@ export default function MyPage(
                   email={user.email ?? ''}
                   onProfileUpdated={refreshProfile}
                   t={t}
+                  locale={locale}
                 />
               )}
             </motion.div>
@@ -2241,11 +2242,13 @@ function ProfileTab({
   email,
   onProfileUpdated,
   t,
+  locale,
 }: {
   profile: Profile | null;
   email: string;
   onProfileUpdated: () => Promise<void>;
   t: Translations;
+  locale: string;
 }) {
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
@@ -2290,7 +2293,10 @@ function ProfileTab({
     setSaved(false);
     try {
       await browser.updateProfile(profile.id, {
-        full_name: fullName.trim() || null,
+        // Normalised here as well as on blur: the blur handler can be skipped
+        // by submitting with the keyboard, and this is the value that gets
+        // shown to every other user.
+        full_name: titleCaseName(fullName.trim()) || null,
         phone: phone.trim() || null,
         city: city.trim() || null,
         country: country.trim() || null,
@@ -2325,12 +2331,35 @@ function ProfileTab({
         </div>
 
         <div className="space-y-5">
-          <Input
-            label={t.me_profile_name}
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="Salma El Amrani"
-          />
+          {/* Locked once identity is verified: this name was checked against a
+              government document, and letting someone edit it afterwards means
+              the name a sender sees no longer matches the one that was
+              verified — which is the entire value of the badge beside it.
+              Before verification it stays editable, but is normalised on save
+              so nobody appears as "YASSINE" or "yassine". */}
+          {profile?.identity_verified_at ? (
+            <div>
+              <label className="block text-[13px] font-medium text-ink-500 mb-2">
+                {t.me_profile_name}
+              </label>
+              <div className="px-4 py-3 rounded-xl bg-cream-100 text-[15px] text-ink-500">
+                {titleCaseName(fullName)}
+              </div>
+              <p className="mt-1.5 text-[12px] text-ink-400">
+                {locale === 'en'
+                  ? 'Matches your verified ID and cannot be changed.'
+                  : 'Correspond à votre pièce d’identité vérifiée et ne peut pas être modifié.'}
+              </p>
+            </div>
+          ) : (
+            <Input
+              label={t.me_profile_name}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              onBlur={() => setFullName(titleCaseName(fullName))}
+              placeholder="Salma El Amrani"
+            />
+          )}
           <div>
             <label className="block text-[13px] font-medium text-ink-500 mb-2">{t.me_profile_email}</label>
             <div className="px-4 py-3 rounded-xl bg-cream-100 text-[15px] text-ink-500">{email}</div>
