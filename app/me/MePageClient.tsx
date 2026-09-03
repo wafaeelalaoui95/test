@@ -3367,6 +3367,33 @@ function TripsView({
     packagesByTrip.set(tripId, arr);
   });
 
+  // The same grouping WITHOUT the "closed" filter, because a flight's parcel
+  // count and its earnings are history: they cannot go down.
+  //
+  // The card used to read both from the active list, so posting a review —
+  // which closes a package — turned "5€ de gains sur ce vol" into "0€ de gains
+  // sur ce vol" on a flight that had genuinely earned 5€. The list should hide
+  // finished work; the total must not forget it.
+  const allPackagesByTrip = new Map<string, TripPackage[]>();
+  incomingIntents
+    .filter((i) => i.status !== 'cancelled')
+    .forEach((i) => {
+      const tripId = i.traveler_trip_id;
+      if (!tripId) return;
+      const arr = allPackagesByTrip.get(tripId) ?? [];
+      arr.push({ kind: 'incoming', row: i });
+      allPackagesByTrip.set(tripId, arr);
+    });
+  myProposals
+    .filter((p) => p.status !== 'cancelled')
+    .forEach((p) => {
+      const tripId = p.traveler_trip_id;
+      if (!tripId) return;
+      const arr = allPackagesByTrip.get(tripId) ?? [];
+      arr.push({ kind: 'proposal', row: p });
+      allPackagesByTrip.set(tripId, arr);
+    });
+
   // Sort upcoming: soonest-departure first
   const sortedTrips = [...upcomingTrips].sort((a, b) =>
     a.departure_date.localeCompare(b.departure_date)
@@ -3428,7 +3455,7 @@ function TripsView({
     <div className="overflow-y-auto md:max-h-[80vh]">
       <ListBucketHeader label={`✈️ ${t.me2_my_trips}`} count={sortedTrips.length} />
       {sortedTrips.map((tr) => {
-        const pkgs = packagesByTrip.get(tr.id) ?? [];
+        const pkgs = allPackagesByTrip.get(tr.id) ?? [];
         const isPast = tr.departure_date < today;
         return (
           <TripListRow
@@ -3468,7 +3495,7 @@ function TripsView({
           {showPastTrips && (
             <div className="opacity-70">
               {sortedPastTrips.map((tr) => {
-                const pkgs = packagesByTrip.get(tr.id) ?? [];
+                const pkgs = allPackagesByTrip.get(tr.id) ?? [];
                 return (
                   <TripListRow
                     key={tr.id}
@@ -3492,6 +3519,7 @@ function TripsView({
       <TripDetailCard
         trip={selectedTrip}
         packages={packagesByTrip.get(selectedTrip.id) ?? []}
+        allPackages={allPackagesByTrip.get(selectedTrip.id) ?? []}
         onUpdateIntent={onUpdateIntent}
         onProofUploaded={onProofUploaded}
         onCancelTrip={onCancelTrip}
@@ -3585,6 +3613,7 @@ function TripListRow({
 function TripDetailCard({
   trip,
   packages,
+  allPackages,
   onUpdateIntent,
   onProofUploaded,
   onCancelTrip,
@@ -3601,6 +3630,11 @@ function TripDetailCard({
     | { kind: 'incoming'; row: IncomingIntent }
     | { kind: 'proposal'; row: TravelerProposal }
   >;
+  /** Same list without the closed ones — see totalNet. */
+  allPackages: Array<
+    | { kind: 'incoming'; row: IncomingIntent }
+    | { kind: 'proposal'; row: TravelerProposal }
+  >;
   onUpdateIntent: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
   onCancelTrip: (tripId: string) => Promise<void>;
@@ -3613,11 +3647,17 @@ function TripDetailCard({
   reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
 }) {
   const { t, locale } = useI18n();
-  const totalNet = packages.reduce((sum, p) => {
+  // From allPackages, not packages: what a flight carried and earned is
+  // history. Reading these off the active list meant a delivered, reviewed
+  // parcel took its own earnings off the card with it.
+  const totalNet = allPackages.reduce((sum, p) => {
     const ttc = p.row.proposed_price ?? 0;
     return sum + travelerNetFromTotal(ttc);
   }, 0);
-  const count = packages.length;
+  const count = allPackages.length;
+  // Everything on this flight is delivered and closed — different from never
+  // having had a parcel at all, and worth saying so.
+  const allDone = packages.length === 0 && allPackages.length > 0;
   const isCancelable = packages.every((p) => p.row.status !== 'confirmed');
 
   const departCode = trip.departure_airport || trip.departure_city.slice(0, 3).toUpperCase();
@@ -3694,7 +3734,11 @@ function TripDetailCard({
       {count === 0 ? (
         <div className="px-4 py-6 text-center space-y-3">
           <p className="text-[13px] text-ink-400 leading-relaxed">
-            {t.me2_no_packages_on_flight}
+            {allDone
+              ? locale === 'en'
+                ? 'Every parcel on this flight has been delivered.'
+                : 'Tous les colis de ce vol ont été livrés.'
+              : t.me2_no_packages_on_flight}
           </p>
           <Link
             href={`/?type=demandes&from=${encodeURIComponent(trip.departure_city)}&to=${encodeURIComponent(trip.arrival_city)}`}
