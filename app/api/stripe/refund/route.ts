@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   }
   if (intent.payment_status !== 'captured') {
     return NextResponse.json(
-      { error: 'Nothing to refund — payment was never captured' },
+      { error: 'Nothing to refund: payment was never captured' },
       { status: 400 }
     );
   }

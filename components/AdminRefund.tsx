@@ -60,14 +60,14 @@ export function AdminRefund() {
         throw new Error(data?.code ?? data?.error ?? 'Échec du remboursement');
       }
       if (data.alreadyRefunded) {
-        setResult('Déjà entièrement remboursé — rien à faire.');
+        setResult('Déjà entièrement remboursé. Rien à faire.');
       } else {
         setResult(
           `Remboursé ${(data.refundedCents / 100).toFixed(2)} € ` +
             `(total ${(data.totalRefundedCents / 100).toFixed(2)} €). ` +
             (data.reversalId
               ? `Transfert du voyageur repris : ${data.reversalId}.`
-              : `Aucun transfert à reprendre — le voyageur n'avait pas encore été payé.`)
+              : `Aucun transfert à reprendre : le voyageur n'avait pas encore été payé.`)
         );
         setId('');
         setAmount('');
@@ -117,7 +117,7 @@ export function AdminRefund() {
         <span className="block text-[13px] font-medium text-ink-600 mb-1.5">
           Montant en euros{' '}
           <span className="font-normal text-ink-400">
-            — vide pour rembourser tout
+            (vide pour rembourser tout)
           </span>
         </span>
         <input
@@ -144,7 +144,7 @@ export function AdminRefund() {
         />
         <span className="block mt-1.5 text-[12px] text-ink-400">
           Enregistré sur le remboursement Stripe. C&apos;est la seule trace de
-          la raison — écris-la pour ton toi de dans six mois.
+          la raison, alors écris-la pour ton toi de dans six mois.
         </span>
       </label>
 

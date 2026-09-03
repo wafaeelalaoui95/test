@@ -31,7 +31,7 @@ import { payoutCountryOptions } from '@/lib/stripe/payout-countries';
 const COPY = {
   fr: {
     country: 'Dans quel pays est ton compte bancaire ?',
-    countryHint: 'Définitif — Stripe ne permet pas de le changer ensuite.',
+    countryHint: 'Définitif. Stripe ne permet pas de le changer ensuite.',
     countryPlaceholder: 'Choisis un pays',
     start: 'Commencer',
     who: 'Qui es-tu ?',
@@ -79,7 +79,7 @@ const COPY = {
   },
   en: {
     country: 'Which country is your bank account in?',
-    countryHint: 'Permanent — Stripe does not allow changing it later.',
+    countryHint: 'Permanent. Stripe does not allow changing it later.',
     countryPlaceholder: 'Choose a country',
     start: 'Get started',
     who: 'Who are you?',
@@ -608,7 +608,7 @@ function Flow({
 
           <Button onClick={acceptTerms} disabled={loading} size="sm" fullWidth>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {c.accept} — {c.finish}
+            {c.accept}
           </Button>
         </>
       )}

@@ -63,7 +63,7 @@ const CONTENT: Record<'fr' | 'en', {
       {
         icon: AlertTriangle,
         tone: 'plain',
-        title: 'Objets sensibles — prudence',
+        title: 'Objets sensibles : prudence',
         body: 'Ces objets peuvent être réglementés selon le pays, la compagnie aérienne ou la douane. Le voyageur doit pouvoir vérifier le contenu et refuser sans pénalité :',
         list: [
           'Médicaments et ordonnances',
@@ -97,7 +97,7 @@ const CONTENT: Record<'fr' | 'en', {
     backHome: 'Back home',
     doubtTitle: 'When in doubt, refuse.',
     doubtBody:
-      'You never have to justify yourself. If something makes you uncomfortable, refuse — it’s your right, with no penalty.',
+      'You never have to justify yourself. If something makes you uncomfortable, refuse. It’s your right, with no penalty.',
     blocks: [
       {
         icon: Eye,
@@ -131,7 +131,7 @@ const CONTENT: Record<'fr' | 'en', {
       {
         icon: AlertTriangle,
         tone: 'plain',
-        title: 'Sensitive items — caution',
+        title: 'Sensitive items: caution',
         body: 'These may be regulated depending on the country, airline or customs. The traveler must be able to check the contents and refuse without penalty:',
         list: [
           'Medication and prescriptions',
