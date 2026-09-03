@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
 import { findCountryByName } from '@/lib/countries';
 import { payoutCountryOptions } from '@/lib/stripe/payout-countries';
+import { PayoutOnboarding } from '@/components/PayoutOnboarding';
 
 // =============================================================================
 // SetupPayoutsButton — calls /api/connect/onboard and redirects to Stripe.
@@ -336,7 +337,10 @@ export function PayoutStatusCard() {
           onAlreadyVerified={() => setNeedsIdentity(false)}
         />
       ) : (
-        <SetupPayoutsButton onIdentityRequired={() => setNeedsIdentity(true)} />
+        // Our own screens rather than Stripe's redirect. SetupPayoutsButton is
+        // kept for the fallback path inside PayoutOnboarding — a traveler
+        // Stripe wants a document from still goes to the hosted form.
+        <PayoutOnboarding />
       )}
     </div>
   );
