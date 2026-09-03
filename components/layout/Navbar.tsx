@@ -10,12 +10,11 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useMessaging } from '@/components/GlobalMessaging';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
-import { nameInitial, formatName, formatEuros } from '@/lib/utils';
+import { nameInitial, formatName } from '@/lib/utils';
 import { browser } from '@/lib/supabase/queries';
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   // We still poll unread notifications count for the MOBILE bell (the
   // dropdown component handles its own count for the desktop bell).
   const [mobileUnread, setMobileUnread] = useState(0);
@@ -32,17 +31,11 @@ export function Navbar() {
   // here we only need it for the mobile-collapsed bell icon.
   useEffect(() => {
     if (!user) {
-      setWalletBalance(null);
       setMobileUnread(0);
       setUnreadMessages(0);
       return;
     }
     let cancelled = false;
-    browser
-      .getWalletBalance(user.id)
-      .then((v) => { if (!cancelled) setWalletBalance(v); })
-      .catch(() => { if (!cancelled) setWalletBalance(0); });
-
     const refreshUnread = () => {
       browser
         .countUnreadNotifications(user.id)
@@ -154,9 +147,6 @@ export function Navbar() {
                   title={t.nav_wallet_title}
                 >
                   <Wallet className="w-3.5 h-3.5" />
-                  <span className="text-[13px] font-bold num-display">
-                    {walletBalance !== null ? formatEuros(walletBalance) : '-'}
-                  </span>
                 </Link>
 
                 <Link
@@ -210,9 +200,6 @@ export function Navbar() {
                 title={t.nav_wallet_title}
               >
                 <Wallet className="w-3.5 h-3.5" />
-                <span className="text-[12px] font-bold num-display">
-                  {walletBalance !== null ? formatEuros(walletBalance) : '-'}
-                </span>
               </Link>
             )}
             {user && (
@@ -295,9 +282,6 @@ export function Navbar() {
                   >
                     <Wallet className="w-4 h-4" />
                     <span>{t.nav_wallet_label}</span>
-                    <span className="ml-auto text-[14px] font-bold text-ink-600 num-display">
-                      {walletBalance !== null ? formatEuros(walletBalance) : '-'}
-                    </span>
                   </Link>
                   <Link
                     href="/notifications"
