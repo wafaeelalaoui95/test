@@ -335,12 +335,10 @@ export function HomeClient({
                   {t.disc_clear}
                 </button>
               )}
-              <div className="ms-auto flex items-center gap-2 text-[13px] text-ink-400">
-                <Star className="w-3.5 h-3.5 fill-butter-400 text-butter-400" strokeWidth={0} />
-                <span className="font-semibold text-ink-500">4.9</span>
-                <span>·</span>
-                <span>{t.hero_social_proof}</span>
-              </div>
+              {/* "4.9 · +2 000 voyageurs" used to sit here. Both numbers were
+                  invented, and neither could survive a launch: the rating had
+                  no reviews behind it and the count no travellers. Social proof
+                  goes back when it is true and computed. */}
             </div>
           </motion.div>
         </div>
