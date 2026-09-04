@@ -73,7 +73,15 @@ export interface TravelerTrip {
   // Travelers set the minimum compensation they accept.
   // Senders can propose more in their request budget.
   compensation_min: number;
-  compensation_max?: number; // deprecated, kept optional for backward compat
+  // Deprecated, kept optional for backward compat. Nothing writes it: every
+  // createTrip call passes null, so a trip has one price and never a range.
+  //
+  // The listing cards used to be labelled "à partir de" / "from", which is why
+  // this matters — it promised a range that cannot exist, so a sender read
+  // "from 6.25" and had no idea what the real figure was until checkout. The
+  // labels now just say Prix / Price. If a max is ever reintroduced, the
+  // wording has to come back with it.
+  compensation_max?: number;
   id_verified: boolean;
   responsibility_accepted: boolean;
   status: RequestStatus;
