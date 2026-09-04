@@ -318,8 +318,8 @@ export default function TrustPage() {
               </h3>
               <p className="text-[13px] text-ink-500 leading-relaxed">
                 {t.tp_contact_body_before}{' '}
-                <a href="mailto:hello@jibly.io" className="text-lavender-700 font-semibold hover:underline">
-                  hello@jibly.io
+                <a href="mailto:wafae@jibly.io" className="text-lavender-700 font-semibold hover:underline">
+                  wafae@jibly.io
                 </a>
                 {' '}{t.tp_contact_body_after}
               </p>

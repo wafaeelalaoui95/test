@@ -49,7 +49,7 @@ export function Footer() {
             </h4>
             <ul className="space-y-3 text-[14px] text-ink-400">
               <li>
-                <a href="mailto:hello@jibly.io" className="hover:text-ink-600 transition-colors">
+                <a href="mailto:wafae@jibly.io" className="hover:text-ink-600 transition-colors">
                   Contact
                 </a>
               </li>

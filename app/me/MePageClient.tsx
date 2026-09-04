@@ -1202,8 +1202,8 @@ function OverviewTab({
               </div>
               <p className="text-[13px] text-ink-400 mb-6">
                 {t.me2_withdraw_question}{' '}
-                <a href="mailto:hello@jibly.io" className="font-semibold text-ink-600 underline">
-                  hello@jibly.io
+                <a href="mailto:wafae@jibly.io" className="font-semibold text-ink-600 underline">
+                  wafae@jibly.io
                 </a>
               </p>
               <button

@@ -38,7 +38,7 @@ const CONTENT: Record<'fr' | 'en', {
       {
         title: '1. Responsable du traitement',
         paragraphs: [
-          'Jibly est responsable du traitement des données collectées via la plateforme. Pour toute question relative à vos données, contactez-nous à hello@jibly.io.',
+          'Jibly est responsable du traitement des données collectées via la plateforme. Pour toute question relative à vos données, contactez-nous à wafae@jibly.io.',
         ],
       },
       {
@@ -83,7 +83,7 @@ const CONTENT: Record<'fr' | 'en', {
         title: '7. Vos droits',
         paragraphs: [
           'Conformément au RGPD, vous disposez d’un droit d’accès, de rectification, d’effacement, de limitation, d’opposition et de portabilité de vos données.',
-          'Pour exercer ces droits, écrivez à hello@jibly.io. Vous pouvez également introduire une réclamation auprès de la CNIL.',
+          'Pour exercer ces droits, écrivez à wafae@jibly.io. Vous pouvez également introduire une réclamation auprès de la CNIL.',
         ],
       },
       {
@@ -105,7 +105,7 @@ const CONTENT: Record<'fr' | 'en', {
       {
         title: '1. Data controller',
         paragraphs: [
-          'Jibly is the controller of the data collected through the platform. For any question about your data, contact us at hello@jibly.io.',
+          'Jibly is the controller of the data collected through the platform. For any question about your data, contact us at wafae@jibly.io.',
         ],
       },
       {
@@ -150,7 +150,7 @@ const CONTENT: Record<'fr' | 'en', {
         title: '7. Your rights',
         paragraphs: [
           'Under the GDPR, you have the right to access, rectify, erase, restrict, object to, and port your data.',
-          'To exercise these rights, email hello@jibly.io. You may also lodge a complaint with your data protection authority (e.g. the CNIL in France).',
+          'To exercise these rights, email wafae@jibly.io. You may also lodge a complaint with your data protection authority (e.g. the CNIL in France).',
         ],
       },
       {
