@@ -9,6 +9,12 @@ import { getSiteUrl } from '@/lib/site-url';
 // Style: warm but minimal, mirrors the Jibly product palette (cream
 // background, ink text, lavender accent). Wide-compatible HTML (table-
 // based for Gmail/Outlook), no external CSS or webfonts.
+//
+// ENGLISH ONLY, by decision. Nothing records a person's language — there is no
+// locale column on a profile — so a template could not choose even if it
+// wanted to. Writing to everyone in French was the worse of the two guesses
+// for a product whose testers already include English speakers. Same reasoning
+// as the Supabase auth emails.
 
 const BRAND = {
   cream: '#FFF8F0',
@@ -25,7 +31,7 @@ const BASE_URL = getSiteUrl();
 // Shared HTML scaffold — used by every email template
 function wrapHtml(content: string, preheader: string): string {
   return `<!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,8 +55,8 @@ function wrapHtml(content: string, preheader: string): string {
           <tr>
             <td style="padding:24px 32px;border-top:1px solid #EFE9E2;">
               <p style="margin:0;font-size:12px;color:${BRAND.inkMuted};line-height:1.6;">
-                Vous recevez cet email parce que vous avez un compte Jibly.<br>
-                <a href="${BASE_URL}/me" style="color:${BRAND.inkSoft};text-decoration:underline;">Gérer mon espace</a>
+                You are receiving this because you have a Jibly account.<br>
+                <a href="${BASE_URL}/me" style="color:${BRAND.inkSoft};text-decoration:underline;">Go to your account</a>
               </p>
             </td>
           </tr>
@@ -63,10 +69,10 @@ function wrapHtml(content: string, preheader: string): string {
 }
 
 // =============================================================================
-// 1. Sender receives a proposal from a traveler
+// 1. Sender receives an offer from a traveller
 // =============================================================================
-// Triggered when a traveler clicks "Je peux transporter" on a public request.
-// The sender needs to be pulled back to the app to accept/decline.
+// Triggered when a traveller offers to carry a public request. The sender
+// needs to be pulled back to the app to accept or decline.
 export function senderGotProposalEmail(input: {
   senderFirstName: string | null;
   travelerFirstName: string | null;
@@ -75,26 +81,26 @@ export function senderGotProposalEmail(input: {
   proposedPrice: number;
   bookingId: string;
 }) {
-  const senderName = input.senderFirstName || 'Bonjour';
-  const travelerName = input.travelerFirstName || 'Un voyageur';
+  const senderName = input.senderFirstName || 'Hello';
+  const travelerName = input.travelerFirstName || 'A traveller';
   const route = `${input.pickupCity} → ${input.destinationCity}`;
   const url = `${BASE_URL}/me`;
 
   const content = `
-    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Nouvelle proposition</p>
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">New offer</p>
     <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
-      ${travelerName} peut transporter votre colis
+      ${travelerName} can carry your parcel
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      ${senderName}, bonne nouvelle ! Quelqu'un a vu votre demande et peut s'en occuper.
+      ${senderName}, good news — someone saw your request and can take it.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:24px;">
       <tr>
         <td style="padding:18px 20px;">
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Trajet</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Route</p>
           <p style="margin:0 0 14px;font-size:17px;font-weight:600;color:${BRAND.ink};">${route}</p>
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Prix proposé</p>
-          <p style="margin:0;font-size:17px;font-weight:600;color:${BRAND.ink};">${input.proposedPrice}€</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Offered price</p>
+          <p style="margin:0;font-size:17px;font-weight:600;color:${BRAND.ink};">${formatEuros(input.proposedPrice)}</p>
         </td>
       </tr>
     </table>
@@ -102,66 +108,66 @@ export function senderGotProposalEmail(input: {
       <tr>
         <td style="background:${BRAND.ink};border-radius:999px;">
           <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
-            Voir la proposition
+            See the offer
           </a>
         </td>
       </tr>
     </table>
     <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
-      La proposition vous attend dans votre espace. Vous pouvez accepter, refuser ou discuter avec le voyageur avant de décider.
+      The offer is waiting in your account. You can accept it, decline it, or ask the traveller a question before you decide.
     </p>
   `;
 
   return {
-    subject: `${travelerName} peut transporter votre colis ${route}`,
-    html: wrapHtml(content, `Une proposition pour votre demande ${route}`),
-    text: `${senderName},\n\n${travelerName} peut transporter votre colis ${route} pour ${input.proposedPrice}€.\n\nVoir la proposition : ${url}\n\n— L'équipe Jibly`,
+    subject: `${travelerName} can carry your parcel · ${route}`,
+    html: wrapHtml(content, `An offer on your request ${route}`),
+    text: `${senderName},\n\n${travelerName} can carry your parcel ${route} for ${formatEuros(input.proposedPrice)}.\n\nSee the offer: ${url}\n\n— The Jibly team`,
   };
 }
 
 // =============================================================================
-// 2. Traveler receives a booking from a sender
+// 2. Traveller receives a booking from a sender
 // =============================================================================
-// Triggered when a sender books a traveler's trip (instant book flow with
-// payment held). The traveler is paid only on delivery — they need to
-// accept and pick up the package.
+// Triggered when a sender books a traveller's trip (instant book, payment
+// held). The traveller is paid only on delivery — they need to accept and
+// collect the parcel.
 export function travelerGotBookingEmail(input: {
   travelerFirstName: string | null;
   senderFirstName: string | null;
   pickupCity: string;
   destinationCity: string;
-  /** What the TRAVELER receives — see bookingConfirmedTravelerEmail. */
+  /** What the TRAVELLER receives — see bookingConfirmedTravelerEmail. */
   travelerReceives: number;
   itemDescription: string | null;
   bookingId: string;
 }) {
-  const travelerName = input.travelerFirstName || 'Bonjour';
-  const senderName = input.senderFirstName || 'Un expéditeur';
+  const travelerName = input.travelerFirstName || 'Hello';
+  const senderName = input.senderFirstName || 'A sender';
   const route = `${input.pickupCity} → ${input.destinationCity}`;
   const url = `${BASE_URL}/me`;
 
   const itemBlock = input.itemDescription
-    ? `<p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Contenu</p>
+    ? `<p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">What it is</p>
        <p style="margin:0;font-size:14px;color:${BRAND.ink};line-height:1.5;">${escapeHtml(input.itemDescription)}</p>`
     : '';
 
   const priceMarginBottom = input.itemDescription ? '14px' : '0';
 
   const content = `
-    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Nouvelle réservation</p>
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">New booking</p>
     <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
-      ${senderName} a réservé votre trajet
+      ${senderName} booked your trip
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      ${travelerName}, ${senderName} souhaite vous confier un colis sur votre trajet.
-      Le paiement est déjà sécurisé — il sera versé après la livraison.
+      ${travelerName}, ${senderName} would like you to carry a parcel on your trip.
+      The payment is already held — it is released to you after delivery.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#E6F5EE;border-radius:12px;margin-bottom:24px;">
       <tr>
         <td style="padding:18px 20px;">
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Trajet</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Route</p>
           <p style="margin:0 0 14px;font-size:17px;font-weight:600;color:${BRAND.ink};">${route}</p>
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Vous recevrez</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">You will receive</p>
           <p style="margin:0 0 ${priceMarginBottom};font-size:17px;font-weight:600;color:${BRAND.ink};">${formatEuros(input.travelerReceives)}</p>
           ${itemBlock}
         </td>
@@ -171,33 +177,29 @@ export function travelerGotBookingEmail(input: {
       <tr>
         <td style="background:${BRAND.ink};border-radius:999px;">
           <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
-            Voir la réservation
+            See the booking
           </a>
         </td>
       </tr>
     </table>
     <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
-      Vous pourrez contacter ${senderName} via la messagerie pour convenir du point de récupération.
+      Once you accept, you can message ${senderName} to agree where and when to collect the parcel.
     </p>
   `;
 
   return {
-    subject: `${senderName} a réservé votre trajet ${route}`,
-    html: wrapHtml(content, `Nouvelle réservation sur votre trajet ${route}`),
-    text: `${travelerName},\n\n${senderName} a réservé votre trajet ${route}. Vous recevrez ${formatEuros(input.travelerReceives)}.\n\nVoir la réservation : ${url}\n\n— L'équipe Jibly`,
+    subject: `${senderName} booked your trip · ${route}`,
+    html: wrapHtml(content, `New booking on your trip ${route}`),
+    text: `${travelerName},\n\n${senderName} booked your trip ${route}. You will receive ${formatEuros(input.travelerReceives)}.\n\nSee the booking: ${url}\n\n— The Jibly team`,
   };
 }
 
-// Tiny HTML escape — used only on user-controlled fields (item descriptions).
-// Keeps the templates safe from senders injecting markup. Not exhaustive,
-// but enough for Gmail/Outlook rendering.
 // =============================================================================
-// 3. Sender receives confirmation that the traveler accepted
+// 3. Sender receives confirmation that the traveller accepted
 // =============================================================================
-// Triggered when status flips to 'confirmed' (traveler accepted the
-// proposal OR sender's instant-book payment was authorized). Includes
-// the sender's DELIVERY code — the one they read to the traveler at drop-off,
-// which the traveler then enters to release payment.
+// Triggered when status flips to 'confirmed'. Carries the sender's DELIVERY
+// code — read out at the destination, entered by the traveller, and that is
+// what releases payment.
 //
 // SECURITY: never include the pickup code here. The rule across both handovers
 // is that WHOEVER RECEIVES holds the code and WHOEVER GIVES enters it, so the
@@ -212,37 +214,32 @@ export function bookingConfirmedSenderEmail(input: {
   proposedPrice: number;
   /**
    * The DELIVERY code. The sender (or whoever collects at the other end) reads
-   * it to the traveler at drop-off, and the traveler enters it to release
+   * it to the traveller at drop-off, and the traveller enters it to release
    * payment.
-   *
-   * This email used to carry the PICKUP code instead, which is the traveler's
-   * to read aloud when they collect the parcel. Sending it here meant both
-   * parties held the same code and the sender could confirm a handover that
-   * never happened — the proof proved nothing.
    */
   code: string;
   bookingId: string;
 }) {
-  const senderName = input.senderFirstName || 'Bonjour';
-  const travelerName = input.travelerFirstName || 'Le voyageur';
+  const senderName = input.senderFirstName || 'Hello';
+  const travelerName = input.travelerFirstName || 'The traveller';
   const route = `${input.pickupCity} → ${input.destinationCity}`;
   const url = `${BASE_URL}/me`;
 
   const content = `
-    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Confirmé</p>
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Confirmed</p>
     <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
-      ${travelerName} prend en charge votre colis
+      ${travelerName} is carrying your parcel
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      ${senderName}, c'est confirmé. Voici votre <strong>code de livraison</strong>, à donner au voyageur après la remise de votre colis à destination, à vous ou à votre proche qui le récupère. C'est ce code qui déclenche son paiement : ne le communiquez qu'une fois le colis réceptionné.
+      ${senderName}, it is confirmed. Here is your <strong>delivery code</strong>. Give it to the traveller <strong>at the destination</strong>, once the parcel has been handed over — to you, or to whoever collects it for you. This code is what releases their payment, so only share it after the parcel is in hand.
     </p>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      <strong style="color:${BRAND.ink};">Si ce n'est pas vous qui réceptionnez le colis, pensez à transmettre ce code à votre proche.</strong> Sans lui, le voyageur ne peut pas confirmer la livraison.
+      <strong style="color:${BRAND.ink};">If someone else is collecting the parcel, pass this code on to them.</strong> Without it, the traveller cannot confirm the delivery.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:24px;">
       <tr>
         <td style="padding:24px 20px;text-align:center;">
-          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Code de livraison</p>
+          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Delivery code</p>
           <p style="margin:0;font-size:36px;font-weight:700;color:${BRAND.ink};letter-spacing:0.2em;font-family:'SF Mono',Monaco,Consolas,monospace;">${input.code}</p>
         </td>
       </tr>
@@ -250,9 +247,9 @@ export function bookingConfirmedSenderEmail(input: {
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FAF7F2;border-radius:12px;margin-bottom:24px;">
       <tr>
         <td style="padding:16px 20px;">
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Trajet</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Route</p>
           <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.ink};">${route}</p>
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Montant payé</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Amount paid</p>
           <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};">${formatEuros(input.proposedPrice)}</p>
         </td>
       </tr>
@@ -261,66 +258,66 @@ export function bookingConfirmedSenderEmail(input: {
       <tr>
         <td style="background:${BRAND.ink};border-radius:999px;">
           <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
-            Voir mes envois
+            View my parcels
           </a>
         </td>
       </tr>
     </table>
     <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
-      <strong>Comment ça marche :</strong> au moment de remettre votre colis à ${travelerName}, montrez ce code. Il l'entrera dans son app pour valider la prise en charge. Gardez ce code confidentiel.
+      <strong>When you hand the parcel over</strong> at the start of the trip, ${travelerName} shows you a different code — theirs. You enter that one in the app. Keep your delivery code to yourself until the parcel arrives.
     </p>
   `;
 
   return {
-    subject: `Confirmé · ${route} · code de livraison ${input.code}`,
-    html: wrapHtml(content, `${travelerName} a accepté votre demande — voici votre code de remise`),
-    text: `${senderName},\n\n${travelerName} prend en charge votre colis ${route}.\n\nVotre code de livraison : ${input.code}\nÀ donner au voyageur après la remise de votre colis à destination, à vous ou à votre proche qui le récupère. C'est ce code qui déclenche son paiement : ne le communiquez qu'une fois le colis réceptionné.\n\nSi ce n'est pas vous qui réceptionnez le colis, pensez à transmettre ce code à votre proche. Sans lui, le voyageur ne peut pas confirmer la livraison.\n\nVoir mes envois : ${url}\n\n— L'équipe Jibly`,
+    subject: `Confirmed · ${route} · delivery code ${input.code}`,
+    html: wrapHtml(content, `${travelerName} accepted — here is your delivery code`),
+    text: `${senderName},\n\n${travelerName} is carrying your parcel ${route}.\n\nYour delivery code: ${input.code}\nGive it to the traveller at the destination, once the parcel has been handed over — to you, or to whoever collects it for you. This code releases their payment, so only share it after the parcel is in hand.\n\nIf someone else is collecting the parcel, pass this code on to them. Without it, the traveller cannot confirm the delivery.\n\nWhen you hand the parcel over at the start of the trip, ${travelerName} shows you a different code — theirs. You enter that one in the app.\n\nView my parcels: ${url}\n\n— The Jibly team`,
   };
 }
 
 // =============================================================================
-// 4. Traveler receives confirmation + their delivery code
+// 4. Traveller receives confirmation + their handover code
 // =============================================================================
-// Triggered alongside #3 when status flips to 'confirmed'. Contains the
-// PICKUP code — the one the traveler reads to the sender when collecting the
-// parcel, which the sender then enters as proof of having handed it over.
+// Triggered alongside #3. Carries the PICKUP code — the one the traveller
+// reads to the sender when collecting the parcel, which the sender then enters
+// as proof of having handed it over.
 //
 // SECURITY: never include the delivery code here. Mirror of the sender email
-// above: the traveler must not hold the code that releases their own payment.
+// above: the traveller must not hold the code that releases their own payment.
 export function bookingConfirmedTravelerEmail(input: {
   travelerFirstName: string | null;
   senderFirstName: string | null;
   pickupCity: string;
   destinationCity: string;
   /**
-   * What the TRAVELER receives — not what the sender paid.
+   * What the TRAVELLER receives — not what the sender paid.
    *
    * This used to take proposedPrice, the total charged, and print it under
-   * "Vous recevrez": a 5 € trip told its traveler they would get 5.75, the
-   * figure the sender was billed. Named for what it means so the two cannot be
-   * confused again at the call site.
+   * "You will receive": a 5 EUR trip told its traveller they would get 5.75,
+   * the figure the sender was billed. Named for what it means so the two
+   * cannot be confused again at the call site.
    */
   travelerReceives: number;
   code: string;
   bookingId: string;
 }) {
-  const travelerName = input.travelerFirstName || 'Bonjour';
-  const senderName = input.senderFirstName || "L'expéditeur";
+  const travelerName = input.travelerFirstName || 'Hello';
+  const senderName = input.senderFirstName || 'The sender';
   const route = `${input.pickupCity} → ${input.destinationCity}`;
   const url = `${BASE_URL}/me`;
 
   const content = `
-    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Confirmé</p>
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Confirmed</p>
     <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
-      Mission acceptée
+      You are on
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      ${travelerName}, voici votre <strong>code de remise</strong>. Vous le donnerez à ${senderName} au moment où il vous confie le colis : c'est sa preuve de vous l'avoir remis. Ne le communiquez qu'une fois le colis entre vos mains.
+      ${travelerName}, here is your <strong>handover code</strong>. Give it to ${senderName} at the moment they hand you the parcel — it is their proof that they did. Only share it once the parcel is in your hands.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#E6F5EE;border-radius:12px;margin-bottom:24px;">
       <tr>
         <td style="padding:24px 20px;text-align:center;">
-          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Code de remise</p>
+          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Handover code</p>
           <p style="margin:0;font-size:36px;font-weight:700;color:${BRAND.ink};letter-spacing:0.2em;font-family:'SF Mono',Monaco,Consolas,monospace;">${input.code}</p>
         </td>
       </tr>
@@ -328,9 +325,9 @@ export function bookingConfirmedTravelerEmail(input: {
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FAF7F2;border-radius:12px;margin-bottom:24px;">
       <tr>
         <td style="padding:16px 20px;">
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Trajet</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Route</p>
           <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.ink};">${route}</p>
-          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Vous recevrez</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">You will receive</p>
           <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};">${formatEuros(input.travelerReceives)}</p>
         </td>
       </tr>
@@ -339,22 +336,26 @@ export function bookingConfirmedTravelerEmail(input: {
       <tr>
         <td style="background:${BRAND.ink};border-radius:999px;">
           <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
-            Voir mes trajets
+            View my trips
           </a>
         </td>
       </tr>
     </table>
     <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
-      <strong>Important :</strong> à la livraison, ${senderName} entrera ce code dans son app pour valider la remise du colis. C'est ce qui libère votre paiement. Gardez ce code confidentiel.
+      <strong>At the destination</strong>, whoever receives the parcel gives you a second code — the delivery code. You enter that one in the app, and it releases your payment. Keep your handover code to yourself until collection.
     </p>
   `;
 
   return {
-    subject: `Confirmé · ${route} · code de remise ${input.code}`,
-    html: wrapHtml(content, `Vous transportez pour ${senderName} — voici votre code de remise`),
-    text: `${travelerName},\n\nVous transportez un colis pour ${senderName} ${route}.\n\nVotre code de remise : ${input.code}\nÀ donner à ${senderName} au moment où il vous confie le colis.\n\nVoir mes trajets : ${url}\n\n— L'équipe Jibly`,
+    subject: `Confirmed · ${route} · handover code ${input.code}`,
+    html: wrapHtml(content, `You are carrying for ${senderName} — here is your handover code`),
+    text: `${travelerName},\n\nYou are carrying a parcel for ${senderName} ${route}.\n\nYour handover code: ${input.code}\nGive it to ${senderName} at the moment they hand you the parcel.\n\nAt the destination, whoever receives the parcel gives you a second code — the delivery code. You enter that one in the app, and it releases your payment.\n\nView my trips: ${url}\n\n— The Jibly team`,
   };
 }
+
+// Tiny HTML escape — used only on user-controlled fields (item descriptions).
+// Keeps the templates safe from senders injecting markup. Not exhaustive,
+// but enough for Gmail/Outlook rendering.
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')

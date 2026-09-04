@@ -176,10 +176,13 @@ async function sendNotificationEmail(params: {
       .maybeSingle();
     // Title-cased, like everywhere else a name is shown. See the same fix in
     // app/api/notify/route.ts.
+    // English, like every other transactional email — see lib/email/templates.ts
+    // for why: nothing records a person's language, so there is nothing to
+    // choose from.
     const senderFirstName =
       (senderProfile?.full_name
         ? formatName(senderProfile.full_name).split(' ')[0]
-        : '') || 'Quelqu\'un';
+        : '') || 'Someone';
 
     // Pick a deep link to the booking. The user lands on /me which is
     // where the modal will reopen via the URL hash. We pass the
@@ -193,7 +196,7 @@ async function sendNotificationEmail(params: {
     const { error: sendErr } = await resend.emails.send({
       from: FROM_EMAIL,
       to: recipientEmail,
-      subject: `${senderFirstName} vous a envoyé un message sur Jibly`,
+      subject: `${senderFirstName} sent you a message on Jibly`,
       html: renderEmail({ senderFirstName, preview, link }),
     });
 
@@ -232,20 +235,20 @@ function renderEmail({
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#FBF8F2; padding:32px 20px; margin:0; color:#2C2620;">
         <div style="max-width:480px; margin:0 auto; background:#fff; border-radius:16px; padding:32px;">
           <div style="font-size:13px; color:#7458E8; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:16px;">
-            Jibly · Nouveau message
+            Jibly · New message
           </div>
           <h1 style="font-size:24px; font-weight:800; letter-spacing:-0.5px; margin:0 0 12px;">
-            ${escape(senderFirstName)} vous a écrit
+            ${escape(senderFirstName)} wrote to you
           </h1>
           <div style="font-size:15px; color:#5a544c; line-height:1.6; border-left:3px solid #7458E8; padding-left:16px; margin:20px 0; font-style:italic;">
             « ${escape(preview)} »
           </div>
           <a href="${escape(link)}" style="display:inline-block; background:#2C2620; color:#FBF8F2; padding:12px 24px; border-radius:999px; text-decoration:none; font-weight:600; font-size:14px; margin-top:8px;">
-            Voir le message
+            Read the message
           </a>
           <p style="font-size:12px; color:#a09a92; line-height:1.5; margin-top:32px;">
-            Vous recevez cet email parce que vous avez une mission active sur Jibly. Pour répondre,
-            ouvrez la conversation depuis votre espace.
+            You are receiving this because you have an active booking on Jibly. To reply,
+            open the conversation from your account.
           </p>
         </div>
       </body>
