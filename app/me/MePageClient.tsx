@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Loader2,
   AlertTriangle,
+  Pencil,
   Trash2,
   Wallet,
   Camera,
@@ -53,6 +54,7 @@ import { cityDisplayName } from '@/lib/countries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
 import { getBrowserClient } from '@/lib/supabase/client';
+import { EditListingModal } from '@/components/EditListingModal';
 import { cn } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
 import type {
@@ -650,6 +652,11 @@ export default function MyPage(
                       prev.map((tr) => (tr.id === tripId ? { ...tr, status: 'cancelled' } : tr))
                     );
                   }}
+                  onTripEdited={(tripId, patch) =>
+                    setTrips((prev) =>
+                      prev.map((tr) => (tr.id === tripId ? { ...tr, ...patch } : tr))
+                    )
+                  }
                   onOpenChat={(intent) => {
                     // Traveler side: opens chat with the sender of this incoming
                     // booking. The senderId is the booking's sender_id; the
@@ -722,6 +729,18 @@ export default function MyPage(
                 <SendsView
                   bookings={myBookings}
                   requests={requests}
+                  onRequestEdited={(id, patch) =>
+                    setRequests((prev) =>
+                      prev.map((r) => (r.id === id ? { ...r, ...patch } : r))
+                    )
+                  }
+                  onRequestWithdrawn={(id) =>
+                    setRequests((prev) =>
+                      prev.map((r) =>
+                        r.id === id ? { ...r, status: 'cancelled' as const } : r
+                      )
+                    )
+                  }
                   onAcceptProposal={(b) => setProposalToPay(b)}
                   onDeclineProposal={async (id) => {
                     await browser.updateBookingIntentStatus(id, 'cancelled');
@@ -2964,10 +2983,14 @@ function SendsView({
   onOpenReview,
   hasReviewed,
   reviewFromOther,
+  onRequestEdited,
+  onRequestWithdrawn,
   t,
 }: {
   bookings: MyBooking[];
   requests: ShippingRequestRow[];
+  onRequestEdited: (id: string, patch: Record<string, any>) => void;
+  onRequestWithdrawn: (id: string) => void;
   onAcceptProposal: (b: MyBooking) => void;
   onDeclineProposal: (id: string) => void;
   onOpenChat: (b: MyBooking) => void;
@@ -3171,7 +3194,15 @@ function SendsView({
       </div>
     ) : (
       <div className="p-4">
-        <RequestDetailCard request={selected.row} t={t} />
+        <RequestDetailCard
+          request={selected.row}
+          // Reaching this panel at all means the request is in the "searching"
+          // bucket — no confirmed or pending booking against it — so it is
+          // exactly the case the edit and withdraw routes accept.
+          onEdited={(patch) => onRequestEdited(selected.row.id, patch)}
+          onWithdrawn={() => onRequestWithdrawn(selected.row.id)}
+          t={t}
+        />
       </div>
     )
   ) : (
@@ -3279,9 +3310,42 @@ function RequestListRow({
 
 // Detail panel for a request without traveler — simple card with route +
 // budget + reassurance message. Minimal because there's not much to do yet.
-function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Translations }) {
+function RequestDetailCard({
+  request,
+  onEdited,
+  onWithdrawn,
+  t,
+}: {
+  request: ShippingRequestRow;
+  // Only passed for a request nobody has taken on — see SendsView. Absent means
+  // the actions are not offered, which is how a booked request stays read-only
+  // without this component having to know the rule.
+  onEdited?: (patch: Record<string, any>) => void;
+  onWithdrawn?: () => void;
+  t: Translations;
+}) {
   const { locale } = useI18n();
   const cat = ITEM_CATEGORIES.find((c) => c.value === (request.item_category as ItemCategory));
+  const [editing, setEditing] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const canManage = !!onEdited && !!onWithdrawn;
+
+  async function withdraw() {
+    setWithdrawing(true);
+    try {
+      const res = await fetch('/api/listing/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'shipping_request', id: request.id }),
+      });
+      if (res.ok) onWithdrawn?.();
+    } finally {
+      setWithdrawing(false);
+      setConfirmWithdraw(false);
+    }
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-ink-50 p-5">
       <div className="flex items-center gap-3 mb-4">
@@ -3319,6 +3383,62 @@ function RequestDetailCard({ request, t }: { request: ShippingRequestRow; t: Tra
           {t.me2_searching_traveler_text}
         </div>
       </div>
+
+      {/* Offered only while nobody has taken the request on. Quiet styling: this
+          is housekeeping on your own listing, not a step in the flow. */}
+      {canManage && (
+        <div className="flex items-center gap-4 mt-4 text-[13px]">
+          <button
+            onClick={() => setEditing(true)}
+            className="text-ink-600 underline underline-offset-2 font-medium"
+          >
+            {locale === 'en' ? 'Edit' : 'Modifier'}
+          </button>
+          {confirmWithdraw ? (
+            <span className="flex items-center gap-3 text-ink-400">
+              {locale === 'en' ? 'Take it down?' : 'Retirer l’annonce ?'}
+              <button
+                onClick={withdraw}
+                disabled={withdrawing}
+                className="text-blush-500 underline underline-offset-2 font-medium"
+              >
+                {locale === 'en' ? 'Yes' : 'Oui'}
+              </button>
+              <button
+                onClick={() => setConfirmWithdraw(false)}
+                className="text-ink-400 underline underline-offset-2"
+              >
+                {locale === 'en' ? 'No' : 'Non'}
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setConfirmWithdraw(true)}
+              className="text-ink-400 underline underline-offset-2"
+            >
+              {locale === 'en' ? 'Withdraw' : 'Retirer'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {editing && (
+        <EditListingModal
+          request={{
+            id: request.id,
+            item_title: request.item_title,
+            item_description: request.item_description,
+            desired_delivery_date: request.desired_delivery_date,
+            budget: request.budget,
+            weight_kg: request.weight_kg,
+          }}
+          onClose={() => setEditing(false)}
+          onSaved={(patch) => {
+            setEditing(false);
+            onEdited?.(patch);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -3334,6 +3454,7 @@ function TripsView({
   onUpdateIntent,
   onProofUploaded,
   onCancelTrip,
+  onTripEdited,
   onOpenChat,
   onReportProblem,
   onEnterPickupCode,
@@ -3344,6 +3465,7 @@ function TripsView({
   t,
 }: {
   trips: TravelerTripRow[];
+  onTripEdited: (tripId: string, patch: Record<string, any>) => void;
   incomingIntents: IncomingIntent[];
   myProposals: TravelerProposal[];
   onUpdateIntent: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
@@ -3561,6 +3683,7 @@ function TripsView({
         onUpdateIntent={onUpdateIntent}
         onProofUploaded={onProofUploaded}
         onCancelTrip={onCancelTrip}
+        onTripEdited={onTripEdited}
         onOpenChat={onOpenChat}
         onReportProblem={onReportProblem}
         onEnterPickupCode={onEnterPickupCode}
@@ -3655,6 +3778,7 @@ function TripDetailCard({
   onUpdateIntent,
   onProofUploaded,
   onCancelTrip,
+  onTripEdited,
   onOpenChat,
   onReportProblem,
   onEnterPickupCode,
@@ -3664,6 +3788,7 @@ function TripDetailCard({
   reviewFromOther,
 }: {
   trip: TravelerTripRow;
+  onTripEdited: (tripId: string, patch: Record<string, any>) => void;
   packages: Array<
     | { kind: 'incoming'; row: IncomingIntent }
     | { kind: 'proposal'; row: TravelerProposal }
@@ -3697,6 +3822,12 @@ function TripDetailCard({
   // having had a parcel at all, and worth saying so.
   const allDone = packages.length === 0 && allPackages.length > 0;
   const isCancelable = packages.every((p) => p.row.status !== 'confirmed');
+  // Editable is stricter than cancelable: no booking at all, not merely no
+  // confirmed one. Someone with a pending request against this trip has read
+  // the price and acted on it, and moving it under them is what the server
+  // refuses — so the button must not appear in a case the save would reject.
+  const isEditable = allPackages.length === 0;
+  const [editingTrip, setEditingTrip] = useState(false);
 
   const departCode = trip.departure_airport || trip.departure_city.slice(0, 3).toUpperCase();
   const arriveCode = trip.arrival_airport || trip.arrival_city.slice(0, 3).toUpperCase();
@@ -3754,6 +3885,16 @@ function TripDetailCard({
             <div className="text-[11px] sm:text-[12px] text-lavender-700/80 font-medium mt-1.5 leading-snug px-1">
               {t.me2_earnings_on_flight} ✨
             </div>
+            {isEditable && (
+              <button
+                onClick={() => setEditingTrip(true)}
+                className="absolute top-1 left-1 p-1.5 rounded-full text-lavender-400/70 hover:text-lavender-700 hover:bg-white/60 transition-colors"
+                aria-label={locale === 'en' ? 'Edit this trip' : 'Modifier ce voyage'}
+                title={locale === 'en' ? 'Edit this trip' : 'Modifier ce voyage'}
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
             {isCancelable && (
               <button
                 onClick={() => onCancelTrip(trip.id)}
@@ -3763,6 +3904,24 @@ function TripDetailCard({
               >
                 <Trash2 className="w-3 h-3" />
               </button>
+            )}
+            {editingTrip && (
+              <EditListingModal
+                trip={{
+                  id: trip.id,
+                  departure_date: trip.departure_date,
+                  arrival_date: trip.arrival_date,
+                  compensation_min: trip.compensation_min,
+                  available_weight_kg: trip.available_weight_kg,
+                  flight_number: trip.flight_number,
+                  notes: trip.notes,
+                }}
+                onClose={() => setEditingTrip(false)}
+                onSaved={(patch) => {
+                  setEditingTrip(false);
+                  onTripEdited(trip.id, patch);
+                }}
+              />
             )}
           </div>
         </div>
