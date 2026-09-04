@@ -73,6 +73,8 @@ const COPY = {
     invalid_iban: 'Cet IBAN n’est pas valide.',
     invalid_iban_country_code: 'Cet IBAN n’est pas dans une zone acceptée.',
     invalid_bank_account_iban: 'Ta banque a refusé cet IBAN.',
+    bank_already_used:
+      'Ce compte bancaire est déjà utilisé par un autre voyageur. Chacun doit recevoir ses paiements sur son propre compte.',
     account_number_invalid: 'Ce numéro de compte n’est pas valide.',
     routing_number_invalid: 'Ce sort code n’est pas valide.',
     invalid_dob: 'Cette date de naissance n’est pas valide.',
@@ -121,6 +123,8 @@ const COPY = {
     invalid_iban: 'This IBAN isn’t valid.',
     invalid_iban_country_code: 'This IBAN isn’t from a supported country.',
     invalid_bank_account_iban: 'Your bank rejected this IBAN.',
+    bank_already_used:
+      'This bank account is already used by another traveller. Everyone must be paid into their own account.',
     account_number_invalid: 'This account number isn’t valid.',
     routing_number_invalid: 'This sort code isn’t valid.',
     invalid_dob: 'This date of birth isn’t valid.',

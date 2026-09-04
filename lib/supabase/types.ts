@@ -53,6 +53,7 @@ export interface Profile {
   stripe_payouts_enabled?: boolean;
   stripe_onboarded_at?: string | null;
   stripe_customer_id?: string | null;
+  stripe_bank_fingerprint?: string | null;
 }
 
 export interface TravelerTripRow {
