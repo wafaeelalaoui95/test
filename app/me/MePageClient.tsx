@@ -3924,7 +3924,10 @@ function RequestDetailsModal({
           )}
           {/* Sits right under the item, where the traveler is already reading
               what they'd be carrying. Neutral styling on purpose: this is a
-              prompt to ask a question, not a warning about the sender. */}
+              statement of fact, not a warning about the sender. It does not
+              suggest messaging them: the conversation only opens once the
+              request is accepted, so pointing there before that is advice the
+              traveler cannot act on. */}
           {categoryUnlisted && (
             <p className="text-ink-400 leading-relaxed pt-1 border-t border-ink-100 mt-1">
               {t.me2_category_unlisted}
