@@ -18,7 +18,14 @@ create schema if not exists admin;
 -- Belt and braces: even inside admin, no client role gets a look in.
 revoke all on schema admin from anon, authenticated;
 
-create or replace view admin.payments_overview as
+-- Dropped first, not "create or replace". Postgres only lets that add columns
+-- at the END of a view's list — inserting one in the middle fails with
+-- "cannot change name of view column", and the migration stops without
+-- replacing anything. Dropping makes the file rerunnable however the shape
+-- changes. Nothing depends on this view, so nothing cascades.
+drop view if exists admin.payments_overview;
+
+create view admin.payments_overview as
 select
   b.created_at,
   b.id                                       as booking,
