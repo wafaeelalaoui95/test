@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/settle-payouts",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
