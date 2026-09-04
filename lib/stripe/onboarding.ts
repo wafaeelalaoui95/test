@@ -95,6 +95,17 @@ export async function resolveOnboardingActor(
       }
     } catch (e: any) {
       if (!isMissingAccountError(e)) throw e;
+      // The stored account doesn't exist for this key — deleted, or created
+      // under the test key and now read with the live one. Clearing it is the
+      // whole point of catching this: getOrCreateConnectAccount below reads
+      // the column first and returns whatever it finds, so leaving the dead id
+      // in place made it hand back the same unusable account forever. The
+      // traveler saw payout setup restart from the beginning and end in the
+      // same place, with no error to explain it.
+      console.warn(
+        `[connect] stored account ${existingId} is not reachable for user ${user.id} — clearing and recreating`
+      );
+      await clearConnectAccount(user.id);
     }
   }
 
