@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import { getServerClient } from '@/lib/supabase/server';
+import { ensureCustomer, forgetCustomer } from '@/lib/stripe/customer';
 
 /**
  * POST /api/stripe/create-payment-intent
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   // server.
   const { data: senderProfile } = await supabase
     .from('profiles')
-    .select('identity_verified_at')
+    .select('identity_verified_at, full_name, stripe_customer_id')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -59,18 +60,48 @@ export async function POST(req: NextRequest) {
   }
 
   const stripe = getStripe();
-  try {
-    const intent = await stripe.paymentIntents.create({
-    amount: body.amountCents,
+
+  // Who is paying, in Stripe's own terms. Best-effort: null just means the
+  // payment is attached to a guest customer, exactly as before.
+  let customerId = await ensureCustomer(
+    user,
+    senderProfile?.full_name,
+    senderProfile?.stripe_customer_id
+  );
+
+  const create = (customer?: string) =>
+    stripe.paymentIntents.create({
+      amount: body.amountCents,
       currency: 'eur',
       capture_method: 'manual', // authorise now, capture later
       automatic_payment_methods: { enabled: true },
       description: body.description ?? `Jibly booking`,
+      customer,
+      // Keep the metadata even with a customer attached: it's what let us
+      // trace the payments made before customers existed, and it survives a
+      // customer being deleted.
       metadata: {
         userId: user.id,
         bookingIntentId: body.bookingIntentId ?? '',
       },
     });
+
+  try {
+    let intent;
+    try {
+      intent = await create(customerId ?? undefined);
+    } catch (e: any) {
+      // The stored id points at a customer that Stripe no longer has —
+      // deleted from the dashboard, or belonging to the other mode's keys.
+      // Drop it, mint a new one, and let the payment through.
+      if (e?.code === 'resource_missing' && customerId) {
+        await forgetCustomer(user.id);
+        customerId = await ensureCustomer(user, senderProfile?.full_name, null);
+        intent = await create(customerId ?? undefined);
+      } else {
+        throw e;
+      }
+    }
 
     return NextResponse.json({
       clientSecret: intent.client_secret,

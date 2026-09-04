@@ -52,6 +52,7 @@ export interface Profile {
   stripe_charges_enabled?: boolean;
   stripe_payouts_enabled?: boolean;
   stripe_onboarded_at?: string | null;
+  stripe_customer_id?: string | null;
 }
 
 export interface TravelerTripRow {
