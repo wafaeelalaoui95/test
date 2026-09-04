@@ -23,7 +23,6 @@ const CONTENT: Record<'fr' | 'en', {
   badge: string;
   title: string;
   lastUpdated: string;
-  reviewNote: string;
   intro: string;
   backHome: string;
   sections: Section[];
@@ -32,8 +31,6 @@ const CONTENT: Record<'fr' | 'en', {
     badge: 'Confidentialité',
     title: 'Politique de confidentialité',
     lastUpdated: `Dernière mise à jour : ${LAST_UPDATED.fr}`,
-    reviewNote:
-      'Brouillon - ce document doit être relu par un juriste avant le lancement en production.',
     intro:
       'Cette politique explique quelles données personnelles Jibly collecte, pourquoi, avec qui elles sont partagées et quels sont vos droits. Elle s’applique à l’utilisation de la plateforme Jibly.',
     backHome: 'Retour à l’accueil',
@@ -101,8 +98,6 @@ const CONTENT: Record<'fr' | 'en', {
     badge: 'Privacy',
     title: 'Privacy Policy',
     lastUpdated: `Last updated: ${LAST_UPDATED.en}`,
-    reviewNote:
-      'Draft - this document must be reviewed by a lawyer before a production launch.',
     intro:
       'This policy explains what personal data Jibly collects, why, who it is shared with, and what your rights are. It applies to your use of the Jibly platform.',
     backHome: 'Back home',
@@ -193,8 +188,6 @@ export default function PrivacyPage() {
           </h1>
           <p className="text-[14px] text-ink-400">{c.lastUpdated}</p>
         </div>
-
-        <p className="text-[12px] text-ink-400 italic mb-6">{c.reviewNote}</p>
 
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-ink-50 mb-6">
           <p className="text-[14px] text-ink-500 leading-relaxed">{c.intro}</p>
