@@ -146,6 +146,19 @@ type Step =
  *  back to the very first question is how people give up. */
 function stepFromStatus(d: any): Step {
   if (!d?.accountId) return 'country';
+
+  // The status route could not read Stripe, so every field below it is stale
+  // cache or an empty default — and an empty requirementsDue falls through to
+  // 'done' at the bottom of this function. That is how a traveler ended up
+  // being told "C'est fait" by a screen that had just failed to reach Stripe,
+  // with no way to start over and a delivered parcel unpaid.
+  //
+  // accountMissing is the recoverable case: the stored account doesn't exist
+  // for our key, and asking for the country again is exactly what clears it
+  // and creates a real one. Any other error is not something this screen can
+  // resolve, but restarting is still safer than claiming success.
+  if (d.stripeError) return 'country';
+
   if (d.payoutsEnabled) return 'done';
   if (d.canSelfServe === false) return 'fallback';
   const due: string[] = d.requirementsDue ?? [];
