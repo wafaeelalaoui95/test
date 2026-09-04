@@ -71,7 +71,12 @@ select
     when b.payment_status = 'canceled'          then 'authorisation released'
     when b.payment_status = 'failed'            then 'card declined'
     when b.payment_status = 'authorized'        then 'held on the card, not captured'
-    when b.transfer_id is not null              then 'PAID OUT'
+    -- Deliberately not "PAID OUT". A transfer moves money from the Jibly
+    -- balance into the traveler's Stripe balance; reaching their BANK is a
+    -- second leg, on Stripe's payout schedule, and nothing here tracks it. A
+    -- traveler saying "I haven't received anything" while this reads PAID OUT
+    -- is not a contradiction — it is this distinction.
+    when b.transfer_id is not null              then 'SENT to their Stripe balance'
     when b.traveler_user_id is null             then 'NO TRAVELER ON THIS BOOKING'
     when b.received_confirmed_at is null        then 'captured, not delivered yet'
     when p_t.stripe_payouts_enabled is not true then 'ACTION NEEDED: traveler payout setup incomplete'
