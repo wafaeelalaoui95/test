@@ -117,6 +117,11 @@ export async function GET() {
       // documents: 'application' is us, 'stripe' is the traveler directly.
       type: account.type ?? null,
       controller: account.controller ?? null,
+      // Answers "when does this person's money actually reach their bank?"
+      // without opening the dashboard. interval 'manual' here means never,
+      // on its own, no matter how long anyone waits — worth being able to see
+      // rather than infer.
+      payout_schedule: account.settings?.payouts?.schedule ?? null,
     };
     // Which requirements our own screens can't collect. Drives two things in
     // PayoutOnboarding: whether to hand this traveler the hosted form, and

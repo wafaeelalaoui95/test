@@ -319,6 +319,16 @@ async function createRecipientAccount(
         // See travelerBusinessProfile — this is what stops hosted onboarding
         // asking a private individual to describe a business.
         business_profile: travelerBusinessProfile(),
+        // Say it rather than inherit it. Left unset, each account takes the
+        // dashboard's default for connected accounts — which means whether
+        // travelers get paid at all depends on a checkbox someone could change
+        // without knowing what it touches, and nothing would alert anyone.
+        //
+        // Daily: the traveler is paid as soon as the funds clear, which is what
+        // someone who just carried a parcel across a border expects. Stripe
+        // still holds the FIRST payout of a new account for a week or two —
+        // that delay is Stripe's and this setting does not shorten it.
+        settings: { payouts: { schedule: { interval: 'daily' } } },
         metadata: { userId },
       },
       { idempotencyKey: `connect_account_${userId}_${bucket}` }
