@@ -127,6 +127,11 @@ export function ProfileClient({
       await browser.createBookingIntent({
         sender_id: user.id,
         traveler_trip_id: bookingTrip.id,
+        // Whose trip this is. Omitting it here left two paid bookings with no
+        // traveler at all: the money was captured, and transferToTraveler had
+        // nobody to send it to. Read off the trip rather than the page's
+        // travelerId so it can't drift from the trip actually being booked.
+        traveler_user_id: bookingTrip.user_id,
         item_category: intentCategory,
         item_title: intentTitle.trim() || null,
         item_description: intentDescription || null,

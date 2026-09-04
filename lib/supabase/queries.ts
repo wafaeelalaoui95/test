@@ -975,7 +975,12 @@ export type BookingIntentInput = {
   shipping_request_id?: string | null;
   traveler_message?: string | null;
   initiated_by?: 'sender' | 'traveler';
-  traveler_user_id?: string | null;
+  // Required, not optional. It was optional, and one of the four callers
+  // quietly forgot it — producing bookings that were paid for, picked up and
+  // delivered while naming nobody to pay. The column stays nullable in the
+  // database (`on delete set null` needs it to be), but nothing may create a
+  // booking without saying who is carrying it.
+  traveler_user_id: string;
   // Timestamp proving the sender ticked the "I certify..." box at booking.
   user_certified_at?: string | null;
 };
@@ -1004,7 +1009,7 @@ export async function createBookingIntent(
           shipping_request_id: input.shipping_request_id ?? null,
           traveler_message: input.traveler_message ?? null,
           initiated_by: input.initiated_by ?? 'sender',
-          traveler_user_id: input.traveler_user_id ?? null,
+          traveler_user_id: input.traveler_user_id,
           pickup_code: generateConfirmationCode(),
           delivery_code: generateConfirmationCode(),
         })
