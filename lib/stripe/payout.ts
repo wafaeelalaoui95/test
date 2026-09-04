@@ -146,6 +146,10 @@ export async function retryPendingPayouts(
     .eq('traveler_user_id', travelerUserId)
     .eq('payment_status', 'captured')
     .is('transfer_id', null)
+    // Archived bookings are ones a human has decided will never settle — a
+    // test row, or a traveler who cannot be paid. Without this they are
+    // retried on every sweep, forever, and crowd out the real ones.
+    .is('archived_at', null)
     // DELIVERED ONLY. Capture happens when the traveler accepts, so 'captured'
     // on its own says nothing about whether the parcel arrived — without this
     // filter, a traveler finishing payout setup would be paid for every parcel

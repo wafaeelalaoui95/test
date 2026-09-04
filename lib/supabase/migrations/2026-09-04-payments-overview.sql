@@ -67,6 +67,9 @@ select
   -- The single column to read when you only read one. Ordered so the first
   -- matching condition is the most specific.
   case
+    -- First, because an archived booking must not appear under any of the
+    -- labels below — being set aside is the whole point.
+    when b.archived_at is not null              then 'archived: ' || coalesce(b.archived_reason, 'set aside')
     when b.payment_status = 'refunded'          then 'refunded to sender'
     when b.payment_status = 'canceled'          then 'authorisation released'
     when b.payment_status = 'failed'            then 'card declined'

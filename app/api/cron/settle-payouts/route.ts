@@ -58,6 +58,9 @@ export async function GET(req: NextRequest) {
     .is('transfer_id', null)
     .not('received_confirmed_at', 'is', null)
     .not('traveler_user_id', 'is', null)
+    // Set aside by a human as never-going-to-settle. See the archived_at
+    // migration: kept rather than deleted, because they hold real payments.
+    .is('archived_at', null)
     .limit(500);
 
   if (error) {
