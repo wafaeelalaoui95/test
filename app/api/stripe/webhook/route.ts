@@ -131,6 +131,29 @@ export async function POST(req: NextRequest) {
           break;
         }
 
+        // A refund reverses the traveler's transfer on its way to giving the
+        // sender their money back (see /api/stripe/refund). That reversal must
+        // NOT put the booking back in the payout queue: the money went to the
+        // sender, and re-queuing would pay the traveler a second time out of
+        // Jibly's own balance.
+        //
+        // payment_status normally becomes 'refunded' and the sweep ignores it,
+        // but the two amounts are rounded independently, so a booking can end
+        // up fully reversed while still reading 'captured'. refunded_amount is
+        // the reliable signal.
+        const { data: booking } = await admin
+          .from('booking_intents')
+          .select('id, refunded_amount')
+          .eq('transfer_id', transfer.id)
+          .maybeSingle();
+
+        if (booking && (booking.refunded_amount ?? 0) > 0) {
+          console.log(
+            `[stripe/webhook] transfer ${transfer.id} reversed as part of a refund on booking ${booking.id} — leaving it settled`
+          );
+          break;
+        }
+
         const { data: cleared, error } = await admin
           .from('booking_intents')
           .update({
