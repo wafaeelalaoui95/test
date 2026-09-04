@@ -109,6 +109,49 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // ---- A transfer was sent back ----------------------------------------
+      // Reversing in the dashboard left the booking still claiming PAID OUT,
+      // and transfer_id being set is what stops the payout being retried — so
+      // the parcel was recorded as settled while the traveler had nothing, and
+      // nothing would ever try again. It happened twice in one day.
+      //
+      // Clearing the columns puts the booking back where it was: owed, and
+      // eligible for the next sweep.
+      case 'transfer.reversed': {
+        const transfer = event.data.object as Stripe.Transfer;
+
+        // Partial reversals leave part of the money with the traveler. Treat
+        // only a full reversal as "not paid" — anything else needs a human,
+        // and silently marking it unpaid would pay the remainder twice.
+        if (transfer.amount_reversed < transfer.amount) {
+          console.warn(
+            `[stripe/webhook] transfer ${transfer.id} partially reversed ` +
+              `(${transfer.amount_reversed}/${transfer.amount}) — left as is, needs a human`
+          );
+          break;
+        }
+
+        const { data: cleared, error } = await admin
+          .from('booking_intents')
+          .update({
+            transfer_id: null,
+            transfer_amount: null,
+            platform_fee_amount: null,
+            transferred_at: null,
+          })
+          .eq('transfer_id', transfer.id)
+          .select('id');
+
+        if (error) {
+          console.error('[stripe/webhook] reversal cleanup failed:', error.message);
+        } else if (cleared?.length) {
+          console.log(
+            `[stripe/webhook] transfer ${transfer.id} reversed — booking ${cleared[0].id} is owed again`
+          );
+        }
+        break;
+      }
+
       // ---- The traveler's bank, at last ------------------------------------
       // A transfer puts money in their Stripe balance; a payout is what
       // reaches their bank, and nothing recorded whether it ever did. These
