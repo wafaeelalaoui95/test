@@ -47,7 +47,7 @@ import { ViewProofButton } from '@/components/ImageLightbox';
 import { ReviewModal } from '@/components/ReviewModal';
 import type { ReviewForBooking } from '@/lib/supabase/queries';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
-import { formatShortDate, nameInitial, formatEuros, travelerNetFromTotal } from '@/lib/utils';
+import { formatShortDate, nameInitial, formatEuros, travelerNetFromTotal, acceptedCategories } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
 import { useAuth } from '@/lib/supabase/auth-provider';
@@ -917,6 +917,10 @@ export default function MyPage(
         <RequestDetailsModal
           intent={detailsFor}
           tripDepartureDate={trips.find((tr) => tr.id === detailsFor.traveler_trip_id)?.departure_date}
+          tripCategories={(() => {
+            const tr = trips.find((x) => x.id === detailsFor.traveler_trip_id);
+            return tr ? acceptedCategories(tr) : undefined;
+          })()}
           onClose={() => setDetailsFor(null)}
           onAccept={async () => {
             const id = detailsFor.id;
@@ -3829,12 +3833,16 @@ function TripDetailCard({
 function RequestDetailsModal({
   intent,
   tripDepartureDate,
+  tripCategories,
   onClose,
   onAccept,
   onDecline,
 }: {
   intent: IncomingIntent;
   tripDepartureDate?: string;
+  // What this traveler ticked they'd carry. Empty means they didn't say, which
+  // is not the same as "carries nothing" — see the note below.
+  tripCategories?: string[];
   onClose: () => void;
   onAccept: () => void | Promise<void>;
   onDecline: () => void | Promise<void>;
@@ -3847,6 +3855,17 @@ function RequestDetailsModal({
     intent.sender_profile?.verification_level === 'trusted';
   const cat = ITEM_CATEGORIES.find((x) => x.value === (intent.item_category as ItemCategory));
   const itemLabel = cat ? `${cat.icon} ${t[cat.labelKey]}` : intent.item_category;
+
+  // Deliberately not a gate. Senders and travelers don't classify the same
+  // parcel the same way, and refusing the booking over a mismatched dropdown
+  // would kill real trips for no safety gain — the traveler still has the
+  // parcel in front of them at handover.
+  //
+  // Only shown when the traveler actually ticked something: an empty list means
+  // they skipped the question, and flagging every request in that case turns
+  // the note into noise nobody reads.
+  const categoryUnlisted =
+    !!tripCategories?.length && !tripCategories.includes(intent.item_category);
 
   return (
     <motion.div
@@ -3902,6 +3921,14 @@ function RequestDetailsModal({
           </div>
           {intent.item_description && (
             <p className="text-ink-500 leading-relaxed pt-1">{intent.item_description}</p>
+          )}
+          {/* Sits right under the item, where the traveler is already reading
+              what they'd be carrying. Neutral styling on purpose: this is a
+              prompt to ask a question, not a warning about the sender. */}
+          {categoryUnlisted && (
+            <p className="text-ink-400 leading-relaxed pt-1 border-t border-ink-100 mt-1">
+              {t.me2_category_unlisted}
+            </p>
           )}
           <div className="flex justify-between gap-3 pt-2 border-t border-ink-100">
             <span className="text-ink-400">{t.disc_you_receive}</span>

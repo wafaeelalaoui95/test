@@ -960,6 +960,7 @@ export type Translations = {
   me2_accept: string;
   me2_view_request: string;
   me2_accept_check_title: string;
+  me2_category_unlisted: string;
   me2_accept_check_label: string;
   me2_accept_doubt: string;
   me2_accept_confirm: string;
@@ -2161,6 +2162,8 @@ export const translations: Record<Locale, Translations> = {
     me2_accept: 'Accepter',
     me2_view_request: 'Voir la demande',
     me2_accept_check_title: 'Détails de la demande',
+    me2_category_unlisted:
+      'Vous n’aviez pas coché cette catégorie pour ce voyage. Vous pouvez tout à fait accepter — écrivez à l’expéditeur si vous voulez en savoir plus avant de décider.',
     me2_accept_check_label: 'Je confirme avoir lu la description de l\'objet, je pourrai l\'inspecter avant de partir, et je sais que je peux refuser sans pénalité si l\'objet ne correspond pas, est fermé/scellé, ou me met mal à l\'aise.',
     me2_accept_doubt: 'Votre sécurité passe avant tout. Si vous avez le moindre doute, vous pouvez refuser ou annuler la mission à tout moment avant de récupérer l\'objet.',
     me2_accept_confirm: 'Accepter la demande',
@@ -3360,6 +3363,8 @@ export const translations: Record<Locale, Translations> = {
     me2_accept: 'Accept',
     me2_view_request: 'View request',
     me2_accept_check_title: 'Request details',
+    me2_category_unlisted:
+      'You didn’t tick this category for this trip. You can still accept — message the sender if you’d like to know more before deciding.',
     me2_accept_check_label: 'I confirm I\'ve read the item description, that I\'ll be able to inspect it before leaving, and that I can refuse without penalty if the item doesn\'t match, is closed/sealed, or makes me uncomfortable.',
     me2_accept_doubt: 'Your safety comes first. If you have any doubt, you can refuse or cancel the mission at any time before picking up the item.',
     me2_accept_confirm: 'Accept the request',

@@ -156,3 +156,31 @@ export function formatEuros(amount: number): string {
   if (Number.isInteger(amount)) return `${amount}€`;
   return `${amount.toFixed(2).replace('.', ',')}€`;
 }
+
+/**
+ * What a traveler ticked they were willing to carry on a given trip.
+ *
+ * Stored two ways for historical reasons: a real column, and a JSON blob in
+ * `notes` for trips created before the column existed. Reading both means an
+ * older trip doesn't silently look like "accepts nothing", which would put a
+ * warning on every request it receives.
+ *
+ * An empty result means "not specified", not "accepts nothing" — callers must
+ * treat it as no signal rather than as a refusal.
+ */
+export function acceptedCategories(trip: {
+  accepted_categories?: string[] | null;
+  notes?: string | null;
+}): string[] {
+  if (Array.isArray(trip.accepted_categories) && trip.accepted_categories.length) {
+    return trip.accepted_categories;
+  }
+  if (!trip.notes) return [];
+  try {
+    const parsed = JSON.parse(trip.notes);
+    if (Array.isArray(parsed?.accepted_categories)) return parsed.accepted_categories;
+  } catch {
+    /* notes is free text on older trips, not JSON */
+  }
+  return [];
+}
