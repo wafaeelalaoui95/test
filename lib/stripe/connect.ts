@@ -366,24 +366,69 @@ export function isAccountPayable(account: Stripe.Account): boolean {
  * Mirror a Stripe Account's capability flags into profiles. Called from the
  * account.updated webhook and after the user returns from onboarding (so the
  * UI updates immediately instead of waiting on the webhook).
+ *
+ * Returns the profile id it actually wrote to, or null if the account could
+ * not be attributed to anyone. Callers use that rather than re-reading
+ * account.metadata.userId, which is exactly the value that can be missing or
+ * stale — see below.
  */
-export async function syncConnectAccount(account: Stripe.Account): Promise<void> {
-  const userId = account.metadata?.userId;
-  if (!userId) {
-    console.warn(`[connect] account ${account.id} has no userId metadata`);
-    return;
-  }
-
+export async function syncConnectAccount(
+  account: Stripe.Account
+): Promise<string | null> {
+  const admin = getAdminClient();
   const payable = isAccountPayable(account);
 
-  const { error } = await getAdminClient()
-    .from('profiles')
-    .update({
-      stripe_charges_enabled: account.charges_enabled === true,
-      stripe_payouts_enabled: payable,
-      stripe_onboarded_at: payable ? new Date().toISOString() : null,
-    })
-    .eq('id', userId);
+  // Normally metadata.userId, written at account creation. But an account that
+  // lost it — or never had it — used to make this function return silently,
+  // and the consequences were invisible and expensive: the profile flag stayed
+  // false while Stripe said the traveler was payable, so /me showed "all set"
+  // and transferToTraveler skipped every delivery forever, because it reads the
+  // flag and not Stripe.
+  //
+  // We know the account id, and profiles.stripe_account_id is the same link in
+  // the other direction. Use it when the metadata isn't there.
+  const patch = {
+    stripe_charges_enabled: account.charges_enabled === true,
+    stripe_payouts_enabled: payable,
+    stripe_onboarded_at: payable ? new Date().toISOString() : null,
+  };
 
-  if (error) console.error('[connect] syncConnectAccount failed:', error);
+  // Try the metadata first, but verify it landed. Selecting the ids back is
+  // what distinguishes "written" from "matched nothing" — an update against a
+  // user id that no longer exists reports no error and changes no rows, which
+  // is precisely how a deleted-then-recreated account ends up permanently
+  // unpayable while Stripe reports it as fine.
+  const metadataUserId = account.metadata?.userId ?? null;
+  if (metadataUserId) {
+    const { data, error } = await admin
+      .from('profiles')
+      .update(patch)
+      .eq('id', metadataUserId)
+      .select('id');
+    if (error) console.error('[connect] syncConnectAccount failed:', error);
+    if (data?.length) return metadataUserId;
+    console.warn(
+      `[connect] account ${account.id} metadata points at ${metadataUserId}, which matched no profile — falling back to stripe_account_id`
+    );
+  }
+
+  // Same link, other direction. Covers an account whose metadata was never
+  // written as well as one whose metadata outlived its user.
+  const { data, error } = await admin
+    .from('profiles')
+    .update(patch)
+    .eq('stripe_account_id', account.id)
+    .select('id');
+
+  if (error) {
+    console.error('[connect] syncConnectAccount fallback failed:', error);
+    return null;
+  }
+  if (!data?.length) {
+    console.error(
+      `[connect] account ${account.id} matches no profile — payouts for this traveler cannot be enabled`
+    );
+    return null;
+  }
+  return data[0].id;
 }

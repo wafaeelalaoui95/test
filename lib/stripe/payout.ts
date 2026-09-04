@@ -107,3 +107,57 @@ export async function transferToTraveler(params: {
     return { status: 'failed', reason: e?.message ?? 'transfer failed' };
   }
 }
+
+/**
+ * Pay out every delivered booking of this traveler that never got transferred.
+ *
+ * The retry path for payouts skipped as 'not_onboarded' at delivery time: the
+ * traveler carried the parcel before sorting their bank details, so the money
+ * stayed in the platform balance waiting for them to finish.
+ *
+ * Called from the account.updated webhook and from /api/connect/status. The
+ * second caller matters more than it looks: the webhook only fires when Stripe
+ * decides something changed, so without it a traveler could complete setup,
+ * see "all set", and still not be paid until some unrelated event happened to
+ * fire. transferToTraveler is idempotent, so calling this often is harmless.
+ *
+ * Bounded to 50 so a pathological account can't stall the webhook past
+ * Stripe's timeout — the rest are picked up on the next call.
+ */
+export async function retryPendingPayouts(travelerUserId: string): Promise<void> {
+  const admin = getAdminClient();
+  const { data: pending } = await admin
+    .from('booking_intents')
+    .select('id, traveler_user_id, payment_intent_id, payment_amount, transfer_id')
+    .eq('traveler_user_id', travelerUserId)
+    .eq('payment_status', 'captured')
+    .is('transfer_id', null)
+    // DELIVERED ONLY. Capture happens when the traveler accepts, so 'captured'
+    // on its own says nothing about whether the parcel arrived — without this
+    // filter, a traveler finishing payout setup would be paid for every parcel
+    // they had merely agreed to carry.
+    .not('received_confirmed_at', 'is', null)
+    .limit(50);
+
+  if (!pending?.length) return;
+
+  console.log(`[payout] retrying ${pending.length} payout(s) for ${travelerUserId}`);
+
+  const stripe = getStripe();
+  for (const booking of pending) {
+    if (!booking.payment_intent_id || !booking.payment_amount) continue;
+    // We need the charge id for source_transaction, and it isn't stored on the
+    // booking — re-read the PaymentIntent to get it.
+    const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id);
+    await transferToTraveler({
+      bookingIntentId: booking.id,
+      travelerUserId,
+      existingTransferId: booking.transfer_id,
+      amountCents: booking.payment_amount,
+      chargeId:
+        typeof pi.latest_charge === 'string'
+          ? pi.latest_charge
+          : pi.latest_charge?.id ?? null,
+    });
+  }
+}

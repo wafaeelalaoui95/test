@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/server';
 import { syncConnectAccount, isAccountPayable } from '@/lib/stripe/connect';
 import { unsupportedRequirements } from '@/lib/stripe/onboarding';
+import { retryPendingPayouts } from '@/lib/stripe/payout';
 import { getServerClient } from '@/lib/supabase/server';
 
 /**
@@ -66,7 +67,7 @@ export async function GET() {
     const account = await getStripe().accounts.retrieve(
       profile.stripe_account_id
     );
-    await syncConnectAccount(account);
+    const syncedUserId = await syncConnectAccount(account);
     country = account.country ?? null;
     // isAccountPayable, not account.payouts_enabled: Stripe sets that flag
     // while requirements are still outstanding, so trusting it tells a
@@ -109,6 +110,20 @@ export async function GET() {
     // PayoutOnboarding: whether to hand this traveler the hosted form, and
     // which step to resume them at rather than restarting from the country.
     unsupported = unsupportedRequirements(account);
+
+    // Settle anything owed to this traveler while we have the answer.
+    //
+    // The webhook was the only thing doing this, and it fires when Stripe
+    // decides something changed — not when the traveler finishes. So a
+    // traveler could complete setup, be told "all set", and still not be paid
+    // for a parcel they had already delivered. This route is hit by the payouts
+    // screen, which is exactly where they land afterwards.
+    //
+    // transferToTraveler is idempotent per booking, so a page refresh cannot
+    // pay anyone twice.
+    if (payoutsEnabled && syncedUserId) {
+      await retryPendingPayouts(syncedUserId);
+    }
   } catch (e: any) {
     console.error('[connect/status] retrieve failed:', e?.message);
     // Fall through to the cached values — a Stripe outage should degrade to
