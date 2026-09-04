@@ -78,6 +78,15 @@ select
     -- is not a contradiction — it is this distinction.
     when b.transfer_id is not null              then 'SENT to their Stripe balance'
     when b.traveler_user_id is null             then 'NO TRAVELER ON THIS BOOKING'
+    -- Captured, the trip has come and gone, and nobody has confirmed delivery.
+    -- Nothing in the app resolves this on its own: no transfer, because there
+    -- is no delivery; no refund, because nothing asks for one. The sender has
+    -- paid and has neither their parcel nor their money, and would stay there
+    -- forever. Refunding is a judgement call, so this only makes the case
+    -- visible — app/api/stripe/refund is how it gets resolved.
+    when b.received_confirmed_at is null
+     and coalesce(t.departure_date, b.created_at::date) < current_date - 7
+                                                then 'OVERDUE: paid, trip has passed, no delivery confirmed'
     when b.received_confirmed_at is null        then 'captured, not delivered yet'
     when p_t.stripe_payouts_enabled is not true then 'ACTION NEEDED: traveler payout setup incomplete'
     else 'captured and delivered, transfer pending'
@@ -112,6 +121,9 @@ left join public.profiles p_s on p_s.id = b.sender_id
 left join auth.users     u_s  on u_s.id = b.sender_id
 left join public.profiles p_t on p_t.id = b.traveler_user_id
 left join auth.users     u_t  on u_t.id = b.traveler_user_id
+-- For the departure date: a trip that has already happened is the signal that
+-- a delivery is late, and it beats counting days from the booking.
+left join public.traveler_trips t on t.id = b.traveler_trip_id
 -- Most recent payout for this traveler. Not per booking: Stripe pays out a
 -- balance, and one payout can cover several transfers, so tying one to a
 -- single booking would invent a precision that doesn't exist.
@@ -133,7 +145,9 @@ revoke all on admin.payments_overview from anon, authenticated;
 --
 --   -- only what needs attention
 --   select * from admin.payments_overview
---   where state like 'ACTION NEEDED%' or state like 'NO TRAVELER%';
+--   where state like 'ACTION NEEDED%'
+--      or state like 'NO TRAVELER%'
+--      or state like 'OVERDUE%';
 --
 --   -- what Jibly has actually earned, versus what is still forecast
 --   select split_is_estimated, count(*), sum(jibly_keeps_eur)
