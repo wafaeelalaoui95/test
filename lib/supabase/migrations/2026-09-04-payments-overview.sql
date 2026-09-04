@@ -96,6 +96,14 @@ select
   -- balance with no idea who they are owed to — the intended recipient lives
   -- here and nowhere else. Worth checking before a handover, not after.
   p_t.stripe_account_id                      as traveler_stripe_account,
+
+  -- The last leg, the one the traveler actually feels. Everything above stops
+  -- at Stripe's internal state; these three say whether euros reached a bank.
+  -- 'failed' with a reason is the row to act on.
+  lp.status                                  as bank_payout_status,
+  lp.arrival_date                            as bank_payout_arrival,
+  lp.failure_message                         as bank_payout_failure,
+
   b.payment_intent_id,
   b.transfer_id,
   b.transferred_at
@@ -104,6 +112,16 @@ left join public.profiles p_s on p_s.id = b.sender_id
 left join auth.users     u_s  on u_s.id = b.sender_id
 left join public.profiles p_t on p_t.id = b.traveler_user_id
 left join auth.users     u_t  on u_t.id = b.traveler_user_id
+-- Most recent payout for this traveler. Not per booking: Stripe pays out a
+-- balance, and one payout can cover several transfers, so tying one to a
+-- single booking would invent a precision that doesn't exist.
+left join lateral (
+  select tp.status, tp.arrival_date, tp.failure_message
+  from public.traveler_payouts tp
+  where tp.user_id = b.traveler_user_id
+  order by tp.created_at desc
+  limit 1
+) lp on true
 where b.payment_status <> 'unpaid'
 order by b.created_at desc;
 

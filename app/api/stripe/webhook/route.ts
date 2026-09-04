@@ -109,6 +109,59 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // ---- The traveler's bank, at last ------------------------------------
+      // A transfer puts money in their Stripe balance; a payout is what
+      // reaches their bank, and nothing recorded whether it ever did. These
+      // events arrive on the connected-account destination, so event.account
+      // names whose payout it is.
+      //
+      // 'failed' is the one worth having: a mistyped IBAN or a closed account
+      // is otherwise discovered when the traveler writes to ask where their
+      // money is.
+      case 'payout.paid':
+      case 'payout.failed':
+      case 'payout.canceled':
+      case 'payout.updated': {
+        const payout = event.data.object as Stripe.Payout;
+        const acct = event.account;
+        // No event.account means this is one of Jibly's OWN payouts to its own
+        // bank, which this table is not about.
+        if (!acct) break;
+
+        const { data: owner } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('stripe_account_id', acct)
+          .maybeSingle();
+
+        const { error } = await admin.from('traveler_payouts').upsert({
+          id: payout.id,
+          stripe_account_id: acct,
+          user_id: owner?.id ?? null,
+          amount_cents: payout.amount,
+          currency: payout.currency,
+          status: payout.status,
+          arrival_date: payout.arrival_date
+            ? new Date(payout.arrival_date * 1000).toISOString()
+            : null,
+          failure_code: payout.failure_code ?? null,
+          failure_message: payout.failure_message ?? null,
+          updated_at: new Date().toISOString(),
+        });
+        if (error) {
+          console.error('[stripe/webhook] payout upsert failed:', error.message);
+        }
+
+        if (payout.status === 'failed') {
+          // Loud on purpose. Someone carried a parcel and their money bounced.
+          console.error(
+            `[stripe/webhook] PAYOUT FAILED for ${acct} (user ${owner?.id ?? 'unknown'}): ` +
+              `${payout.failure_code ?? 'no code'} — ${payout.failure_message ?? 'no message'}`
+          );
+        }
+        break;
+      }
+
       // ---- Capture confirmed by Stripe -------------------------------------
       case 'payment_intent.succeeded': {
         const pi = event.data.object as Stripe.PaymentIntent;
