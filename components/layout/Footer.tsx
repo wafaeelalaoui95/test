@@ -59,7 +59,6 @@ export function Footer() {
 
         <div className="mt-16 pt-8 border-t border-ink-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <p className="text-[13px] text-ink-300">© 2026 Jibly</p>
-          <p className="text-[13px] text-ink-300">{t.footer_made_with}</p>
         </div>
       </div>
     </footer>

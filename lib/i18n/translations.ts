@@ -560,7 +560,6 @@ export type Translations = {
   footer_platform: string;
   footer_trust: string;
   footer_community: string;
-  footer_made_with: string;
 
   // Admin
   admin_badge: string;
@@ -1759,7 +1758,6 @@ export const translations: Record<Locale, Translations> = {
     footer_platform: 'Plateforme',
     footer_trust: 'FAQ - Sérénité',
     footer_community: 'Communauté',
-    footer_made_with: 'Fait avec',
 
     admin_badge: 'Admin',
     admin_title: 'Modération',
@@ -2960,7 +2958,6 @@ export const translations: Record<Locale, Translations> = {
     footer_platform: 'Platform',
     footer_trust: 'Trust',
     footer_community: 'Community',
-    footer_made_with: 'Made with',
 
     admin_badge: 'Admin',
     admin_title: 'Moderation',
