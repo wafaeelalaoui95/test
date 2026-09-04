@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/server';
-import { syncConnectAccount, isAccountPayable } from '@/lib/stripe/connect';
+import {
+  syncConnectAccount,
+  isAccountPayable,
+  isMissingAccountError,
+} from '@/lib/stripe/connect';
 import { unsupportedRequirements } from '@/lib/stripe/onboarding';
 import { retryPendingPayouts } from '@/lib/stripe/payout';
 import { getServerClient } from '@/lib/supabase/server';
@@ -62,6 +66,14 @@ export async function GET() {
   // Needed even for a finished account: it decides whether changing bank asks
   // for an IBAN or a sort code. It is immutable, so it is safe to trust.
   let country: string | null = null;
+  // Set only when the Stripe read itself failed — see the catch below.
+  let stripeError: string | null = null;
+  let stripeErrorMessage: string | null = null;
+  // The one failure the traveler can act on: the profile names an account this
+  // key cannot see. Onboarding already recreates in that case, so the UI just
+  // has to send them back through it instead of insisting they finish a setup
+  // that points nowhere.
+  let accountMissing = false;
 
   try {
     const account = await getStripe().accounts.retrieve(
@@ -125,9 +137,18 @@ export async function GET() {
       await retryPendingPayouts(syncedUserId);
     }
   } catch (e: any) {
-    console.error('[connect/status] retrieve failed:', e?.message);
+    console.error('[connect/status] retrieve failed:', e?.code, e?.message);
     // Fall through to the cached values — a Stripe outage should degrade to
     // stale data, not a broken /me page.
+    //
+    // But say so in the response. Without this the failure was indistinguishable
+    // from a genuinely unfinished account: both answer payoutsEnabled false with
+    // requirements null, and the traveler is told to complete a setup they have
+    // already completed. 'resource_missing' here means the profile points at an
+    // account this key cannot see — deleted, or belonging to the other mode.
+    stripeError = e?.code ?? e?.type ?? 'unknown';
+    stripeErrorMessage = e?.message ?? null;
+    accountMissing = isMissingAccountError(e);
   }
 
   return NextResponse.json({
@@ -144,5 +165,10 @@ export async function GET() {
     unsupported,
     canSelfServe: unsupported.length === 0,
     requirements,
+    // null on a healthy read. Anything else means the numbers above are stale
+    // cache, not Stripe's answer.
+    stripeError,
+    stripeErrorMessage,
+    accountMissing,
   });
 }
