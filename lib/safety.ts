@@ -15,10 +15,24 @@ export function normalizeText(s: string): string {
 // Descriptions too vague to tell the traveler what they're actually carrying.
 // A description that is ONLY one of these (or shorter than a few chars) is
 // rejected. "médicaments" alone is vague — the sender must say which one.
+//
+// Both languages. The app is FR/EN and these lists were French only, so an
+// English sender writing "stuff" or "a gift" sailed past a check a French one
+// could not — and the traveler, who is who this protects, had no way to know
+// the check had simply not run for them.
+//
+// Matched by exact equality against the whole normalised description, so being
+// generous here costs nothing: "gift" is rejected, "gift for my mother" is not.
 export const VAGUE_DESCRIPTIONS = [
+  // French
   'colis', 'petit colis', 'affaires', 'affaire', 'trucs', 'truc', 'medicaments',
   'medicament', 'cadeau', 'cadeaux', 'produit', 'produits', 'chose', 'choses',
   'objet', 'objets', 'paquet', 'divers',
+  // English
+  'parcel', 'small parcel', 'package', 'small package', 'stuff', 'things',
+  'thing', 'gift', 'gifts', 'present', 'presents', 'item', 'items',
+  'medication', 'medications', 'medicine', 'medicines', 'meds', 'product',
+  'products', 'box', 'a box', 'misc', 'miscellaneous', 'other', 'various',
 ];
 
 // A description is vague if it's empty/too short, or reduces to a single vague
@@ -58,10 +72,22 @@ export const SENSITIVE_ITEMS = [
 ];
 
 // Free-text keywords that should trigger a caution (not a hard block).
+//
+// Matched as SUBSTRINGS, so each entry is kept as short as it can be while
+// still meaning something: 'jewel' catches jewellery and jewelry, 'liquid'
+// catches liquide. Nothing under five letters that could sit inside an
+// ordinary word — 'id' would fire on "video", and a warning that cries wolf
+// is a warning senders learn to dismiss.
 export const RISK_KEYWORDS = [
-  'cash', 'argent', 'espece', 'especes', 'passeport', "carte d'identite",
-  'identite', 'bijou', 'bijoux', 'montre', 'luxe', 'ferme', 'scelle', 'scellee',
-  'liquide', 'poudre', 'batterie', 'complement', 'tabac', 'alcool',
+  // French
+  'argent', 'espece', 'especes', 'passeport', "carte d'identite", 'identite',
+  'bijou', 'bijoux', 'montre', 'luxe', 'ferme', 'scelle', 'scellee', 'liquide',
+  'poudre', 'batterie', 'complement', 'tabac', 'alcool',
+  // English. Same reasoning as VAGUE_DESCRIPTIONS: without these the caution
+  // simply never appeared for an English-speaking sender.
+  'cash', 'money', 'banknote', 'passport', 'identity', 'jewel', 'watch',
+  'luxury', 'sealed', 'closed', 'liquid', 'powder', 'battery', 'supplement',
+  'tobacco', 'alcohol', 'medication', 'prescription',
 ];
 
 // Returns the distinct risk keywords found in a free-text field.
