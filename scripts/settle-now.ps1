@@ -36,7 +36,12 @@ try {
   Write-Host "travelers owed : $($r.travelers)"
   Write-Host "payable now    : $($r.payable)"
   Write-Host "waiting on setup: $($r.waitingOnSetup)"
+  Write-Host "transfers sent : $($r.sent)"
   Write-Host "failed         : $($r.failed)"
+  if ($r.failed -gt 0) {
+    Write-Host ""
+    Write-Host "Some transfers were refused by Stripe. Check Vercel logs for [payout]." -ForegroundColor Yellow
+  }
 } catch {
   Write-Host ""
   Write-Host "Failed: $($_.Exception.Message)" -ForegroundColor Red

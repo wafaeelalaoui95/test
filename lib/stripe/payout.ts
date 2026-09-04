@@ -77,8 +77,19 @@ export async function transferToTraveler(params: {
       },
       {
         // Belt-and-braces against a double capture racing this function: Stripe
-        // itself refuses the second transfer for the same booking.
-        idempotencyKey: `payout_${bookingIntentId}`,
+        // itself refuses a second transfer for the same booking.
+        //
+        // Scoped to the destination as well, because a booking can legitimately
+        // need paying twice: reverse a transfer, and the traveler is owed again.
+        // Keyed on the booking alone, Stripe answered that second attempt from
+        // its 24-hour idempotency cache — the parameters no longer matched
+        // (a recreated account has a new id), so it refused outright and the
+        // traveler stayed unpaid with the sweep reporting success.
+        //
+        // Paying the same account twice for one booking is still blocked, by
+        // the existingTransferId check at the top of this function. That is the
+        // real guard; this one only stops a race.
+        idempotencyKey: `payout_${bookingIntentId}_${traveler.stripe_account_id}`,
       }
     );
 
@@ -124,7 +135,10 @@ export async function transferToTraveler(params: {
  * Bounded to 50 so a pathological account can't stall the webhook past
  * Stripe's timeout — the rest are picked up on the next call.
  */
-export async function retryPendingPayouts(travelerUserId: string): Promise<void> {
+export async function retryPendingPayouts(
+  travelerUserId: string
+): Promise<{ attempted: number; sent: number; failed: number; skipped: number }> {
+  const tally = { attempted: 0, sent: 0, failed: 0, skipped: 0 };
   const admin = getAdminClient();
   const { data: pending } = await admin
     .from('booking_intents')
@@ -139,17 +153,25 @@ export async function retryPendingPayouts(travelerUserId: string): Promise<void>
     .not('received_confirmed_at', 'is', null)
     .limit(50);
 
-  if (!pending?.length) return;
+  if (!pending?.length) return tally;
 
   console.log(`[payout] retrying ${pending.length} payout(s) for ${travelerUserId}`);
 
   const stripe = getStripe();
   for (const booking of pending) {
-    if (!booking.payment_intent_id || !booking.payment_amount) continue;
+    if (!booking.payment_intent_id || !booking.payment_amount) {
+      tally.skipped++;
+      continue;
+    }
+    tally.attempted++;
     // We need the charge id for source_transaction, and it isn't stored on the
     // booking — re-read the PaymentIntent to get it.
     const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id);
-    await transferToTraveler({
+    // transferToTraveler reports every failure as a RETURN VALUE, never a
+    // throw — so a caller that only counts exceptions reports success while
+    // the traveler goes unpaid. That is exactly what happened: the sweep said
+    // "failed: 0" on a run where the only transfer it attempted was refused.
+    const result = await transferToTraveler({
       bookingIntentId: booking.id,
       travelerUserId,
       existingTransferId: booking.transfer_id,
@@ -159,5 +181,11 @@ export async function retryPendingPayouts(travelerUserId: string): Promise<void>
           ? pi.latest_charge
           : pi.latest_charge?.id ?? null,
     });
+
+    if (result.status === 'sent' || result.status === 'already_sent') tally.sent++;
+    else if (result.status === 'failed') tally.failed++;
+    else tally.skipped++;
   }
+
+  return tally;
 }

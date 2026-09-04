@@ -87,14 +87,22 @@ export async function GET(req: NextRequest) {
   // Sequential on purpose: each call makes several Stripe requests, and a
   // burst of parallel transfers is how you meet a rate limit while moving
   // money. There will never be many.
+  let sent = 0;
   let failed = 0;
   for (const travelerUserId of ready) {
     try {
-      await retryPendingPayouts(travelerUserId);
+      // Count what the sweep actually did, not just whether it threw.
+      // transferToTraveler returns its failures rather than throwing, so a
+      // catch-only tally reported "failed: 0" on a run whose single transfer
+      // Stripe had refused — the most misleading output this endpoint could
+      // produce, because it reads as confirmation.
+      const t = await retryPendingPayouts(travelerUserId);
+      sent += t.sent;
+      failed += t.failed;
     } catch (e: any) {
       failed++;
       console.error(
-        `[cron/settle-payouts] failed for ${travelerUserId}:`,
+        `[cron/settle-payouts] threw for ${travelerUserId}:`,
         e?.message
       );
     }
@@ -107,6 +115,7 @@ export async function GET(req: NextRequest) {
     // that never falls is someone who has given up on payout setup and is
     // waiting on an email nobody sends.
     waitingOnSetup: travelerIds.length - ready.length,
+    sent,
     failed,
   });
 }
