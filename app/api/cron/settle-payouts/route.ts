@@ -29,9 +29,21 @@ export async function GET(req: NextRequest) {
   // Vercel Cron sends this header, signed with the project's CRON_SECRET.
   // Refuse without it: this endpoint moves money, so it must not be callable
   // by anyone who guesses the path. Fails closed when the secret is unset.
-  const secret = process.env.CRON_SECRET;
-  const auth = req.headers.get('authorization');
+  //
+  // Trimmed on both sides: a secret pasted into the Vercel dashboard picks up a
+  // trailing newline more often than anyone admits, and the resulting 401 is
+  // indistinguishable from a missing variable.
+  const secret = process.env.CRON_SECRET?.trim();
+  const auth = req.headers.get('authorization')?.trim();
   if (!secret || auth !== `Bearer ${secret}`) {
+    // Says which side is wrong without printing either. Vercel only sends this
+    // header when CRON_SECRET is set on the project, so "absent" points at the
+    // dashboard and "present" points at a value mismatch.
+    console.error(
+      '[cron/settle-payouts] rejected — CRON_SECRET %s, Authorization header %s',
+      secret ? 'set' : 'MISSING in this environment',
+      auth ? 'present but does not match' : 'absent'
+    );
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
