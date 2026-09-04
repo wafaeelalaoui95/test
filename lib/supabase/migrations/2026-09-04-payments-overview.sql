@@ -77,6 +77,13 @@ select
   p_t.stripe_payouts_enabled                 as traveler_can_be_paid,
 
   -- For looking the same money up in Stripe.
+  --
+  -- traveler_stripe_account answers the question Stripe cannot, before the
+  -- transfer exists: WHERE would this money go. Until delivery is confirmed
+  -- there is no transfer at all, so Stripe holds the funds in the platform
+  -- balance with no idea who they are owed to — the intended recipient lives
+  -- here and nowhere else. Worth checking before a handover, not after.
+  p_t.stripe_account_id                      as traveler_stripe_account,
   b.payment_intent_id,
   b.transfer_id,
   b.transferred_at
