@@ -37,8 +37,21 @@ export const EDITABLE_FIELDS: Record<ListingType, string[]> = {
     'pickup_country', 'pickup_city', 'destination_country', 'destination_city',
     'recipient_name', 'desired_delivery_date', 'budget', 'weight_kg',
     'urgency_level',
+    // Adding or replacing the parcel photo. Only meaningful for a request: a
+    // trip is not a thing you can photograph.
+    'photo_url',
   ],
 };
+
+// Where /api/parcel/photo puts its uploads. The database enforces this too —
+// see the check constraint in 2026-09-05-parcel-photo.sql — but catching it
+// here turns a constraint violation into a clear refusal rather than a 500.
+const PHOTO_PREFIX = '/storage/v1/object/public/parcel-photos/';
+
+/** Is this a URL our own upload route produced? */
+export function isOwnParcelPhoto(value: unknown): boolean {
+  return typeof value === 'string' && value.includes(PHOTO_PREFIX);
+}
 
 export type ListingGuard =
   | { ok: true; row: Record<string, any> }

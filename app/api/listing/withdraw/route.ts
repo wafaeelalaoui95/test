@@ -10,10 +10,12 @@ import { LISTING_TABLE, guardListing, type ListingType } from '@/lib/listings';
  * Take a listing down. Nothing is deleted: status becomes 'cancelled' and
  * cancelled_at records when, so the row and its history stay readable.
  *
- * The word in the UI is "withdraw", not "delete", because that is what
- * happens — and because someone who believes they deleted their data and later
- * finds the row is right to be annoyed. What the row holds is also what
- * answers a dispute months later, which is why it stays.
+ * The UI says "Supprimer" / "Delete", which is the word people expect for
+ * removing their own listing, while the row is kept — because it is what
+ * answers a dispute months later, and because a booking that once pointed at
+ * it would otherwise dangle. The two are not in conflict: deleting a listing
+ * is not the same act as erasing an account, which /api/account/delete
+ * handles and which does scrub personal data.
  *
  * Only for listings nobody has booked. A listing with a booking is cancelled
  * through the booking flow, which has to release the sender's money too.

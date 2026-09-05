@@ -5,6 +5,7 @@ import {
   EDITABLE_FIELDS,
   applyListingEdit,
   guardListing,
+  isOwnParcelPhoto,
   type ListingType,
 } from '@/lib/listings';
 
@@ -59,6 +60,14 @@ export async function POST(req: NextRequest) {
   const patch: Record<string, any> = {};
   for (const [k, v] of Object.entries(body.patch)) {
     if (allowed.includes(k)) patch[k] = v;
+  }
+
+  // The photo is the one field whose value is a URL rendered on someone else's
+  // screen, so it has to have come from our own upload route. The database
+  // says the same thing, but a constraint violation surfaces as a 500 and
+  // tells the sender nothing.
+  if (patch.photo_url != null && !isOwnParcelPhoto(patch.photo_url)) {
+    return NextResponse.json({ error: 'bad_photo' }, { status: 400 });
   }
 
   if (!Object.keys(patch).length) {

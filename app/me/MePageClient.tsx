@@ -3399,7 +3399,7 @@ function RequestDetailCard({
           </button>
           {confirmWithdraw ? (
             <span className="flex items-center gap-3 text-ink-400">
-              {locale === 'en' ? 'Take it down?' : 'Retirer l’annonce ?'}
+              {locale === 'en' ? 'Delete this parcel?' : 'Supprimer ce colis ?'}
               <button
                 onClick={withdraw}
                 disabled={withdrawing}
@@ -3419,7 +3419,7 @@ function RequestDetailCard({
               onClick={() => setConfirmWithdraw(true)}
               className="text-ink-400 underline underline-offset-2"
             >
-              {locale === 'en' ? 'Withdraw' : 'Retirer'}
+              {locale === 'en' ? 'Delete' : 'Supprimer'}
             </button>
           )}
         </div>
@@ -3434,6 +3434,7 @@ function RequestDetailCard({
             desired_delivery_date: request.desired_delivery_date,
             budget: request.budget,
             weight_kg: request.weight_kg,
+            photo_url: request.photo_url ?? null,
           }}
           onClose={() => setEditing(false)}
           onSaved={(patch) => {

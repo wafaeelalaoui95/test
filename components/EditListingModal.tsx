@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import { MIN_COMPENSATION_EUR } from '@/lib/constants';
+import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
 
 // =============================================================================
 // EditListingModal — change a trip or a request nobody has booked yet
@@ -17,7 +18,7 @@ import { MIN_COMPENSATION_EUR } from '@/lib/constants';
 // WHAT IS NOT HERE: the route. Changing where a parcel goes makes it a
 // different listing rather than a corrected one, and the city fields need the
 // country/city picker from the creation flow, which is a much larger piece.
-// Someone whose route was wrong is better served by withdrawing and reposting.
+// Someone whose route was wrong is better served deleting and reposting.
 //
 // Copy lives in this file rather than lib/i18n/translations.ts, following
 // PayoutOnboarding: the flow is self-contained, and that file has broken the
@@ -47,7 +48,8 @@ const COPY = {
         'Quelqu’un s’est positionné entre-temps. Ouvrez la réservation pour en discuter avec lui.',
       not_owner: 'Cette annonce n’est pas la vôtre.',
       not_found: 'Cette annonce n’existe plus.',
-      already_cancelled: 'Cette annonce a déjà été retirée.',
+      already_cancelled: 'Cette annonce a déjà été supprimée.',
+      bad_photo: 'Cette photo n’a pas pu être vérifiée. Réessayez de l’ajouter.',
       generic: 'La modification n’a pas pu être enregistrée. Réessayez.',
     },
   },
@@ -74,7 +76,8 @@ const COPY = {
         'Someone took this on while you were editing. Open the booking to talk it over with them.',
       not_owner: 'This listing is not yours.',
       not_found: 'This listing no longer exists.',
-      already_cancelled: 'This listing has already been withdrawn.',
+      already_cancelled: 'This listing has already been deleted.',
+      bad_photo: 'That photo could not be verified. Try adding it again.',
       generic: 'The change could not be saved. Please try again.',
     },
   },
@@ -97,6 +100,7 @@ export type EditableRequest = {
   desired_delivery_date: string;
   budget: number;
   weight_kg: number | null;
+  photo_url: string | null;
 };
 
 const field =
@@ -139,6 +143,9 @@ export function EditListingModal({
   const [notes, setNotes] = useState(trip?.notes ?? '');
   const [title, setTitle] = useState(request?.item_title ?? '');
   const [description, setDescription] = useState(request?.item_description ?? '');
+  // Adding a photo after the fact is the common case: people post first and
+  // think of it later, and until now there was no way back in.
+  const [photoUrl, setPhotoUrl] = useState<string | null>(request?.photo_url ?? null);
 
   function buildPatch(): Record<string, any> {
     const num = (s: string) => (s.trim() === '' ? null : Number(s));
@@ -158,6 +165,7 @@ export function EditListingModal({
       item_title: title.trim() || null,
       item_description: description.trim(),
       weight_kg: num(weight),
+      photo_url: photoUrl,
     };
   }
 
@@ -244,6 +252,7 @@ export function EditListingModal({
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </label>
+              <ParcelPhotoInput value={photoUrl} onChange={setPhotoUrl} />
             </>
           )}
 
