@@ -920,6 +920,8 @@ export type Translations = {
   me2_uploaded_on: string;
   me2_how_to_contact: string;
   me2_message: string;
+  me2_delivered_by: string;
+  me2_carried_by: string;
   me2_call: string;
   me2_whatsapp_not_provided: string;
   me2_handoff_code_title: string;
@@ -2121,6 +2123,8 @@ export const translations: Record<Locale, Translations> = {
     me2_uploaded_on: 'Téléversée le {date}',
     me2_how_to_contact: 'Comment le contacter',
     me2_message: 'Message',
+    me2_delivered_by: 'Livré par {name}',
+    me2_carried_by: 'Voyageur : {name}',
     me2_call: 'Appeler',
     me2_whatsapp_not_provided: 'WhatsApp non renseigné',
     me2_handoff_code_title: 'Confirmer la remise',
@@ -3321,6 +3325,8 @@ export const translations: Record<Locale, Translations> = {
     me2_uploaded_on: 'Uploaded on {date}',
     me2_how_to_contact: 'How to reach them',
     me2_message: 'Message',
+    me2_delivered_by: 'Delivered by {name}',
+    me2_carried_by: 'Traveller: {name}',
     me2_call: 'Call',
     me2_whatsapp_not_provided: 'WhatsApp not provided',
     me2_handoff_code_title: 'Confirm the handover',

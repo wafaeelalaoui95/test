@@ -1453,28 +1453,38 @@ function BookingCard({
       <>
       <div className="bg-white rounded-2xl border border-mint-200 overflow-hidden">
         <div className="p-5">
+          {/* The parcel leads, not the traveller. This panel is reached from a
+              list of parcels, and the sender is looking for "which of mine is
+              this" — a name answers that only if you already remember who
+              carried what. The traveller stays, one line down, where they
+              answer the next question rather than the first. */}
           <div className="flex items-start gap-4 mb-5">
-            <Link href={`/u/${traveler?.id}`} className="flex-shrink-0">
-              <div className="w-11 h-11 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[14px] text-lavender-700">
-                {initial}
-              </div>
-            </Link>
+            <div className="w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center text-xl flex-shrink-0">
+              {cat?.icon ?? '📦'}
+            </div>
             <div className="flex-1 min-w-0">
-              <Link
-                href={`/u/${traveler?.id}`}
-                className="font-semibold text-ink-600 text-[15px] hover:underline"
-              >
-                {travelerName}
-              </Link>
+              <div className="font-semibold text-ink-600 text-[15px] truncate">
+                {booking.item_title || (cat ? t[cat.labelKey] : booking.item_category)}
+              </div>
               <div className="text-[13px] text-ink-400 flex items-center gap-1.5 flex-wrap mt-0.5">
                 <span>{cityDisplayName(booking.pickup_city, locale)} → {cityDisplayName(booking.destination_city, locale)}</span>
                 <span>·</span>
                 <span>{trip && formatShortDate(trip.departure_date)}</span>
                 <span>·</span>
-                <span>{cat ? t[cat.labelKey] : booking.item_category}</span>
-                <span>·</span>
-                <span className="font-semibold text-ink-600">{booking.proposed_price}€</span>
+                <span className="font-semibold text-ink-600">{formatEuros(booking.proposed_price)}</span>
               </div>
+              <Link
+                href={`/u/${traveler?.id}`}
+                className="text-[13px] text-ink-500 hover:underline inline-flex items-center gap-1.5 mt-1"
+              >
+                <span className="w-5 h-5 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[10px] text-lavender-700">
+                  {initial}
+                </span>
+                {(booking.received_confirmed_at ? t.me2_delivered_by : t.me2_carried_by).replace(
+                  '{name}',
+                  travelerName
+                )}
+              </Link>
             </div>
             {/* Single contact channel — Message right next to the name.
                 Everything stays on Jibly (traceable, dispute-protected). */}
@@ -1706,12 +1716,19 @@ function BookingCard({
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
           {cat?.icon}
         </div>
+        {/* Parcel first here too — the compact card sits in a list of the
+            sender's own parcels, so the traveller is the answer to a later
+            question. */}
         <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
-          <span className="font-semibold text-ink-600">{travelerName}</span>
+          <span className="font-semibold text-ink-600 truncate">
+            {booking.item_title || (cat ? t[cat.labelKey] : booking.item_category)}
+          </span>
           <span className="text-ink-300">·</span>
           <span className="text-ink-500 truncate">{cityDisplayName(booking.pickup_city, locale)} → {cityDisplayName(booking.destination_city, locale)}</span>
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-ink-600 num-display">{formatEuros(booking.proposed_price)}</span>
+          <span className="text-ink-300">·</span>
+          <span className="text-ink-400 truncate">{travelerName}</span>
           {isTravelerProposal && (
             <span className="text-[11px] text-lavender-600 ml-1">✨ {t.me2_status_new}</span>
           )}
@@ -3355,8 +3372,14 @@ function RequestDetailCard({
         <div className="w-10 h-10 rounded-full bg-cream-100 flex items-center justify-center text-xl">
           {cat?.icon ?? '📦'}
         </div>
+        {/* Same order as a booked parcel: what it is, then where it goes. The
+            route was the heading here and the item was nowhere, so two
+            requests on the same corridor were indistinguishable. */}
         <div className="flex-1 min-w-0">
-          <div className="text-[16px] font-bold text-ink-600">
+          <div className="text-[16px] font-bold text-ink-600 truncate">
+            {request.item_title || (cat ? t[cat.labelKey] : request.item_category)}
+          </div>
+          <div className="text-[13px] text-ink-400">
             {cityDisplayName(request.pickup_city, locale)} → {cityDisplayName(request.destination_city, locale)}
           </div>
           <div className="text-[13px] text-ink-400">
