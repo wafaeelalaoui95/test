@@ -1213,6 +1213,17 @@ function InstantProposeModal({
               « {request.item_description} »
             </p>
           )}
+          {/* The sender's photo, when they added one. This screen is where a
+              traveler decides to take the parcel on, so it is the one place
+              seeing it can still change the answer. */}
+          {request.photo_url && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={request.photo_url}
+              alt=""
+              className="w-full rounded-xl border border-ink-100 mt-2.5 max-h-56 object-cover"
+            />
+          )}
         </div>
 
         {/* Optional traveler message */}

@@ -105,6 +105,9 @@ export interface ShippingRequestRow {
   weight_kg: number | null;
   urgency_level: Urgency;
   prescription_url: string | null;
+  // Optional photo the sender attached, shown to the traveller before they
+  // accept. Constrained by the database to our own storage bucket.
+  photo_url?: string | null;
   status: RequestStatus;
   created_at: string;
   // Timestamp proving the sender ticked the terms box when posting the request.

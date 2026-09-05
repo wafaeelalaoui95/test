@@ -468,6 +468,9 @@ export type MatchingRequest = {
   budget: number;
   item_category: string;
   item_description: string;
+  // Optional photo the sender attached — shown on /voyager, where a traveler
+  // decides whether to take the parcel on.
+  photo_url?: string | null;
   created_at: string;
   user: {
     id: string;
@@ -489,7 +492,7 @@ export async function listMatchingRequestsForTrip(
   let query = supabase
     .from('shipping_requests')
     .select(
-      'id, user_id, pickup_city, destination_city, desired_delivery_date, budget, item_category, item_description, created_at'
+      'id, user_id, pickup_city, destination_city, desired_delivery_date, budget, item_category, item_description, photo_url, created_at'
     )
     .eq('pickup_city', departureCity)
     .eq('destination_city', arrivalCity)
@@ -983,6 +986,8 @@ export type BookingIntentInput = {
   traveler_user_id: string;
   // Timestamp proving the sender ticked the "I certify..." box at booking.
   user_certified_at?: string | null;
+  // Optional photo of the parcel — see the same field on ShippingRequestRow.
+  photo_url?: string | null;
 };
 
 export async function createBookingIntent(
@@ -1010,6 +1015,7 @@ export async function createBookingIntent(
           traveler_message: input.traveler_message ?? null,
           initiated_by: input.initiated_by ?? 'sender',
           traveler_user_id: input.traveler_user_id,
+          photo_url: input.photo_url ?? null,
           pickup_code: generateConfirmationCode(),
           delivery_code: generateConfirmationCode(),
         })

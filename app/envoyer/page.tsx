@@ -22,6 +22,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
+import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
 import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
 import { isVagueDescription, detectRiskKeywords } from '@/lib/safety';
 import { formatShortDate, displayName, nameInitial, formatEuros, priceBreakdown } from '@/lib/utils';
@@ -91,6 +92,7 @@ export default function EnvoyerPage() {
   const [category, setCategory] = useState<ItemCategory | null>(null);
   const [itemTitle, setItemTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   // Who collects the parcel at destination. true = the sender; false = a third
   // party whose name goes in recipientName.
   const [recipientSelf, setRecipientSelf] = useState(true);
@@ -158,6 +160,9 @@ export default function EnvoyerPage() {
       setCategory(d.category ?? null);
       setItemTitle(d.itemTitle ?? '');
       setDescription(d.description ?? '');
+      // The file is already uploaded by this point, so the URL survives the
+      // identity redirect on its own — restoring it saves picking again.
+      setPhotoUrl(d.photoUrl ?? null);
       setRecipientSelf(d.recipientSelf ?? true);
       setRecipientName(d.recipientName ?? '');
       setBudget(d.budget ?? 30);
@@ -177,7 +182,7 @@ export default function EnvoyerPage() {
         JSON.stringify({
           _ts: Date.now(),
           mode, step, fromCity, fromCountry, toCity, toCountry, date,
-          category, itemTitle, description, recipientSelf, recipientName, budget, terms,
+          category, itemTitle, description, photoUrl, recipientSelf, recipientName, budget, terms,
         })
       );
     } catch {
@@ -238,6 +243,7 @@ export default function EnvoyerPage() {
         weight_kg: null,
         urgency_level: 'standard',
         prescription_url: null,
+        photo_url: photoUrl,
         terms_agreed_at: new Date().toISOString(),
         status: 'pending',
       });
@@ -678,6 +684,10 @@ export default function EnvoyerPage() {
                     onChange={(e) => setDescription(e.target.value)}
                   />
 
+                  {/* Right after the description, because both answer the
+                      traveller's one question: what am I actually carrying. */}
+                  <ParcelPhotoInput value={photoUrl} onChange={setPhotoUrl} />
+
                   {detectRiskKeywords(`${itemTitle} ${description}`).length > 0 && (
                     <div className="bg-butter-50 border border-butter-200 rounded-2xl p-4">
                       <p className="text-[13px] text-ink-600 leading-relaxed flex items-start gap-2">
@@ -997,6 +1007,7 @@ function InstantBookModal({
   const [category, setCategory] = useState<ItemCategory | null>(null);
   const [itemTitle, setItemTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [recipientSelf, setRecipientSelf] = useState(true);
   const [recipientName, setRecipientName] = useState('');
   const [certified, setCertified] = useState(false);
@@ -1037,6 +1048,7 @@ function InstantBookModal({
         weight_kg: null,
         urgency_level: 'standard',
         prescription_url: null,
+        photo_url: photoUrl,
         status: 'matched',
       });
 
@@ -1054,6 +1066,7 @@ function InstantBookModal({
         payment_status: 'authorized',
         payment_amount: Math.round(price * 100),
         shipping_request_id: req.id || null,
+        photo_url: photoUrl,
         initiated_by: 'sender',
         user_certified_at: new Date().toISOString(),
       });
@@ -1179,6 +1192,10 @@ function InstantBookModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+
+              {/* Same placement as the public-request form: the photo belongs
+                  next to the description, not in a later step. */}
+              <ParcelPhotoInput value={photoUrl} onChange={setPhotoUrl} />
 
               {detectRiskKeywords(`${itemTitle} ${description}`).length > 0 && (
                 <div className="bg-butter-50 border border-butter-200 rounded-xl px-4 py-3">

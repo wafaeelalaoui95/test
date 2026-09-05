@@ -117,6 +117,9 @@ type IncomingIntent = {
   item_category: string;
   item_title: string | null;
   item_description: string | null;
+  // Optional photo the sender attached. Shown before the traveler accepts —
+  // that is the only moment it can change their mind.
+  photo_url?: string | null;
   proposed_price: number;
   pickup_city: string;
   destination_city: string;
@@ -4080,6 +4083,17 @@ function RequestDetailsModal({
           </div>
           {intent.item_description && (
             <p className="text-ink-500 leading-relaxed pt-1">{intent.item_description}</p>
+          )}
+          {/* The sender's photo, if they added one. Full width rather than a
+              thumbnail: the point is to be able to actually look at the thing
+              before agreeing to carry it. */}
+          {intent.photo_url && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={intent.photo_url}
+              alt=""
+              className="w-full rounded-xl border border-ink-100 mt-1 max-h-64 object-cover"
+            />
           )}
           {/* Sits right under the item, where the traveler is already reading
               what they'd be carrying. Neutral styling on purpose: this is a
