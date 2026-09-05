@@ -353,6 +353,71 @@ export function bookingConfirmedTravelerEmail(input: {
   };
 }
 
+// =============================================================================
+// 5. The date on a request has come and nobody took it
+// =============================================================================
+// Sent once, by the daily sweep in /api/cron/stale-requests.
+//
+// Requests are listed to travellers only while desired_delivery_date is still
+// ahead, so the day after it passes the request quietly stops being shown. The
+// sender is told nothing and goes on believing they are on the market. This
+// arrives on the day, while the listing is still visible and moving the date
+// still saves it.
+//
+// Deliberately a question rather than an alert. Plans change, and the honest
+// answer is often "no, I sorted it" — an email that assumes they still want it
+// and pushes them to act reads as nagging.
+export function requestDateReachedEmail(input: {
+  senderFirstName: string | null;
+  itemLabel: string;
+  pickupCity: string;
+  destinationCity: string;
+  budget: number;
+}) {
+  const name = input.senderFirstName || 'Hello';
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+  const url = `${BASE_URL}/me?tab=sends`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Still looking?</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+      Nobody has taken your parcel yet
+    </h1>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${name}, the date you set for ${escapeHtml(input.itemLabel)} has arrived and no traveller has taken it on.
+      After today it stops appearing to travellers — so if you still need it carried, give it a new date and it goes back up.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FAF7F2;border-radius:12px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Route</p>
+          <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.ink};">${route}</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">You were offering</p>
+          <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};">${formatEuros(input.budget)}</p>
+        </td>
+      </tr>
+    </table>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+            Change the date
+          </a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
+      Sorted it another way? Delete the request from the same screen and we will stop showing it. This is the only reminder we send about it.
+    </p>
+  `;
+
+  return {
+    subject: `Still need ${input.itemLabel} carried? · ${route}`,
+    html: wrapHtml(content, `Your request ${route} reached its date with no traveller`),
+    text: `${name},\n\nThe date you set for ${input.itemLabel} (${route}) has arrived and no traveller has taken it on. After today it stops appearing to travellers.\n\nIf you still need it carried, give it a new date: ${url}\nSorted it another way? Delete the request from the same screen.\n\nThis is the only reminder we send about it.\n\n— The Jibly team`,
+  };
+}
+
 // Tiny HTML escape — used only on user-controlled fields (item descriptions).
 // Keeps the templates safe from senders injecting markup. Not exhaustive,
 // but enough for Gmail/Outlook rendering.

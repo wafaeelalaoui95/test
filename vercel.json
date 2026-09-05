@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/settle-payouts",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/stale-requests",
+      "schedule": "30 8 * * *"
     }
   ]
 }
