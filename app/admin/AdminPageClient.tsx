@@ -11,6 +11,7 @@ import {
   Link2,
   Clock,
   CheckCircle2,
+  Receipt,
 } from 'lucide-react';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { DEMO_TRAVELERS } from '@/lib/constants';
@@ -19,6 +20,7 @@ import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
 import { AdminRefund } from '@/components/AdminRefund';
 import { AdminOverview } from '@/components/AdminOverview';
+import { AdminTransactions } from '@/components/AdminTransactions';
 
 const DEMO_REQUESTS = [
   { id: 'r1', sender: 'Lila M.', route: '🇫🇷 Paris → 🇲🇦 Rabat', category: 'Documents', date: '2026-06-05', status: 'pending' },
@@ -37,6 +39,9 @@ export function AdminPageClient() {
 
   const TABS = [
     { id: 'overview', label: t.admin_tab_overview, icon: LayoutGrid },
+    // Not translated: the operator console is single-operator and French,
+    // like everything else in it that shows real data (see AdminOverview).
+    { id: 'transactions', label: 'Paiements', icon: Receipt },
     { id: 'requests', label: t.admin_tab_requests, icon: Package },
     { id: 'trips', label: t.admin_tab_trips, icon: Plane },
     { id: 'reports', label: t.admin_tab_reports, icon: Flag },
@@ -93,6 +98,8 @@ export function AdminPageClient() {
         </div>
 
         {/* Content */}
+        {tab === 'transactions' && <AdminTransactions />}
+
         {tab === 'overview' && (
           <div className="space-y-12">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10 lg:gap-x-12">
