@@ -483,6 +483,9 @@ export type Translations = {
   common_cancel: string;
   common_close: string;
   gate_identity_required: string;
+  gate_payout_country_label: string;
+  gate_payout_country_hint: string;
+  gate_payout_country_skip: string;
   common_save: string;
   common_loading: string;
   common_optional: string;
@@ -1691,6 +1694,11 @@ export const translations: Record<Locale, Translations> = {
     common_close: 'Fermer',
     gate_identity_required:
       'Vérifiez votre identité pour continuer. Obligatoire avant de publier un trajet, réserver ou proposer votre aide. Vérification gratuite et chiffrée par Stripe.',
+    gate_payout_country_label:
+      'Si vous transportez un colis un jour, où seriez-vous payé ?',
+    gate_payout_country_hint:
+      'Nous ouvrons votre compte de paiement maintenant, pour que cette pièce d’identité serve aussi à vos virements. Sinon Stripe vous la redemanderait plus tard. Ce pays est définitif.',
+    gate_payout_country_skip: 'Je n’envisage pas de transporter — passer',
     common_save: 'Enregistrer',
     common_loading: 'Chargement...',
     common_optional: 'optionnel',
@@ -2893,6 +2901,11 @@ export const translations: Record<Locale, Translations> = {
     common_close: 'Close',
     gate_identity_required:
       'Verify your identity to continue. Required before publishing a trip, booking, or proposing help. Verification is free and encrypted by Stripe.',
+    gate_payout_country_label:
+      'If you ever carry a parcel, where would you be paid?',
+    gate_payout_country_hint:
+      'We open your payout account now so this ID covers your transfers too. Otherwise Stripe would ask you for it again later. This country is permanent.',
+    gate_payout_country_skip: 'I’m only sending — skip',
     common_save: 'Save',
     common_loading: 'Loading...',
     common_optional: 'optional',

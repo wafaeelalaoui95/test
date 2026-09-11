@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Elements, IbanElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { Loader2, Check, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Loader2, Check, ArrowLeft, ExternalLink, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { getStripeClient } from '@/lib/stripe/client';
 import { useI18n } from '@/lib/i18n/context';
@@ -20,10 +20,19 @@ import { payoutCountryOptions } from '@/lib/stripe/payout-countries';
 // account. Nothing about industries or websites.
 //
 // WHAT WE NEVER TOUCH. The bank number is tokenised by Stripe.js and reaches
-// our server only as a single-use btok_. Identity documents aren't collected
-// here at all — a traveler Stripe wants one from is handed the hosted form
-// instead (see `unsupported` below). The line is drawn where holding the data
-// would make us responsible for it.
+// our server only as a single-use btok_. Identity document images never reach
+// us either: the 'verify' step hands the traveler to Stripe Identity, which
+// keeps the passport and tells us only whether it was good. The line is drawn
+// where holding the data would make us responsible for it.
+//
+// WHY THE DOCUMENT STEP LIVES HERE AT ALL. It used to be a dead end: Stripe
+// asking for an ID meant bouncing the traveler to the hosted form, where they
+// uploaded a passport they had ALREADY given us through Stripe Identity —
+// because a verification only counts against a connected account if it was
+// created with related_person, naming the account's Person. That link can't
+// be added afterwards, so the account has to exist first. Hence the order
+// below: country, details, then the identity check, bound to the account it
+// has to satisfy. One upload.
 //
 // Copy lives here rather than in lib/i18n/translations.ts because this flow is
 // self-contained and new; fold it in there once it has settled.
@@ -36,6 +45,14 @@ const COPY = {
     start: 'Commencer',
     who: 'Qui es-tu ?',
     whoSub: 'Tel que ces informations apparaissent sur ton compte bancaire.',
+    verify: 'Vérifie ton identité',
+    verifySub:
+      'Une pièce d’identité et un selfie, une seule fois. Elle sert à la fois à ton profil vérifié et à débloquer tes paiements — on ne te la redemandera pas.',
+    verifyAgain:
+      'Ta pièce d’identité a déjà été vérifiée, mais elle n’était pas rattachée à ton compte de paiement. Une dernière fois, et c’est définitif.',
+    verifyCta: 'Vérifier mon identité',
+    verifyPending:
+      'Ta pièce d’identité est en cours de vérification. Tu peux continuer, on te préviendra.',
     firstName: 'Prénom',
     lastName: 'Nom',
     dob: 'Date de naissance',
@@ -66,7 +83,7 @@ const COPY = {
     pending: 'Stripe vérifie tes informations. Ça prend en général quelques minutes.',
     fallbackTitle: 'Une vérification supplémentaire est nécessaire',
     fallbackBody:
-      'Stripe a besoin d’un document que nous ne collectons pas ici. Tu vas être redirigé vers leur page sécurisée pour cette étape.',
+      'Il reste une information que Stripe doit te demander directement — un numéro d’identité national, un justificatif de domicile. Ta pièce d’identité, elle, est déjà faite : on ne te la redemandera pas.',
     fallbackCta: 'Continuer sur Stripe',
     error: 'Une erreur est survenue. Réessaie.',
     incomplete_iban: 'Cet IBAN est incomplet.',
@@ -78,6 +95,10 @@ const COPY = {
     account_number_invalid: 'Ce numéro de compte n’est pas valide.',
     routing_number_invalid: 'Ce sort code n’est pas valide.',
     invalid_dob: 'Cette date de naissance n’est pas valide.',
+    country_locked:
+      'Ton compte de paiement est déjà vérifié dans un autre pays, et le pays ne peut plus changer. Écris-nous et on s’en occupe.',
+    identity_start_failed:
+      'La vérification d’identité n’a pas pu démarrer. Réessaie dans un instant.',
   },
   en: {
     country: 'Which country is your bank account in?',
@@ -86,6 +107,14 @@ const COPY = {
     start: 'Get started',
     who: 'Who are you?',
     whoSub: 'As these details appear on your bank account.',
+    verify: 'Verify your identity',
+    verifySub:
+      'An ID and a selfie, once. It covers both your verified profile and unlocking your payouts — you won’t be asked for it again.',
+    verifyAgain:
+      'Your ID was verified before, but it was never attached to your payout account. One last time, and that’s it for good.',
+    verifyCta: 'Verify my identity',
+    verifyPending:
+      'Your ID is being checked. You can carry on — we’ll let you know.',
     firstName: 'First name',
     lastName: 'Last name',
     dob: 'Date of birth',
@@ -116,7 +145,7 @@ const COPY = {
     pending: 'Stripe is checking your details. This usually takes a few minutes.',
     fallbackTitle: 'One more check is needed',
     fallbackBody:
-      'Stripe needs a document we don’t collect here. You’ll be sent to their secure page for that step.',
+      'There’s one thing Stripe has to ask you for directly — a national ID number, a proof of address. Your ID document is already done: you won’t be asked for it again.',
     fallbackCta: 'Continue on Stripe',
     error: 'Something went wrong. Please try again.',
     incomplete_iban: 'This IBAN is incomplete.',
@@ -128,6 +157,10 @@ const COPY = {
     account_number_invalid: 'This account number isn’t valid.',
     routing_number_invalid: 'This sort code isn’t valid.',
     invalid_dob: 'This date of birth isn’t valid.',
+    country_locked:
+      'Your payout account is already verified in another country, and the country can’t change. Write to us and we’ll sort it.',
+    identity_start_failed:
+      'Identity verification couldn’t start. Try again in a moment.',
   },
 } as const;
 
@@ -139,16 +172,27 @@ function usesIban(country: string): boolean {
 type Step =
   | 'resuming'
   | 'country'
-  | 'identity'
+  | 'details'
+  | 'verify'
   | 'bank'
   | 'terms'
   | 'done'
   | 'fallback';
 
+/** Where 'back' goes from each step. Deliberately skips 'verify' on the way
+ *  back from the bank: re-entering it would start a second Stripe Identity
+ *  session, and a second upload, for someone who has already done it. */
+const BACK: Partial<Record<Step, Step>> = {
+  details: 'country',
+  verify: 'details',
+  bank: 'details',
+  terms: 'bank',
+};
+
 /** Where does this traveler actually stand? Anything already satisfied is a
  *  step they must not be made to repeat — leaving the page mid-form and coming
  *  back to the very first question is how people give up. */
-function stepFromStatus(d: any): Step {
+function stepFromStatus(d: any, identityVerified: boolean): Step {
   if (!d?.accountId) return 'country';
 
   // The status route could not read Stripe, so every field below it is stale
@@ -164,9 +208,38 @@ function stepFromStatus(d: any): Step {
   if (d.stripeError) return 'country';
 
   if (d.payoutsEnabled) return 'done';
-  if (d.canSelfServe === false) return 'fallback';
-  const due: string[] = d.requirementsDue ?? [];
-  if (due.some((r) => r.startsWith('individual.'))) return 'identity';
+
+  // The identity document is its own step now, so it must not be mistaken
+  // for a field the 'who are you' form can fill.
+  const identityDue: string[] = d.identityDue ?? [];
+  // Requirements the hosted form has to handle — a national ID number, a
+  // proof of address. Excluded from everything below, because asking our own
+  // form for one is a loop: the traveler submits, the requirement stays, and
+  // the same screen comes back.
+  const unsupported: string[] = d.unsupported ?? [];
+  const due: string[] = (d.requirementsDue ?? []).filter(
+    (r: string) => !identityDue.includes(r) && !unsupported.includes(r)
+  );
+
+  // Details BEFORE the document, always. Stripe judges a person from their
+  // name, date of birth and address and only asks to see an ID when that
+  // isn't enough — so a verification created before Stripe has those has no
+  // requirement to attach itself to, and the traveler is asked again later.
+  if (due.some((r) => r.startsWith('individual.'))) return 'details';
+
+  // A document sitting with Stripe awaiting judgement is not a document to
+  // ask for. Without this the screen re-offers verification during the review
+  // window, which is a second upload of the same passport minutes after the
+  // first.
+  const needsIdentity =
+    !d.identityPending && (identityDue.length > 0 || !identityVerified);
+
+  // Verification comes BEFORE the hosted form, not instead of it. Our check
+  // is bound to this account, so it settles the document requirement here and
+  // Stripe's form is left asking only for what we genuinely cannot collect.
+  if (needsIdentity) return 'verify';
+  if (unsupported.length) return 'fallback';
+
   if (due.includes('external_account')) return 'bank';
   if (due.some((r) => r.startsWith('tos_acceptance'))) return 'terms';
   return 'done';
@@ -207,6 +280,30 @@ function Flow({
     ? findCountryByName(profile.country.trim())?.code ?? ''
     : '';
 
+  // Verified WITH JIBLY. Separate from whether Stripe has accepted the same
+  // person: everyone who verified before the accounts-first reorder is the
+  // first without being the second, and telling them apart is what decides
+  // whether the verify step says "once" or "one last time".
+  const identityVerified = !!profile?.identity_verified_at;
+
+  /**
+   * Has this traveler just handed Stripe a document that hasn't been judged
+   * yet? Three signals, because no single one covers the moment it matters —
+   * the seconds after Stripe redirects them back here.
+   *
+   * `identity=done` is on the URL only because Stripe put it there, after a
+   * submission. `processing` is our own record of the same thing. The
+   * account's pending_verification is the authoritative one but lags: ask
+   * again in that gap and the traveler photographs the same passport twice,
+   * minutes apart.
+   */
+  function awaitingIdentity(d: any): boolean {
+    if (d?.identityPending === true) return true;
+    if (profile?.identity_verification_status === 'processing') return true;
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('identity') === 'done';
+  }
+
   const [step, setStep] = useState<Step>(bankOnly ? 'bank' : 'resuming');
   const [country, setCountry] = useState(
     options.some((o) => o.code === prefill) ? prefill : ''
@@ -215,6 +312,10 @@ function Flow({
   const [err, setErr] = useState<string | null>(null);
   const [errCode, setErrCode] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // A document with Stripe, not yet judged. The traveler can carry on with
+  // the bank details meanwhile — but they should be told it is in hand, or
+  // they will go looking for the upload they have already done.
+  const [identityPending, setIdentityPending] = useState(false);
 
   // Identity
   const [firstName, setFirstName] = useState('');
@@ -247,8 +348,10 @@ function Flow({
         if (cancelled) return;
         // Needed in both modes: it decides IBAN versus sort code.
         if (typeof d?.country === 'string') setCountry(d.country.toUpperCase());
+        const pending = awaitingIdentity(d);
+        setIdentityPending(pending);
         if (bankOnly) return;
-        setStep(stepFromStatus(d));
+        setStep(stepFromStatus({ ...d, identityPending: pending }, identityVerified));
       })
       .catch(() => {
         // Status is a convenience, not a gate. If it fails, start from the top
@@ -258,14 +361,18 @@ function Flow({
     return () => {
       cancelled = true;
     };
-  }, [bankOnly]);
+    // awaitingIdentity closes over the profile and the URL, both of which are
+    // stable for the life of this screen. Re-running the status read on every
+    // render because its identity changed would be a request per keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bankOnly, identityVerified]);
 
   // Keep what they've typed across a navigation. Only the plain identity
   // fields: the bank number is inside Stripe's element and never lives here,
   // so there is nothing sensitive to leak. sessionStorage rather than
   // localStorage so it dies with the tab, and cleared once submitted.
   useEffect(() => {
-    if (bankOnly || step !== 'identity') return;
+    if (bankOnly || step !== 'details') return;
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY);
       if (!raw) return;
@@ -288,7 +395,7 @@ function Flow({
   }, [step, bankOnly]);
 
   useEffect(() => {
-    if (bankOnly || step !== 'identity') return;
+    if (bankOnly || step !== 'details') return;
     try {
       sessionStorage.setItem(
         DRAFT_KEY,
@@ -333,18 +440,12 @@ function Flow({
     setErrCode(null);
     try {
       const data = await post('/api/connect/account', { country });
-      // Stripe wants something our forms don't collect — a document, a
-      // national ID number. Rather than trap this traveler in a flow that
-      // cannot finish, hand them Stripe's.
-      if (!data.canSelfServe) {
-        setStep('fallback');
-        return;
-      }
-      if (data.payoutsEnabled) {
-        setStep('done');
-        return;
-      }
-      setStep('identity');
+      const pending = awaitingIdentity(data);
+      setIdentityPending(pending);
+      // One resolver for every entry point, so the country step can't disagree
+      // with the resume path about where this traveler actually is. The route
+      // answers in the same shape /api/connect/status does.
+      setStep(stepFromStatus({ ...data, identityPending: pending }, identityVerified));
     } catch (e: any) {
       fail(e.code);
     } finally {
@@ -352,12 +453,12 @@ function Flow({
     }
   }
 
-  async function submitIdentity() {
+  async function submitDetails() {
     setLoading(true);
     setErr(null);
     setErrCode(null);
     try {
-      await post('/api/connect/details', {
+      const data = await post('/api/connect/details', {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         dobDay: Number(dobDay),
@@ -374,8 +475,50 @@ function Flow({
       } catch {
         /* ignore */
       }
-      setStep('bank');
+      // Submitting a name, a date of birth and an address is the moment
+      // Stripe decides whether it also needs to see an ID, so the next step
+      // comes from this response rather than being assumed.
+      const pending = awaitingIdentity(data);
+      setIdentityPending(pending);
+      setStep(stepFromStatus({ ...data, identityPending: pending }, identityVerified));
     } catch (e: any) {
+      fail(e.code);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /**
+   * Hand the traveler to Stripe Identity for the one document upload.
+   *
+   * The country goes with the request so the server can open the connected
+   * account before creating the session — that is what lets the verification
+   * carry related_person and settle Stripe's KYC at the same time. Coming
+   * back lands on the payouts tab, where this flow resumes at whatever step
+   * Stripe now says is next.
+   */
+  async function startVerification() {
+    setLoading(true);
+    setErr(null);
+    setErrCode(null);
+    try {
+      const returnTo =
+        typeof window !== 'undefined'
+          ? `${window.location.pathname}?tab=payouts`
+          : '/me?tab=payouts';
+      const data = await post('/api/identity/create-session', {
+        country,
+        returnTo,
+      });
+      if (data.url) window.location.href = data.url;
+      else fail(data.code);
+    } catch (e: any) {
+      // Verified with us AND accepted by Stripe: there is nothing to upload,
+      // the screen was just behind. Move on rather than showing an error.
+      if (/already verified/i.test(String(e?.code ?? ''))) {
+        setStep('bank');
+        return;
+      }
       fail(e.code);
     } finally {
       setLoading(false);
@@ -465,7 +608,7 @@ function Flow({
     'w-full rounded-xl border border-ink-100 bg-white px-3.5 py-2.5 text-[14px] text-ink-600';
   const label = 'block text-[13px] font-medium text-ink-600 mb-1.5';
 
-  const identityReady =
+  const detailsReady =
     firstName.trim() &&
     lastName.trim() &&
     dobDay &&
@@ -487,13 +630,15 @@ function Flow({
         </div>
       )}
 
+      {identityPending && step !== 'resuming' && step !== 'verify' && (
+        <p className="mb-4 rounded-xl bg-cream-100 border border-ink-50 px-3.5 py-2.5 text-[12px] text-ink-500 leading-relaxed">
+          {c.verifyPending}
+        </p>
+      )}
+
       {!bankOnly && step !== 'resuming' && step !== 'country' && step !== 'done' && (
         <button
-          onClick={() =>
-            setStep(
-              step === 'identity' ? 'country' : step === 'bank' ? 'identity' : 'bank'
-            )
-          }
+          onClick={() => setStep(BACK[step] ?? 'country')}
           className="flex items-center gap-1.5 text-[13px] text-ink-400 mb-4"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -524,7 +669,7 @@ function Flow({
         </>
       )}
 
-      {step === 'identity' && (
+      {step === 'details' && (
         <>
           <h3 className="text-[16px] font-semibold text-ink-900 mb-1">{c.who}</h3>
           <p className="text-[13px] text-ink-400 mb-4">{c.whoSub}</p>
@@ -555,9 +700,32 @@ function Flow({
             <input value={city} onChange={(e) => setCity(e.target.value)} placeholder={c.city} className={input} />
           </div>
 
-          <Button onClick={submitIdentity} disabled={!identityReady || loading} size="sm" fullWidth>
+          <Button onClick={submitDetails} disabled={!detailsReady || loading} size="sm" fullWidth>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {c.next}
+          </Button>
+        </>
+      )}
+
+      {step === 'verify' && (
+        <>
+          <h3 className="text-[16px] font-semibold text-ink-900 mb-1">
+            {c.verify}
+          </h3>
+          {/* Someone already verified with us is here because their old check
+              was never tied to this account — say so plainly rather than
+              pretending this is routine. Everyone else is told, truthfully,
+              that this is the only time they will be asked. */}
+          <p className="text-[13px] text-ink-400 mb-4 leading-relaxed">
+            {identityVerified ? c.verifyAgain : c.verifySub}
+          </p>
+          <Button onClick={startVerification} disabled={loading} size="sm" fullWidth>
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <ShieldCheck className="w-4 h-4" />
+            )}
+            {c.verifyCta}
           </Button>
         </>
       )}

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
-import { isAccountPayable } from '@/lib/stripe/connect';
+import { isAccountPayable, personIdentityVerified } from '@/lib/stripe/connect';
 import {
   resolveOnboardingActor,
   unsupportedRequirements,
+  identityRequirements,
+  identityVerificationPending,
+  dueRequirements,
 } from '@/lib/stripe/onboarding';
 
 /**
@@ -15,9 +18,11 @@ import {
  * the country the traveler picked, and report what Stripe still wants.
  *
  * The response drives which path the UI takes. `canSelfServe` false means
- * Stripe is asking for something our forms don't collect — an identity
- * document, a national ID number — and that traveler should be sent to the
- * hosted form instead of being stuck in a flow that can't finish.
+ * Stripe is asking for something neither our forms nor a Stripe Identity
+ * check can produce — a national ID number, a proof of address — and that
+ * traveler should be sent to the hosted form instead of being stuck in a flow
+ * that can't finish. An identity DOCUMENT is no longer one of those: it comes
+ * back as `identityDue` and the flow handles it in-app.
  */
 const schema = z.object({
   country: z.string().length(2).toUpperCase(),
@@ -49,12 +54,19 @@ export async function POST(req: NextRequest) {
       accountId: account.id,
       country: account.country,
       payoutsEnabled: isAccountPayable(account),
-      requirementsDue: [
-        ...new Set([
-          ...(account.requirements?.currently_due ?? []),
-          ...(account.requirements?.past_due ?? []),
-        ]),
-      ],
+      requirementsDue: dueRequirements(account),
+      // Stripe wants an identity document. Not a dead end any more: the
+      // payouts flow answers it with a Stripe Identity check bound to this
+      // account's Person, so the traveler uploads once and never on a
+      // Stripe-branded page.
+      identityDue: identityRequirements(account),
+      // Whether Stripe has already accepted who this person is. Read from the
+      // Person, not from profiles.identity_verified_at — a check made before
+      // the accounts-first reorder proves nothing to Stripe.
+      personVerified: personIdentityVerified(account),
+      // A document already with Stripe and still being judged. Asking again
+      // in that window is how someone uploads the same passport twice.
+      identityPending: identityVerificationPending(account),
       // Field-level rejections — "the name doesn't match the document", and
       // similar. Without surfacing these the traveler retypes the same value
       // forever, which is the worst failure mode of API onboarding.

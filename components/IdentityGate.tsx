@@ -6,6 +6,8 @@ import { Check, ShieldCheck, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
+import { findCountryByName } from '@/lib/countries';
+import { payoutCountryOptions } from '@/lib/stripe/payout-countries';
 
 // =============================================================================
 // VerifyIdentityButton — calls /api/identity/create-session and redirects.
@@ -14,6 +16,15 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 // which creates a VerificationSession server-side and returns the hosted-flow
 // URL. The user is redirected there; Stripe sends them back to /me?identity=done
 // after completion. Shared by /me and the identity gate below.
+//
+// WHY THIS ASKS ABOUT PAYOUTS. A verification only counts towards a connected
+// account's KYC if it was created naming that account's Person — which means
+// the account has to exist BEFORE the upload. Someone who verifies here and
+// opens a payout account later is asked for the very same passport a second
+// time, by Stripe, and there is no API to attach the first check afterwards.
+// So we ask the one question that lets us open the account now. It is
+// skippable: a sender who will never carry a parcel loses nothing by saying
+// so, and gets exactly the flow they had before.
 export function VerifyIdentityButton({
   label,
   onAlreadyVerified,
@@ -23,13 +34,26 @@ export function VerifyIdentityButton({
   // showing an error, we refresh the profile and let the caller move on.
   onAlreadyVerified?: () => void;
 }) {
-  const { t } = useI18n();
-  const { refreshProfile } = useAuth();
+  const { t, locale } = useI18n();
+  const { profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // Stripe's short error code, shown small under the message so a failure is
   // reportable without digging through server logs.
   const [errCode, setErrCode] = useState<string | null>(null);
+
+  // An account already on file answers the question by itself — the server
+  // links to it without being told. Only someone with no account is asked.
+  const hasAccount = !!profile?.stripe_account_id;
+  const options = payoutCountryOptions(locale);
+  const prefill = profile?.country
+    ? findCountryByName(profile.country.trim())?.code ?? ''
+    : '';
+  const [country, setCountry] = useState(
+    options.some((o) => o.code === prefill) ? prefill : ''
+  );
+  const [skipped, setSkipped] = useState(false);
+  const askCountry = !hasAccount && !skipped;
 
   async function start() {
     setLoading(true);
@@ -46,7 +70,13 @@ export function VerifyIdentityButton({
       const res = await fetch('/api/identity/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ returnTo }),
+        // The country opens the payout account before the upload, so this one
+        // check settles Stripe's KYC too. Omitted when unknown — the
+        // verification still happens, just unlinked.
+        body: JSON.stringify({
+          returnTo,
+          ...(askCountry && country ? { country } : {}),
+        }),
       });
       const data = await res.json();
       // Already verified server-side (the client profile was just stale):
@@ -73,6 +103,42 @@ export function VerifyIdentityButton({
 
   return (
     <>
+      {askCountry && (
+        <label className="block mb-3 text-left">
+          <span className="block text-[13px] font-medium text-ink-600 mb-1.5">
+            {t.gate_payout_country_label}
+          </span>
+          <select
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className="w-full rounded-xl border border-ink-100 bg-white px-3.5 py-2.5 text-[14px] text-ink-600"
+          >
+            <option value="">{t.payout_country_placeholder}</option>
+            {options.map((o) => (
+              <option key={o.code} value={o.code}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+          {/* Prefilled when the profile country maps cleanly, never applied
+              unseen: the country is immutable on a Stripe account, so it has
+              to be on screen and changeable before it is used. */}
+          <span className="block mt-1.5 text-[12px] text-ink-400 leading-relaxed">
+            {t.gate_payout_country_hint}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setCountry('');
+              setSkipped(true);
+            }}
+            className="mt-2 text-[12px] text-ink-400 underline underline-offset-2"
+          >
+            {t.gate_payout_country_skip}
+          </button>
+        </label>
+      )}
+
       <Button onClick={start} disabled={loading} size="sm" fullWidth>
         {loading ? (
           <Loader2 className="w-4 h-4 animate-spin" />

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe/server';
+import { syncConnectAccount } from '@/lib/stripe/connect';
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -105,5 +106,35 @@ export async function POST(req: NextRequest) {
   }
 
   console.log('[identity/webhook] DB updated OK:', data);
+
+  // A verification carrying related_person has just settled a requirement on
+  // a connected account — usually individual.verification.document, the one
+  // that used to send the traveler to Stripe's form for a second upload.
+  //
+  // Stripe fires account.updated for that too, but not necessarily before the
+  // traveler is back on our page looking at their payout status. Re-read and
+  // sync now so the screen tells the truth immediately. Failing here must not
+  // fail the webhook: the identity result is already recorded, and
+  // account.updated will catch up.
+  if (session.status === 'verified' && session.related_person?.account) {
+    try {
+      const account = await getStripe().accounts.retrieve(
+        session.related_person.account
+      );
+      await syncConnectAccount(account);
+      console.log(
+        '[identity/webhook] synced connected account',
+        account.id,
+        'payouts_enabled:',
+        account.payouts_enabled
+      );
+    } catch (e: any) {
+      console.warn(
+        `[identity/webhook] could not sync ${session.related_person.account}:`,
+        e?.message
+      );
+    }
+  }
+
   return NextResponse.json({ received: true, userId, status: session.status });
 }

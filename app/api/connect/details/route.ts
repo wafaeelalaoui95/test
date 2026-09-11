@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
-import { resolveOnboardingActor } from '@/lib/stripe/onboarding';
+import { isAccountPayable, personIdentityVerified } from '@/lib/stripe/connect';
+import {
+  resolveOnboardingActor,
+  unsupportedRequirements,
+  identityRequirements,
+  identityVerificationPending,
+  dueRequirements,
+} from '@/lib/stripe/onboarding';
 
 /**
  * POST /api/connect/details
@@ -61,7 +68,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await getStripe().accounts.update(resolved.actor.accountId, {
+    const account = await getStripe().accounts.update(resolved.actor.accountId, {
       individual: {
         first_name: body.firstName,
         last_name: body.lastName,
@@ -79,7 +86,23 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ ok: true });
+    // Hand back what Stripe wants NEXT, in the same shape /api/connect/status
+    // uses. Submitting a name, a date of birth and an address is the moment
+    // Stripe decides whether it also needs to see an ID — so the next step is
+    // only knowable from this response, and re-reading the account from the
+    // client to find out would race it.
+    const unsupported = unsupportedRequirements(account);
+    return NextResponse.json({
+      ok: true,
+      accountId: account.id,
+      payoutsEnabled: isAccountPayable(account),
+      requirementsDue: dueRequirements(account),
+      identityDue: identityRequirements(account),
+      identityPending: identityVerificationPending(account),
+      personVerified: personIdentityVerified(account),
+      unsupported,
+      canSelfServe: unsupported.length === 0,
+    });
   } catch (e: any) {
     console.error('[connect/details]', e?.type, e?.code, e?.message);
     // Stripe's field path is the one genuinely useful thing in its error —
