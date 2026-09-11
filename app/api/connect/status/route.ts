@@ -4,8 +4,14 @@ import {
   syncConnectAccount,
   isAccountPayable,
   isMissingAccountError,
+  personIdentityVerified,
 } from '@/lib/stripe/connect';
-import { unsupportedRequirements } from '@/lib/stripe/onboarding';
+import {
+  unsupportedRequirements,
+  identityRequirements,
+  identityVerificationPending,
+  dueRequirements,
+} from '@/lib/stripe/onboarding';
 import { retryPendingPayouts } from '@/lib/stripe/payout';
 import { getServerClient } from '@/lib/supabase/server';
 
@@ -47,6 +53,11 @@ export async function GET() {
       onboarded: false,
       payoutsEnabled: false,
       identityVerified: !!profile?.identity_verified_at,
+      // No account means nothing is due yet and nothing is verified with
+      // Stripe — spelled out so the client reads one shape, not two.
+      identityDue: [],
+      personVerified: false,
+      identityPending: false,
       needsOnboarding: true,
     });
   }
@@ -66,6 +77,16 @@ export async function GET() {
   // Needed even for a finished account: it decides whether changing bank asks
   // for an IBAN or a sort code. It is immutable, so it is safe to trust.
   let country: string | null = null;
+  // Identity document requirements, and whether Stripe has already accepted
+  // this person. Together they decide whether the flow shows a verification
+  // step — and, for someone verified before the accounts-first reorder, they
+  // are what reveals that their old check was never tied to this account.
+  let identityDue: string[] = [];
+  let personVerified = false;
+  // A document already with Stripe, awaiting judgement. Distinct from "not
+  // provided": asking again here is how someone uploads the same passport
+  // twice.
+  let identityPending = false;
   // Set only when the Stripe read itself failed — see the catch below.
   let stripeError: string | null = null;
   let stripeErrorMessage: string | null = null;
@@ -89,12 +110,10 @@ export async function GET() {
     // than a bare "incomplete".
     // Deduplicated: past_due is a SUBSET of currently_due, not a separate
     // list, so concatenating them showed every field twice.
-    requirementsDue = [
-      ...new Set([
-        ...(account.requirements?.currently_due ?? []),
-        ...(account.requirements?.past_due ?? []),
-      ]),
-    ];
+    requirementsDue = dueRequirements(account);
+    identityDue = identityRequirements(account);
+    personVerified = personIdentityVerified(account);
+    identityPending = identityVerificationPending(account);
     requirements = {
       currently_due: account.requirements?.currently_due ?? [],
       eventually_due: account.requirements?.eventually_due ?? [],
@@ -167,6 +186,9 @@ export async function GET() {
     needsOnboarding: !payoutsEnabled,
     country,
     requirementsDue,
+    identityDue,
+    personVerified,
+    identityPending,
     unsupported,
     canSelfServe: unsupported.length === 0,
     requirements,

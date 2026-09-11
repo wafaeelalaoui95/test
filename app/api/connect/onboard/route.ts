@@ -8,6 +8,7 @@ import {
   isMissingAccountError,
   isAccountPayable,
   ensureBusinessProfile,
+  personIdentityVerified,
 } from '@/lib/stripe/connect';
 import { findCountryByName } from '@/lib/countries';
 import { isPayoutCountry } from '@/lib/stripe/payout-countries';
@@ -83,21 +84,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  // Payouts require a verified identity. Letting an unverified user onboard
-  // would mean money leaving to someone we never checked — and Stripe would
-  // block it at the KYC step anyway, just with a worse error.
+  // No identity gate here any more, and this is deliberate. Identity is now
+  // collected INSIDE the payouts flow, by a Stripe Identity check bound to
+  // this account's Person — the only arrangement where one document upload
+  // satisfies both us and Stripe. Refusing here would block exactly the
+  // travelers that flow sends this way: someone whose document is with Stripe
+  // and still under review has no identity_verified_at yet, and the hosted
+  // form is where they finish the parts we cannot collect.
+  //
+  // Nothing is weakened. This route only mints an onboarding link. Stripe
+  // still runs its own KYC before enabling payouts, transferToTraveler pays
+  // no one until stripe_payouts_enabled is true, and publishing a trip still
+  // requires identity_verified_at.
   const { data: profile } = await supabase
     .from('profiles')
-    .select('identity_verified_at, country')
+    .select('country')
     .eq('id', user.id)
     .maybeSingle();
-
-  if (!profile?.identity_verified_at) {
-    return NextResponse.json(
-      { error: 'identity_required' },
-      { status: 403 }
-    );
-  }
 
   // Where Stripe's "return to Jibly" button sends the traveler. Must be the
   // real domain — this is the one the user complained about landing on a
@@ -109,7 +112,7 @@ export async function POST(req: NextRequest) {
     // cleanly. Never the platform's own country: defaulting to GB is what made
     // every traveler a UK account holder, permanently.
     const country =
-      toCountryCode(body.country) ?? toCountryCode(profile.country) ?? '';
+      toCountryCode(body.country) ?? toCountryCode(profile?.country) ?? '';
 
     // Stripe rejects a v2 account without one (identity_country_required), and
     // it can never be changed afterwards — so refuse here rather than let a
@@ -164,7 +167,12 @@ export async function POST(req: NextRequest) {
       try {
         const existing = await stripe.accounts.retrieve(existingId);
         if (existing.country && existing.country.toUpperCase() !== country) {
-          if (isAccountPayable(existing)) {
+          // Same guard as resolveOnboardingActor, and for the same reason:
+          // replacing the account discards the identity check bound to its
+          // Person, and Stripe cannot move a finished verification to another
+          // account. Silently asking for the passport again is worse than
+          // refusing, so refuse.
+          if (isAccountPayable(existing) || personIdentityVerified(existing)) {
             return NextResponse.json(
               { error: 'payout_setup_failed', code: 'country_locked' },
               { status: 409 }

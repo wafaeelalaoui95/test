@@ -4,144 +4,18 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 import { Loader2, Wallet, Check } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
-import { VerifyIdentityButton } from '@/components/IdentityGate';
-import { findCountryByName } from '@/lib/countries';
-import { payoutCountryOptions } from '@/lib/stripe/payout-countries';
 import { PayoutOnboarding } from '@/components/PayoutOnboarding';
 
-// =============================================================================
-// SetupPayoutsButton — calls /api/connect/onboard and redirects to Stripe.
-// =============================================================================
-// Mirrors VerifyIdentityButton: POST to our route, receive a Stripe-hosted URL,
-// send the user there. Stripe returns them to /me?payouts=done, and the
-// account.updated webhook flips profiles.stripe_payouts_enabled shortly after.
-//
-// AccountLinks are single-use and short-lived, so we mint a fresh one on every
-// click rather than caching the URL.
-export function SetupPayoutsButton({
-  label,
-  onIdentityRequired,
-}: {
-  label?: string;
-  // The server refuses onboarding for an unverified user (403 identity_required).
-  // Rather than showing a dead-end error, hand control back to the caller so it
-  // can put the identity step in front of them.
-  onIdentityRequired?: () => void;
-}) {
-  const { t, locale } = useI18n();
-  const { profile } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  // Stripe's short error code, shown small under the message. Not for the
-  // user to interpret — it's so they can quote it to support instead of
-  // "it didn't work".
-  const [errCode, setErrCode] = useState<string | null>(null);
-
-  // Stripe requires identity.country on a v2 account (identity_country_required)
-  // and it can never be changed afterwards. So we ask outright rather than
-  // inferring: guessing from the platform's own country silently made every
-  // traveler a UK account holder, and the profile's country field is free text
-  // that mostly doesn't map. Prefilled when it happens to map cleanly.
-  const options = payoutCountryOptions(locale);
-  const prefill = profile?.country
-    ? findCountryByName(profile.country.trim())?.code ?? ''
-    : '';
-  const [country, setCountry] = useState(
-    options.some((o) => o.code === prefill) ? prefill : ''
-  );
-
-  async function start() {
-    setLoading(true);
-    setErr(null);
-    setErrCode(null);
-    try {
-      const res = await fetch('/api/connect/onboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // Carry the UI language so Stripe's hosted form isn't in English for a
-        // traveler who has been reading French the whole way here.
-        body: JSON.stringify({ locale, country }),
-      });
-      const data = await res.json();
-
-      if (res.status === 403 && data?.error === 'identity_required') {
-        setLoading(false);
-        if (onIdentityRequired) onIdentityRequired();
-        else setErr(t.payout_identity_first);
-        return;
-      }
-      if (!res.ok || !data.url) {
-        // The route returns opaque codes, never raw Stripe text — see the
-        // catch in /api/connect/onboard for why. Field paths ride along when
-        // the code alone doesn't say what's wrong (invalid_fields).
-        if (data?.code) {
-          const fields: string[] = Array.isArray(data.fields) ? data.fields : [];
-          setErrCode(
-            fields.length ? `${data.code}: ${fields.join(', ')}` : data.code
-          );
-        }
-        throw new Error(t.payout_start_failed);
-      }
-      window.location.href = data.url;
-    } catch (e: any) {
-      setErr(e.message ?? t.me2_error_retry);
-      setLoading(false);
-    }
-  }
-
-  return (
-    <>
-      <label className="block mb-4">
-        <span className="block text-[13px] font-medium text-ink-600 mb-1.5">
-          {t.payout_country_label}
-        </span>
-        <select
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          className="w-full rounded-xl border border-ink-100 bg-white px-3.5 py-2.5 text-[14px] text-ink-600"
-        >
-          <option value="">{t.payout_country_placeholder}</option>
-          {options.map((o) => (
-            <option key={o.code} value={o.code}>
-              {o.name}
-            </option>
-          ))}
-        </select>
-        {/* Immutable on the Stripe side, so warn before rather than support
-            after. Only these countries appear because Stripe opens connected
-            accounts nowhere else — Morocco included. */}
-        <span className="block mt-1.5 text-[12px] text-ink-400 leading-relaxed">
-          {t.payout_country_hint}
-        </span>
-      </label>
-
-      <Button
-        onClick={start}
-        disabled={loading || !country}
-        size="sm"
-        fullWidth
-      >
-        {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Wallet className="w-4 h-4" />
-        )}
-        {label ?? t.payout_setup_cta}
-      </Button>
-      {err && (
-        <p className="mt-2 text-[12px] text-blush-500 text-center">{err}</p>
-      )}
-      {errCode && (
-        <p className="mt-1 text-[11px] text-ink-300 text-center font-mono">
-          {errCode}
-        </p>
-      )}
-    </>
-  );
-}
+// SetupPayoutsButton lived here: a country dropdown that sent the traveler
+// straight to Stripe's hosted onboarding. It has no callers left, and
+// reviving it would reintroduce the bug this file exists to fix — the hosted
+// form collects an identity document Stripe cannot match to anything we
+// already hold, so the traveler uploads the same passport twice. The country
+// question now belongs to PayoutOnboarding, which opens the connected account
+// first and verifies against it. The hosted form is still reachable, as the
+// fallback step there, for the requirements we genuinely cannot collect.
 
 // =============================================================================
 // ManagePayoutsButton — opens the traveler's Stripe Express dashboard.
@@ -285,8 +159,6 @@ export function usePayoutStatus(): {
 export function PayoutStatusCard() {
   const { t } = useI18n();
   const { payoutsEnabled, loading } = usePayoutStatus();
-  const { profile } = useAuth();
-  const [needsIdentity, setNeedsIdentity] = useState(false);
 
   if (loading) {
     return (
@@ -325,16 +197,13 @@ export function PayoutStatusCard() {
       <p className="text-[13px] text-ink-400 leading-relaxed mb-4">
         {t.payout_setup_sub}
       </p>
-      {needsIdentity || !profile?.identity_verified_at ? (
-        <VerifyIdentityButton
-          onAlreadyVerified={() => setNeedsIdentity(false)}
-        />
-      ) : (
-        // Our own screens rather than Stripe's redirect. SetupPayoutsButton is
-        // kept for the fallback path inside PayoutOnboarding — a traveler
-        // Stripe wants a document from still goes to the hosted form.
-        <PayoutOnboarding />
-      )}
+      {/* The identity check used to stand HERE, in front of everything, and
+          that was the bug: verifying before the connected account exists
+          produces a session Stripe cannot credit against it, so the same
+          passport was demanded a second time at the end of payout setup.
+          PayoutOnboarding owns the order now — country, details, then the
+          identity check, bound to the account it has to satisfy. */}
+      <PayoutOnboarding />
     </div>
   );
 }

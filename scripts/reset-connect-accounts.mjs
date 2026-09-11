@@ -45,7 +45,7 @@ if (!key) {
 
 const APPLY = process.argv.includes('--yes');
 const FORCE = process.argv.includes('--force');
-const stripe = new Stripe(key, { apiVersion: '2025-02-24.acacia' });
+const stripe = new Stripe(key, { apiVersion: '2025-08-27.basil' });
 
 const mode = key.startsWith('sk_live_') ? 'LIVE' : 'TEST';
 

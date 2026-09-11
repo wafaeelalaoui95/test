@@ -19,8 +19,17 @@ export function getStripe(): Stripe {
       'STRIPE_SECRET_KEY is not set. Add it to your Vercel environment variables.'
     );
   }
+  // Basil, not Acacia. The version matters for one feature in particular:
+  // `related_person` on an Identity VerificationSession — the parameter that
+  // ties a verification to a connected account's Person — was introduced in
+  // 2025-06-30.basil. On Acacia there is no way to make one document upload
+  // satisfy both Stripe Identity and Connect KYC, which is what this app now
+  // relies on (see /api/identity/create-session).
+  //
+  // Nothing else here moved: Basil's breaking changes are confined to
+  // Invoices, Subscriptions and Checkout, none of which this app uses.
   _stripe = new Stripe(key, {
-    apiVersion: '2025-02-24.acacia',
+    apiVersion: '2025-08-27.basil',
     typescript: true,
   });
   return _stripe;

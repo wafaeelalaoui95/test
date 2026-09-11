@@ -442,3 +442,48 @@ export async function syncConnectAccount(
   }
   return data[0].id;
 }
+
+/**
+ * The Person behind an individual connected account.
+ *
+ * Stripe Identity can only satisfy a Connect requirement if the verification
+ * names the Person it belongs to — `related_person` takes an account id AND a
+ * person id, and neither can be added after the session is created. This is
+ * how we get the second one.
+ *
+ * For `business_type: 'individual'` Stripe creates that Person itself at
+ * account creation and exposes it as `account.individual`, so the common path
+ * costs nothing extra. listPersons is the fallback for an account shaped
+ * differently than we expect; null means we could not find one, and the caller
+ * must fall back to an unlinked verification rather than fail.
+ */
+export async function getIndividualPersonId(
+  account: Stripe.Account
+): Promise<string | null> {
+  if (account.individual?.id) return account.individual.id;
+
+  try {
+    const persons = await getStripe().accounts.listPersons(account.id, {
+      limit: 1,
+    });
+    return persons.data[0]?.id ?? null;
+  } catch (e: any) {
+    console.warn(
+      `[connect] could not resolve a person for ${account.id}:`,
+      e?.message
+    );
+    return null;
+  }
+}
+
+/**
+ * Has Stripe accepted this account holder's identity?
+ *
+ * Read from the Person rather than from our own profiles table, because this
+ * is the question that decides whether a document is still owed to STRIPE —
+ * profiles.identity_verified_at can be true from a verification that was never
+ * tied to this account (every check made before the accounts-first reorder was).
+ */
+export function personIdentityVerified(account: Stripe.Account): boolean {
+  return account.individual?.verification?.status === 'verified';
+}
