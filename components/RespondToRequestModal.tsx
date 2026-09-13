@@ -11,6 +11,7 @@ import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
+import { openPickerOnClick } from '@/components/ui/Form';
 import type { ShippingRequestRow, Profile, TravelerTripRow } from '@/lib/supabase/types';
 
 type RequestWithProfile = ShippingRequestRow & {
@@ -312,6 +313,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
                       type="date"
                       value={newTripDate}
                       onChange={(e) => setNewTripDate(e.target.value)}
+                      onClick={openPickerOnClick}
                       min={new Date().toISOString().slice(0, 10)}
                       className="w-full px-3 py-2 rounded-lg bg-white border border-ink-100 text-[13px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300"
                     />

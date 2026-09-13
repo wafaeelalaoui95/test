@@ -14,6 +14,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { openPickerOnClick } from '@/components/ui/Form';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
@@ -278,11 +279,12 @@ export function HomeClient({
                     {t.search_label_before}
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />
+                    <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
                     <input
                       type="date"
                       value={searchDate}
                       onChange={(e) => setSearchDate(e.target.value)}
+                      onClick={openPickerOnClick}
                       min={new Date().toISOString().slice(0, 10)}
                       className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
                     />
@@ -297,7 +299,7 @@ export function HomeClient({
                     <span className="normal-case tracking-normal font-normal text-ink-300 lowercase">({t.common_optional})</span>
                   </label>
                   <div className="relative">
-                    <Wallet className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />
+                    <Wallet className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
                     <input
                       type="number"
                       min={0}

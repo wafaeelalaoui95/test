@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import { MIN_COMPENSATION_EUR } from '@/lib/constants';
+import { openPickerOnClick } from '@/components/ui/Form';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
 
 // =============================================================================
@@ -275,6 +276,7 @@ export function EditListingModal({
               className={field}
               value={date}
               onChange={(e) => setDate(e.target.value)}
+              onClick={openPickerOnClick}
             />
           </label>
 
@@ -287,6 +289,7 @@ export function EditListingModal({
                   className={field}
                   value={arrival}
                   onChange={(e) => setArrival(e.target.value)}
+                  onClick={openPickerOnClick}
                 />
               </label>
               <label className="block">

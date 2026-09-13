@@ -1,7 +1,35 @@
 'use client';
 
-import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react';
+import { forwardRef, type InputHTMLAttributes, type MouseEvent, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
+
+/** Field types whose value comes from a browser picker rather than typing. */
+const PICKER_TYPES = new Set(['date', 'time', 'datetime-local', 'month', 'week']);
+
+/**
+ * Open the native picker when the field is clicked.
+ *
+ * Safari opens a date picker wherever you tap the field. Chrome does not: it
+ * opens only from the small calendar glyph at the right-hand edge, and a click
+ * anywhere else just parks a caret between the day and the month. On a
+ * transparent, borderless field that glyph is close to invisible, so travelers
+ * kept reporting that the calendar "doesn't work in Chrome" — and it genuinely
+ * didn't, for any click they would think to make. Switching to Safari fixed it
+ * instantly, which is exactly what they told us.
+ *
+ * showPicker() is the standard way to ask for it, and it is a no-op when the
+ * picker is already open, so clicking the glyph itself still behaves. It
+ * throws rather than returns on an unsupported browser or outside a user
+ * gesture; either way the native glyph remains, so swallowing it degrades to
+ * the behaviour we have today instead of breaking the field.
+ */
+export function openPickerOnClick(e: MouseEvent<HTMLInputElement>): void {
+  try {
+    e.currentTarget.showPicker();
+  } catch {
+    /* older browser, or no user activation — the native glyph still works */
+  }
+}
 
 const baseField =
   'w-full rounded-xl border border-ink-100 bg-white px-4 py-3 text-[15px] text-ink-600 placeholder:text-ink-300 transition-colors focus:border-ink-500 focus:outline-none focus:ring-2 focus:ring-ink-100';
@@ -13,8 +41,10 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, hint, error, className, id, ...props }, ref) => {
+  ({ label, hint, error, className, id, onClick, ...props }, ref) => {
     const inputId = id || props.name;
+    const usesPicker =
+      typeof props.type === 'string' && PICKER_TYPES.has(props.type);
     return (
       <div className="space-y-2">
         {label && (
@@ -25,6 +55,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
+          onClick={(e) => {
+            if (usesPicker) openPickerOnClick(e);
+            onClick?.(e);
+          }}
           className={cn(baseField, error && 'border-blush-400 focus:border-blush-500 focus:ring-blush-100', className)}
           {...props}
         />

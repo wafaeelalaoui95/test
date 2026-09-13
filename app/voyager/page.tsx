@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Textarea, Checkbox, Input } from '@/components/ui/Form';
+import { Textarea, Checkbox, Input, openPickerOnClick } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate } from '@/components/IdentityGate';
@@ -407,11 +407,12 @@ export default function VoyagerPage() {
                   {t.search_label_flight_date}
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300" />
+                  <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
                   <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
+                    onClick={openPickerOnClick}
                     min={new Date().toISOString().slice(0, 10)}
                     className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
                   />
