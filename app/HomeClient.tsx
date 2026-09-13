@@ -723,6 +723,11 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
       if (Array.isArray(parsed?.accepted_categories)) {
         categories = parsed.accepted_categories;
       }
+      // The edit modal can store a note alongside the categories. Without
+      // reading it back, a traveler writes one, saves, and watches it vanish.
+      if (typeof parsed?.note === 'string' && parsed.note.trim()) {
+        plainNote = parsed.note;
+      }
     } catch {
       plainNote = trip.notes;
     }

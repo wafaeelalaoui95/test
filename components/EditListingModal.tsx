@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
-import { MIN_COMPENSATION_EUR, MAX_COMPENSATION_EUR } from '@/lib/constants';
+import { MIN_COMPENSATION_EUR, MAX_COMPENSATION_EUR, ITEM_CATEGORIES } from '@/lib/constants';
 import { openPickerOnClick } from '@/components/ui/Form';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
 
@@ -39,6 +39,8 @@ const COPY = {
     description: 'Description',
     weight: 'Poids approximatif (kg, facultatif)',
     flight: 'Numéro de vol (facultatif)',
+    categories: 'Ce que vous acceptez de transporter',
+    categoriesHint: 'Au moins une catégorie.',
     notes: 'Précisions (facultatif)',
     save: 'Enregistrer',
     cancel: 'Annuler',
@@ -68,6 +70,8 @@ const COPY = {
     description: 'Description',
     weight: 'Rough weight (kg, optional)',
     flight: 'Flight number (optional)',
+    categories: 'What you agree to carry',
+    categoriesHint: 'At least one category.',
     notes: 'Anything else (optional)',
     save: 'Save',
     cancel: 'Cancel',
@@ -94,6 +98,9 @@ export type EditableTrip = {
   available_weight_kg: number | null;
   flight_number: string | null;
   notes: string | null;
+  // The queryable copy of what the blob in `notes` carries. Optional because
+  // trips published before the column existed do not have it.
+  accepted_categories?: string[] | null;
 };
 
 export type EditableRequest = {
@@ -121,7 +128,7 @@ export function EditListingModal({
   onClose: () => void;
   onSaved: (patch: Record<string, any>) => void;
 }) {
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const c = COPY[locale === 'en' ? 'en' : 'fr'];
   const isTrip = !!trip;
 
@@ -149,7 +156,35 @@ export function EditListingModal({
     String((trip ? trip.available_weight_kg : request!.weight_kg) ?? '')
   );
   const [flight, setFlight] = useState(trip?.flight_number ?? '');
-  const [notes, setNotes] = useState(trip?.notes ?? '');
+  // trips.notes is not free text. Publishing writes a JSON blob into it —
+  // {"accepted_categories":[...]} — and this modal used to load that straight
+  // into a textarea labelled "anything else", so travelers opening their own
+  // trip were shown what looked like code. Worse than looking wrong: saving
+  // over it replaced the blob with prose, and every card that reads the
+  // categories back out of it lost them.
+  //
+  // So unpack it here, edit the two halves separately, and write it back in
+  // the shape the readers expect.
+  const unpacked = (() => {
+    const raw = trip?.notes ?? '';
+    if (!raw) return { categories: trip?.accepted_categories ?? [], note: '' };
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.accepted_categories)) {
+        return {
+          categories: parsed.accepted_categories as string[],
+          note: typeof parsed?.note === 'string' ? parsed.note : '',
+        };
+      }
+    } catch {
+      // Not JSON: an older trip whose notes really are prose. Keep the prose,
+      // take the categories from the column written alongside it.
+    }
+    return { categories: trip?.accepted_categories ?? [], note: raw };
+  })();
+
+  const [categories, setCategories] = useState<string[]>(unpacked.categories);
+  const [notes, setNotes] = useState(unpacked.note);
   const [title, setTitle] = useState(request?.item_title ?? '');
   const [description, setDescription] = useState(request?.item_description ?? '');
   // Adding a photo after the fact is the common case: people post first and
@@ -165,7 +200,18 @@ export function EditListingModal({
         arrival_date: arrival || null,
         available_weight_kg: num(weight),
         flight_number: flight.trim() || null,
-        notes: notes.trim() || null,
+        // Same shape publishing writes, so TripCard and the profile page keep
+      // reading the categories out of it. The note rides along inside the
+      // blob rather than replacing it.
+      notes: categories.length
+        ? JSON.stringify({
+            accepted_categories: categories,
+            ...(notes.trim() ? { note: notes.trim() } : {}),
+          })
+        : notes.trim() || null,
+      // The queryable column, kept in step with the blob. Without this the
+      // two say different things the moment someone edits.
+      accepted_categories: categories.length ? categories : null,
       };
     }
     return {
@@ -186,6 +232,10 @@ export function EditListingModal({
     }
     if (value > ceiling) {
       setErr(c.maxPrice);
+      return;
+    }
+    if (isTrip && categories.length === 0) {
+      setErr(c.categoriesHint);
       return;
     }
     setSaving(true);
@@ -328,6 +378,38 @@ export function EditListingModal({
               onChange={(e) => setWeight(e.target.value)}
             />
           </label>
+
+          {isTrip && (
+            <div className="block">
+              <span className={label}>{c.categories}</span>
+              <div className="grid grid-cols-2 gap-2">
+                {ITEM_CATEGORIES.map((cat) => {
+                  const active = categories.includes(cat.value);
+                  return (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() =>
+                        setCategories((prev) =>
+                          prev.includes(cat.value)
+                            ? prev.filter((v) => v !== cat.value)
+                            : [...prev, cat.value]
+                        )
+                      }
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-start text-[13px] transition-all ${
+                        active
+                          ? 'border-lavender-500 bg-lavender-50 text-ink-600'
+                          : 'border-ink-100 bg-white text-ink-500 hover:border-ink-300'
+                      }`}
+                    >
+                      <span className="shrink-0">{cat.icon}</span>
+                      <span className="min-w-0 truncate">{t[cat.labelKey]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {isTrip && (
             <label className="block">

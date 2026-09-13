@@ -30,7 +30,7 @@ export const EDITABLE_FIELDS: Record<ListingType, string[]> = {
     'departure_country', 'departure_city', 'arrival_country', 'arrival_city',
     'departure_date', 'arrival_date', 'compensation_min', 'compensation_max',
     'available_weight_kg', 'available_space', 'flight_time', 'flight_number',
-    'departure_airport', 'arrival_airport', 'notes',
+    'departure_airport', 'arrival_airport', 'notes', 'accepted_categories',
   ],
   shipping_request: [
     'item_title', 'item_category', 'item_description',
