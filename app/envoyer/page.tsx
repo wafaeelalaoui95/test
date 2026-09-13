@@ -739,7 +739,19 @@ export default function EnvoyerPage() {
                             const digits = e.target.value.replace(/[^0-9]/g, '');
                             setBudget(digits === '' ? 0 : Math.min(Number(digits), 20000));
                           }}
-                          onBlur={() => setBudget((b) => Math.max(MIN_COMPENSATION_EUR, Math.min(b, MAX_COMPENSATION_EUR)))}
+                          onBlur={() =>
+                            // Whole euros. The slider can only land on
+                            // multiples of five, but this field is free text,
+                            // and compensation columns are integers — what a
+                            // sender offers is a round number even though what
+                            // they end up paying is not.
+                            setBudget((b) =>
+                              Math.max(
+                                MIN_COMPENSATION_EUR,
+                                Math.min(Math.round(b) || MIN_COMPENSATION_EUR, MAX_COMPENSATION_EUR)
+                              )
+                            )
+                          }
                           style={{ width: `${String(budget).length + 0.5}ch` }}
                           className="bg-transparent text-end outline-none focus:text-mint-700"
                         />

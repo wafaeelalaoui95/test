@@ -125,7 +125,17 @@ export function priceBreakdown(travelerEuros: number): PriceBreakdown {
   return {
     traveler: travelerEuros,
     fees,
-    total: travelerEuros + fees,
+    // Rounded to the cent, not to the euro. The total is genuinely fractional
+    // — 20 € to the traveller is 23.50 to the sender — and rounding it to a
+    // whole euro would break the one promise this file exists to keep: the
+    // traveller receives exactly their listed price, which splitAmount()
+    // recovers by inverting this formula. Move the total and the inverse stops
+    // landing on their number.
+    //
+    // What this does remove is floating-point dust: 0.1 + 0.2 arithmetic can
+    // produce 23.500000000000004, and a column that accepts 23.50 will not
+    // accept that.
+    total: Math.round((travelerEuros + fees) * 100) / 100,
   };
 }
 
