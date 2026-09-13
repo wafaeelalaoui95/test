@@ -106,6 +106,36 @@ export function HomeClient({
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  /**
+   * The filter that sits WITH the results, applied on every change.
+   *
+   * It writes the hero's fields as well as the active ones, so the two
+   * controls can never show different answers — someone who narrows the list
+   * down here and then scrolls back up finds the box already filled in.
+   *
+   * No Search button, unlike the hero: this one exists because scrolling back
+   * to the top to change a city was the complaint, and a second click to
+   * confirm would put half of that back.
+   */
+  function applyRoute(side: 'from' | 'to', country: string, city: string) {
+    if (side === 'from') {
+      setSearchFromCountry(country);
+      setSearchFrom(city);
+      setActiveFromCountry(country);
+      setActiveFrom(city);
+    } else {
+      setSearchToCountry(country);
+      setSearchTo(city);
+      setActiveToCountry(country);
+      setActiveTo(city);
+    }
+  }
+
+  function applyDate(value: string) {
+    setSearchDate(value);
+    setActiveDate(value);
+  }
+
   function resetAll() {
     setSearchFrom('');
     setSearchFromCountry('');
@@ -389,6 +419,71 @@ export function HomeClient({
                 <ArrowRight className="w-3 h-3" />
               </Button>
             </Link>
+          </div>
+
+          {/* Route and date only. Deliberately no price: the two questions
+              someone scanning this list actually has are "does anyone go where
+              I need" and "when" — a price box invites filtering away offers
+              that were negotiable anyway. The hero keeps its budget field for
+              people who search before scrolling. */}
+          <div className="mb-8 bg-white rounded-2xl border border-ink-50 p-2">
+            <div className="flex flex-col sm:flex-row sm:items-stretch">
+              <div className="relative px-4 py-3 rounded-xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
+                <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
+                  {t.search_label_from}
+                </label>
+                <CountryCityPicker
+                  country={searchFromCountry}
+                  city={searchFrom}
+                  onChange={({ country, city }) => applyRoute('from', country, city)}
+                  enableNearby
+                />
+              </div>
+
+              <div className="hidden sm:block w-px bg-ink-50 my-2 flex-shrink-0" />
+
+              <div className="relative px-4 py-3 rounded-xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
+                <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
+                  {t.search_label_to}
+                </label>
+                <CountryCityPicker
+                  country={searchToCountry}
+                  city={searchTo}
+                  onChange={({ country, city }) => applyRoute('to', country, city)}
+                />
+              </div>
+
+              <div className="hidden sm:block w-px bg-ink-50 my-2 flex-shrink-0" />
+
+              <div className="relative px-4 py-3 rounded-xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
+                <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
+                  {t.search_label_before}
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={searchDate}
+                    onChange={(e) => applyDate(e.target.value)}
+                    onClick={openPickerOnClick}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
+                  />
+                </div>
+              </div>
+
+              {hasActiveSearch && (
+                <div className="flex items-center justify-center sm:justify-end px-3 pb-2 sm:pb-0">
+                  <button
+                    onClick={resetAll}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-400 hover:text-ink-600 whitespace-nowrap"
+                  >
+                    <X className="w-3 h-3" />
+                    {t.disc_clear}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {loading ? (
