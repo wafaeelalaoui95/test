@@ -23,7 +23,13 @@ import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
-import { ITEM_CATEGORIES, FORBIDDEN_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
+import {
+  ITEM_CATEGORIES,
+  FORBIDDEN_CATEGORIES,
+  MIN_COMPENSATION_EUR,
+  MAX_COMPENSATION_EUR,
+  SENDER_LOW_EUR,
+} from '@/lib/constants';
 import { isVagueDescription, detectRiskKeywords } from '@/lib/safety';
 import { formatShortDate, displayName, nameInitial, formatEuros, priceBreakdown } from '@/lib/utils';
 import { countryDisplayName, cityDisplayName } from '@/lib/countries';
@@ -733,7 +739,7 @@ export default function EnvoyerPage() {
                             const digits = e.target.value.replace(/[^0-9]/g, '');
                             setBudget(digits === '' ? 0 : Math.min(Number(digits), 20000));
                           }}
-                          onBlur={() => setBudget((b) => Math.max(MIN_COMPENSATION_EUR, Math.min(b, 20000)))}
+                          onBlur={() => setBudget((b) => Math.max(MIN_COMPENSATION_EUR, Math.min(b, MAX_COMPENSATION_EUR)))}
                           style={{ width: `${String(budget).length + 0.5}ch` }}
                           className="bg-transparent text-end outline-none focus:text-mint-700"
                         />
@@ -743,15 +749,15 @@ export default function EnvoyerPage() {
                     <input
                       type="range"
                       min={MIN_COMPENSATION_EUR}
-                      max={200}
+                      max={MAX_COMPENSATION_EUR}
                       step={5}
-                      value={Math.min(budget, 200)}
+                      value={Math.min(budget, MAX_COMPENSATION_EUR)}
                       onChange={(e) => setBudget(Number(e.target.value))}
                       className="w-full h-1.5 bg-ink-100 rounded-full appearance-none accent-ink-500"
                     />
                     <div className="flex justify-between text-[12px] text-ink-300 mt-2">
                       <span>{MIN_COMPENSATION_EUR}{t.common_eur}</span>
-                      <span>200{t.common_eur}+</span>
+                      <span>{MAX_COMPENSATION_EUR}{t.common_eur}</span>
                     </div>
 
                     {/* What the sender actually pays. The number above is what
@@ -772,14 +778,14 @@ export default function EnvoyerPage() {
                         <span className="num-display">{formatEuros(priceBreakdown(budget).total)}</span>
                       </div>
                     </div>
-                    {budget > 80 && (
+                    {/* A warning, not a gate: a sender who wants to try at 10 €
+                        still publishes. The old "above 80 €" note is gone — the
+                        ceiling makes it unreachable. */}
+                    {budget < SENDER_LOW_EUR && (
                       <p className="flex items-start gap-2 text-[13px] text-butter-700 bg-butter-50 border border-butter-200 rounded-xl px-3.5 py-2.5 mt-4 leading-relaxed">
                         <span className="flex-shrink-0">💡</span>
-                        <span>{t.send_budget_hint_high}</span>
+                        <span>{t.send_budget_hint_low}</span>
                       </p>
-                    )}
-                    {budget < 30 && (
-                      <p className="text-[13px] text-ink-400 mt-4 leading-relaxed">{t.send_budget_hint_low}</p>
                     )}
                   </div>
                 </div>

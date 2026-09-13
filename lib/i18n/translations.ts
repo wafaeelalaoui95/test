@@ -330,7 +330,6 @@ export type Translations = {
   send_label_urgency: string;
   send_label_budget: string;
   send_budget_hint_low: string;
-  send_budget_hint_high: string;
   send_confirm_title: string;
   send_recap_route: string;
   send_recap_date: string;
@@ -356,6 +355,7 @@ export type Translations = {
   trip_space_title: string;
   trip_label_min_comp: string;
   trip_min_comp_hint: string;
+  trip_min_comp_hint_band: string;
   trip_min_comp_hint_high: string;
   trip_accepted_categories_label: string;
   trip_accepted_categories_hint: string;
@@ -1549,8 +1549,7 @@ export const translations: Record<Locale, Translations> = {
     send_details_title: 'Quand et combien ?',
     send_label_urgency: 'Urgence',
     send_label_budget: 'Budget proposé',
-    send_budget_hint_low: 'En dessous de 30 €, peu de voyageurs accepteront votre colis. Vous restez libre de proposer le montant de votre choix.',
-    send_budget_hint_high: 'Au-delà de 80 €, vous risquez de recevoir moins de réponses. Vous restez libre de proposer le montant que vous voulez.',
+    send_budget_hint_low: 'En dessous de 15 €, peu de voyageurs accepteront votre colis et vous risquez de ne pas trouver de correspondance. Vous restez libre de publier au montant de votre choix.',
     send_confirm_title: 'Tout est bon ?',
     send_recap_route: 'Trajet',
     send_recap_date: 'Date',
@@ -1574,8 +1573,9 @@ export const translations: Record<Locale, Translations> = {
     trip_label_time: 'Heure (optionnel)',
     trip_space_title: 'Que pouvez-vous transporter ?',
     trip_label_min_comp: 'Compensation minimum acceptée',
-    trip_min_comp_hint: 'La plupart des voyageurs fixent leur prix autour de 50€. Vous recevrez ce montant exactement.',
-    trip_min_comp_hint_high: 'Au-delà de 80 €, peu de demandes sont acceptées par les utilisateurs. Les expéditeurs proposent en général entre 50 et 100 €.',
+    trip_min_comp_hint: 'Vous recevrez ce montant exactement, une fois la livraison confirmée.',
+    trip_min_comp_hint_band: 'Entre 15 et 20 €, vous avez le plus de chances de trouver un expéditeur. Vous recevrez ce montant exactement.',
+    trip_min_comp_hint_high: 'Au-delà de 30 €, peu d’expéditeurs acceptent. Les trajets qui aboutissent se situent surtout entre 15 et 20 €.',
     trip_accepted_categories_label: 'Ce que vous acceptez de transporter',
     trip_accepted_categories_hint: 'Sélectionnez ce avec quoi vous êtes à l\'aise. Vous pourrez toujours refuser à la livraison.',
     trip_identity_title: 'Vérifier votre identité',
@@ -2759,8 +2759,7 @@ export const translations: Record<Locale, Translations> = {
     send_details_title: 'When and how much?',
     send_label_urgency: 'Urgency',
     send_label_budget: 'Proposed budget',
-    send_budget_hint_low: 'Below €30, few travelers will accept your package. You\'re still free to offer whatever amount you like.',
-    send_budget_hint_high: 'Above €80 you may get fewer responses. You\'re still free to offer whatever amount you like.',
+    send_budget_hint_low: 'Below €15, few travelers will take your package and you may not find a match at all. You\'re still free to publish at whatever amount you like.',
     send_confirm_title: 'All good?',
     send_recap_route: 'Route',
     send_recap_date: 'Date',
@@ -2784,8 +2783,9 @@ export const translations: Record<Locale, Translations> = {
     trip_label_time: 'Time (optional)',
     trip_space_title: 'What can you carry?',
     trip_label_min_comp: 'Minimum compensation accepted',
-    trip_min_comp_hint: 'Most travelers set their price around €50. You\'ll receive exactly this amount.',
-    trip_min_comp_hint_high: 'Above €80, few requests get accepted by users. Senders usually offer between €50 and €100.',
+    trip_min_comp_hint: 'You receive this amount exactly, once the delivery is confirmed.',
+    trip_min_comp_hint_band: 'Between €15 and €20 you have the best chance of finding a sender. You receive this amount exactly.',
+    trip_min_comp_hint_high: 'Above €30, few senders accept. The trips that actually get taken sit mostly between €15 and €20.',
     trip_accepted_categories_label: 'What you\'re willing to carry',
     trip_accepted_categories_hint: 'Pick what you\'re comfortable with. You can always decline at handover.',
     trip_identity_title: 'Verify your identity',

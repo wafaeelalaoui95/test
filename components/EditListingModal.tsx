@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
-import { MIN_COMPENSATION_EUR } from '@/lib/constants';
+import { MIN_COMPENSATION_EUR, MAX_COMPENSATION_EUR } from '@/lib/constants';
 import { openPickerOnClick } from '@/components/ui/Form';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
 
@@ -44,6 +44,7 @@ const COPY = {
     cancel: 'Annuler',
     nothing: 'Rien n’a changé.',
     minPrice: `Le minimum est de ${MIN_COMPENSATION_EUR} €.`,
+    maxPrice: `Le maximum est de ${MAX_COMPENSATION_EUR} €.`,
     errors: {
       has_bookings:
         'Quelqu’un s’est positionné entre-temps. Ouvrez la réservation pour en discuter avec lui.',
@@ -72,6 +73,7 @@ const COPY = {
     cancel: 'Cancel',
     nothing: 'Nothing changed.',
     minPrice: `The minimum is €${MIN_COMPENSATION_EUR}.`,
+    maxPrice: `The maximum is €${MAX_COMPENSATION_EUR}.`,
     errors: {
       has_bookings:
         'Someone took this on while you were editing. Open the booking to talk it over with them.',
@@ -133,6 +135,12 @@ export function EditListingModal({
   const [price, setPrice] = useState(
     String(trip ? trip.compensation_min : request!.budget)
   );
+  // What this listing was published at. Listings predate the 80 € ceiling, and
+  // someone fixing a typo in their description must not be told to cut their
+  // own price first — so the ceiling here is whichever is higher. They can
+  // still lower it, and they cannot raise it beyond where it already was.
+  const publishedPrice = trip ? trip.compensation_min : request!.budget;
+  const ceiling = Math.max(MAX_COMPENSATION_EUR, publishedPrice);
   const [date, setDate] = useState(
     day(trip ? trip.departure_date : request!.desired_delivery_date)
   );
@@ -174,6 +182,10 @@ export function EditListingModal({
     const value = Number(price);
     if (!Number.isFinite(value) || value < MIN_COMPENSATION_EUR) {
       setErr(c.minPrice);
+      return;
+    }
+    if (value > ceiling) {
+      setErr(c.maxPrice);
       return;
     }
     setSaving(true);
@@ -263,6 +275,7 @@ export function EditListingModal({
               type="number"
               inputMode="decimal"
               min={MIN_COMPENSATION_EUR}
+              max={ceiling}
               className={field}
               value={price}
               onChange={(e) => setPrice(e.target.value)}

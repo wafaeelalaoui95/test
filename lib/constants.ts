@@ -20,6 +20,34 @@ import type { Translations } from '@/lib/i18n/translations';
 export const MIN_COMPENSATION_EUR = 10;
 
 /**
+ * Highest compensation a sender can offer or a traveler can ask for.
+ *
+ * A ceiling is not really a price rule, it is a matching rule: above it the
+ * listing sits unanswered, which costs the person who wrote it a week of
+ * waiting and costs us a trip that never happened. Capping is kinder than
+ * letting someone ask 200 € and hear nothing back.
+ *
+ * Like the floor, this governs NEW input only. Listings published while the
+ * range was wider keep their price — nobody's published price is rewritten
+ * behind their back.
+ */
+export const MAX_COMPENSATION_EUR = 80;
+
+/**
+ * Where advice changes tone, in euros. Named here rather than buried in the
+ * forms so the three screens that show price guidance cannot drift apart, and
+ * so these can be retuned from real matching data without hunting through JSX.
+ *
+ * The band is where trips actually get taken; HIGH is where answers dry up;
+ * SENDER_LOW is where a parcel starts going unanswered. All three are advice,
+ * never a block — a sender under the floor still publishes.
+ */
+export const TRAVELER_BAND_MIN_EUR = 15;
+export const TRAVELER_BAND_MAX_EUR = 20;
+export const TRAVELER_HIGH_EUR = 30;
+export const SENDER_LOW_EUR = 15;
+
+/**
  * Jibly's commission, in basis points (1 bp = 0.01%). 1500 = 15%.
  *
  * It lives HERE, imported by both sides of the money flow, because it used to

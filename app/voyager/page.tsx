@@ -22,7 +22,14 @@ import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { PayoutReminder, PayoutCountriesNotice } from '@/components/PayoutSetup';
-import { ITEM_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
+import {
+  ITEM_CATEGORIES,
+  MIN_COMPENSATION_EUR,
+  MAX_COMPENSATION_EUR,
+  TRAVELER_BAND_MIN_EUR,
+  TRAVELER_BAND_MAX_EUR,
+  TRAVELER_HIGH_EUR,
+} from '@/lib/constants';
 import { cityDisplayName } from '@/lib/countries';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -857,20 +864,30 @@ export default function VoyagerPage() {
                     <input
                       type="range"
                       min={MIN_COMPENSATION_EUR}
-                      max={200}
+                      max={MAX_COMPENSATION_EUR}
                       step={5}
-                      value={Math.min(minComp, 200)}
+                      value={Math.min(minComp, MAX_COMPENSATION_EUR)}
                       onChange={(e) => setMinComp(Number(e.target.value))}
                       className="w-full h-1.5 bg-ink-100 rounded-full appearance-none accent-ink-500"
                     />
                     <div className="flex justify-between text-[12px] text-ink-300 mt-2">
                       <span>{MIN_COMPENSATION_EUR}{t.common_eur}</span>
-                      <span>200{t.common_eur}+</span>
+                      <span>{MAX_COMPENSATION_EUR}{t.common_eur}</span>
                     </div>
-                    {minComp > 80 ? (
+                    {/* Three tones, in the order they matter: a warning where
+                        answers dry up, encouragement inside the band where
+                        trips actually get taken, and a plain statement of what
+                        they will receive everywhere else. Never a block — the
+                        price is theirs to set. */}
+                    {minComp > TRAVELER_HIGH_EUR ? (
                       <p className="flex items-start gap-2 text-[13px] text-butter-700 bg-butter-50 border border-butter-200 rounded-xl px-3.5 py-2.5 mt-4 leading-relaxed">
                         <span className="flex-shrink-0">💡</span>
                         <span>{t.trip_min_comp_hint_high}</span>
+                      </p>
+                    ) : minComp >= TRAVELER_BAND_MIN_EUR && minComp <= TRAVELER_BAND_MAX_EUR ? (
+                      <p className="flex items-start gap-2 text-[13px] text-mint-700 bg-mint-50 border border-mint-200 rounded-xl px-3.5 py-2.5 mt-4 leading-relaxed">
+                        <span className="flex-shrink-0">✨</span>
+                        <span>{t.trip_min_comp_hint_band}</span>
                       </p>
                     ) : (
                       <p className="text-[13px] text-ink-400 mt-4 leading-relaxed">{t.trip_min_comp_hint}</p>
