@@ -175,12 +175,16 @@ export function HomeClient({
       if (maxBudget !== '' && tv.compensation_min > Number(maxBudget)) return false;
       return true;
     });
-    // Exact city matches first, broadened (country-level) ones after.
-    return out.sort((a, b) => {
-      const ra = depExact(a) && arrExact(a) ? 0 : 1;
-      const rb = depExact(b) && arrExact(b) ? 0 : 1;
-      return ra - rb;
-    });
+    // Split rather than sorted. Sorting put the broadened matches after the
+    // exact ones and said nothing about it, so a Paris→Rabat trip looked like
+    // an answer to a Paris→Casablanca search that had simply been ranked
+    // lower. Separating them lets the page say what the second group is —
+    // same country, another city — which is information someone browsing
+    // actually acts on.
+    const isExact = (tv: TripWithProfile) => depExact(tv) && arrExact(tv);
+    const exact = out.filter(isExact);
+    const nearby = out.filter((tv) => !isExact(tv));
+    return { exact, nearby, all: [...exact, ...nearby] };
   }, [trips, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget]);
 
   // Same filtering logic but applied to shipping requests:
@@ -211,12 +215,30 @@ export function HomeClient({
       if (maxBudget !== '' && r.budget < Number(maxBudget)) return false;
       return true;
     });
-    return out.sort((a, b) => {
-      const ra = depExact(a) && arrExact(a) ? 0 : 1;
-      const rb = depExact(b) && arrExact(b) ? 0 : 1;
-      return ra - rb;
-    });
+    const isExact = (r: RequestWithProfile) => depExact(r) && arrExact(r);
+    const exact = out.filter(isExact);
+    const nearby = out.filter((r) => !isExact(r));
+    return { exact, nearby, all: [...exact, ...nearby] };
   }, [requests, user, activeFrom, activeFromCountry, activeTo, activeToCountry, activeDate, maxBudget]);
+
+  /**
+   * The divider above the broadened matches.
+   *
+   * Rendered only when there are some, which means only when a search is
+   * running: with no route entered every row counts as an exact match, so the
+   * second group is empty and the page looks exactly as it did before.
+   */
+  function NearbyHeading() {
+    return (
+      <div className="mt-12 mb-6 flex items-center gap-3">
+        <MapPin className="w-4 h-4 text-ink-300 shrink-0" strokeWidth={1.75} />
+        <div>
+          <h3 className="text-[15px] font-bold text-ink-600">{t.disc_nearby_title}</h3>
+          <p className="text-[13px] text-ink-400 leading-relaxed">{t.disc_nearby_sub}</p>
+        </div>
+      </div>
+    );
+  }
 
   const hasActiveSearch = !!(activeFrom || activeFromCountry || activeTo || activeToCountry || activeDate || maxBudget !== '');
 
@@ -495,7 +517,7 @@ export function HomeClient({
               {error}
             </div>
           ) : mode === 'travelers' ? (
-            filteredTrips.length === 0 ? (
+            filteredTrips.all.length === 0 ? (
               <EmptyResults
                 hasActiveSearch={hasActiveSearch}
                 onReset={resetAll}
@@ -504,16 +526,32 @@ export function HomeClient({
                 t={t}
               />
             ) : (
-              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {filteredTrips.map((tv, i) => (
-                  <div key={tv.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
-                    <TripCard trip={tv} delay={(i % 6) * 0.04} t={t} />
+              <>
+                {filteredTrips.exact.length > 0 && (
+                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {filteredTrips.exact.map((tv, i) => (
+                      <div key={tv.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
+                        <TripCard trip={tv} delay={(i % 6) * 0.04} t={t} />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+                {filteredTrips.nearby.length > 0 && (
+                  <>
+                    <NearbyHeading />
+                    <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {filteredTrips.nearby.map((tv, i) => (
+                        <div key={tv.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
+                          <TripCard trip={tv} delay={(i % 6) * 0.04} t={t} />
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
             )
           ) : (
-            filteredRequests.length === 0 ? (
+            filteredRequests.all.length === 0 ? (
               <EmptyResults
                 hasActiveSearch={hasActiveSearch}
                 onReset={resetAll}
@@ -522,18 +560,39 @@ export function HomeClient({
                 t={t}
               />
             ) : (
-              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {filteredRequests.map((r, i) => (
-                  <div key={r.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
-                    <RequestCard
-                      request={r}
-                      delay={(i % 6) * 0.04}
-                      t={t}
-                      onRespond={() => setRespondingTo(r)}
-                    />
+              <>
+                {filteredRequests.exact.length > 0 && (
+                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {filteredRequests.exact.map((r, i) => (
+                      <div key={r.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
+                        <RequestCard
+                          request={r}
+                          delay={(i % 6) * 0.04}
+                          t={t}
+                          onRespond={() => setRespondingTo(r)}
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+                {filteredRequests.nearby.length > 0 && (
+                  <>
+                    <NearbyHeading />
+                    <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {filteredRequests.nearby.map((r, i) => (
+                        <div key={r.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
+                          <RequestCard
+                            request={r}
+                            delay={(i % 6) * 0.04}
+                            t={t}
+                            onRespond={() => setRespondingTo(r)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
             )
           )}
         </div>

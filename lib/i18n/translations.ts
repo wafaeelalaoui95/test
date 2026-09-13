@@ -84,6 +84,8 @@ export type Translations = {
   disc_tab_travelers: string;
   disc_tab_requests: string;
   disc_heading_travelers: string;
+  disc_nearby_title: string;
+  disc_nearby_sub: string;
   disc_heading_requests: string;
   disc_publish_request: string;
   disc_publish_trip: string;
@@ -1311,6 +1313,8 @@ export const translations: Record<Locale, Translations> = {
     disc_tab_travelers: 'Voyageurs',
     disc_tab_requests: 'Demandes',
     disc_heading_travelers: 'Voyageurs disponibles',
+    disc_nearby_title: 'À proximité',
+    disc_nearby_sub: 'Même pays, mais une autre ville que celle que vous avez cherchée.',
     disc_heading_requests: 'Demandes de transport',
     disc_publish_request: 'Publier ma demande',
     disc_publish_trip: 'Publier mon trajet',
@@ -2521,6 +2525,8 @@ export const translations: Record<Locale, Translations> = {
     disc_tab_travelers: 'Travelers',
     disc_tab_requests: 'Requests',
     disc_heading_travelers: 'Available travelers',
+    disc_nearby_title: 'Nearby',
+    disc_nearby_sub: 'Same country, but a different city from the one you searched.',
     disc_heading_requests: 'Delivery requests',
     disc_publish_request: 'Post my request',
     disc_publish_trip: 'Post my trip',
