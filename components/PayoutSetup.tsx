@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-import { Loader2, Wallet, Check } from 'lucide-react';
+import { Loader2, Wallet, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
@@ -215,6 +215,73 @@ export function PayoutReminder({ className }: { className?: string }) {
             pointing at a supplier reads as passing the blame. */}
         <p className="mt-2 text-ink-400">{t.payout_reminder_countries}</p>
       </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// PayoutCountriesNotice — where the money can land, said once and closable.
+// =============================================================================
+// The payout countries are the one rule people read as a restriction on the
+// whole product, and it isn't one: sending a parcel and paying for it works
+// from anywhere in the world. Only the traveler's side — being paid — needs a
+// bank account Stripe can reach. Saying so plainly, before anyone fills in a
+// trip, is cheaper than the support message that follows from guessing.
+//
+// Closable and it stays closed, because this is orientation, not a warning:
+// useful exactly once, and nagging every visit afterwards. PayoutReminder is
+// the one that keeps coming back, and it should — it tracks an unfinished
+// setup with money waiting behind it.
+//
+// The dismissal is per-browser (localStorage, not the profile). It carries no
+// consequence worth a database column: the worst case is someone reads a true
+// sentence twice on a new device.
+const DISMISSED_KEY = 'jibly.payout.countries.dismissed';
+
+export function PayoutCountriesNotice({ className }: { className?: string }) {
+  const { t } = useI18n();
+  // Starts hidden and is revealed on mount, never the other way round. The
+  // server can't know what this browser dismissed, so rendering it open by
+  // default would flash the notice back at everyone who has already closed
+  // it — worse than a first-time reader seeing it a moment late.
+  const [dismissed, setDismissed] = useState(true);
+
+  useEffect(() => {
+    try {
+      setDismissed(window.localStorage.getItem(DISMISSED_KEY) === '1');
+    } catch {
+      // Private mode, blocked storage: show it. A notice that can be closed
+      // for the session is better than one nobody ever sees.
+      setDismissed(false);
+    }
+  }, []);
+
+  if (dismissed) return null;
+
+  function close() {
+    setDismissed(true);
+    try {
+      window.localStorage.setItem(DISMISSED_KEY, '1');
+    } catch {
+      /* closed for this session only — see above */
+    }
+  }
+
+  return (
+    <div
+      className={`rounded-2xl bg-cream-100 border border-ink-50 px-4 py-3 flex items-start gap-3 ${className ?? ''}`}
+    >
+      <Wallet className="w-4 h-4 text-ink-400 mt-0.5 shrink-0" strokeWidth={1.75} />
+      <p className="text-[13px] text-ink-500 leading-relaxed flex-1">
+        {t.payout_countries_notice}
+      </p>
+      <button
+        onClick={close}
+        aria-label={t.common_close}
+        className="-mr-1 -mt-0.5 p-1.5 rounded-full text-ink-400 hover:bg-ink-50 hover:text-ink-600 transition-colors shrink-0"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }

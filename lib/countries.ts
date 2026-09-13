@@ -69,7 +69,7 @@ export const COUNTRIES: Country[] = [
     name_fr: 'Italie',
     name_en: 'Italy',
     flag: '🇮🇹',
-    cities: ['Rome', 'Milan', 'Naples', 'Venise', 'Florence', 'Bologne'],
+    cities: ['Rome', 'Milan', 'Naples', 'Venise', 'Florence', 'Bologne', 'Vérone'],
     lat: 42.8, lng: 12.6,
   },
   {
@@ -219,7 +219,7 @@ const CITY_EN: Record<string, string> = {
   // Espagne
   Barcelone: 'Barcelona', Valence: 'Valencia', 'Séville': 'Seville', 'Málaga': 'Malaga',
   // Italie
-  Venise: 'Venice', Bologne: 'Bologna',
+  Venise: 'Venice', Bologne: 'Bologna', 'Vérone': 'Verona',
   // Allemagne
   Hambourg: 'Hamburg', Francfort: 'Frankfurt',
   // Royaume-Uni
@@ -304,6 +304,7 @@ export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   Rome: { lat: 41.9, lng: 12.5 }, Milan: { lat: 45.5, lng: 9.2 },
   Naples: { lat: 40.9, lng: 14.3 }, Venise: { lat: 45.4, lng: 12.3 },
   Florence: { lat: 43.8, lng: 11.3 }, Bologne: { lat: 44.5, lng: 11.3 },
+  'Vérone': { lat: 45.4, lng: 11.0 },
   // Allemagne
   Berlin: { lat: 52.5, lng: 13.4 }, Munich: { lat: 48.1, lng: 11.6 },
   Hambourg: { lat: 53.6, lng: 10.0 }, Francfort: { lat: 50.1, lng: 8.7 },

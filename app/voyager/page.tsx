@@ -21,7 +21,7 @@ import { Textarea, Checkbox, Input } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate } from '@/components/IdentityGate';
-import { PayoutReminder } from '@/components/PayoutSetup';
+import { PayoutReminder, PayoutCountriesNotice } from '@/components/PayoutSetup';
 import { ITEM_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
 import { cityDisplayName } from '@/lib/countries';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
@@ -642,6 +642,11 @@ export default function VoyagerPage() {
           <p className="text-[16px] text-ink-400 leading-relaxed">
             {t.voy_publish_trip_subtitle}
           </p>
+
+          {/* Before the form, not after it: where someone can be paid is worth
+              knowing while a trip is still an idea. Closable, because it is
+              orientation and not a warning — see PayoutCountriesNotice. */}
+          <PayoutCountriesNotice className="mt-6" />
         </div>
 
         <div className="mb-10">
