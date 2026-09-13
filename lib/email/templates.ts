@@ -24,6 +24,11 @@ const BRAND = {
   lavender: '#7C6FD9',
   lavenderLight: '#EDE8FB',
   mint: '#3FB985',
+  // Reserved for the one thing in these emails that costs money if skimmed
+  // past: the delivery code not reaching whoever actually collects the parcel.
+  // Nothing else gets to be red, or this stops meaning anything.
+  alert: '#C2372B',
+  alertBg: '#FDF2F0',
 };
 
 const BASE_URL = getSiteUrl();
@@ -233,9 +238,18 @@ export function bookingConfirmedSenderEmail(input: {
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
       ${senderName}, it is confirmed. Here is your <strong>delivery code</strong>. Give it to the traveller <strong>at the destination</strong>, once the parcel has been handed over — to you, or to whoever collects it for you. This code is what releases their payment, so only share it after the parcel is in hand.
     </p>
-    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      <strong style="color:${BRAND.ink};">If someone else is collecting the parcel, pass this code on to them.</strong> Without it, the traveller cannot confirm the delivery.
-    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.alertBg};border-left:4px solid ${BRAND.alert};border-radius:8px;margin:0 0 24px;">
+      <tr>
+        <td style="padding:16px 18px;">
+          <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${BRAND.alert};line-height:1.5;">
+            If someone else is collecting the parcel, you must pass this code on to them.
+          </p>
+          <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
+            Without it the traveller cannot complete the delivery, and their payment is never released.
+          </p>
+        </td>
+      </tr>
+    </table>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:24px;">
       <tr>
         <td style="padding:24px 20px;text-align:center;">
@@ -427,4 +441,76 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+// =============================================================================
+// 6. Sender reminder, the day before the trip: has the code been passed on?
+// =============================================================================
+// The delivery code is the one part of this that a sender can forget without
+// noticing. It reaches them at booking, in an email they read once, days
+// earlier — and if the parcel is being collected by someone else at the other
+// end, that person needs it and has no way to get it themselves. The failure
+// shows up at the worst possible moment: traveller and recipient standing
+// together, parcel in hand, nobody able to close the delivery.
+//
+// So it is repeated on the eve of departure, when there is still an evening to
+// send a message. The code is included rather than linked: a reminder that
+// requires logging in to act on is a reminder half of people will not act on.
+export function codeHandoverReminderEmail(input: {
+  senderFirstName: string | null;
+  travelerFirstName: string | null;
+  pickupCity: string;
+  destinationCity: string;
+  departureDate: string;
+  /** The DELIVERY code — the one read out at the destination. */
+  code: string;
+}) {
+  const senderName = input.senderFirstName || 'Hello';
+  const travelerName = input.travelerFirstName || 'Your traveller';
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+  const url = `${BASE_URL}/me`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Tomorrow</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+      ${travelerName} leaves tomorrow
+    </h1>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${senderName}, your parcel travels ${route} tomorrow. One thing to check tonight.
+    </p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.alertBg};border-left:4px solid ${BRAND.alert};border-radius:8px;margin:0 0 24px;">
+      <tr>
+        <td style="padding:16px 18px;">
+          <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${BRAND.alert};line-height:1.5;">
+            If someone else is collecting the parcel, make sure they have the delivery code.
+          </p>
+          <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
+            They read it to ${travelerName} once the parcel is in their hands. Without it the delivery cannot be completed.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:24px;">
+      <tr>
+        <td align="center" style="padding:24px;">
+          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Delivery code</p>
+          <p style="margin:0;font-size:36px;font-weight:700;color:${BRAND.ink};letter-spacing:0.2em;font-family:'SF Mono',Monaco,Consolas,monospace;">${input.code}</p>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      Only share it once the parcel has actually been handed over — it is what releases ${travelerName}'s payment. If you are collecting it yourself, there is nothing to do.
+    </p>
+
+    <a href="${url}" style="display:inline-block;background:${BRAND.ink};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:15px;font-weight:600;">View my parcels</a>
+  `;
+
+  return {
+    subject: `Tomorrow · ${route} · is your delivery code passed on?`,
+    html: wrapHtml(content, `${travelerName} leaves tomorrow — check the delivery code`),
+    text: `${senderName},\n\nYour parcel travels ${route} tomorrow with ${travelerName}.\n\nIF SOMEONE ELSE IS COLLECTING THE PARCEL, MAKE SURE THEY HAVE THE DELIVERY CODE. They read it to ${travelerName} once the parcel is in their hands. Without it the delivery cannot be completed.\n\nDelivery code: ${input.code}\n\nOnly share it once the parcel has actually been handed over — it releases ${travelerName}'s payment. If you are collecting it yourself, there is nothing to do.\n\nView my parcels: ${url}\n\n— The Jibly team`,
+  };
 }
