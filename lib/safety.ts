@@ -107,3 +107,37 @@ export const REPORT_REASONS = [
   'other',
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
+
+// ---------------------------------------------------------------------------
+// Phone numbers in chat
+// ---------------------------------------------------------------------------
+// Taking the conversation off Jibly is how both sides lose their protection:
+// the escrow, the pickup code, the delivery proof and any chance of us
+// arbitrating a dispute all live in messages we can actually see. So a phone
+// number is refused, the way Vinted refuses one, and the refusal says why.
+//
+// THE THRESHOLD IS NINE DIGITS, and the reason is dates. A run of eight digits
+// is "14/06/2026", which people write constantly when arranging a handover —
+// blocking that would make the chat unusable for its actual purpose. Nine
+// clears every date format while still catching what we are after: French,
+// Moroccan and most European mobiles are ten digits, eleven with a country
+// code. The six-digit pickup code passes comfortably, which matters more than
+// anything else here — blocking it would stop a delivery.
+//
+// Separators are limited to the ones that appear INSIDE a number, and
+// deliberately exclude newlines, so a numbered list ("1.\n2.\n3.") is never
+// read as one long run.
+//
+// Digits spelled out ("zéro six…") are not caught. They could be, but every
+// rule of that kind costs false positives, and a false positive here blocks a
+// real message between two people mid-delivery. Not worth it in production.
+const PHONE_MIN_DIGITS = 9;
+const PHONE_RUN = /[+(]?\d[\d \t.\-/() ]{5,}\d/g;
+
+export function containsPhoneNumber(text: string): boolean {
+  const runs = text.match(PHONE_RUN);
+  if (!runs) return false;
+  return runs.some(
+    (run) => (run.match(/\d/g) ?? []).length >= PHONE_MIN_DIGITS
+  );
+}

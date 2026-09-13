@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Send, Loader2, ArrowLeft, ShieldCheck, KeyRound } from 'lucide-react';
 import { browser, type MessageRowChat } from '@/lib/supabase/queries';
+import { containsPhoneNumber } from '@/lib/safety';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 
@@ -161,6 +162,13 @@ export function ChatModal({
   async function handleSend() {
     if (!conversationId || !draft.trim() || sending) return;
     const body = draft.trim();
+    // Before the optimistic update, so the message never appears sent and then
+    // vanishes. The draft stays in the box: they wrote it, they should be able
+    // to edit the number out rather than retype the whole thing.
+    if (containsPhoneNumber(body)) {
+      setErr(t.chat_no_phone);
+      return;
+    }
     setSending(true);
     setErr(null);
     // Optimistic update: show the message immediately, replace once the
@@ -184,7 +192,13 @@ export function ChatModal({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? t.chat_send_error);
+        // The server speaks in codes, not prose. This one has a sentence of
+        // its own — reached only by a client that skipped the check above.
+        throw new Error(
+          data.error === 'phone_number_blocked'
+            ? t.chat_no_phone
+            : data.error ?? t.chat_send_error
+        );
       }
       const data = await res.json();
       // Replace the optimistic message with the real one

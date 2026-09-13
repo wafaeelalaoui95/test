@@ -1,4 +1,5 @@
 import { getSiteUrl } from '@/lib/site-url';
+import { containsPhoneNumber } from '@/lib/safety';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerClient } from '@/lib/supabase/server';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
@@ -39,6 +40,12 @@ export async function POST(req: NextRequest) {
   }
   if (body.length > 4000) {
     return NextResponse.json({ error: 'Message too long (max 4000)' }, { status: 400 });
+  }
+  // Refused here and not only in the composer: the client check is a courtesy
+  // that explains itself, this one is the rule. Anything that posts straight
+  // to the route — an old cached bundle, a script — meets it too.
+  if (containsPhoneNumber(body)) {
+    return NextResponse.json({ error: 'phone_number_blocked' }, { status: 400 });
   }
 
   const supabase = getServerClient();
