@@ -950,6 +950,8 @@ export type Translations = {
   me2_bookings_auto_cancel_bold: string;
   me2_bookings_auto_cancel_after: string;
   me2_cancel_trip_final: string;
+  me2_cancel_trip_planned: string;
+  me2_cancel_trip_confirm: string;
   me2_keep_trip: string;
   me2_cancelling: string;
   me2_confirm_cancel: string;
@@ -2164,6 +2166,8 @@ export const translations: Record<Locale, Translations> = {
     me2_bookings_auto_cancel_bold: 'automatiquement annulées',
     me2_bookings_auto_cancel_after: ' et les paiements autorisés seront libérés. Aucun débit ne sera effectué.',
     me2_cancel_trip_final: 'Cette action est définitive. Le trajet ne sera plus visible par les expéditeurs.',
+    me2_cancel_trip_planned: 'Prévu le {date}',
+    me2_cancel_trip_confirm: 'Oui, supprimer ce voyage',
     me2_keep_trip: 'Garder le trajet',
     me2_cancelling: 'Annulation…',
     me2_confirm_cancel: 'Confirmer l\'annulation',
@@ -3377,6 +3381,8 @@ export const translations: Record<Locale, Translations> = {
     me2_bookings_auto_cancel_bold: 'automatically cancelled',
     me2_bookings_auto_cancel_after: ' and any authorized payments will be released. No charge will be made.',
     me2_cancel_trip_final: 'This action is permanent. The trip will no longer be visible to senders.',
+    me2_cancel_trip_planned: 'Planned for {date}',
+    me2_cancel_trip_confirm: 'Yes, delete this trip',
     me2_keep_trip: 'Keep the trip',
     me2_cancelling: 'Cancelling…',
     me2_confirm_cancel: 'Confirm cancellation',

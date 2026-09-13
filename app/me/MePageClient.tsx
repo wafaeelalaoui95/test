@@ -3865,6 +3865,13 @@ function TripDetailCard({
   // refuses — so the button must not appear in a case the save would reject.
   const isEditable = allPackages.length === 0;
   const [editingTrip, setEditingTrip] = useState(false);
+  // Deleting used to happen on the tap itself, from a 24px target in the
+  // corner of a card. Someone on a phone hit it by accident, saw nothing
+  // happen while the request was in flight, tapped again — and the list had
+  // re-rendered underneath their finger, so the second tap landed on the next
+  // trip. Two trips gone from one mistake, neither recoverable.
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const departCode = trip.departure_airport || trip.departure_city.slice(0, 3).toUpperCase();
   const arriveCode = trip.arrival_airport || trip.arrival_city.slice(0, 3).toUpperCase();
@@ -3944,14 +3951,103 @@ function TripDetailCard({
             )}
             {isCancelable && (
               <button
-                onClick={() => onCancelTrip(trip.id)}
-                className="absolute top-1 right-1 p-1.5 rounded-full text-lavender-400/70 hover:text-blush-500 hover:bg-white/60 transition-colors"
+                onClick={() => setConfirmingCancel(true)}
+                className="absolute top-0.5 right-0.5 p-2.5 rounded-full text-lavender-400/70 hover:text-blush-500 hover:bg-white/60 transition-colors"
                 aria-label={t.me2_cancel_trip}
                 title={t.me2_cancel_trip}
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
+            <AnimatePresence>
+              {confirmingCancel && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+                  onClick={() => !cancelling && setConfirmingCancel(false)}
+                >
+                  <motion.div
+                    initial={{ y: 20, opacity: 0, scale: 0.98 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    exit={{ y: 20, opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-cream-50 rounded-3xl p-7 max-w-md w-full shadow-xl"
+                  >
+                    <div className="flex items-start gap-4 mb-5">
+                      <div className="w-12 h-12 rounded-full bg-blush-50 flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="w-6 h-6 text-blush-500" strokeWidth={2} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
+                          {t.me2_cancel_trip_q}
+                        </h3>
+                        {/* Which trip, spelled out. The whole failure was that
+                            a tap could delete something the person had not
+                            looked at — so the answer has to name it. */}
+                        <p className="text-[15px] font-semibold text-ink-600 leading-snug">
+                          {cityDisplayName(trip.departure_city, locale)} → {cityDisplayName(trip.arrival_city, locale)}
+                        </p>
+                        <p className="text-[14px] text-ink-500 leading-relaxed num-display">
+                          {t.me2_cancel_trip_planned.replace(
+                            '{date}',
+                            formatShortDate(trip.departure_date)
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {packages.length > 0 && (
+                      <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 mb-5 text-[13px] text-ink-500 leading-relaxed">
+                        <strong className="text-ink-600">
+                          {packages.length === 1
+                            ? t.me2_one_booking_in_progress
+                            : t.me2_n_bookings_in_progress.replace('{n}', String(packages.length))}
+                        </strong>
+                      </div>
+                    )}
+
+                    <p className="text-[14px] text-ink-400 mb-5 leading-relaxed">
+                      {t.me2_cancel_trip_final}
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-2.5">
+                      <button
+                        onClick={() => setConfirmingCancel(false)}
+                        disabled={cancelling}
+                        className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
+                      >
+                        {t.common_cancel}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          // Guarded against the double tap that started all
+                          // this: the second press finds cancelling already
+                          // true and does nothing.
+                          if (cancelling) return;
+                          setCancelling(true);
+                          try {
+                            await onCancelTrip(trip.id);
+                            setConfirmingCancel(false);
+                          } finally {
+                            setCancelling(false);
+                          }
+                        }}
+                        disabled={cancelling}
+                        className="flex-1 px-5 py-3 text-[14px] font-semibold text-white bg-blush-500 hover:bg-blush-600 rounded-full transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                      >
+                        {cancelling && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {t.me2_cancel_trip_confirm}
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {editingTrip && (
               <EditListingModal
                 trip={{
