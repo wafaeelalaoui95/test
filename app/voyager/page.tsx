@@ -326,6 +326,12 @@ export default function VoyagerPage() {
             <p className="text-[16px] text-ink-400 leading-relaxed">
               {t.voy_subtitle}
             </p>
+
+            {/* The landing view, so this is the first thing a traveler reads
+                here — and the only header most of them see, since publishing a
+                trip is a click further in. Dismissal is shared with the copy in
+                the wizard below, so closing it once closes it everywhere. */}
+            <PayoutCountriesNotice className="mt-6" />
           </div>
 
           {/* Recap banner: once the traveler has proposed help to at least
