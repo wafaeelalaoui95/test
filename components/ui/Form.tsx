@@ -1,7 +1,9 @@
 'use client';
 
-import { forwardRef, type InputHTMLAttributes, type MouseEvent, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react';
+import { forwardRef, useState, type InputHTMLAttributes, type MouseEvent, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/context';
 
 /** Field types whose value comes from a browser picker rather than typing. */
 const PICKER_TYPES = new Set(['date', 'time', 'datetime-local', 'month', 'week']);
@@ -41,10 +43,15 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, hint, error, className, id, onClick, ...props }, ref) => {
+  ({ label, hint, error, className, id, onClick, type, ...props }, ref) => {
+    const { t } = useI18n();
     const inputId = id || props.name;
-    const usesPicker =
-      typeof props.type === 'string' && PICKER_TYPES.has(props.type);
+    const usesPicker = typeof type === 'string' && PICKER_TYPES.has(type);
+    // Typing a password you cannot see, on a phone keyboard, is how people end
+    // up locked out of an account they just created. Revealing is per-field and
+    // resets on every mount — nothing is remembered between visits.
+    const isPassword = type === 'password';
+    const [revealed, setRevealed] = useState(false);
     return (
       <div className="space-y-2">
         {label && (
@@ -52,16 +59,38 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
+        <div className="relative">
         <input
           ref={ref}
           id={inputId}
+          type={isPassword && revealed ? 'text' : type}
           onClick={(e) => {
             if (usesPicker) openPickerOnClick(e);
             onClick?.(e);
           }}
-          className={cn(baseField, error && 'border-blush-400 focus:border-blush-500 focus:ring-blush-100', className)}
+          className={cn(baseField, isPassword && 'pe-11', error && 'border-blush-400 focus:border-blush-500 focus:ring-blush-100', className)}
           {...props}
         />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setRevealed((v) => !v)}
+            aria-label={revealed ? t.auth_password_hide : t.auth_password_show}
+            aria-pressed={revealed}
+            // tabIndex -1: tabbing from the password field should reach the
+            // submit button, not a display toggle. It stays reachable by
+            // pointer, and by keyboard via shift-tab from submit.
+            tabIndex={-1}
+            className="absolute inset-y-0 end-0 flex items-center px-3.5 text-ink-400 hover:text-ink-600 transition-colors"
+          >
+            {revealed ? (
+              <EyeOff className="w-4 h-4" strokeWidth={1.75} />
+            ) : (
+              <Eye className="w-4 h-4" strokeWidth={1.75} />
+            )}
+          </button>
+        )}
+        </div>
         {hint && !error && <p className="text-[13px] text-ink-400">{hint}</p>}
         {error && <p className="text-[13px] text-blush-500">{error}</p>}
       </div>

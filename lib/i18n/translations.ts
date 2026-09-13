@@ -614,6 +614,8 @@ export type Translations = {
   auth_email: string;
   auth_password: string;
   auth_password_hint: string;
+  auth_password_show: string;
+  auth_password_hide: string;
   auth_full_name: string;
   auth_login_btn: string;
   auth_signup_btn: string;
@@ -1817,6 +1819,8 @@ export const translations: Record<Locale, Translations> = {
     auth_email: 'Email',
     auth_password: 'Mot de passe',
     auth_password_hint: '8 caractères minimum.',
+    auth_password_show: 'Afficher le mot de passe',
+    auth_password_hide: 'Masquer le mot de passe',
     auth_full_name: 'Nom complet',
     auth_login_btn: 'Se connecter',
     auth_signup_btn: 'Créer un compte',
@@ -3024,6 +3028,8 @@ export const translations: Record<Locale, Translations> = {
     auth_email: 'Email',
     auth_password: 'Password',
     auth_password_hint: '8 characters minimum.',
+    auth_password_show: 'Show password',
+    auth_password_hide: 'Hide password',
     auth_full_name: 'Full name',
     auth_login_btn: 'Sign in',
     auth_signup_btn: 'Create account',
