@@ -3840,7 +3840,17 @@ function TripDetailCard({
   // From allPackages, not packages: what a flight carried and earned is
   // history. Reading these off the active list meant a delivered, reviewed
   // parcel took its own earnings off the card with it.
-  const totalNet = allPackages.reduce((sum, p) => {
+  //
+  // Confirmed only. A 'pending' row is a request the traveller has not
+  // accepted: no money is authorised behind it and they may never accept it.
+  // Counting those announced earnings for parcels nobody had committed to,
+  // which is the one number on this card people were going to trust.
+  //
+  // A delivered parcel stays 'confirmed' — there is no later status — so
+  // history survives the filter, which is what this list is read from in the
+  // first place.
+  const earning = allPackages.filter((p) => p.row.status === 'confirmed');
+  const totalNet = earning.reduce((sum, p) => {
     const ttc = p.row.proposed_price ?? 0;
     return sum + travelerNetFromTotal(ttc);
   }, 0);
@@ -3906,12 +3916,22 @@ function TripDetailCard({
           </div>
 
           <div className="w-[35%] flex-shrink-0 border-l border-dashed border-lavender-300/50 px-3 py-4 flex flex-col justify-center items-center text-center relative bg-gradient-to-br from-lavender-50 to-lavender-100/70">
-            <div className="text-[28px] sm:text-[32px] font-extrabold text-lavender-700 num-display leading-none">
-              {formatEuros(totalNet)}
-            </div>
-            <div className="text-[11px] sm:text-[12px] text-lavender-700/80 font-medium mt-1.5 leading-snug px-1">
-              {t.me2_earnings_on_flight} ✨
-            </div>
+            {earning.length > 0 ? (
+              <>
+                <div className="text-[28px] sm:text-[32px] font-extrabold text-lavender-700 num-display leading-none">
+                  {formatEuros(totalNet)}
+                </div>
+                <div className="text-[11px] sm:text-[12px] text-lavender-700/80 font-medium mt-1.5 leading-snug px-1">
+                  {t.me2_earnings_on_flight} ✨
+                </div>
+              </>
+            ) : (
+              /* No figure at all rather than 0 €: a zero reads as a result,
+                 and this is the absence of one. */
+              <div className="text-[11px] sm:text-[12px] text-lavender-700/70 font-medium leading-snug px-1">
+                {t.me2_earnings_none_yet}
+              </div>
+            )}
             {isEditable && (
               <button
                 onClick={() => setEditingTrip(true)}

@@ -1049,6 +1049,7 @@ export type Translations = {
   me2_packages_unit_caps: string;
   me2_earnings_on_flight: string;
   me2_no_packages_on_flight: string;
+  me2_earnings_none_yet: string;
   me2_find_packages_on_route: string;
   me2_pill_new_request: string;
   me2_pill_delivery_confirmed: string;
@@ -2262,6 +2263,7 @@ export const translations: Record<Locale, Translations> = {
     me2_packages_unit_caps: 'Colis',
     me2_earnings_on_flight: 'de gains sur ce vol',
     me2_no_packages_on_flight: 'Aucun colis sur ce vol pour l\'instant.',
+    me2_earnings_none_yet: 'Aucun colis confirmé pour l\'instant',
     me2_find_packages_on_route: 'Trouver des colis sur mon trajet',
     me2_pill_new_request: 'Nouvelle demande',
     me2_pill_delivery_confirmed: 'Livraison confirmée',
@@ -3474,6 +3476,7 @@ export const translations: Record<Locale, Translations> = {
     me2_packages_unit_caps: 'Packages',
     me2_earnings_on_flight: 'earned on this flight',
     me2_no_packages_on_flight: 'No packages on this flight yet.',
+    me2_earnings_none_yet: 'No parcel confirmed yet',
     me2_find_packages_on_route: 'Find packages along my route',
     me2_pill_new_request: 'New request',
     me2_pill_delivery_confirmed: 'Delivery confirmed',
