@@ -279,8 +279,15 @@ export function PayoutCountriesNotice({ className }: { className?: string }) {
       <Wallet className="w-4 h-4 text-ink-400 mt-0.5 shrink-0" strokeWidth={1.75} />
 
       <div className="flex-1 min-w-0">
+        {/* The traveler's side first: it is the only half with a condition
+            attached, and the only half someone has to check against their own
+            situation. The sender's side follows as reassurance, not as a
+            caveat — paying has never been restricted. */}
         <p className="text-[13px] text-ink-500 leading-relaxed">
-          {t.payout_countries_notice}
+          {t.payout_countries_traveller}
+        </p>
+        <p className="mt-2 text-[13px] text-ink-500 leading-relaxed">
+          {t.payout_countries_sender}
         </p>
 
         <button
@@ -297,15 +304,16 @@ export function PayoutCountriesNotice({ className }: { className?: string }) {
 
         {open && (
           <div className="mt-3 pt-3 border-t border-ink-50">
+            <p className="text-[12px] text-ink-400 leading-relaxed">
+              {t.payout_countries_detail}
+            </p>
             {/* Names, not codes, and in the reader's language: someone
                 checking whether their own country is here should not have to
                 decode 'GI' or 'LI'. Intl does the translating, so the list
-                can never drift from PAYOUT_COUNTRIES. */}
-            <p className="text-[12px] text-ink-500 leading-relaxed">
+                can never drift from PAYOUT_COUNTRIES — add a country there
+                and it appears here, in both languages, by itself. */}
+            <p className="mt-2 text-[12px] text-ink-500 leading-relaxed">
               {payoutCountryNames(locale).join(' · ')}
-            </p>
-            <p className="mt-2.5 text-[12px] text-ink-400 leading-relaxed">
-              {t.payout_countries_detail}
             </p>
           </div>
         )}
