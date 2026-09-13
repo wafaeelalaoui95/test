@@ -1003,6 +1003,9 @@ export type Translations = {
   payout_manage_failed: string;
   payout_reminder_countries: string;
   payout_countries_notice: string;
+  payout_countries_more: string;
+  payout_countries_less: string;
+  payout_countries_detail: string;
   payout_reminder_body: string;
   payout_reminder_link: string;
   me2_verify_my_identity: string;
@@ -2206,7 +2209,10 @@ export const translations: Record<Locale, Translations> = {
     payout_manage_cta: 'Gérer mes coordonnées bancaires',
     payout_manage_failed: 'Impossible d\'ouvrir votre espace paiements',
     payout_reminder_countries: 'Le versement se fait sur un compte bancaire en Europe, au Royaume-Uni ou en Suisse. Si le vôtre est ailleurs, mieux vaut le savoir avant de transporter.',
-    payout_countries_notice: 'Tout le monde peut envoyer un colis et le payer, depuis n’importe où. C’est uniquement pour être payé, en tant que voyageur, qu’il faut un compte bancaire en Europe, au Royaume-Uni ou en Suisse.',
+    payout_countries_notice: 'Payer fonctionne depuis n’importe quel pays, avec n’importe quelle carte. C’est seulement pour recevoir de l’argent, en tant que voyageur, qu’un compte bancaire dans certains pays est nécessaire.',
+    payout_countries_more: 'En savoir plus',
+    payout_countries_less: 'Réduire',
+    payout_countries_detail: 'Pour vous payer après une livraison, votre compte bancaire doit se trouver dans l’un de ces pays. Cela ne concerne que l’argent versé aux voyageurs : envoyer un colis et le payer n’a aucune restriction de pays, et toutes les cartes passent, où que vous soyez.',
     payout_reminder_body: 'Vos paiements ne sont pas encore configurés. Votre trajet est publié quand même, et si vous transportez un colis votre argent sera mis de côté. Il vous sera versé dès que vous aurez ajouté vos coordonnées bancaires.',
     payout_reminder_link: 'Configurer maintenant',
     me2_verify_my_identity: 'Vérifier mon identité',
@@ -3409,7 +3415,10 @@ export const translations: Record<Locale, Translations> = {
     payout_manage_cta: 'Manage my bank details',
     payout_manage_failed: 'Couldn\'t open your payouts area',
     payout_reminder_countries: 'Payment goes to a bank account in Europe, the UK or Switzerland. If yours is elsewhere, better to know before you carry anything.',
-    payout_countries_notice: 'Anyone can send a parcel and pay for it, from anywhere. It is only getting paid, as a traveller, that needs a bank account in Europe, the UK or Switzerland.',
+    payout_countries_notice: 'Paying works from any country, with any card. It is only receiving money, as a traveller, that needs a bank account in certain countries.',
+    payout_countries_more: 'Learn more',
+    payout_countries_less: 'Show less',
+    payout_countries_detail: 'To pay you after a delivery, your bank account has to be in one of these countries. This applies only to money going out to travellers: sending a parcel and paying for it has no country restriction at all, and every card works, wherever you are.',
     payout_reminder_body: 'Your payouts are not set up yet. Your trip is published anyway, and if you carry a parcel your money is set aside for you. It will be sent as soon as you add your bank details.',
     payout_reminder_link: 'Set up now',
     me2_verify_my_identity: 'Verify my identity',

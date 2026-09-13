@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-import { Loader2, Wallet, Check, X } from 'lucide-react';
+import { Loader2, Wallet, Check, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
+import { payoutCountryNames } from '@/lib/stripe/payout-countries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
 import { findCountryByName } from '@/lib/countries';
@@ -239,12 +240,16 @@ export function PayoutReminder({ className }: { className?: string }) {
 const DISMISSED_KEY = 'jibly.payout.countries.dismissed';
 
 export function PayoutCountriesNotice({ className }: { className?: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   // Starts hidden and is revealed on mount, never the other way round. The
   // server can't know what this browser dismissed, so rendering it open by
   // default would flash the notice back at everyone who has already closed
   // it — worse than a first-time reader seeing it a moment late.
   const [dismissed, setDismissed] = useState(true);
+  // The country list is the answer to "does this include me?", and it is
+  // thirty-two names long. Folded away by default so the one sentence that
+  // matters to most people stays one sentence.
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -272,9 +277,40 @@ export function PayoutCountriesNotice({ className }: { className?: string }) {
       className={`rounded-2xl bg-cream-100 border border-ink-50 px-4 py-3 flex items-start gap-3 ${className ?? ''}`}
     >
       <Wallet className="w-4 h-4 text-ink-400 mt-0.5 shrink-0" strokeWidth={1.75} />
-      <p className="text-[13px] text-ink-500 leading-relaxed flex-1">
-        {t.payout_countries_notice}
-      </p>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] text-ink-500 leading-relaxed">
+          {t.payout_countries_notice}
+        </p>
+
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-ink-600 underline underline-offset-2"
+        >
+          {open ? t.payout_countries_less : t.payout_countries_more}
+          <ChevronDown
+            className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`}
+            strokeWidth={2}
+          />
+        </button>
+
+        {open && (
+          <div className="mt-3 pt-3 border-t border-ink-50">
+            {/* Names, not codes, and in the reader's language: someone
+                checking whether their own country is here should not have to
+                decode 'GI' or 'LI'. Intl does the translating, so the list
+                can never drift from PAYOUT_COUNTRIES. */}
+            <p className="text-[12px] text-ink-500 leading-relaxed">
+              {payoutCountryNames(locale).join(' · ')}
+            </p>
+            <p className="mt-2.5 text-[12px] text-ink-400 leading-relaxed">
+              {t.payout_countries_detail}
+            </p>
+          </div>
+        )}
+      </div>
+
       <button
         onClick={close}
         aria-label={t.common_close}

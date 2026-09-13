@@ -7,15 +7,17 @@ import type { Translations } from '@/lib/i18n/translations';
 /**
  * Lowest compensation, in euros, a sender can offer or a traveler can ask for.
  *
- * TEMPORARILY 5 (was 10) so a live end-to-end test can be run with real money
- * without spending much. Put it back to 10 once testing is done — this is the
- * amount the TRAVELER receives (the sender pays it plus the commission), and
- * 5 € is not worth anyone's trip.
+ * Back to 10 now the live end-to-end tests are done — it was dropped to 5 so
+ * those could be run with real money without spending much. This is the amount
+ * the TRAVELER receives (the sender pays it plus the commission), and 5 € was
+ * never worth detouring through an airport for. A floor that low also drags
+ * the whole market down: it anchors what senders think a trip is worth.
  *
  * There is no matching database constraint (compensation_min only checks >= 0),
- * so this is the single place that decides it.
+ * so this is the single place that decides it. Listings created while the floor
+ * was 5 keep their price — this governs new input, not existing rows.
  */
-export const MIN_COMPENSATION_EUR = 5;
+export const MIN_COMPENSATION_EUR = 10;
 
 /**
  * Jibly's commission, in basis points (1 bp = 0.01%). 1500 = 15%.
