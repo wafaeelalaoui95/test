@@ -821,3 +821,117 @@ export function deliveryAutoClosedEmail(input: {
     text: `${name},\n\n${travelerName} proved the delivery of your parcel ${route} ${input.days} days ago and nobody reported a problem, so it has closed on its own and ${travelerName} has been paid.\n\nWAS THIS WRONG? Tell us anyway — report a problem from the parcel in your account. The money has gone out, but a parcel that never arrived is still something we need to hear about.\n\nSee this parcel: ${url}\n\nYou can now leave ${travelerName} a review.\n\n— The Jibly team`,
   };
 }
+
+// =============================================================================
+// 10. Traveller reminder, the evening before: what you are carrying tomorrow
+// =============================================================================
+// The sender gets an eve-of-departure reminder. The traveller got nothing —
+// they agreed to carry something days or weeks ago, in an email read once, and
+// the next event is a person waiting for them somewhere with a parcel.
+//
+// A forgotten parcel is not a small miss. The sender's money is already
+// captured, the flight goes without the parcel, and the first person to learn
+// of it is the recipient who is handed nothing.
+//
+// So it lists the parcels by name rather than counting them, and it carries
+// each handover code. The traveller SHOWS that code and the sender types it
+// in — the person receiving the parcel holds the code, so they cannot later
+// deny having received it. Same rule at the other end, reversed.
+export function tripDepartureReminderEmail(input: {
+  travelerFirstName: string | null;
+  departureCity: string;
+  arrivalCity: string;
+  /** Already formatted for the reader. */
+  departureDate: string;
+  flightNumber?: string | null;
+  parcels: Array<{
+    itemLabel: string;
+    senderName: string | null;
+    pickupCity: string;
+    pickupCode: string | null;
+  }>;
+}) {
+  const name = input.travelerFirstName || 'Hello';
+  const route = `${input.departureCity} → ${input.arrivalCity}`;
+  const url = `${BASE_URL}/me`;
+  const n = input.parcels.length;
+
+  const rows = input.parcels
+    .map(
+      (p) => `
+      <tr>
+        <td style="padding:0 0 10px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;">
+            <tr>
+              <td style="padding:16px 18px;">
+                <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:${BRAND.ink};">
+                  ${escapeHtml(p.itemLabel)}
+                </p>
+                <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
+                  From ${escapeHtml(p.senderName || 'the sender')} · collect in ${escapeHtml(p.pickupCity)}
+                </p>
+                ${
+                  p.pickupCode
+                    ? `<p style="margin:10px 0 0;font-size:13px;color:${BRAND.inkSoft};">
+                         Your handover code:
+                         <strong style="font-size:16px;color:${BRAND.ink};letter-spacing:0.15em;font-family:'SF Mono',Monaco,Consolas,monospace;">${escapeHtml(p.pickupCode)}</strong>
+                       </p>`
+                    : ''
+                }
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`
+    )
+    .join('');
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Tomorrow</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+      ${n === 1 ? 'Do not forget the parcel' : `Do not forget the ${n} parcels`}
+    </h1>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${escapeHtml(name)}, you fly ${escapeHtml(route)} on ${escapeHtml(input.departureDate)}${
+        input.flightNumber ? ` (${escapeHtml(input.flightNumber)})` : ''
+      }. ${n === 1 ? 'Someone is counting on you to collect this before you go.' : 'People are counting on you to collect these before you go.'}
+    </p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:16px;">
+      ${rows}
+    </table>
+
+    <p style="margin:0 0 24px;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
+      At the handover, show your code and the sender types it in — that is what records the parcel as collected. You are paid after the delivery is confirmed at the other end.
+    </p>
+
+    <a href="${url}" style="display:inline-block;background:${BRAND.ink};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:15px;font-weight:600;">See my trip</a>
+
+    <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
+      Plans changed and you cannot carry ${n === 1 ? 'it' : 'them'}? Cancel the trip from your account tonight rather than tomorrow — ${n === 1 ? 'the sender is' : 'the senders are'} refunded straight away and we help ${n === 1 ? 'them' : 'them'} find someone else.
+    </p>
+  `;
+
+  const parcelText = input.parcels
+    .map(
+      (p) =>
+        `- ${p.itemLabel} — from ${p.senderName || 'the sender'}, collect in ${p.pickupCity}${
+          p.pickupCode ? ` — your handover code: ${p.pickupCode}` : ''
+        }`
+    )
+    .join('\n');
+
+  return {
+    subject:
+      n === 1
+        ? `Tomorrow · ${route} · do not forget the parcel`
+        : `Tomorrow · ${route} · do not forget the ${n} parcels`,
+    html: wrapHtml(
+      content,
+      `You fly ${route} tomorrow — ${n === 1 ? 'one parcel' : `${n} parcels`} to collect`
+    ),
+    text: `${name},\n\nYou fly ${route} on ${input.departureDate}${
+      input.flightNumber ? ` (${input.flightNumber})` : ''
+    }.\n\n${n === 1 ? 'PARCEL TO COLLECT:' : 'PARCELS TO COLLECT:'}\n${parcelText}\n\nAt the handover, show your code and the sender types it in — that is what records the parcel as collected. You are paid after the delivery is confirmed at the other end.\n\nSee my trip: ${url}\n\nPlans changed? Cancel the trip from your account tonight rather than tomorrow — the sender is refunded straight away and we help them find someone else.\n\n— The Jibly team`,
+  };
+}
