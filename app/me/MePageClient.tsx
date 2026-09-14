@@ -3373,20 +3373,22 @@ function TripsView({
   reviewFromOther: (bookingIntentId: string) => ReviewForBooking | null;
   t: Translations;
 }) {
-  // Split trips into "upcoming" (today's date and onward, non-cancelled)
-  // and "past" (departure date in the past, or cancelled). The upcoming
-  // set is the working surface — that's where senders can still propose
-  // packages and that's what we show in the master list by default. The
-  // past set is shown in a collapsible "Anciens voyages" section at the
-  // bottom so the user can still see their history (for earnings,
-  // ratings received, etc.) without it cluttering the active view.
+  // Three groups, not two.
+  //
+  // "Upcoming" is the working surface: still flying, date ahead, senders can
+  // still book it. "Past" is history — it happened. Cancelled used to be
+  // swept in with past, which put a trip leaving in three weeks under
+  // "Anciens voyages" and made the traveller look for a flight they had
+  // deliberately stopped, in the one place they would never think to look.
+  // Not flying is not the same as already flown.
   const today = new Date().toISOString().slice(0, 10);
   const upcomingTrips = trips.filter(
     (tr) => tr.status !== 'cancelled' && tr.departure_date >= today
   );
   const pastTrips = trips.filter(
-    (tr) => tr.status === 'cancelled' || tr.departure_date < today
+    (tr) => tr.status !== 'cancelled' && tr.departure_date < today
   );
+  const cancelledTrips = trips.filter((tr) => tr.status === 'cancelled');
   const activeIncoming = incomingIntents.filter((i) => {
     if (i.status === 'cancelled') return false;
     // Keep delivered+confirmed packages visible until the user has
@@ -3456,6 +3458,12 @@ function TripsView({
   const sortedPastTrips = [...pastTrips].sort((a, b) =>
     b.departure_date.localeCompare(a.departure_date)
   );
+  // Same order as past — most recently cancelled reads first — but kept apart
+  // so a cancelled trip whose date is still ahead does not sort in among
+  // flights that actually happened.
+  const sortedCancelledTrips = [...cancelledTrips].sort((a, b) =>
+    b.departure_date.localeCompare(a.departure_date)
+  );
 
   // Pick default selection: first upcoming trip with packages > first trip.
   const firstWithPackages = sortedTrips.find((tr) => (packagesByTrip.get(tr.id) ?? []).length > 0);
@@ -3465,6 +3473,7 @@ function TripsView({
   // Past trips are collapsed by default — they're informational
   // (earnings history, ratings received) but rarely actionable.
   const [showPastTrips, setShowPastTrips] = useState(false);
+  const [showCancelledTrips, setShowCancelledTrips] = useState(false);
 
   useEffect(() => {
     if (!selectedTripId) {
@@ -3480,9 +3489,17 @@ function TripsView({
   const selectedTrip =
     sortedTrips.find((tr) => tr.id === selectedTripId) ??
     sortedPastTrips.find((tr) => tr.id === selectedTripId) ??
+    sortedCancelledTrips.find((tr) => tr.id === selectedTripId) ??
     null;
 
-  if (sortedTrips.length === 0 && sortedPastTrips.length === 0) {
+  // Cancelled counts as having trips. Without it, someone whose only trips are
+  // cancelled gets the "you have no trips yet" screen and the section holding
+  // them never renders — they would have no way to reach their own history.
+  if (
+    sortedTrips.length === 0 &&
+    sortedPastTrips.length === 0 &&
+    sortedCancelledTrips.length === 0
+  ) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -3564,6 +3581,49 @@ function TripsView({
           )}
         </div>
       )}
+
+      {/* Cancelled — its own section, collapsed like the past one. Its trips
+          are no more actionable than a past one, but they are a different
+          fact about the traveller's own plans, and one of them can easily
+          still be in the future. */}
+      {sortedCancelledTrips.length > 0 && (
+        <div className="mt-4 border-t border-ink-50">
+          <button
+            type="button"
+            onClick={() => setShowCancelledTrips((v) => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between text-[12px] font-semibold text-ink-400 hover:text-ink-600 hover:bg-cream-50 transition-colors uppercase tracking-[0.08em]"
+            aria-expanded={showCancelledTrips}
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-base">🚫</span>
+              {t.me2_cancelled_trips}
+              <span className="text-ink-300 normal-case font-medium tracking-normal">
+                · {sortedCancelledTrips.length}
+              </span>
+            </span>
+            <span className={`transition-transform ${showCancelledTrips ? 'rotate-180' : ''}`}>
+              ▾
+            </span>
+          </button>
+          {showCancelledTrips && (
+            <div className="opacity-70">
+              {sortedCancelledTrips.map((tr) => {
+                const pkgs = allPackagesByTrip.get(tr.id) ?? [];
+                return (
+                  <TripListRow
+                    key={tr.id}
+                    trip={tr}
+                    packagesCount={pkgs.length}
+                    selected={selectedTripId === tr.id}
+                    onClick={() => selectTrip(tr.id)}
+                    isPast={true}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -3627,6 +3687,11 @@ function TripListRow({
   isPast: boolean;
 }) {
   const { t, locale } = useI18n();
+  // A cancelled trip can still have a date in the future, so dimming the row
+  // is not enough to tell it apart — read on its own it looks like an upcoming
+  // flight. Say it on the row itself rather than relying on which section the
+  // reader happens to be under.
+  const isCancelled = trip.status === 'cancelled';
   return (
     <button
       type="button"
@@ -3637,14 +3702,21 @@ function TripListRow({
           : 'hover:bg-cream-50 border-l-2 border-transparent'
       } ${isPast ? 'opacity-60' : ''}`}
     >
-      <span className="flex-shrink-0 text-[18px]">✈️</span>
+      <span className="flex-shrink-0 text-[18px]">{isCancelled ? '🚫' : '✈️'}</span>
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-ink-600 truncate">
+        <div
+          className={`text-[13px] font-semibold text-ink-600 truncate ${
+            isCancelled ? 'line-through decoration-ink-300' : ''
+          }`}
+        >
           {cityDisplayName(trip.departure_city, locale)} → {cityDisplayName(trip.arrival_city, locale)}
         </div>
         <div className="text-[12px] text-ink-400 truncate num-display">
           {formatShortDate(trip.departure_date)}
           {trip.flight_number && <span className="ml-1.5 text-ink-300">· {trip.flight_number}</span>}
+          {isCancelled && (
+            <span className="ml-1.5 text-blush-500 font-medium">· {t.me2_cancelled_label}</span>
+          )}
         </div>
       </div>
       <div className="flex-shrink-0 text-[12px] font-semibold text-ink-500">

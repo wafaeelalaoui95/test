@@ -1071,6 +1071,7 @@ export type Translations = {
   me2_publish_trip: string;
   me2_no_trips: string;
   me2_past_trips: string;
+  me2_cancelled_trips: string;
   me2_select_trip: string;
   me2_packages_unit: string;
   me2_flight: string;
@@ -2320,6 +2321,7 @@ export const translations: Record<Locale, Translations> = {
     me2_publish_trip: 'Publier un trajet',
     me2_no_trips: 'Aucun voyage planifié. Publiez votre prochain vol pour proposer vos services.',
     me2_past_trips: 'Anciens voyages',
+    me2_cancelled_trips: 'Trajets annulés',
     me2_select_trip: 'Sélectionnez un voyage pour voir ses détails.',
     me2_packages_unit: 'colis',
     me2_flight: 'Vol {number}',
@@ -3567,6 +3569,7 @@ export const translations: Record<Locale, Translations> = {
     me2_publish_trip: 'Post a trip',
     me2_no_trips: 'No trips planned. Post your next flight to offer your services.',
     me2_past_trips: 'Past trips',
+    me2_cancelled_trips: 'Cancelled trips',
     me2_select_trip: 'Select a trip to see its details.',
     me2_packages_unit: 'packages',
     me2_flight: 'Flight {number}',
