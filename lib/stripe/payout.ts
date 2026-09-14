@@ -154,7 +154,14 @@ export async function retryPendingPayouts(
     // on its own says nothing about whether the parcel arrived — without this
     // filter, a traveler finishing payout setup would be paid for every parcel
     // they had merely agreed to carry.
-    .not('received_confirmed_at', 'is', null)
+    //
+    // Delivered means either the recipient read out the delivery code
+    // (received_confirmed_at) or a proved delivery ran its course unconfirmed
+    // and uncontested (auto_released_at — see /api/cron/auto-release). This is
+    // the filter that actually decides who gets paid; the sweep in
+    // /api/cron/settle-payouts only picks which travelers to look at, so both
+    // have to know about both columns or the second one silently does nothing.
+    .or('received_confirmed_at.not.is.null,auto_released_at.not.is.null')
     .limit(50);
 
   if (!pending?.length) return tally;

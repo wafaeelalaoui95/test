@@ -56,7 +56,13 @@ export async function GET(req: NextRequest) {
     .select('traveler_user_id')
     .eq('payment_status', 'captured')
     .is('transfer_id', null)
-    .not('received_confirmed_at', 'is', null)
+    // Two ways a delivery ends, and both are owed. received_confirmed_at is a
+    // person reading out the delivery code; auto_released_at is the clock,
+    // after a proved delivery went AUTO_RELEASE_DAYS unconfirmed and
+    // uncontested (see /api/cron/auto-release). They are separate columns on
+    // purpose — filling the first from a cron would forge the very record a
+    // dispute turns on — so the payout has to ask for either.
+    .or('received_confirmed_at.not.is.null,auto_released_at.not.is.null')
     .not('traveler_user_id', 'is', null)
     // Set aside by a human as never-going-to-settle. See the archived_at
     // migration: kept rather than deleted, because they hold real payments.

@@ -923,6 +923,7 @@ export type Translations = {
   sj_delivered_hint_sender: string;
   sj_delivered_hint_traveler: string;
   me2_uploaded_on: string;
+  me2_auto_close_on: string;
   me2_how_to_contact: string;
   me2_message: string;
   me2_delivered_by: string;
@@ -2165,6 +2166,7 @@ export const translations: Record<Locale, Translations> = {
     sj_delivered_hint_sender: 'Le destinataire communique le code au voyageur pour confirmer.',
     sj_delivered_hint_traveler: 'Saisissez le code que le destinataire vous donne.',
     me2_uploaded_on: 'Téléversée le {date}',
+    me2_auto_close_on: "Rien à faire si le colis est arrivé : cette livraison se clôture toute seule le {date}. Si quelque chose ne va pas, signalez un problème avant.",
     me2_how_to_contact: 'Comment le contacter',
     me2_message: 'Message',
     me2_delivered_by: 'Livré par {name}',
@@ -3412,6 +3414,7 @@ export const translations: Record<Locale, Translations> = {
     sj_delivered_hint_sender: 'The recipient gives the code to the traveler to confirm.',
     sj_delivered_hint_traveler: 'Enter the code the recipient gives you.',
     me2_uploaded_on: 'Uploaded on {date}',
+    me2_auto_close_on: "Nothing to do if the parcel arrived: this delivery closes on its own on {date}. If something is wrong, report a problem before then.",
     me2_how_to_contact: 'How to reach them',
     me2_message: 'Message',
     me2_delivered_by: 'Delivered by {name}',

@@ -682,3 +682,142 @@ export function tripCancelledSenderEmail(input: {
     }${moneyText}${altText}\n\nFind another traveller: ${input.searchUrl}\n\n— The Jibly team`,
   };
 }
+
+// =============================================================================
+// 8. Sender: the traveller says it is delivered, and the clock has started
+// =============================================================================
+// This email is the reason the auto-release is defensible. Money moving on a
+// timer that nobody was told about is indistinguishable from money going
+// missing — so the timer is announced the moment it starts, with the date it
+// runs out and both ways to stop it.
+//
+// It leads with the proof rather than the deadline. The sender's first
+// question is whether their parcel actually arrived, and a mail that opens
+// with a countdown reads as a threat from the company holding their money.
+export function deliveryProvedEmail(input: {
+  senderFirstName: string | null;
+  travelerFirstName: string | null;
+  itemLabel: string;
+  pickupCity: string;
+  destinationCity: string;
+  /** Who the traveller says took the parcel, if they named anyone. */
+  receiverName?: string | null;
+  /** Already formatted for the reader — see emailDate in the cron. */
+  deadline: string;
+  days: number;
+  bookingId: string;
+}) {
+  const name = input.senderFirstName || 'Hello';
+  const travelerName = input.travelerFirstName || 'Your traveller';
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+  const url = `${BASE_URL}/me?booking=${input.bookingId}`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Delivered</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+      ${escapeHtml(travelerName)} has delivered ${escapeHtml(input.itemLabel)}
+    </h1>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${escapeHtml(name)}, ${escapeHtml(travelerName)} has uploaded a photo of the parcel ${escapeHtml(route)}${
+        input.receiverName
+          ? ` and says it was handed to ${escapeHtml(input.receiverName)}`
+          : ''
+      }.
+    </p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:18px 20px;">
+          <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:${BRAND.ink};">If the parcel arrived, nothing to do</p>
+          <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
+            This delivery closes on its own on <strong style="color:${BRAND.ink};">${escapeHtml(input.deadline)}</strong> and ${escapeHtml(travelerName)} is paid then. You can also close it now from your account.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.alertBg};border-left:4px solid ${BRAND.alert};border-radius:8px;margin:0 0 24px;">
+      <tr>
+        <td style="padding:16px 18px;">
+          <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${BRAND.alert};line-height:1.5;">
+            If something is wrong, tell us before ${escapeHtml(input.deadline)}
+          </p>
+          <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
+            Parcel never arrived, damaged, not what you sent — report a problem from the parcel in your account and nothing is paid out while we look into it.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <a href="${url}" style="display:inline-block;background:${BRAND.ink};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:15px;font-weight:600;">See the photo</a>
+
+    <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
+      We wait ${input.days} days so that a traveller who has done the job is not left unpaid because a code never got read out. That wait is yours to use.
+    </p>
+  `;
+
+  return {
+    subject: `${travelerName} delivered ${input.itemLabel} · ${route}`,
+    html: wrapHtml(content, `A photo of your parcel, and what happens by ${input.deadline}`),
+    text: `${name},\n\n${travelerName} has uploaded a photo of your parcel ${route}${
+      input.receiverName ? ` and says it was handed to ${input.receiverName}` : ''
+    }.\n\nIF IT ARRIVED: nothing to do. The delivery closes on its own on ${input.deadline} and ${travelerName} is paid then. You can also close it now from your account.\n\nIF SOMETHING IS WRONG: report a problem before ${input.deadline} — from the parcel in your account. Nothing is paid out while we look into it.\n\nSee the photo: ${url}\n\nWe wait ${input.days} days so a traveller who has done the job is not left unpaid because a code never got read out.\n\n— The Jibly team`,
+  };
+}
+
+// =============================================================================
+// 9. Sender: the clock ran out and the delivery closed
+// =============================================================================
+// Sent at the moment of release, never before, and to the sender only — the
+// traveller finds out because they get paid.
+//
+// It exists so that the money never moves silently. A sender who reads this
+// and disagrees still has somewhere to go, and saying so plainly is cheaper
+// than the chargeback that follows from "they paid him without asking me".
+export function deliveryAutoClosedEmail(input: {
+  senderFirstName: string | null;
+  travelerFirstName: string | null;
+  itemLabel: string;
+  pickupCity: string;
+  destinationCity: string;
+  days: number;
+  bookingId: string;
+}) {
+  const name = input.senderFirstName || 'Hello';
+  const travelerName = input.travelerFirstName || 'Your traveller';
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+  const url = `${BASE_URL}/me?booking=${input.bookingId}`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Closed</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+      ${escapeHtml(input.itemLabel)} is marked delivered
+    </h1>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${escapeHtml(name)}, ${escapeHtml(travelerName)} proved the delivery of your parcel ${escapeHtml(route)} ${input.days} days ago and nobody reported a problem, so it has closed on its own and ${escapeHtml(travelerName)} has been paid.
+    </p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FAF7F2;border-radius:12px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 6px;font-size:14px;font-weight:600;color:${BRAND.ink};">Was this wrong?</p>
+          <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
+            Tell us anyway. Report a problem from the parcel in your account — the money has gone out, but a parcel that never arrived is still something we need to hear about and act on.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <a href="${url}" style="display:inline-block;background:${BRAND.ink};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:15px;font-weight:600;">See this parcel</a>
+
+    <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
+      You can now leave ${escapeHtml(travelerName)} a review, which is what the next sender on this route will read.
+    </p>
+  `;
+
+  return {
+    subject: `Closed · ${input.itemLabel} ${route}`,
+    html: wrapHtml(content, `No problem was reported, so the delivery closed on its own`),
+    text: `${name},\n\n${travelerName} proved the delivery of your parcel ${route} ${input.days} days ago and nobody reported a problem, so it has closed on its own and ${travelerName} has been paid.\n\nWAS THIS WRONG? Tell us anyway — report a problem from the parcel in your account. The money has gone out, but a parcel that never arrived is still something we need to hear about.\n\nSee this parcel: ${url}\n\nYou can now leave ${travelerName} a review.\n\n— The Jibly team`,
+  };
+}

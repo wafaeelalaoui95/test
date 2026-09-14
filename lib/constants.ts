@@ -83,6 +83,27 @@ export const PLATFORM_FEE_BPS = 1500;
  */
 export const PLATFORM_FEE_FIXED_CENTS = 50;
 
+/**
+ * How long a sender has to confirm or contest, once a delivery has been proved.
+ *
+ * A traveller is paid when the recipient confirms with the delivery code. If
+ * nobody ever confirms, the money sat captured forever: the sender had already
+ * paid, the traveller had already flown, and a sender who simply stopped
+ * replying — or lost the code, or was on holiday — left the traveller unpaid
+ * with nothing that would ever change that. Worse, the old copy told senders
+ * outright that the code was what released the payment, which is a lever
+ * pointed at someone who did the work.
+ *
+ * So a proved delivery completes on its own after this many days unless the
+ * sender contests it. The clock starts at the proof upload, not at the flight:
+ * the traveller has to have shown something before anything can run down.
+ *
+ * Changing this number changes what both emails promise. It is read by
+ * /api/cron/auto-release, by the email that starts the clock, and by the card
+ * that counts it down — there is one of it for that reason.
+ */
+export const AUTO_RELEASE_DAYS = 3;
+
 export const ITEM_CATEGORIES: {
   value: ItemCategory;
   labelKey: keyof Translations;

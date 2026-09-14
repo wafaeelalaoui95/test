@@ -190,6 +190,8 @@ export function NotificationsDropdown() {
         return '💰';
       case 'trip_cancelled':
         return '🚫';
+      case 'delivery_auto_closed':
+        return '⏱️';
       case 'matching_trip_available':
         return '✈️';
       case 'matching_request_available':

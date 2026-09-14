@@ -51,7 +51,7 @@ import type {
   TripParcel,
   TripCancellationReason,
 } from '@/lib/supabase/queries';
-import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
+import { ITEM_CATEGORIES, SPACE_OPTIONS, AUTO_RELEASE_DAYS } from '@/lib/constants';
 import { formatShortDate, nameInitial, formatEuros, travelerNetFromTotal, acceptedCategories } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
@@ -1347,6 +1347,7 @@ type MyBooking = {
   pickup_confirmed_at?: string | null;
   pickup_confirmed_by?: string | null;
   received_confirmed_at?: string | null;
+  auto_released_at?: string | null;
   // Why this booking ended, when it ended for a reason worth explaining.
   // Written by /api/trip/cancel and shown to the sender verbatim — see
   // CancelledBookingPanel.
@@ -1579,6 +1580,28 @@ function BookingCard({
               )}
             </div>
           )}
+
+          {/* The clock, where the person it runs against can see it.
+              A proved delivery closes on its own after AUTO_RELEASE_DAYS so
+              that a traveller who did the job is not left unpaid because a
+              code never got read out. That is only fair if the sender knows
+              the date — they get an email when it starts, and this is the
+              same fact on the screen they would go to anyway. */}
+          {booking.delivery_proof_uploaded_at &&
+            !booking.received_confirmed_at &&
+            !booking.auto_released_at && (
+              <div className="rounded-xl bg-cream-100 px-4 py-2.5 mb-3 text-[12px] text-ink-500 leading-relaxed">
+                {t.me2_auto_close_on.replace(
+                  '{date}',
+                  formatShortDate(
+                    new Date(
+                      new Date(booking.delivery_proof_uploaded_at).getTime() +
+                        AUTO_RELEASE_DAYS * 24 * 60 * 60 * 1000
+                    )
+                  )
+                )}
+              </div>
+            )}
 
           {/* Delivery code — the recipient side (you, or a relative receiving
               on your behalf) holds this code and gives it to the traveler, who

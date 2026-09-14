@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
+import { getResend, FROM_EMAIL } from '@/lib/email/resend';
+import { deliveryProvedEmail } from '@/lib/email/templates';
+import { AUTO_RELEASE_DAYS } from '@/lib/constants';
+import { formatName } from '@/lib/utils';
 
 const STORAGE_BUCKET = 'delivery-proofs';
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
@@ -102,5 +106,81 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `db: ${updateErr.message}` }, { status: 500 });
   }
 
+  // Start the sender's clock out loud.
+  //
+  // This proof is what lets /api/cron/auto-release pay the traveller in
+  // AUTO_RELEASE_DAYS without anyone confirming. Money moving on a timer the
+  // sender was never told about is indistinguishable, from their side, from
+  // money going missing — so the timer is announced the moment it starts, with
+  // the date it runs out and both ways to stop it.
+  //
+  // Non-fatal, like every other transactional send: the proof is uploaded and
+  // the delivery is real whether or not Resend is having a good day.
+  try {
+    await tellSenderTheClockStarted(bookingIntentId);
+  } catch (e: any) {
+    console.error('[upload-proof] could not notify sender:', e?.message);
+  }
+
   return NextResponse.json({ ok: true, url: publicUrl });
+}
+
+async function tellSenderTheClockStarted(bookingIntentId: string) {
+  const admin = getAdminClient();
+
+  const { data: booking } = await admin
+    .from('booking_intents')
+    .select(
+      'id, sender_id, traveler_user_id, item_title, pickup_city, destination_city, delivery_proof_receiver_name, delivery_proof_uploaded_at'
+    )
+    .eq('id', bookingIntentId)
+    .maybeSingle();
+  if (!booking) return;
+
+  const { data: userData } = await admin.auth.admin.getUserById(booking.sender_id);
+  const email = userData?.user?.email;
+  if (!email) {
+    console.warn('[upload-proof] no email for sender', booking.sender_id);
+    return;
+  }
+
+  const [senderProfile, travelerProfile] = await Promise.all([
+    admin.from('profiles').select('full_name').eq('id', booking.sender_id).maybeSingle(),
+    booking.traveler_user_id
+      ? admin.from('profiles').select('full_name').eq('id', booking.traveler_user_id).maybeSingle()
+      : Promise.resolve({ data: null as any }),
+  ]);
+
+  const proofAt = booking.delivery_proof_uploaded_at
+    ? new Date(booking.delivery_proof_uploaded_at)
+    : new Date();
+  const deadline = new Date(proofAt.getTime() + AUTO_RELEASE_DAYS * 24 * 60 * 60 * 1000);
+
+  const first = (full: string | null | undefined) =>
+    full ? formatName(full).split(' ')[0] : null;
+
+  const template = deliveryProvedEmail({
+    senderFirstName: first(senderProfile.data?.full_name),
+    travelerFirstName: first(travelerProfile.data?.full_name),
+    itemLabel: booking.item_title?.trim() || 'your parcel',
+    pickupCity: booking.pickup_city,
+    destinationCity: booking.destination_city,
+    receiverName: booking.delivery_proof_receiver_name,
+    deadline: new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(deadline),
+    days: AUTO_RELEASE_DAYS,
+    bookingId: booking.id,
+  });
+
+  const { error } = await getResend().emails.send({
+    from: FROM_EMAIL,
+    to: email,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+  if (error) console.error('[upload-proof] resend error:', error);
 }
