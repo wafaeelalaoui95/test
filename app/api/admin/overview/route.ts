@@ -34,7 +34,7 @@ export async function GET() {
     admin
       .from('booking_intents')
       .select(
-        'id, traveler_user_id, proposed_price, payment_amount, payment_status, received_confirmed_at, transfer_id, created_at, pickup_city, destination_city'
+        'id, sender_id, traveler_user_id, proposed_price, payment_amount, payment_status, status, received_confirmed_at, cancelled_at, transfer_id, created_at, pickup_city, destination_city'
       )
       .eq('payment_status', 'captured')
       .is('transfer_id', null),
@@ -47,7 +47,17 @@ export async function GET() {
 
   const rows = bookings ?? [];
   const delivered = rows.filter((b: any) => b.received_confirmed_at);
-  const inTransit = rows.filter((b: any) => !b.received_confirmed_at);
+  // Cancelled and still holding the sender's money: /api/trip/cancel refunds
+  // before it cancels, so this is the refund that did not go through. Split
+  // out rather than left in "held", where it would read as a parcel still
+  // making its way — the opposite of what it is. Owed to the SENDER, not the
+  // traveller, so it is counted at face value and not net of the fee.
+  const owedBack = rows.filter(
+    (b: any) => !b.received_confirmed_at && b.status === 'cancelled'
+  );
+  const inTransit = rows.filter(
+    (b: any) => !b.received_confirmed_at && b.status !== 'cancelled'
+  );
 
   const sum = (list: any[]) =>
     list.reduce(
@@ -62,6 +72,7 @@ export async function GET() {
       [
         ...(reviews ?? []).flatMap((r: any) => [r.reviewer_id, r.reviewed_user_id]),
         ...delivered.map((b: any) => b.traveler_user_id),
+        ...owedBack.map((b: any) => b.sender_id),
       ].filter(Boolean)
     ),
   ];
@@ -76,6 +87,20 @@ export async function GET() {
       stuckCount: delivered.length,
       heldEuros: sum(inTransit),
       heldCount: inTransit.length,
+      // The full amount the sender paid — a refund owed is owed whole, not
+      // minus the commission on a service nobody performed.
+      refundOwedEuros: owedBack.reduce(
+        (s: number, b: any) => s + (b.payment_amount ?? 0) / 100,
+        0
+      ),
+      refundOwedCount: owedBack.length,
+      refundOwed: owedBack.map((b: any) => ({
+        id: b.id,
+        route: `${b.pickup_city} → ${b.destination_city}`,
+        euros: (b.payment_amount ?? 0) / 100,
+        senderName: nameById.get(b.sender_id) ?? null,
+        cancelledAt: b.cancelled_at,
+      })),
       stuck: delivered.map((b: any) => ({
         id: b.id,
         route: `${b.pickup_city} → ${b.destination_city}`,

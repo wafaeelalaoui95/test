@@ -46,7 +46,11 @@ import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
 import { ViewProofButton } from '@/components/ImageLightbox';
 // Reviews — mutual star-rating between sender and traveler once received_confirmed_at is set.
 import { ReviewModal } from '@/components/ReviewModal';
-import type { ReviewForBooking } from '@/lib/supabase/queries';
+import type {
+  ReviewForBooking,
+  TripParcel,
+  TripCancellationReason,
+} from '@/lib/supabase/queries';
 import { ITEM_CATEGORIES, SPACE_OPTIONS } from '@/lib/constants';
 import { formatShortDate, nameInitial, formatEuros, travelerNetFromTotal, acceptedCategories } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -55,6 +59,8 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { EditListingModal } from '@/components/EditListingModal';
+import { CancelTripModal } from '@/components/CancelTripModal';
+import { CancelledBookingPanel } from '@/components/CancelledBookingPanel';
 import { cn } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
 import type {
@@ -649,10 +655,32 @@ export default function MyPage(
                       prev.map((it) => (it.id === id ? { ...it, ...patch } : it))
                     );
                   }}
-                  onCancelTrip={async (tripId) => {
-                    await browser.cancelTrip(tripId);
+                  // The cancellation itself happens inside CancelTripModal,
+                  // which owns the reason the server requires. By the time
+                  // this fires the server has already released the money,
+                  // closed every parcel and written to their senders — all
+                  // that is left is to stop showing the trip as live.
+                  onTripCancelled={(tripId) => {
                     setTrips((prev) =>
                       prev.map((tr) => (tr.id === tripId ? { ...tr, status: 'cancelled' } : tr))
+                    );
+                    // Its parcels went with it. Patching them here rather than
+                    // refetching keeps the two halves of the screen agreeing
+                    // with each other while the request settles.
+                    const closed = { status: 'cancelled' as const };
+                    setIncomingIntents((prev) =>
+                      prev.map((it) =>
+                        it.traveler_trip_id === tripId && !it.received_confirmed_at
+                          ? { ...it, ...closed }
+                          : it
+                      )
+                    );
+                    setMyProposals((prev) =>
+                      prev.map((p) =>
+                        p.traveler_trip_id === tripId && !p.received_confirmed_at
+                          ? { ...p, ...closed }
+                          : p
+                      )
                     );
                   }}
                   onTripEdited={(tripId, patch) =>
@@ -1319,6 +1347,12 @@ type MyBooking = {
   pickup_confirmed_at?: string | null;
   pickup_confirmed_by?: string | null;
   received_confirmed_at?: string | null;
+  // Why this booking ended, when it ended for a reason worth explaining.
+  // Written by /api/trip/cancel and shown to the sender verbatim — see
+  // CancelledBookingPanel.
+  cancellation_reason?: string | null;
+  cancellation_note?: string | null;
+  cancelled_at?: string | null;
   traveler_trip: { id: string; departure_city: string; arrival_city: string; departure_date: string; user_id: string } | null;
   traveler_profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; verification_level: VerificationLevel; rating: number; trips_completed: number } | null;
 };
@@ -1702,8 +1736,16 @@ function BookingCard({
     );
   }
 
-  // Pending or cancelled
-  // Two pending sub-cases:
+  // Cancelled gets a panel of its own. It used to fall through to the compact
+  // row below and render as "✕ refusée" — the word for a traveller declining a
+  // request they never accepted, shown to senders whose traveller had accepted
+  // and then stopped flying, next to nothing at all about their money.
+  if (booking.status === 'cancelled') {
+    return <CancelledBookingPanel booking={booking} currentUserId={booking.sender_id} />;
+  }
+
+  // Pending
+  // Two sub-cases:
   //   A) initiated_by='sender' → I (the sender) made the booking and am
   //      waiting for the traveler. Payment already authorized.
   //   B) initiated_by='traveler' → A traveler responded to my public
@@ -1734,9 +1776,6 @@ function BookingCard({
           )}
           {booking.status === 'pending' && !isTravelerProposal && (
             <span className="text-[11px] text-ink-300 ml-1">⏳ {t.me2_status_pending}</span>
-          )}
-          {booking.status === 'cancelled' && (
-            <span className="text-[11px] text-ink-300 ml-1">✕ {t.me2_status_declined}</span>
           )}
         </div>
 
@@ -1793,202 +1832,6 @@ function RequestCard({ request, t }: { request: ShippingRequestRow; t: Translati
         </div>
       </div>
     </div>
-  );
-}
-
-// === TRIPS ===
-function TripsTab({
-  trips,
-  onCancel,
-  t,
-}: {
-  trips: TravelerTripRow[];
-  onCancel: (tripId: string) => Promise<void>;
-  t: Translations;
-}) {
-  // Only show non-cancelled trips. Cancelled ones live on in DB for history
-  // but we don't surface them in the main list.
-  const visibleTrips = trips.filter((t) => t.status !== 'cancelled');
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-bold text-ink-600 tracking-[-0.02em]">{t.me_section_my_trips}</h2>
-        <Link href="/voyager">
-          <Button size="sm">
-            <Plus className="w-4 h-4" />
-            {t.me_new_trip}
-          </Button>
-        </Link>
-      </div>
-
-      {visibleTrips.length === 0 ? (
-        <EmptyState message={t.empty_my_trips} />
-      ) : (
-        <div className="space-y-3">
-          {visibleTrips.map((trip) => (
-            <TripCard key={trip.id} trip={trip} onCancel={onCancel} t={t} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TripCard({
-  trip,
-  onCancel,
-  t,
-}: {
-  trip: TravelerTripRow;
-  onCancel: (tripId: string) => Promise<void>;
-  t: Translations;
-}) {
-  const { locale } = useI18n();
-  const space = SPACE_OPTIONS.find((s) => s.value === (trip.available_space as AvailableSpace));
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [activeBookings, setActiveBookings] = useState<number | null>(null);
-  const [loadingBookings, setLoadingBookings] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function openCancelModal() {
-    setShowCancelModal(true);
-    setErr(null);
-    // Load the count of active bookings so we can warn the user
-    setLoadingBookings(true);
-    try {
-      const { count } = await browser.countActiveBookingsForTrip(trip.id);
-      setActiveBookings(count);
-    } catch {
-      setActiveBookings(null); // unknown — proceed without exact warning
-    } finally {
-      setLoadingBookings(false);
-    }
-  }
-
-  async function confirmCancel() {
-    setCancelling(true);
-    setErr(null);
-    try {
-      await onCancel(trip.id);
-      setShowCancelModal(false);
-    } catch (e: any) {
-      setErr(e?.message ?? t.me2_cancel_failed);
-    } finally {
-      setCancelling(false);
-    }
-  }
-
-  return (
-    <>
-      <div className="bg-white rounded-xl px-3 py-2.5 border border-ink-50">
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cream-100 flex items-center justify-center text-[15px]">
-            {space?.icon}
-          </div>
-          <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] flex-wrap">
-            <span className="font-semibold text-ink-600">{cityDisplayName(trip.departure_city, locale)} → {cityDisplayName(trip.arrival_city, locale)}</span>
-            <span className="text-ink-300">·</span>
-            <span className="text-ink-500 num-display">{formatShortDate(trip.departure_date)}</span>
-            <span className="text-ink-300">·</span>
-            <span className="text-ink-500">{t.me2_from_price.replace('{amount}', String(trip.compensation_min))}</span>
-          </div>
-          <button
-            type="button"
-            onClick={openCancelModal}
-            className="flex-shrink-0 p-1.5 rounded-full text-ink-300 hover:text-blush-500 hover:bg-blush-50 transition-colors"
-            aria-label={t.me2_cancel_trip}
-            title={t.me2_cancel_trip}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Cancellation modal */}
-      <AnimatePresence>
-        {showCancelModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
-            onClick={() => !cancelling && setShowCancelModal(false)}
-          >
-            <motion.div
-              initial={{ y: 20, opacity: 0, scale: 0.98 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 20, opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.2 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-cream-50 rounded-3xl p-7 max-w-md w-full shadow-xl"
-            >
-              <div className="flex items-start gap-4 mb-5">
-                <div className="w-12 h-12 rounded-full bg-blush-50 flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-6 h-6 text-blush-500" strokeWidth={2} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
-                    {t.me2_cancel_trip_q}
-                  </h3>
-                  <p className="text-[14px] text-ink-500 leading-relaxed">
-                    {cityDisplayName(trip.departure_city, locale)} → {cityDisplayName(trip.arrival_city, locale)} · {formatShortDate(trip.departure_date)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Booking warning */}
-              {loadingBookings ? (
-                <div className="rounded-xl bg-cream-100 px-4 py-3 mb-5 text-[13px] text-ink-400 flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  {t.me2_checking_bookings}
-                </div>
-              ) : activeBookings && activeBookings > 0 ? (
-                <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 mb-5 text-[13px] text-ink-500 leading-relaxed">
-                  <strong className="text-ink-600">
-                    {activeBookings === 1
-                      ? t.me2_one_booking_in_progress
-                      : t.me2_n_bookings_in_progress.replace('{n}', String(activeBookings))}
-                  </strong>
-                  <br />
-                  {t.me2_bookings_auto_cancel_before}<strong>{t.me2_bookings_auto_cancel_bold}</strong>{t.me2_bookings_auto_cancel_after}
-                </div>
-              ) : (
-                <p className="text-[14px] text-ink-400 mb-5 leading-relaxed">
-                  {t.me2_cancel_trip_final}
-                </p>
-              )}
-
-              {err && (
-                <div className="rounded-xl bg-blush-50 px-4 py-3 text-[13px] text-blush-500 mb-5">
-                  {err}
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-2.5">
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  disabled={cancelling}
-                  className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
-                >
-                  {t.me2_keep_trip}
-                </button>
-                <button
-                  onClick={confirmCancel}
-                  disabled={cancelling}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-blush-500 hover:bg-blush-600 disabled:opacity-50 rounded-full transition-colors"
-                >
-                  {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  {cancelling ? t.me2_cancelling : t.me2_confirm_cancel}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
   );
 }
 
@@ -3480,7 +3323,7 @@ function TripsView({
   myProposals,
   onUpdateIntent,
   onProofUploaded,
-  onCancelTrip,
+  onTripCancelled,
   onTripEdited,
   onOpenChat,
   onReportProblem,
@@ -3497,7 +3340,7 @@ function TripsView({
   myProposals: TravelerProposal[];
   onUpdateIntent: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
-  onCancelTrip: (tripId: string) => Promise<void>;
+  onTripCancelled: (tripId: string) => void;
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
   onEnterPickupCode: (intent: IncomingIntent) => void;
@@ -3709,7 +3552,7 @@ function TripsView({
         allPackages={allPackagesByTrip.get(selectedTrip.id) ?? []}
         onUpdateIntent={onUpdateIntent}
         onProofUploaded={onProofUploaded}
-        onCancelTrip={onCancelTrip}
+        onTripCancelled={onTripCancelled}
         onTripEdited={onTripEdited}
         onOpenChat={onOpenChat}
         onReportProblem={onReportProblem}
@@ -3804,7 +3647,7 @@ function TripDetailCard({
   allPackages,
   onUpdateIntent,
   onProofUploaded,
-  onCancelTrip,
+  onTripCancelled,
   onTripEdited,
   onOpenChat,
   onReportProblem,
@@ -3827,7 +3670,7 @@ function TripDetailCard({
   >;
   onUpdateIntent: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   onProofUploaded: (id: string, url: string, receiverName: string) => void;
-  onCancelTrip: (tripId: string) => Promise<void>;
+  onTripCancelled: (tripId: string) => void;
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
   onEnterPickupCode: (intent: IncomingIntent) => void;
@@ -3858,20 +3701,23 @@ function TripDetailCard({
   // Everything on this flight is delivered and closed — different from never
   // having had a parcel at all, and worth saying so.
   const allDone = packages.length === 0 && allPackages.length > 0;
-  const isCancelable = packages.every((p) => p.row.status !== 'confirmed');
-  // Editable is stricter than cancelable: no booking at all, not merely no
-  // confirmed one. Someone with a pending request against this trip has read
-  // the price and acted on it, and moving it under them is what the server
-  // refuses — so the button must not appear in a case the save would reject.
+  // Cancelling used to be hidden once any parcel was confirmed. That was the
+  // wrong lever: a traveller whose flight the airline cancelled still is not
+  // flying, and taking the button away does not keep the parcel moving — it
+  // only means nobody tells the sender. The dialog carries that weight now,
+  // by showing who is counting on the trip and refusing to submit without a
+  // reason. Editing is different and stays blocked: it changes the terms
+  // under someone who already acted on them, and the server refuses it.
   const isEditable = allPackages.length === 0;
   const [editingTrip, setEditingTrip] = useState(false);
   // Deleting used to happen on the tap itself, from a 24px target in the
   // corner of a card. Someone on a phone hit it by accident, saw nothing
   // happen while the request was in flight, tapped again — and the list had
   // re-rendered underneath their finger, so the second tap landed on the next
-  // trip. Two trips gone from one mistake, neither recoverable.
-  const [confirmingCancel, setConfirmingCancel] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
+  // trip. Two trips gone from one mistake, neither recoverable. The larger
+  // target below is from that fix; the question it opens now lives in
+  // CancelTripModal, which keeps the guard against the second tap.
+  const [cancellingTrip, setCancellingTrip] = useState(false);
 
   const departCode = trip.departure_airport || trip.departure_city.slice(0, 3).toUpperCase();
   const arriveCode = trip.arrival_airport || trip.arrival_city.slice(0, 3).toUpperCase();
@@ -3949,105 +3795,23 @@ function TripDetailCard({
                 <Pencil className="w-3 h-3" />
               </button>
             )}
-            {isCancelable && (
+            {trip.status !== 'cancelled' && (
               <button
-                onClick={() => setConfirmingCancel(true)}
                 className="absolute top-0.5 right-0.5 p-2.5 rounded-full text-lavender-400/70 hover:text-blush-500 hover:bg-white/60 transition-colors"
+                onClick={() => setCancellingTrip(true)}
                 aria-label={t.me2_cancel_trip}
                 title={t.me2_cancel_trip}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
-            <AnimatePresence>
-              {confirmingCancel && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
-                  onClick={() => !cancelling && setConfirmingCancel(false)}
-                >
-                  <motion.div
-                    initial={{ y: 20, opacity: 0, scale: 0.98 }}
-                    animate={{ y: 0, opacity: 1, scale: 1 }}
-                    exit={{ y: 20, opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-cream-50 rounded-3xl p-7 max-w-md w-full shadow-xl"
-                  >
-                    <div className="flex items-start gap-4 mb-5">
-                      <div className="w-12 h-12 rounded-full bg-blush-50 flex items-center justify-center flex-shrink-0">
-                        <AlertTriangle className="w-6 h-6 text-blush-500" strokeWidth={2} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
-                          {t.me2_cancel_trip_q}
-                        </h3>
-                        {/* Which trip, spelled out. The whole failure was that
-                            a tap could delete something the person had not
-                            looked at — so the answer has to name it. */}
-                        <p className="text-[15px] font-semibold text-ink-600 leading-snug">
-                          {cityDisplayName(trip.departure_city, locale)} → {cityDisplayName(trip.arrival_city, locale)}
-                        </p>
-                        <p className="text-[14px] text-ink-500 leading-relaxed num-display">
-                          {t.me2_cancel_trip_planned.replace(
-                            '{date}',
-                            formatShortDate(trip.departure_date)
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    {packages.length > 0 && (
-                      <div className="rounded-xl bg-butter-50 border border-butter-200/60 px-4 py-3 mb-5 text-[13px] text-ink-500 leading-relaxed">
-                        <strong className="text-ink-600">
-                          {packages.length === 1
-                            ? t.me2_one_booking_in_progress
-                            : t.me2_n_bookings_in_progress.replace('{n}', String(packages.length))}
-                        </strong>
-                      </div>
-                    )}
-
-                    <p className="text-[14px] text-ink-400 mb-5 leading-relaxed">
-                      {t.me2_cancel_trip_final}
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row gap-2.5">
-                      <button
-                        onClick={() => setConfirmingCancel(false)}
-                        disabled={cancelling}
-                        className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
-                      >
-                        {t.common_cancel}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          // Guarded against the double tap that started all
-                          // this: the second press finds cancelling already
-                          // true and does nothing.
-                          if (cancelling) return;
-                          setCancelling(true);
-                          try {
-                            await onCancelTrip(trip.id);
-                            setConfirmingCancel(false);
-                          } finally {
-                            setCancelling(false);
-                          }
-                        }}
-                        disabled={cancelling}
-                        className="flex-1 px-5 py-3 text-[14px] font-semibold text-white bg-blush-500 hover:bg-blush-600 rounded-full transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
-                      >
-                        {cancelling && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {t.me2_cancel_trip_confirm}
-                      </button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
+            {cancellingTrip && (
+              <CancelTripModal
+                trip={trip}
+                onClose={() => setCancellingTrip(false)}
+                onCancelled={() => onTripCancelled(trip.id)}
+              />
+            )}
             {editingTrip && (
               <EditListingModal
                 trip={{

@@ -940,18 +940,44 @@ export type Translations = {
   me2_decline: string;
   me2_pay: string;
   me2_cancel_failed: string;
+  me2_cancel_already_done: string;
   me2_from_price: string;
   me2_cancel_trip: string;
   me2_cancel_trip_q: string;
   me2_checking_bookings: string;
-  me2_one_booking_in_progress: string;
-  me2_n_bookings_in_progress: string;
-  me2_bookings_auto_cancel_before: string;
-  me2_bookings_auto_cancel_bold: string;
-  me2_bookings_auto_cancel_after: string;
   me2_cancel_trip_final: string;
   me2_cancel_trip_planned: string;
   me2_cancel_trip_confirm: string;
+  // Cancelling a trip — the traveller's side. See CancelTripModal.
+  me2_cancel_one_counting: string;
+  me2_cancel_n_counting: string;
+  me2_cancel_consequences: string;
+  me2_cancel_why: string;
+  me2_cancel_why_required: string;
+  me2_cancel_reason_flight: string;
+  me2_cancel_reason_plans: string;
+  me2_cancel_reason_space: string;
+  me2_cancel_reason_safety: string;
+  me2_cancel_reason_other: string;
+  me2_cancel_note_optional_ph: string;
+  me2_cancel_note_required_ph: string;
+  me2_cancel_note_shared: string;
+  // Cancelled booking — the sender's side. See CancelledBookingPanel.
+  me2_cancelled_title: string;
+  me2_cancelled_declined: string;
+  me2_cancelled_reason_flight_cancelled: string;
+  me2_cancelled_reason_plans_changed: string;
+  me2_cancelled_reason_no_space: string;
+  me2_cancelled_reason_safety_concern: string;
+  me2_cancelled_reason_other: string;
+  me2_cancelled_refunded: string;
+  me2_cancelled_never_charged: string;
+  me2_cancelled_refund_pending: string;
+  me2_cancelled_no_payment: string;
+  me2_cancelled_alternatives: string;
+  me2_cancelled_alt_loading: string;
+  me2_cancelled_alt_none: string;
+  me2_cancelled_find_another: string;
   me2_keep_trip: string;
   me2_cancelling: string;
   me2_confirm_cancel: string;
@@ -2156,18 +2182,50 @@ export const translations: Record<Locale, Translations> = {
     me2_decline: 'Refuser',
     me2_pay: 'Payer {amount}',
     me2_cancel_failed: 'Échec de l\'annulation. Réessayez.',
+    me2_cancel_already_done: 'Ce trajet a déjà été annulé.',
     me2_from_price: '{amount}€',
     me2_cancel_trip: 'Annuler ce trajet',
     me2_cancel_trip_q: 'Annuler ce trajet ?',
-    me2_checking_bookings: 'Vérification des réservations…',
-    me2_one_booking_in_progress: '1 réservation est en cours sur ce trajet.',
-    me2_n_bookings_in_progress: '{n} réservations sont en cours sur ce trajet.',
-    me2_bookings_auto_cancel_before: 'Elles seront ',
-    me2_bookings_auto_cancel_bold: 'automatiquement annulées',
-    me2_bookings_auto_cancel_after: ' et les paiements autorisés seront libérés. Aucun débit ne sera effectué.',
+    me2_checking_bookings: 'Vérification des colis…',
     me2_cancel_trip_final: 'Cette action est définitive. Le trajet ne sera plus visible par les expéditeurs.',
     me2_cancel_trip_planned: 'Prévu le {date}',
     me2_cancel_trip_confirm: 'Oui, supprimer ce voyage',
+    me2_cancel_one_counting: '1 personne compte sur ce trajet',
+    me2_cancel_n_counting: '{n} personnes comptent sur ce trajet',
+    me2_cancel_consequences:
+      'En annulant, leur colis n’est plus transporté. Nous les prévenons tout de suite, nous les remboursons intégralement et nous leur proposons d’autres voyageurs sur le même trajet.',
+    me2_cancel_why: 'Pourquoi annulez-vous ?',
+    me2_cancel_why_required: 'Pourquoi annulez-vous ? (obligatoire)',
+    me2_cancel_reason_flight: 'Mon vol a été annulé ou décalé',
+    me2_cancel_reason_plans: 'Je ne fais plus ce voyage',
+    me2_cancel_reason_space: 'Je voyage, mais je ne peux plus rien transporter',
+    me2_cancel_reason_safety: 'Je ne suis pas à l’aise avec ce transport',
+    me2_cancel_reason_other: 'Autre raison',
+    me2_cancel_note_optional_ph: 'Un mot pour l’expéditeur (facultatif)',
+    me2_cancel_note_required_ph: 'Dites-en un mot — obligatoire pour « autre raison »',
+    me2_cancel_note_shared: 'Ce message est transmis tel quel aux expéditeurs concernés.',
+    me2_cancelled_title: '{name} ne peut plus transporter votre colis',
+    me2_cancelled_declined: 'Demande déclinée par {name}',
+    me2_cancelled_reason_flight_cancelled:
+      'Son vol a été annulé ou décalé par la compagnie.',
+    me2_cancelled_reason_plans_changed: 'Cette personne ne fait plus ce voyage.',
+    me2_cancelled_reason_no_space:
+      'Elle voyage toujours, mais ne peut plus rien transporter.',
+    me2_cancelled_reason_safety_concern:
+      'Elle n’était pas à l’aise avec ce transport.',
+    me2_cancelled_reason_other: 'Le voyage n’a finalement pas eu lieu.',
+    me2_cancelled_refunded:
+      '{amount} vous sont remboursés sur la carte utilisée — comptez 5 à 10 jours selon votre banque.',
+    me2_cancelled_never_charged:
+      'Vous n’avez pas été débité. L’empreinte sur votre carte a été libérée.',
+    me2_cancelled_refund_pending:
+      'Votre remboursement de {amount} est en cours de traitement manuel. Nous vous confirmons dès que c’est fait.',
+    me2_cancelled_no_payment: 'Aucun paiement n’avait été effectué pour ce colis.',
+    me2_cancelled_alternatives: 'D’autres voyageurs sur ce trajet',
+    me2_cancelled_alt_loading: 'Recherche d’autres voyageurs…',
+    me2_cancelled_alt_none:
+      'Personne d’autre n’est inscrit sur ce trajet pour l’instant. De nouveaux voyages sont publiés chaque jour.',
+    me2_cancelled_find_another: 'Trouver un autre voyageur',
     me2_keep_trip: 'Garder le trajet',
     me2_cancelling: 'Annulation…',
     me2_confirm_cancel: 'Confirmer l\'annulation',
@@ -3371,18 +3429,49 @@ export const translations: Record<Locale, Translations> = {
     me2_decline: 'Decline',
     me2_pay: 'Pay {amount}',
     me2_cancel_failed: 'Couldn\'t cancel. Please try again.',
+    me2_cancel_already_done: 'This trip has already been cancelled.',
     me2_from_price: '{amount}€',
     me2_cancel_trip: 'Cancel this trip',
     me2_cancel_trip_q: 'Cancel this trip?',
-    me2_checking_bookings: 'Checking bookings…',
-    me2_one_booking_in_progress: '1 booking is active on this trip.',
-    me2_n_bookings_in_progress: '{n} bookings are active on this trip.',
-    me2_bookings_auto_cancel_before: 'They\'ll be ',
-    me2_bookings_auto_cancel_bold: 'automatically cancelled',
-    me2_bookings_auto_cancel_after: ' and any authorized payments will be released. No charge will be made.',
+    me2_checking_bookings: 'Checking parcels…',
     me2_cancel_trip_final: 'This action is permanent. The trip will no longer be visible to senders.',
     me2_cancel_trip_planned: 'Planned for {date}',
     me2_cancel_trip_confirm: 'Yes, delete this trip',
+    me2_cancel_one_counting: '1 person is counting on this trip',
+    me2_cancel_n_counting: '{n} people are counting on this trip',
+    me2_cancel_consequences:
+      'Cancelling means their parcel is no longer being carried. We tell them straight away, refund them in full, and show them other travellers on the same route.',
+    me2_cancel_why: 'Why are you cancelling?',
+    me2_cancel_why_required: 'Why are you cancelling? (required)',
+    me2_cancel_reason_flight: 'My flight was cancelled or moved',
+    me2_cancel_reason_plans: 'I am no longer making this trip',
+    me2_cancel_reason_space: 'I am travelling, but can no longer carry anything',
+    me2_cancel_reason_safety: 'I am not comfortable carrying this',
+    me2_cancel_reason_other: 'Another reason',
+    me2_cancel_note_optional_ph: 'A word for the sender (optional)',
+    me2_cancel_note_required_ph: 'Say a little more — required for “another reason”',
+    me2_cancel_note_shared: 'This message is passed on to the senders as you write it.',
+    me2_cancelled_title: '{name} can no longer carry your parcel',
+    me2_cancelled_declined: 'Request declined by {name}',
+    me2_cancelled_reason_flight_cancelled:
+      'Their flight was cancelled or moved by the airline.',
+    me2_cancelled_reason_plans_changed: 'They are no longer making the trip.',
+    me2_cancelled_reason_no_space:
+      'They are still travelling, but can no longer carry anything.',
+    me2_cancelled_reason_safety_concern: 'They were not comfortable carrying it.',
+    me2_cancelled_reason_other: 'The trip did not happen in the end.',
+    me2_cancelled_refunded:
+      '{amount} is on its way back to the card you paid with — usually 5 to 10 days depending on your bank.',
+    me2_cancelled_never_charged:
+      'You were never charged. The hold on your card has been released.',
+    me2_cancelled_refund_pending:
+      'Your {amount} refund is being processed by hand. We will confirm as soon as it is done.',
+    me2_cancelled_no_payment: 'No payment had been made for this parcel.',
+    me2_cancelled_alternatives: 'Other travellers on this route',
+    me2_cancelled_alt_loading: 'Looking for other travellers…',
+    me2_cancelled_alt_none:
+      'Nobody else is listed on this route yet. New trips are posted every day.',
+    me2_cancelled_find_another: 'Find another traveller',
     me2_keep_trip: 'Keep the trip',
     me2_cancelling: 'Cancelling…',
     me2_confirm_cancel: 'Confirm cancellation',

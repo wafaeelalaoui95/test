@@ -154,6 +154,15 @@ export default function EnvoyerPage() {
   // rationale as /voyager: the redirect fully reloads the page). Done in an
   // effect — not useState initialisers — to avoid an SSR hydration mismatch.
   useEffect(() => {
+    // A route handed to us in the URL beats anything saved. It only gets here
+    // from a link we wrote ourselves — the "find another traveller" button and
+    // email a sender gets when their traveller cancels — and that is a fresh,
+    // explicit intent, whereas the draft is whatever they last half-filled.
+    const params =
+      typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const linkedFrom = params?.get('from')?.trim();
+    const linkedTo = params?.get('to')?.trim();
+
     const d = loadEnvoyerDraft();
     if (d) {
       setMode(d.mode ?? 'choose');
@@ -174,6 +183,24 @@ export default function EnvoyerPage() {
       setBudget(d.budget ?? 30);
       setTerms(d.terms ?? false);
     }
+
+    if (linkedFrom && linkedTo) {
+      // Back to the search, not into the middle of a half-finished wizard.
+      setMode('choose');
+      setStep(0);
+      setFromCity(linkedFrom);
+      setToCity(linkedTo);
+      setFromCountry(params?.get('fromCountry')?.trim() ?? '');
+      setToCountry(params?.get('toCountry')?.trim() ?? '');
+      // Their old date is why they are here — it belonged to a trip that is
+      // not happening. Left blank so the picker asks for a new one rather than
+      // silently searching against a date that is now meaningless.
+      setDate('');
+      const url = new URL(window.location.href);
+      ['from', 'to', 'fromCountry', 'toCountry'].forEach((k) => url.searchParams.delete(k));
+      window.history.replaceState({}, '', url.toString());
+    }
+
     setDraftRestored(true);
   }, []);
 

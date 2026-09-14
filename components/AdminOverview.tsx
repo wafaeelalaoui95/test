@@ -31,6 +31,18 @@ type Overview = {
       travelerName: string | null;
       deliveredAt: string | null;
     }>;
+    // Cancelled bookings whose automatic refund failed — see /api/trip/cancel,
+    // which always cancels and always writes to the sender, even when Stripe
+    // refuses. Owed to the sender, and the one bucket here nobody else chases.
+    refundOwedEuros: number;
+    refundOwedCount: number;
+    refundOwed: Array<{
+      id: string;
+      route: string;
+      euros: number;
+      senderName: string | null;
+      cancelledAt: string | null;
+    }>;
   };
   reviews: Array<{
     id: string;
@@ -147,6 +159,52 @@ export function AdminOverview() {
               configuration de ses paiements. Rien à faire de ton côté : dès
               qu&apos;il ajoute son IBAN, le webhook rattrape tous ses versements
               en attente. Relance-le si ça dure.
+            </p>
+          </div>
+        )}
+
+        {/* Refunds a cancellation could not make. Unlike the block above,
+            nothing retries these on its own — Stripe already refused once. */}
+        {owed.refundOwedCount > 0 && (
+          <div className="mt-4 bg-blush-50 rounded-2xl border border-blush-200 overflow-hidden">
+            <div className="px-5 pt-4 pb-2">
+              <div className="flex items-center gap-2 text-[12px] font-semibold text-blush-600 tracking-[0.08em] uppercase mb-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-blush-500" />
+                À rembourser — voyage annulé
+              </div>
+              <div className="text-2xl font-extrabold text-ink-600 num-display">
+                {formatEuros(owed.refundOwedEuros)}
+              </div>
+              <p className="text-[12px] text-ink-500 mt-1">
+                {owed.refundOwedCount} expéditeur(s) ont été débités pour un
+                colis que personne ne transporte.
+              </p>
+            </div>
+            {owed.refundOwed.map((b) => (
+              <div
+                key={b.id}
+                className="flex items-center gap-3 px-5 py-3 border-t border-blush-200/60 text-[13px]"
+              >
+                <span className="font-semibold text-ink-600">
+                  {b.senderName ?? 'Expéditeur inconnu'}
+                </span>
+                <span className="text-ink-400 truncate">{b.route}</span>
+                {b.cancelledAt && (
+                  <span className="text-ink-300 text-[12px]">
+                    annulé le {formatShortDate(b.cancelledAt)}
+                  </span>
+                )}
+                <span className="ms-auto font-bold text-ink-600 num-display">
+                  {formatEuros(b.euros)}
+                </span>
+              </div>
+            ))}
+            <p className="px-5 py-3 text-[12px] text-ink-500 leading-relaxed bg-blush-100/50">
+              Le remboursement automatique a échoué au moment de
+              l&apos;annulation. Rien ne réessaie tout seul : rembourse chaque
+              ligne ci-dessous avec l&apos;outil de remboursement, puis préviens
+              l&apos;expéditeur — on lui a écrit qu&apos;un humain s&apos;en
+              occupait.
             </p>
           </div>
         )}

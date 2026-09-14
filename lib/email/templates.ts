@@ -514,3 +514,165 @@ export function codeHandoverReminderEmail(input: {
     text: `${senderName},\n\nYour parcel travels ${route} tomorrow with ${travelerName}.\n\nIF SOMEONE ELSE IS COLLECTING THE PARCEL, MAKE SURE THEY HAVE THE DELIVERY CODE. They read it to ${travelerName} once the parcel is in their hands. Without it the delivery cannot be completed.\n\nDelivery code: ${input.code}\n\nOnly share it once the parcel has actually been handed over — it releases ${travelerName}'s payment. If you are collecting it yourself, there is nothing to do.\n\nView my parcels: ${url}\n\n— The Jibly team`,
   };
 }
+
+// =============================================================================
+// 7. Sender's traveller cancelled the trip
+// =============================================================================
+// The one email in this file that carries bad news, and the reason the whole
+// cancellation flow was rebuilt: a traveller could withdraw a trip and the
+// sender would find out only by noticing their parcel had moved into a bucket
+// labelled "declined" — a word that describes a traveller saying no, not a
+// traveller who said yes and then stopped flying.
+//
+// Three things have to land, in this order, because it is the order the sender
+// cares about: nobody is carrying your parcel, here is your money, here is who
+// else is going that way.
+//
+// The alternatives are deliberately NOT filtered to the sender's original
+// date. A parcel that needed to be in Casablanca on the 3rd is usually still
+// wanted on the 10th, and the version of this email that showed nothing
+// because no trip matched the old date would be the one that reads as a shrug.
+export function tripCancelledSenderEmail(input: {
+  senderFirstName: string | null;
+  travelerFirstName: string | null;
+  itemLabel: string;
+  pickupCity: string;
+  destinationCity: string;
+  departureDate: string;
+  /** Why the traveller says they cancelled, already turned into a sentence. */
+  reasonLine: string;
+  /** The traveller's own words, if they added any. */
+  note?: string | null;
+  /** What happened to the money. null when there was never a payment. */
+  refund: { kind: 'released' | 'refunded' | 'pending'; amountCents: number } | null;
+  alternatives: Array<{
+    travelerFirstName: string | null;
+    departureCity: string;
+    arrivalCity: string;
+    departureDate: string;
+    compensationMin: number;
+  }>;
+  /** Prefilled search for the same route, so "find another" is one click. */
+  searchUrl: string;
+}) {
+  const name = input.senderFirstName || 'Hello';
+  const travelerName = input.travelerFirstName || 'Your traveller';
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+
+  // Money first among the reassurances, because it is the question a sender
+  // asks before they have finished reading the first line.
+  const moneyBlock = !input.refund
+    ? ''
+    : input.refund.kind === 'released'
+    ? `<p style="margin:0 0 8px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+         <strong style="color:${BRAND.ink};">You were never charged.</strong>
+         The hold on your card has been released — if your bank still shows it, it drops off within a few days.
+       </p>`
+    : input.refund.kind === 'refunded'
+    ? `<p style="margin:0 0 8px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+         <strong style="color:${BRAND.ink};">${formatEuros(input.refund.amountCents / 100)} is on its way back to you.</strong>
+         It returns to the card you paid with, usually within 5 to 10 days depending on your bank.
+       </p>`
+    : `<p style="margin:0 0 8px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+         <strong style="color:${BRAND.ink};">Your ${formatEuros(input.refund.amountCents / 100)} is being refunded.</strong>
+         Something went wrong sending it back automatically, so a human is finishing it by hand. You will get a confirmation once it is done.
+       </p>`;
+
+  const alternativesBlock = input.alternatives.length
+    ? `
+    <p style="margin:28px 0 12px;font-size:15px;font-weight:600;color:${BRAND.ink};">
+      ${input.alternatives.length === 1 ? 'Another traveller on your route' : 'Other travellers on your route'}
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:20px;">
+      ${input.alternatives
+        .map(
+          (alt) => `
+      <tr>
+        <td style="padding:0 0 8px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;">
+            <tr>
+              <td style="padding:14px 18px;">
+                <p style="margin:0 0 4px;font-size:15px;font-weight:600;color:${BRAND.ink};">
+                  ${escapeHtml(alt.departureCity)} → ${escapeHtml(alt.arrivalCity)}
+                </p>
+                <p style="margin:0;font-size:13px;color:${BRAND.inkSoft};">
+                  ${escapeHtml(alt.travelerFirstName || 'A traveller')} · ${escapeHtml(alt.departureDate)} · from ${formatEuros(alt.compensationMin)}
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`
+        )
+        .join('')}
+    </table>`
+    : `
+    <p style="margin:28px 0 20px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      Nobody else is listed on ${escapeHtml(route)} right now. Travellers post new trips every day, and you can also publish your parcel as a request so the next one going that way finds you.
+    </p>`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Trip cancelled</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+      ${escapeHtml(travelerName)} can no longer carry ${escapeHtml(input.itemLabel)}
+    </h1>
+    <p style="margin:0 0 20px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${escapeHtml(name)}, the trip ${escapeHtml(route)} on ${escapeHtml(input.departureDate)} has been cancelled, so your parcel is not being carried. ${escapeHtml(input.reasonLine)}
+    </p>
+    ${
+      input.note
+        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FAF7F2;border-radius:12px;margin-bottom:20px;">
+      <tr><td style="padding:16px 20px;">
+        <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">What they said</p>
+        <p style="margin:0;font-size:15px;color:${BRAND.ink};line-height:1.6;">&ldquo;${escapeHtml(input.note)}&rdquo;</p>
+      </td></tr>
+    </table>`
+        : ''
+    }
+    ${moneyBlock}
+    ${alternativesBlock}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${input.searchUrl}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+            Find another traveller
+          </a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
+      You do not need to do anything about the cancelled booking — it is already closed on your side. Nothing was charged for it beyond what is described above.
+    </p>
+  `;
+
+  const altText = input.alternatives.length
+    ? '\n\nOther travellers on your route:\n' +
+      input.alternatives
+        .map(
+          (a) =>
+            `- ${a.departureCity} -> ${a.arrivalCity}, ${a.departureDate}, ${
+              a.travelerFirstName || 'a traveller'
+            }, from ${formatEuros(a.compensationMin)}`
+        )
+        .join('\n')
+    : `\n\nNobody else is listed on ${route} right now — travellers post new trips every day.`;
+
+  const moneyText = !input.refund
+    ? ''
+    : input.refund.kind === 'released'
+    ? '\n\nYou were never charged. The hold on your card has been released.'
+    : input.refund.kind === 'refunded'
+    ? `\n\n${formatEuros(input.refund.amountCents / 100)} is on its way back to the card you paid with, usually within 5 to 10 days.`
+    : `\n\nYour ${formatEuros(input.refund.amountCents / 100)} is being refunded by hand; you will get a confirmation once it is done.`;
+
+  return {
+    subject: `${travelerName} cancelled · your parcel ${route} is not being carried`,
+    html: wrapHtml(
+      content,
+      `The trip carrying ${input.itemLabel} was cancelled — here is what happens next`
+    ),
+    text: `${name},\n\nThe trip ${route} on ${input.departureDate} has been cancelled, so your parcel is not being carried. ${input.reasonLine}${
+      input.note ? `\n\nWhat they said: "${input.note}"` : ''
+    }${moneyText}${altText}\n\nFind another traveller: ${input.searchUrl}\n\n— The Jibly team`,
+  };
+}

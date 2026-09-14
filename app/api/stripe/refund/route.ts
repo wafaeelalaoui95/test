@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getStripe } from '@/lib/stripe/server';
+import {
+  refundBooking,
+  RELEASE_COLUMNS,
+  type ReleasableBooking,
+} from '@/lib/stripe/release';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 import { isAdminUserId } from '@/lib/admin';
 
@@ -17,7 +21,9 @@ import { isAdminUserId } from '@/lib/admin';
  *
  * If the traveler was already paid we reverse their transfer proportionally in
  * the same operation, otherwise a refund would come entirely out of the Jibly
- * balance while the traveler keeps a fee for an undelivered parcel.
+ * balance while the traveler keeps a fee for an undelivered parcel. That
+ * sequence lives in lib/stripe/release.ts, shared with /api/trip/cancel — two
+ * copies of it is how one of them forgets the reversal.
  *
  * WHO MAY CALL THIS. The sender, or an operator (see lib/admin.ts). Not the
  * traveler: refunding themselves makes no sense, and self-service refunds by
@@ -74,14 +80,13 @@ export async function POST(req: NextRequest) {
 
   const query = (actingAsAdmin ? getAdminClient() : supabase)
     .from('booking_intents')
-    .select(
-      'id, sender_id, payment_intent_id, payment_status, payment_amount, transfer_id, transfer_amount, refunded_amount'
-    );
+    .select(`sender_id, ${RELEASE_COLUMNS}`);
 
-  const { data: intent } = await (body.bookingIntentId
+  const { data: found } = await (body.bookingIntentId
     ? query.eq('id', body.bookingIntentId)
     : query.eq('payment_intent_id', body.paymentIntentId!)
   ).maybeSingle();
+  const intent = found as (ReleasableBooking & { sender_id: string }) | null;
 
   if (!intent) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -99,91 +104,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Booking has no payment' }, { status: 400 });
   }
 
-  const alreadyRefunded = intent.refunded_amount ?? 0;
-  const remaining = intent.payment_amount - alreadyRefunded;
-  if (remaining <= 0) {
+  const result = await refundBooking(intent, {
+    amountCents: body.amountCents,
+    reason: body.reason,
+  });
+
+  if (result.kind === 'nothing_owed') {
+    // The only way to get here with a 'captured' status checked above is a
+    // booking already refunded in full.
     return NextResponse.json({ ok: true, alreadyRefunded: true });
   }
-
-  const amount = body.amountCents ?? remaining;
-  if (amount > remaining) {
+  if (result.kind === 'failed') {
+    const status = result.code === 'amount_too_large' ? 400 : 500;
     return NextResponse.json(
-      { error: `Cannot refund more than the remaining ${remaining} cents` },
-      { status: 400 }
+      { error: status === 400 ? result.message : 'refund_failed', code: result.code },
+      { status }
     );
   }
-
-  const stripe = getStripe();
-  try {
-    // Reverse the traveler's cut FIRST. If this fails we want to know before
-    // the sender is made whole, rather than after — a refund we cannot claw
-    // back from the traveler is a loss we absorb.
-    let reversalId: string | null = null;
-    if (intent.transfer_id && intent.transfer_amount) {
-      // Proportional: a 50% refund reverses 50% of the traveler's share, so a
-      // partial refund doesn't take the whole payout back.
-      const reverseAmount = Math.floor(
-        (intent.transfer_amount * amount) / intent.payment_amount
-      );
-      if (reverseAmount > 0) {
-        const reversal = await stripe.transfers.createReversal(
-          intent.transfer_id,
-          { amount: reverseAmount, metadata: { bookingIntentId: intent.id } },
-          { idempotencyKey: `reversal_${intent.id}_${alreadyRefunded}_${amount}` }
-        );
-        reversalId = reversal.id;
-      }
-    }
-
-    const refund = await stripe.refunds.create(
-      {
-        payment_intent: intent.payment_intent_id,
-        amount,
-        metadata: {
-          bookingIntentId: intent.id,
-          reason: body.reason ?? '',
-        },
-      },
-      // Keyed on the amount refunded SO FAR, so a genuine second partial refund
-      // gets its own key while an accidental double-submit does not.
-      { idempotencyKey: `refund_${intent.id}_${alreadyRefunded}_${amount}` }
-    );
-
-    const total = alreadyRefunded + amount;
-    const { error } = await getAdminClient()
-      .from('booking_intents')
-      .update({
-        refunded_amount: total,
-        refunded_at: new Date().toISOString(),
-        // Only call it 'refunded' once nothing is left owed.
-        payment_status:
-          total >= intent.payment_amount ? 'refunded' : 'captured',
-      })
-      .eq('id', intent.id);
-
-    if (error) {
-      console.error('[refund] DB update failed after Stripe refund:', error);
-    }
-
-    return NextResponse.json({
-      ok: true,
-      refundId: refund.id,
-      reversalId,
-      refundedCents: amount,
-      totalRefundedCents: total,
-    });
-  } catch (e: any) {
-    // Log the real error, return a short code. Stripe's messages are written
-    // for developers and can name internal ids — same reasoning as
-    // /api/connect/onboard.
-    console.error('[refund]', e?.type, e?.code, e?.message);
-    const rawCode = e?.code ?? e?.raw?.code ?? 'refund_failed';
-    const code = /^[a-z0-9_]{1,64}$/i.test(String(rawCode))
-      ? String(rawCode)
-      : 'refund_failed';
-    return NextResponse.json(
-      { error: 'refund_failed', code },
-      { status: 500 }
-    );
+  if (result.kind !== 'refunded') {
+    return NextResponse.json({ error: 'refund_failed', code: 'unexpected' }, { status: 500 });
   }
+
+  return NextResponse.json({
+    ok: true,
+    refundId: result.refundId,
+    reversalId: result.reversalId,
+    refundedCents: result.refundedCents,
+    totalRefundedCents: result.totalRefundedCents,
+  });
 }

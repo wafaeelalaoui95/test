@@ -1396,10 +1396,27 @@ export async function getWalletBalance(supabase: SB, travelerId: string): Promis
   );
 }
 
-export async function countActiveBookingsForTrip(
+/** One parcel riding on a trip, with enough about its sender to name them. */
+export type TripParcel = BookingIntentRow & {
+  sender_profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url'> | null;
+};
+
+/**
+ * The parcels a trip is currently carrying.
+ *
+ * A count was enough when cancelling only had to warn ("3 bookings are
+ * active"). It is not enough now: a traveller about to strand three people
+ * should see who they are and what they entrusted, because a number is
+ * something you click past and a name is not.
+ *
+ * Parcels already delivered are excluded. They are not at risk from a trip
+ * being cancelled — they already arrived — and listing them would make the
+ * warning overstate the damage.
+ */
+export async function listActiveBookingsForTrip(
   supabase: SB,
   tripId: string
-): Promise<{ count: number; intents: BookingIntentRow[] }> {
+): Promise<{ count: number; parcels: TripParcel[] }> {
   const { data, error } = await withTimeout(
     Promise.resolve(
       supabase
@@ -1407,53 +1424,138 @@ export async function countActiveBookingsForTrip(
         .select('*')
         .eq('traveler_trip_id', tripId)
         .neq('status', 'cancelled')
+        .is('received_confirmed_at', null)
+        .order('created_at', { ascending: true })
     ),
     8000,
-    'Count active bookings'
+    'Active bookings for trip'
   );
   if (error) throw error;
+
   const intents = (data ?? []) as BookingIntentRow[];
-  return { count: intents.length, intents };
-}
+  if (!intents.length) return { count: 0, parcels: [] };
 
-export async function cancelTrip(supabase: SB, tripId: string): Promise<void> {
-  const { intents } = await countActiveBookingsForTrip(supabase, tripId);
-
-  const { error: tripErr } = await withTimeout(
+  const senderIds = Array.from(new Set(intents.map((i) => i.sender_id)));
+  const { data: profiles } = await withTimeout(
     Promise.resolve(
-      supabase
-        .from('traveler_trips')
-        .update({ status: 'cancelled' })
-        .eq('id', tripId)
+      supabase.from('profiles').select('id, full_name, avatar_url').in('id', senderIds)
     ),
     8000,
-    'Cancel trip'
+    'Trip parcel senders'
   );
-  if (tripErr) throw tripErr;
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
 
-  await Promise.allSettled(
-    intents.map(async (intent) => {
-      await supabase
-        .from('booking_intents')
-        .update({ status: 'cancelled' })
-        .eq('id', intent.id);
+  return {
+    count: intents.length,
+    parcels: intents.map((i) => ({
+      ...i,
+      sender_profile: (profileById.get(i.sender_id) as any) ?? null,
+    })),
+  };
+}
 
-      if (intent.payment_intent_id && intent.payment_status === 'authorized') {
-        try {
-          await fetch('/api/stripe/cancel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              paymentIntentId: intent.payment_intent_id,
-              bookingIntentId: intent.id,
-            }),
-          });
-        } catch {
-          // Best-effort
-        }
-      }
-    })
+/**
+ * Who else is going this way — for a sender whose traveller just cancelled.
+ *
+ * Deliberately unlike listMatchingTripsForRequest, which caps at the sender's
+ * desired delivery date. That cap is right while they are choosing and wrong
+ * here: the date they picked has just been taken away from them, and someone
+ * flying a week later is a real answer. Showing nothing because nobody matches
+ * a now-meaningless date is how "here are your options" becomes a shrug.
+ *
+ * Mirrors the search /api/trip/cancel runs for the email, so the two say the
+ * same thing.
+ */
+export async function listAlternativeTrips(
+  supabase: SB,
+  pickupCity: string,
+  destinationCity: string,
+  excludeUserId?: string | null
+): Promise<MatchingTrip[]> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  let q = supabase
+    .from('traveler_trips')
+    .select(
+      'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
+    )
+    .eq('departure_city', pickupCity)
+    .eq('arrival_city', destinationCity)
+    .eq('status', 'open')
+    .gte('departure_date', today)
+    .order('departure_date', { ascending: true })
+    .limit(3);
+  if (excludeUserId) q = q.neq('user_id', excludeUserId);
+
+  const { data: trips, error } = await withTimeout(
+    Promise.resolve(q),
+    6000,
+    'Alternative trips'
   );
+  if (error) throw error;
+  if (!trips?.length) return [];
+
+  const { data: profiles } = await withTimeout(
+    Promise.resolve(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, rating, trips_completed, verification_level')
+        .in('id', Array.from(new Set(trips.map((t: any) => t.user_id))))
+    ),
+    6000,
+    'Alternative trip profiles'
+  );
+  const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+  return trips.map((t: any) => ({
+    ...t,
+    user: (profileById.get(t.user_id) as any) ?? null,
+  }));
+}
+
+export type CancelTripResult = {
+  cancelledBookings: number;
+  deliveredUntouched: number;
+  refunded: number;
+  released: number;
+  refundPending: number;
+  sendersNotified: number;
+};
+
+export type TripCancellationReason =
+  | 'flight_cancelled'
+  | 'plans_changed'
+  | 'no_space'
+  | 'safety_concern'
+  | 'other';
+
+/**
+ * Cancel a trip, through the server.
+ *
+ * This used to run entirely here: flip the trip, flip every booking, then fire
+ * a best-effort /api/stripe/cancel that only ever applied to authorisations
+ * the traveller had not yet accepted. Everything they HAD accepted was already
+ * captured, so the sender's card stayed charged, and nobody was told anything.
+ *
+ * None of that belongs in the browser. Releasing money, writing the reason,
+ * emailing the other party and finding them a replacement trip all need the
+ * service-role key and all have to survive the tab being closed halfway
+ * through — so the whole thing is one server call, and this is the caller.
+ */
+export async function cancelTrip(
+  _supabase: SB,
+  tripId: string,
+  reason: TripCancellationReason,
+  note?: string
+): Promise<CancelTripResult> {
+  const res = await fetch('/api/trip/cancel', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tripId, reason, note: note?.trim() || undefined }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error ?? 'cancel_failed');
+  return data as CancelTripResult;
 }
 
 // =============================================================================
@@ -1946,9 +2048,15 @@ export const browser = {
     listMyBookings(getBrowserClient(), senderId),
   listMyTravelerProposals: (travelerId: string) =>
     listMyTravelerProposals(getBrowserClient(), travelerId),
-  countActiveBookingsForTrip: (tripId: string) =>
-    countActiveBookingsForTrip(getBrowserClient(), tripId),
-  cancelTrip: (tripId: string) => cancelTrip(getBrowserClient(), tripId),
+  listActiveBookingsForTrip: (tripId: string) =>
+    listActiveBookingsForTrip(getBrowserClient(), tripId),
+  listAlternativeTrips: (
+    pickupCity: string,
+    destinationCity: string,
+    excludeUserId?: string | null
+  ) => listAlternativeTrips(getBrowserClient(), pickupCity, destinationCity, excludeUserId),
+  cancelTrip: (tripId: string, reason: TripCancellationReason, note?: string) =>
+    cancelTrip(getBrowserClient(), tripId, reason, note),
 
   getWalletBalance: (travelerId: string) =>
     getWalletBalance(getBrowserClient(), travelerId),
