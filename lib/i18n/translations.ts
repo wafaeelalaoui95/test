@@ -78,6 +78,8 @@ export type Translations = {
   bt_step_paid_short: string;
   bt_payment_safety: string;
   disc_clear: string;
+  disc_filter: string;
+  disc_filter_before: string;
   disc_filter_budget: string;
   disc_filter_trust: string;
   disc_filter_verified_only: string;
@@ -1338,6 +1340,8 @@ export const translations: Record<Locale, Translations> = {
     bt_step_paid_short: 'Payé',
     bt_payment_safety: '🔒 Votre paiement est conservé en sécurité jusqu’à la confirmation de la livraison.',
     disc_clear: 'Effacer',
+    disc_filter: 'Filtrer',
+    disc_filter_before: 'avant le {date}',
     disc_filter_budget: 'Budget maximum',
     disc_filter_trust: 'Confiance',
     disc_filter_verified_only: 'Identité vérifiée uniquement',
@@ -2587,6 +2591,8 @@ export const translations: Record<Locale, Translations> = {
     bt_step_paid_short: 'Paid',
     bt_payment_safety: '🔒 Your payment is held securely until delivery is confirmed.',
     disc_clear: 'Clear',
+    disc_filter: 'Filter',
+    disc_filter_before: 'before {date}',
     disc_filter_budget: 'Max budget',
     disc_filter_trust: 'Trust',
     disc_filter_verified_only: 'Verified identity only',

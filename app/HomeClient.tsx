@@ -12,13 +12,14 @@ import {
   Loader2,
   X,
   Wallet,
+  Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { openPickerOnClick } from '@/components/ui/Form';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
-import { getCitiesForCountry, cityDisplayName } from '@/lib/countries';
+import { getCitiesForCountry, cityDisplayName, countryDisplayName } from '@/lib/countries';
 import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
@@ -55,7 +56,7 @@ export function HomeClient({
   initialTrips: TripWithProfile[];
   initialRequests: RequestWithProfile[];
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user } = useAuth();
 
   // Mode toggle: are we showing travelers or shipping requests?
@@ -241,6 +242,38 @@ export function HomeClient({
   }
 
   const hasActiveSearch = !!(activeFrom || activeFromCountry || activeTo || activeToCountry || activeDate || maxBudget !== '');
+
+  // Open only when asked. Someone arriving from the hero search lands here
+  // with filters already applied and the panel shut — which is fine, because
+  // the summary beside the button says what they searched for. Opening it for
+  // them would put back exactly the height this was meant to save.
+  const [showFilters, setShowFilters] = useState(false);
+
+  // How many of the three controls are narrowing the list. Departure counts
+  // once whether it came from a city or a country — from the reader's side
+  // "Paris" and "France" are one answer to one question, and a badge that read
+  // 2 for a single choice would just look wrong.
+  const activeFilterCount =
+    (activeFrom || activeFromCountry ? 1 : 0) +
+    (activeTo || activeToCountry ? 1 : 0) +
+    (activeDate ? 1 : 0) +
+    (maxBudget !== '' ? 1 : 0);
+
+  // What the list is currently filtered by, in one line. This is the part that
+  // must survive the panel being closed: hide the controls AND the state
+  // together and an empty result set reads as "there is nobody", not as "you
+  // asked for Tunis".
+  const filterSummary = (() => {
+    const place = (city: string, country: string) =>
+      city ? cityDisplayName(city, locale) : country ? countryDisplayName(country, locale) : '';
+    const from = place(activeFrom, activeFromCountry);
+    const to = place(activeTo, activeToCountry);
+    const parts: string[] = [];
+    if (from || to) parts.push(`${from || '…'} → ${to || '…'}`);
+    if (activeDate) parts.push(t.disc_filter_before.replace('{date}', formatShortDate(activeDate)));
+    if (maxBudget !== '') parts.push(`≤ ${formatEuros(Number(maxBudget))}`);
+    return parts.join(' · ');
+  })();
 
   return (
     <div>
@@ -447,8 +480,55 @@ export function HomeClient({
               someone scanning this list actually has are "does anyone go where
               I need" and "when" — a price box invites filtering away offers
               that were negotiable anyway. The hero keeps its budget field for
-              people who search before scrolling. */}
-          <div className="mb-8 bg-white rounded-2xl border border-ink-50 p-2">
+              people who search before scrolling.
+
+              Folded behind a button, because it was three full-width fields
+              sitting permanently between the heading and the first traveller,
+              on a page whose job is to show travellers. Most people arriving
+              here are browsing, not filtering.
+
+              What must NOT fold away is the fact that a filter is on — hiding
+              the controls and the state together is how someone concludes the
+              site is empty. So the summary stays visible next to the button
+              whenever something is applied, and it is what the list is
+              actually filtered by. */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowFilters((v) => !v)}
+                aria-expanded={showFilters}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full border text-[14px] font-semibold transition-colors ${
+                  showFilters || hasActiveSearch
+                    ? 'bg-ink-500 border-ink-500 text-cream-50'
+                    : 'bg-white border-ink-100 text-ink-600 hover:border-ink-200'
+                }`}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                {t.disc_filter}
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-cream-50 text-ink-600 text-[11px] font-bold num-display">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {hasActiveSearch && (
+                <>
+                  <span className="text-[13px] text-ink-500 truncate">{filterSummary}</span>
+                  <button
+                    onClick={resetAll}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-400 hover:text-ink-600 whitespace-nowrap"
+                  >
+                    <X className="w-3 h-3" />
+                    {t.disc_clear}
+                  </button>
+                </>
+              )}
+            </div>
+
+            {showFilters && (
+            <div className="mt-3 bg-white rounded-2xl border border-ink-50 p-2">
             <div className="flex flex-col sm:flex-row sm:items-stretch">
               <div className="relative px-4 py-3 rounded-xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
                 <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
@@ -494,18 +574,13 @@ export function HomeClient({
                 </div>
               </div>
 
-              {hasActiveSearch && (
-                <div className="flex items-center justify-center sm:justify-end px-3 pb-2 sm:pb-0">
-                  <button
-                    onClick={resetAll}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-400 hover:text-ink-600 whitespace-nowrap"
-                  >
-                    <X className="w-3 h-3" />
-                    {t.disc_clear}
-                  </button>
-                </div>
-              )}
+              {/* No "clear" in here any more — it lives next to the Filter
+                  button, where it is reachable without opening the panel
+                  first. Two of them was one too many the moment the panel
+                  became optional. */}
+              </div>
             </div>
+            )}
           </div>
 
           {loading ? (
