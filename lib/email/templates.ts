@@ -203,8 +203,14 @@ export function travelerGotBookingEmail(input: {
 // 3. Sender receives confirmation that the traveller accepted
 // =============================================================================
 // Triggered when status flips to 'confirmed'. Carries the sender's DELIVERY
-// code — read out at the destination, entered by the traveller, and that is
-// what releases payment.
+// code — read out at the destination and entered by the traveller.
+//
+// WORDING: this says the code RECORDS the delivery. It used to say it releases
+// the traveller's payment, which is true and was the wrong thing to tell this
+// particular reader: it hands the sender a lever, and the sentence "without it
+// their payment is never released" reads as an instruction to anyone looking
+// for one. The traveller's own email still names the payment, because there it
+// describes their money rather than their counterparty's.
 //
 // SECURITY: never include the pickup code here. The rule across both handovers
 // is that WHOEVER RECEIVES holds the code and WHOEVER GIVES enters it, so the
@@ -236,7 +242,7 @@ export function bookingConfirmedSenderEmail(input: {
       ${travelerName} is carrying your parcel
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      ${senderName}, it is confirmed. Here is your <strong>delivery code</strong>. Give it to the traveller <strong>at the destination</strong>, once the parcel has been handed over — to you, or to whoever collects it for you. This code is what releases their payment, so only share it after the parcel is in hand.
+      ${senderName}, it is confirmed. Here is your <strong>delivery code</strong>. Give it to the traveller <strong>at the destination</strong>, once the parcel has been handed over — to you, or to whoever collects it for you. It is how the delivery is recorded, so only share it after the parcel is in hand.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.alertBg};border-left:4px solid ${BRAND.alert};border-radius:8px;margin:0 0 24px;">
       <tr>
@@ -245,7 +251,7 @@ export function bookingConfirmedSenderEmail(input: {
             If someone else is collecting the parcel, you must pass this code on to them.
           </p>
           <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
-            Without it the traveller cannot complete the delivery, and their payment is never released.
+            They read it to ${travelerName} at the moment the parcel changes hands — that is what records the delivery as done.
           </p>
         </td>
       </tr>
@@ -285,7 +291,7 @@ export function bookingConfirmedSenderEmail(input: {
   return {
     subject: `Confirmed · ${route} · delivery code ${input.code}`,
     html: wrapHtml(content, `${travelerName} accepted — here is your delivery code`),
-    text: `${senderName},\n\n${travelerName} is carrying your parcel ${route}.\n\nYour delivery code: ${input.code}\nGive it to the traveller at the destination, once the parcel has been handed over — to you, or to whoever collects it for you. This code releases their payment, so only share it after the parcel is in hand.\n\nIf someone else is collecting the parcel, pass this code on to them. Without it, the traveller cannot confirm the delivery.\n\nWhen you hand the parcel over at the start of the trip, ${travelerName} shows you a different code — theirs. You enter that one in the app.\n\nView my parcels: ${url}\n\n— The Jibly team`,
+    text: `${senderName},\n\n${travelerName} is carrying your parcel ${route}.\n\nYour delivery code: ${input.code}\nGive it to the traveller at the destination, once the parcel has been handed over — to you, or to whoever collects it for you. It is how the delivery is recorded, so only share it after the parcel is in hand.\n\nIf someone else is collecting the parcel, pass this code on to them. They read it to ${travelerName} at the moment the parcel changes hands.\n\nWhen you hand the parcel over at the start of the trip, ${travelerName} shows you a different code — theirs. You enter that one in the app.\n\nView my parcels: ${url}\n\n— The Jibly team`,
   };
 }
 
@@ -486,7 +492,7 @@ export function codeHandoverReminderEmail(input: {
             If someone else is collecting the parcel, make sure they have the delivery code.
           </p>
           <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
-            They read it to ${travelerName} once the parcel is in their hands. Without it the delivery cannot be completed.
+            They read it to ${travelerName} once the parcel is in their hands — that is what records the delivery as done.
           </p>
         </td>
       </tr>
@@ -502,7 +508,7 @@ export function codeHandoverReminderEmail(input: {
     </table>
 
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      Only share it once the parcel has actually been handed over — it is what releases ${travelerName}'s payment. If you are collecting it yourself, there is nothing to do.
+      Only share it once the parcel is actually in hand: the code confirms receipt, so giving it early records a delivery that has not happened. If you are collecting it yourself, there is nothing to do.
     </p>
 
     <a href="${url}" style="display:inline-block;background:${BRAND.ink};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:15px;font-weight:600;">View my parcels</a>
@@ -511,7 +517,7 @@ export function codeHandoverReminderEmail(input: {
   return {
     subject: `Tomorrow · ${route} · is your delivery code passed on?`,
     html: wrapHtml(content, `${travelerName} leaves tomorrow — check the delivery code`),
-    text: `${senderName},\n\nYour parcel travels ${route} tomorrow with ${travelerName}.\n\nIF SOMEONE ELSE IS COLLECTING THE PARCEL, MAKE SURE THEY HAVE THE DELIVERY CODE. They read it to ${travelerName} once the parcel is in their hands. Without it the delivery cannot be completed.\n\nDelivery code: ${input.code}\n\nOnly share it once the parcel has actually been handed over — it releases ${travelerName}'s payment. If you are collecting it yourself, there is nothing to do.\n\nView my parcels: ${url}\n\n— The Jibly team`,
+    text: `${senderName},\n\nYour parcel travels ${route} tomorrow with ${travelerName}.\n\nIF SOMEONE ELSE IS COLLECTING THE PARCEL, MAKE SURE THEY HAVE THE DELIVERY CODE. They read it to ${travelerName} once the parcel is in their hands — that is what records the delivery as done.\n\nDelivery code: ${input.code}\n\nOnly share it once the parcel is actually in hand: the code confirms receipt, so giving it early records a delivery that has not happened. If you are collecting it yourself, there is nothing to do.\n\nView my parcels: ${url}\n\n— The Jibly team`,
   };
 }
 
