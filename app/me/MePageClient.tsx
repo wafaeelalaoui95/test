@@ -892,8 +892,12 @@ export default function MyPage(
           <ProposalPaymentModal
             booking={proposalToPay}
             onClose={() => setProposalToPay(null)}
-            onSuccess={(paymentIntentId) => {
-              // Mark the booking as confirmed + paid in local state.
+            onSuccess={(paymentIntentId, captured) => {
+              // Mark the booking as confirmed + paid in local state. The
+              // server takes the money in the same call, so this is normally
+              // 'captured'; it falls back to 'authorized' only when Stripe
+              // refused the capture, rather than claiming a charge that did
+              // not happen.
               setMyBookings((prev) =>
                 prev.map((b) =>
                   b.id === proposalToPay.id
@@ -901,7 +905,7 @@ export default function MyPage(
                         ...b,
                         status: 'confirmed',
                         payment_intent_id: paymentIntentId,
-                        payment_status: 'authorized',
+                        payment_status: captured ? 'captured' : 'authorized',
                       }
                     : b
                 )
@@ -2502,8 +2506,10 @@ function EmptyState({ message }: { message: string }) {
 // When a traveler responded to my (the sender's) public request, I see their
 // proposal in /me → My sends with a button "Accept and pay X€". Clicking it
 // opens this modal: it shows the proposal recap and renders the Stripe
-// payment form. On authorisation we update the booking_intent in DB so it
-// becomes confirmed + payment_status=authorized.
+// payment form. /api/booking/record-authorization then confirms the booking
+// AND takes the money, so this ends at payment_status=captured rather than
+// 'authorized' — an uncaptured authorisation expires after about a week, and
+// most trips are further out than that.
 // ===========================================================================
 function ProposalPaymentModal({
   booking,
@@ -2512,7 +2518,9 @@ function ProposalPaymentModal({
 }: {
   booking: MyBooking;
   onClose: () => void;
-  onSuccess: (paymentIntentId: string) => void;
+  /** `captured` is false when Stripe refused the capture — rare, and the
+      booking still stands as authorised, so the parent must not assume. */
+  onSuccess: (paymentIntentId: string, captured: boolean) => void;
 }) {
   const { t, locale } = useI18n();
   const [busy, setBusy] = useState(false);
@@ -2520,6 +2528,7 @@ function ProposalPaymentModal({
   // Once the card is authorised we show a confirmation screen instead of
   // closing instantly, then sync the parent on the CTA / close.
   const [paidIntentId, setPaidIntentId] = useState<string | null>(null);
+  const [paidCaptured, setPaidCaptured] = useState(false);
 
   const traveler = booking.traveler_profile;
   const travelerName = shortName(traveler?.full_name) || t.me2_role_traveler;
@@ -2537,10 +2546,11 @@ function ProposalPaymentModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingIntentId: booking.id, paymentIntentId }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? t.me2_update_failed);
       }
+      setPaidCaptured(data.captured === true);
       setPaidIntentId(paymentIntentId);
     } catch (e: any) {
       setErr(e?.message ?? t.me2_update_failed);
@@ -2558,7 +2568,7 @@ function ProposalPaymentModal({
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
       onClick={() => {
         if (busy) return;
-        paidIntentId ? onSuccess(paidIntentId) : onClose();
+        paidIntentId ? onSuccess(paidIntentId, paidCaptured) : onClose();
       }}
     >
       <motion.div
@@ -2580,7 +2590,7 @@ function ProposalPaymentModal({
             <p className="text-[15px] text-ink-400 mb-7 leading-relaxed">
               {t.pay_success_text}
             </p>
-            <Button fullWidth onClick={() => onSuccess(paidIntentId)}>
+            <Button fullWidth onClick={() => onSuccess(paidIntentId, paidCaptured)}>
               {t.pay_success_cta}
             </Button>
           </div>
@@ -4258,7 +4268,18 @@ function IntentCardInline({
   } else if (intent.status === 'confirmed' && intent.pickup_confirmed_at && !intent.delivery_proof_url) {
     statusText = `✓ ${t.me2_pill_picked_up_to_deliver}`;
     statusClass = 'text-mint-700 bg-mint-50';
-  } else if (intent.status === 'confirmed' && !intent.pickup_confirmed_at && intent.payment_status === 'authorized') {
+  } else if (
+    intent.status === 'confirmed' &&
+    !intent.pickup_confirmed_at &&
+    // "The money is secured, go and collect it." Held covers both shapes:
+    // authorised on the card, or captured into the Jibly balance. This used to
+    // test 'authorized' alone, which was the same thing back when a traveller's
+    // own proposal stayed uncaptured until delivery — now that it is captured
+    // when the sender pays, that test would quietly stop matching and the
+    // traveller would lose the one reassurance they get before handing over
+    // their suitcase space.
+    (intent.payment_status === 'authorized' || intent.payment_status === 'captured')
+  ) {
     statusText = `💳 ${t.me2_pill_payment_held_to_pickup}`;
     statusClass = 'text-lavender-700 bg-lavender-50';
   } else if (intent.status === 'confirmed') {
