@@ -50,9 +50,12 @@ const CONTENT: Record<'fr' | 'en', {
         body: 'Ces objets ne peuvent jamais être transportés via Jibly :',
         list: [
           'Espèces et argent liquide',
+          'Médicaments sur ordonnance',
           'Drogues et stupéfiants',
           'Armes',
           'Produits dangereux (inflammables, explosifs…)',
+          'Alcool et tabac',
+          'Bijoux, montres et objets de luxe de plus de 500 €',
           'Animaux',
           'Objets volés',
           'Produits contrefaits',
@@ -63,14 +66,18 @@ const CONTENT: Record<'fr' | 'en', {
       {
         icon: AlertTriangle,
         tone: 'plain',
-        title: 'Objets sensibles : prudence',
-        body: 'Ces objets peuvent être réglementés selon le pays, la compagnie aérienne ou la douane. Le voyageur doit pouvoir vérifier le contenu et refuser sans pénalité :',
+        // Medication, alcohol, tobacco and luxury goods used to sit here, under
+        // "caution" — while the Allowed Items page forbids them outright. A
+        // traveller reading this one came away believing they could carry a
+        // prescription box if they were careful. Only genuinely allowed
+        // categories are left; the rest moved up to the forbidden list, whose
+        // wording is taken from the Allowed Items page rather than invented.
+        title: 'Objets autorisés mais à vérifier',
+        body: 'Ces objets sont autorisés, mais peuvent être réglementés selon le pays, la compagnie aérienne ou la douane. Le voyageur doit pouvoir voir le contenu et refuser sans pénalité :',
         list: [
-          'Médicaments et ordonnances',
+          'Médicaments sans ordonnance, dans leur emballage d’origine (max 2 unités)',
           'Passeports et cartes d’identité',
-          'Bijoux et montres de luxe',
           'Appareils électroniques avec batterie',
-          'Alcool et tabac',
           'Compléments alimentaires',
           'Cosmétiques en grande quantité',
         ],
@@ -118,9 +125,12 @@ const CONTENT: Record<'fr' | 'en', {
         body: 'These can never be carried through Jibly:',
         list: [
           'Cash',
+          'Prescription medication',
           'Drugs and narcotics',
           'Weapons',
           'Dangerous goods (flammable, explosive…)',
+          'Alcohol and tobacco',
+          'Jewellery, watches and luxury items worth more than €500',
           'Animals',
           'Stolen goods',
           'Counterfeit products',
@@ -131,14 +141,15 @@ const CONTENT: Record<'fr' | 'en', {
       {
         icon: AlertTriangle,
         tone: 'plain',
-        title: 'Sensitive items: caution',
-        body: 'These may be regulated depending on the country, airline or customs. The traveler must be able to check the contents and refuse without penalty:',
+        // See the French block above: medication, alcohol, tobacco and luxury
+        // goods were listed here as "carry with caution" while the Allowed
+        // Items page forbids them outright.
+        title: 'Allowed, but check them',
+        body: 'These are allowed, but may be regulated depending on the country, airline or customs. The traveller must be able to see the contents and refuse without penalty:',
         list: [
-          'Medication and prescriptions',
+          'Over-the-counter medication, in its original packaging (max 2 units)',
           'Passports and ID cards',
-          'Jewelry and luxury watches',
           'Electronics with a battery',
-          'Alcohol and tobacco',
           'Food supplements',
           'Cosmetics in large quantities',
         ],
