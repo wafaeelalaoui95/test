@@ -61,6 +61,7 @@ import { getBrowserClient } from '@/lib/supabase/client';
 import { EditListingModal } from '@/components/EditListingModal';
 import { CancelTripModal } from '@/components/CancelTripModal';
 import { CancelledBookingPanel } from '@/components/CancelledBookingPanel';
+import { attestationStatement } from '@/lib/attestations';
 import { cn } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
 import type {
@@ -989,11 +990,15 @@ export default function MyPage(
         />
       )}
 
-      {/* PICKUP code — SHOW side (sender reads the code aloud) */}
+      {/* PICKUP code — SHOW side (the TRAVELLER reads the code aloud).
+          bookingIntentId is what turns on the inspection gate: the traveller
+          declares they looked at the parcel before the code appears, and that
+          declaration is what /api/booking/confirm-pickup then requires. */}
       <PickupShowCodeModal
         open={!!pickupShowingFor}
         code={pickupShowingFor?.code ?? ''}
         travelerName={pickupShowingFor?.travelerName ?? ''}
+        bookingIntentId={pickupShowingFor?.bookingId}
         onClose={() => setPickupShowingFor(null)}
       />
 
@@ -2529,6 +2534,11 @@ function ProposalPaymentModal({
   // closing instantly, then sync the parent on the CTA / close.
   const [paidIntentId, setPaidIntentId] = useState<string | null>(null);
   const [paidCaptured, setPaidCaptured] = useState(false);
+  const [certified, setCertified] = useState(false);
+
+  // What the declaration names. Same fallback order the server uses when it
+  // writes the row, so the sentence filed away is the sentence shown.
+  const itemLabel = booking.item_title?.trim() || booking.item_category || null;
 
   const traveler = booking.traveler_profile;
   const travelerName = shortName(traveler?.full_name) || t.me2_role_traveler;
@@ -2551,6 +2561,23 @@ function ProposalPaymentModal({
         throw new Error(data.error ?? t.me2_update_failed);
       }
       setPaidCaptured(data.captured === true);
+
+      // File the certification. The booking exists and the sender has just
+      // ticked the box, so this is the moment it means something. Best-effort
+      // rather than blocking: the money has already moved by now, and refusing
+      // to show the confirmation screen over a failed audit write would leave
+      // them believing the payment did not go through. The migration's
+      // coverage query finds anything that slipped.
+      await fetch('/api/attestation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingIntentId: booking.id,
+          kind: 'sender_certification',
+          locale,
+        }),
+      }).catch((e) => console.warn('[proposal] attestation failed:', e));
+
       setPaidIntentId(paymentIntentId);
     } catch (e: any) {
       setErr(e?.message ?? t.me2_update_failed);
@@ -2623,12 +2650,38 @@ function ProposalPaymentModal({
               </div>
             )}
 
-            <StripePaymentForm
-              amountEuros={booking.proposed_price}
-              description={`Jibly · ${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`}
-              onAuthorized={handleAuthorized}
-              onCancel={onClose}
-            />
+            {/* The sender's declaration about the contents.
+                This flow had none. A parcel booked the other way round — the
+                sender picking a traveller — has always required it before
+                paying, but a parcel that arrived through a traveller's offer
+                reached an aircraft with nobody having certified what was in
+                it. "For every booking" cannot survive one route in three
+                skipping the question. */}
+            <label className="flex items-start gap-3 rounded-xl bg-cream-100 px-4 py-3.5 mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={certified}
+                onChange={(e) => setCertified(e.target.checked)}
+                disabled={busy}
+                className="mt-0.5 w-4 h-4 flex-shrink-0 accent-ink-500"
+              />
+              <span className="text-[12.5px] text-ink-500 leading-relaxed">
+                {attestationStatement('sender_certification', locale, itemLabel)}
+              </span>
+            </label>
+
+            {certified ? (
+              <StripePaymentForm
+                amountEuros={booking.proposed_price}
+                description={`Jibly · ${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`}
+                onAuthorized={handleAuthorized}
+                onCancel={onClose}
+              />
+            ) : (
+              <p className="text-[13px] text-ink-400 text-center py-4 leading-relaxed">
+                {t.me2_certify_to_pay}
+              </p>
+            )}
           </>
         )}
       </motion.div>

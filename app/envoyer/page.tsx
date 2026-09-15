@@ -31,6 +31,7 @@ import {
   SENDER_LOW_EUR,
 } from '@/lib/constants';
 import { isVagueDescription, detectRiskKeywords } from '@/lib/safety';
+import { attestationStatement } from '@/lib/attestations';
 import { formatShortDate, displayName, nameInitial, formatEuros, priceBreakdown } from '@/lib/utils';
 import { countryDisplayName, cityDisplayName } from '@/lib/countries';
 import { useI18n } from '@/lib/i18n/context';
@@ -1098,7 +1099,7 @@ function InstantBookModal({
         status: 'matched',
       });
 
-      await browser.createBookingIntent({
+      const booking = await browser.createBookingIntent({
         sender_id: senderId,
         traveler_trip_id: trip.id,
         traveler_user_id: trip.user_id,
@@ -1116,6 +1117,29 @@ function InstantBookModal({
         initiated_by: 'sender',
         user_certified_at: new Date().toISOString(),
       });
+
+      // File what the sender just certified. user_certified_at above is a
+      // timestamp the browser chose and nothing more — it cannot say what the
+      // sentence said, which prohibited-items list was in force, or what the
+      // parcel was described as. /api/attestation resolves all of that on the
+      // server and writes an insert-only row. See lib/attestations.ts.
+      //
+      // Deliberately after the booking rather than before: there is no booking
+      // to attach a declaration to until this succeeds. A failure here leaves
+      // a booking without its record, which the migration's coverage query
+      // finds — better than a declaration pointing at nothing.
+      if ((booking as any)?.id) {
+        await fetch('/api/attestation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingIntentId: (booking as any).id,
+            kind: 'sender_certification',
+            locale,
+          }),
+        }).catch((e) => console.warn('[envoyer] attestation failed:', e));
+      }
+
       setPhase('success');
     } catch (e: any) {
       setErr(e?.message ?? t.env_creation_failed);
@@ -1284,9 +1308,19 @@ function InstantBookModal({
                   className="mt-0.5 w-4 h-4 rounded border-ink-300 text-ink-500 focus:ring-2 focus:ring-lavender-500/30 cursor-pointer"
                 />
                 <span className="text-[12px] text-ink-600 leading-relaxed">
-                  {t.send_certify_label}
+                  {/* The declaration comes from lib/attestations.ts, not from
+                      the translations file, because THE SAME function renders
+                      what is filed away. Product copy gets reworded for tone
+                      and shortened to fit; a record of a sentence the person
+                      never actually read is not evidence of anything. The
+                      longer send_certify_label stays below as guidance. */}
+                  {attestationStatement('sender_certification', locale, itemTitle.trim() || category)}
                 </span>
               </label>
+
+              <p className="text-[11px] text-ink-400 leading-relaxed">
+                {t.send_certify_label}
+              </p>
 
               <div className="flex justify-end">
                 <Button disabled={!canPay} onClick={() => setPhase('pay')}>

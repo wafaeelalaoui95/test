@@ -1111,6 +1111,12 @@ export type Translations = {
   pickup_show_copy: string;
   pickup_show_warning_delivery: string;
   pickup_show_warning_pickup: string;
+  inspect_title: string;
+  inspect_statement: string;
+  inspect_confirm: string;
+  inspect_refuse_hint: string;
+  inspect_record_failed: string;
+  me2_certify_to_pay: string;
   pickup_enter_title_delivery: string;
   pickup_enter_title_pickup: string;
   pickup_enter_err_too_many: string;
@@ -2363,6 +2369,12 @@ export const translations: Record<Locale, Translations> = {
     pickup_show_copy: 'Copier le code',
     pickup_show_warning_delivery: '🔒 Ne communiquez ce code qu\'à la personne qui réceptionne le colis, au moment de la livraison.',
     pickup_show_warning_pickup: '🔒 Ne partagez ce code qu\'au moment de la remise en main propre.',
+    inspect_title: 'Avant de montrer le code',
+    inspect_statement: 'J’ai inspecté l’objet et confirme qu’il correspond à la description.',
+    inspect_confirm: 'J’ai inspecté l’objet',
+    inspect_refuse_hint: 'Un doute ? Ne montrez pas le code et refusez le colis — vous n’êtes jamais obligé de transporter quoi que ce soit.',
+    inspect_record_failed: 'Impossible d’enregistrer votre confirmation. Réessayez — le code s’affichera ensuite.',
+    me2_certify_to_pay: 'Cochez la déclaration ci-dessus pour continuer vers le paiement.',
     pickup_enter_title_delivery: 'Confirmer la livraison',
     pickup_enter_title_pickup: 'Confirmer la remise',
     pickup_enter_err_too_many: 'Trop de tentatives. Réessayez dans quelques minutes.',
@@ -3613,6 +3625,12 @@ export const translations: Record<Locale, Translations> = {
     pickup_show_copy: 'Copy code',
     pickup_show_warning_delivery: '🔒 Only share this code with the person receiving the parcel, at delivery time.',
     pickup_show_warning_pickup: '🔒 Only share this code at the moment of the in-person handover.',
+    inspect_title: 'Before you show the code',
+    inspect_statement: 'I inspected the item and confirm it corresponds to the description.',
+    inspect_confirm: 'I inspected the item',
+    inspect_refuse_hint: 'Not sure? Do not show the code and refuse the parcel — you are never obliged to carry anything.',
+    inspect_record_failed: 'Could not record your confirmation. Try again — the code appears straight after.',
+    me2_certify_to_pay: 'Tick the declaration above to continue to payment.',
     pickup_enter_title_delivery: 'Confirm delivery',
     pickup_enter_title_pickup: 'Confirm handover',
     pickup_enter_err_too_many: 'Too many attempts. Please try again in a few minutes.',

@@ -60,6 +60,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'invalid_code' }, { status: 400 });
   }
 
+  // The traveller must have declared they inspected the parcel before the
+  // handover can be recorded. Enforced here rather than trusted to the UI
+  // because this is the only server-side moment that stands between "somebody
+  // ticked a box" and "a parcel went onto an aircraft" — and the declaration
+  // is worthless as evidence if it can be skipped by anyone who does not go
+  // through the modal. The traveller's screen writes it when they reveal the
+  // code, so in practice this is already satisfied by the time the sender
+  // types it in.
+  const { count: inspected } = await getAdminClient()
+    .from('booking_attestations')
+    .select('id', { count: 'exact', head: true })
+    .eq('booking_intent_id', body.bookingId)
+    .eq('kind', 'traveler_inspection');
+
+  if (!inspected) {
+    return NextResponse.json(
+      { ok: false, reason: 'inspection_missing' },
+      { status: 409 }
+    );
+  }
+
   const { error: updErr } = await getAdminClient()
     .from('booking_intents')
     .update({

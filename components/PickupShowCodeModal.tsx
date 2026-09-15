@@ -1,8 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Copy, Check, Package } from 'lucide-react';
-import { useState } from 'react';
+import { X, Copy, Check, Package, ShieldCheck, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useI18n } from '@/lib/i18n/context';
  
 /**
@@ -33,6 +33,7 @@ export function PickupShowCodeModal({
   code,
   travelerName,
   mode = 'pickup',
+  bookingIntentId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -41,10 +42,68 @@ export function PickupShowCodeModal({
   // the traveler is about to read the code to).
   travelerName: string;
   mode?: 'pickup' | 'delivery';
+  /**
+   * Pickup mode only. Present means the traveller must declare they inspected
+   * the parcel before the code is revealed — see the inspection gate below.
+   */
+  bookingIntentId?: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [copied, setCopied] = useState(false);
   const isDelivery = mode === 'delivery';
+
+  // ─── INSPECTION GATE (pickup only) ──────────────────────────────────────
+  // The traveller is standing in front of the parcel. This is the single
+  // moment where a human being can look inside a bag before it goes to an
+  // airport, and the only moment worth asking the question.
+  //
+  // It gates the CODE, not a later button, for two reasons. The code is what
+  // records the handover, so nothing can be recorded without the declaration
+  // existing first. And the traveller declares on their OWN device — the
+  // alternative, a checkbox on the sender's entry screen, would be the sender
+  // attesting to an inspection they did not perform.
+  //
+  // The declaration is written by /api/attestation, which resolves the wording
+  // and the timestamp itself; this screen only says which booking.
+  const needsInspection = !isDelivery && !!bookingIntentId;
+  const [inspected, setInspected] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordErr, setRecordErr] = useState<string | null>(null);
+  const revealed = !needsInspection || inspected;
+
+  // Re-arm every time the modal opens. A traveller carrying three parcels must
+  // look at each of them, not tick once and coast.
+  useEffect(() => {
+    if (open) {
+      setInspected(false);
+      setRecordErr(null);
+    }
+  }, [open, bookingIntentId]);
+
+  async function confirmInspected() {
+    if (recording) return;
+    setRecording(true);
+    setRecordErr(null);
+    try {
+      const res = await fetch('/api/attestation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingIntentId,
+          kind: 'traveler_inspection',
+          locale,
+        }),
+      });
+      if (!res.ok) throw new Error('record_failed');
+      // Only now. If the record did not land, the code stays hidden: a
+      // handover we cannot evidence is one we would rather not have.
+      setInspected(true);
+    } catch {
+      setRecordErr(t.inspect_record_failed);
+    } finally {
+      setRecording(false);
+    }
+  }
 
   async function copyCode() {
     try {
@@ -110,7 +169,53 @@ export function PickupShowCodeModal({
                   )}
               </p>
 
+              {/* The declaration, before the code. Reading it is the last
+                  thing standing between a bag and an aircraft, so it is not a
+                  line of small print under a button that is already usable —
+                  the code does not exist on screen until it is answered. */}
+              {needsInspection && !inspected && (
+                <div className="bg-white rounded-2xl border border-butter-200 p-5 mb-4">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-9 h-9 rounded-full bg-butter-50 flex items-center justify-center flex-shrink-0">
+                      <ShieldCheck className="w-4 h-4 text-butter-600" strokeWidth={2} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-bold text-ink-600 leading-snug mb-1">
+                        {t.inspect_title}
+                      </p>
+                      <p className="text-[13px] text-ink-500 leading-relaxed">
+                        {t.inspect_statement}
+                      </p>
+                    </div>
+                  </div>
+
+                  {recordErr && (
+                    <p className="text-[12.5px] text-blush-500 mb-3 leading-relaxed">
+                      {recordErr}
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={confirmInspected}
+                    disabled={recording}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-ink-500 hover:bg-ink-600 disabled:opacity-50 text-cream-50 text-[13.5px] font-semibold transition-colors"
+                  >
+                    {recording ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="w-4 h-4" />
+                    )}
+                    {t.inspect_confirm}
+                  </button>
+                  <p className="mt-2.5 text-[12px] text-ink-400 leading-relaxed">
+                    {t.inspect_refuse_hint}
+                  </p>
+                </div>
+              )}
+
               {/* The code itself — big, easy to read aloud */}
+              {revealed && (
               <div className="bg-white rounded-2xl border-2 border-dashed border-lavender-300 p-6 mb-4">
                 <div className="text-[10px] font-bold tracking-[0.2em] text-ink-300 text-center uppercase mb-3">
                   {isDelivery ? t.pickup_show_code_label_delivery : t.pickup_show_code_label_pickup}
@@ -126,28 +231,33 @@ export function PickupShowCodeModal({
                   ))}
                 </div>
               </div>
+              )}
 
-              <button
-                type="button"
-                onClick={copyCode}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-ink-50 hover:bg-ink-100 text-ink-600 text-[13px] font-semibold transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3.5 h-3.5" />
-                    {t.pickup_show_copied}
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    {t.pickup_show_copy}
-                  </>
-                )}
-              </button>
+              {revealed && (
+                <button
+                  type="button"
+                  onClick={copyCode}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-ink-50 hover:bg-ink-100 text-ink-600 text-[13px] font-semibold transition-colors"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      {t.pickup_show_copied}
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      {t.pickup_show_copy}
+                    </>
+                  )}
+                </button>
+              )}
 
-              <p className="text-[11px] text-ink-400 text-center mt-4 leading-relaxed">
-                {isDelivery ? t.pickup_show_warning_delivery : t.pickup_show_warning_pickup}
-              </p>
+              {revealed && (
+                <p className="text-[11px] text-ink-400 text-center mt-4 leading-relaxed">
+                  {isDelivery ? t.pickup_show_warning_delivery : t.pickup_show_warning_pickup}
+                </p>
+              )}
             </div>
       </motion.div>
           </div>
