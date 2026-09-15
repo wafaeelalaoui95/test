@@ -410,7 +410,31 @@ export function HomeClient({
               </div>
             </div>
 
-            {/* Reset + social proof */}
+            {/* The other side of the marketplace.
+                Everything above this line addresses a sender: the headline, the
+                subtitle, the search box. A traveller arriving here read the
+                whole hero before finding out there was anything in it for them,
+                and the only way in was a nav link. One line, immediately under
+                the search they are not going to use, is the smallest change
+                that makes both halves visible — a second hero would compete
+                with the first and serve neither. */}
+            <div className="mt-4">
+              <Link
+                href="/voyager"
+                className="group inline-flex items-center gap-2 text-[14px] text-ink-500 hover:text-ink-600 transition-colors"
+              >
+                <Plane className="w-4 h-4 text-lavender-500 flex-shrink-0" />
+                <span>
+                  {t.hero_traveler_prompt}{' '}
+                  <span className="font-semibold underline underline-offset-2 decoration-lavender-300 group-hover:decoration-lavender-500">
+                    {t.hero_traveler_cta}
+                  </span>
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+
+            {/* Reset */}
             <div className="mt-4 flex items-center gap-4 flex-wrap">
               {hasActiveSearch && (
                 <button

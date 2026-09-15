@@ -719,8 +719,12 @@ export async function markAllNotificationsRead(
 // ============================================================================
 
 export function generateConfirmationCode(): string {
-  // Cryptographically-strong: these 6-digit codes gate pickup/delivery (and
-  // thus payment capture), so they must not be predictable like Math.random.
+  // FOUR digits, not six — the comment said six for a while and the maths
+  // below has always said otherwise (`% 10_000`, padded to 4). The public copy
+  // says four, which is the one that was right.
+  //
+  // Cryptographically-strong: these codes gate pickup and delivery, and
+  // therefore payment, so they must not be predictable like Math.random.
   const arr = new Uint32Array(1);
   crypto.getRandomValues(arr);
   const n = arr[0] % 10_000;

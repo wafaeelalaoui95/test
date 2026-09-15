@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   keywords: ['Jibly', 'envoi documents', 'voyageurs', 'peer-to-peer', 'community travel'],
   openGraph: {
     title: 'Jibly - Someone is already going your way',
-    description: 'Send your stuff with a verified traveler community, worldwide.',
+    description: 'Send your stuff with a community of verified travellers already going your way.',
     type: 'website',
     url: siteUrl,
     siteName: 'Jibly',
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Jibly - Someone is already going your way',
-    description: 'Send your stuff with a verified traveler community, worldwide.',
+    description: 'Send your stuff with a community of verified travellers already going your way.',
   },
 };
 

@@ -542,18 +542,29 @@ export default function EnvoyerPage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-10">
-                <div className="w-14 h-14 rounded-full bg-cream-100 mx-auto flex items-center justify-center mb-5">
-                  <Plane className="w-6 h-6 text-ink-400" />
+              {/* Nobody on this route — the moment a sender is most likely to
+                  close the tab. It used to read as a dead end with a quiet
+                  button underneath: the headline said "no traveller", the way
+                  out was one line of grey text below it.
+                  The offer leads now, and it is the honest one — publishing
+                  costs nothing and commits to nothing, since payment only
+                  happens if they accept an offer later. No new mechanism:
+                  switchToPublic is the wizard that already exists. */}
+              <div className="max-w-md mx-auto my-8 rounded-2xl bg-lavender-50 border border-lavender-200 px-6 py-8 text-center">
+                <div className="w-14 h-14 rounded-full bg-white mx-auto flex items-center justify-center mb-5">
+                  <Plane className="w-6 h-6 text-lavender-500" />
                 </div>
-                <h3 className="text-[18px] font-bold text-ink-600 mb-2 tracking-[-0.01em]">
+                <p className="text-[13px] font-semibold text-ink-400 mb-1.5">
                   {t.env_no_traveler_this_route}
+                </p>
+                <h3 className="text-[21px] font-extrabold text-ink-600 mb-3 tracking-[-0.02em] text-balance">
+                  {t.env_publish_free_title}
                 </h3>
-                <p className="text-[14px] text-ink-400 mb-7 leading-relaxed max-w-md mx-auto">
+                <p className="text-[14px] text-ink-500 mb-6 leading-relaxed">
                   {t.env_no_traveler_publish_hint}
                 </p>
                 <Button onClick={switchToPublic}>
-                  {t.env_continue_request}
+                  {t.env_publish_free_cta}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
