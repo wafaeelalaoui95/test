@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/server';
 import { getAdminContext } from '@/lib/admin';
+import { ATTESTATIONS_REQUIRED_FROM } from '@/lib/attestations';
 
 /**
  * GET /api/admin/attestations?bookingId=<uuid>
@@ -124,6 +125,14 @@ export async function GET(req: NextRequest) {
       senderCertification: kinds.has('sender_certification'),
       travelerInspection: kinds.has('traveler_inspection'),
       handedOver: !!booking.pickup_confirmed_at,
+      // A parcel carried before declarations existed has none, and that is an
+      // answer rather than a gap. Said here so whoever reads this file does
+      // not have to work out why an old booking looks bare — and so nobody is
+      // ever tempted to "fix" it by inventing the missing rows.
+      predatesAttestations:
+        !!booking.pickup_confirmed_at &&
+        booking.pickup_confirmed_at < `${ATTESTATIONS_REQUIRED_FROM}T00:00:00Z`,
+      attestationsRequiredFrom: ATTESTATIONS_REQUIRED_FROM,
     },
   });
 }

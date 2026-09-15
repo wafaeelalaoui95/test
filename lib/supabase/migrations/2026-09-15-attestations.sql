@@ -108,8 +108,18 @@ create policy "attestations_select_own" on public.booking_attestations
 -- order by a.created_at;
 
 -- ---------------------------------------------------------------------------
--- Check 2: coverage. Any parcel that has actually been handed over without
--- both declarations on file is a hole in the story, and should be empty.
+-- Check 2: coverage. Any parcel handed over SINCE declarations began, without
+-- both on file, is a hole in the story. Should be empty, and stay empty.
+--
+-- The cutover date matters. Parcels carried before this table existed have no
+-- declarations and never will: one invented after the fact, for someone who
+-- was never asked, is not weak evidence but a forged record — and it would
+-- discredit every genuine row beside it. They are excluded rather than
+-- back-filled, because a check that is permanently non-empty is a check
+-- nobody reads, and this one is only worth having if one row means something
+-- is actually wrong.
+--
+-- Keep this date in step with ATTESTATIONS_REQUIRED_FROM in lib/attestations.ts.
 -- ---------------------------------------------------------------------------
 select
   b.id                                      as booking,
@@ -125,6 +135,7 @@ select
   )                                         as traveler_inspected
 from public.booking_intents b
 where b.pickup_confirmed_at is not null
+  and b.pickup_confirmed_at >= timestamptz '2026-09-15 00:00:00+00'
   and (
     not exists (
       select 1 from public.booking_attestations a

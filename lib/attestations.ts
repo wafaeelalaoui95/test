@@ -35,6 +35,23 @@ import { PROHIBITED_ITEMS } from '@/lib/safety';
 export const PROHIBITED_POLICY_VERSION = '2026-09-15';
 
 /**
+ * The day declarations started being collected.
+ *
+ * Parcels handed over before this date have none, and never will. They cannot
+ * be back-filled: a declaration invented after the fact for someone who was
+ * never asked is not weak evidence, it is a fabricated record, and it would
+ * discredit every genuine row next to it the moment anyone looked closely.
+ *
+ * So the coverage check excludes them instead. A monitoring query that is
+ * permanently non-empty is a query people stop reading — and this one only
+ * earns its keep if a single row appearing means something is actually wrong.
+ *
+ * The honest answer to "why does this parcel have no declarations?" is
+ * therefore a date, which is a far better answer than a forged row.
+ */
+export const ATTESTATIONS_REQUIRED_FROM = '2026-09-15';
+
+/**
  * A stable fingerprint of what that version actually forbade.
  *
  * Stored alongside the version so the two cannot drift: if someone edits the
