@@ -542,14 +542,18 @@ export default function EnvoyerPage() {
                 </div>
               </div>
             ) : (
-              {/* Nobody on this route — the moment a sender is most likely to
-                  close the tab. It used to read as a dead end with a quiet
-                  button underneath: the headline said "no traveller", the way
-                  out was one line of grey text below it.
-                  The offer leads now, and it is the honest one — publishing
-                  costs nothing and commits to nothing, since payment only
-                  happens if they accept an offer later. No new mechanism:
-                  switchToPublic is the wizard that already exists. */}
+              /* Nobody on this route — the moment a sender is most likely to
+                 close the tab. It used to read as a dead end with a quiet
+                 button underneath: the headline said "no traveller", the way
+                 out was one line of grey text below it.
+                 The offer leads now, and it is the honest one — publishing
+                 costs nothing and commits to nothing, since payment only
+                 happens if they accept an offer later. No new mechanism:
+                 switchToPublic is the wizard that already exists.
+                 A plain JS comment, not a braced JSX one: this sits in a
+                 ternary branch, which takes a single expression, so braces
+                 here parse as an object literal and the error surfaces
+                 hundreds of lines earlier. */
               <div className="max-w-md mx-auto my-8 rounded-2xl bg-lavender-50 border border-lavender-200 px-6 py-8 text-center">
                 <div className="w-14 h-14 rounded-full bg-white mx-auto flex items-center justify-center mb-5">
                   <Plane className="w-6 h-6 text-lavender-500" />
