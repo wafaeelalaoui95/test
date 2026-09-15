@@ -892,6 +892,19 @@ export type Translations = {
   me2_withdraw_modal_text: string;
   me2_your_balance: string;
   me2_withdraw_question: string;
+  me2_withdraw_q: string;
+  me2_withdraw_why: string;
+  me2_withdraw_reason_other_way: string;
+  me2_withdraw_reason_not_needed: string;
+  me2_withdraw_reason_plans: string;
+  me2_withdraw_reason_nobody: string;
+  me2_withdraw_reason_other: string;
+  me2_withdraw_note_optional_ph: string;
+  me2_withdraw_note_required_ph: string;
+  me2_withdraw_keep: string;
+  me2_withdraw_confirm: string;
+  me2_withdraw_failed: string;
+  me2_withdraw_blocked: string;
   me2_got_it: string;
   me2_my_reservations: string;
   me2_my_reservations_subtitle: string;
@@ -2324,6 +2337,19 @@ export const translations: Record<Locale, Translations> = {
     me2_sub_waiting_for: 'En attente de {name}',
     me2_sub_cancelled: 'Annulé',
     me2_before_date: 'Avant le {date}',
+    me2_withdraw_q: 'Supprimer ce colis ?',
+    me2_withdraw_why: 'Pourquoi le retirez-vous ?',
+    me2_withdraw_reason_other_way: 'Je l’ai envoyé autrement',
+    me2_withdraw_reason_not_needed: 'Je n’en ai plus besoin',
+    me2_withdraw_reason_plans: 'Mes plans ont changé (dates, destination)',
+    me2_withdraw_reason_nobody: 'Personne ne s’est proposé',
+    me2_withdraw_reason_other: 'Autre raison',
+    me2_withdraw_note_optional_ph: 'Un mot de plus (facultatif)',
+    me2_withdraw_note_required_ph: 'Dites-en un mot — obligatoire pour « autre raison »',
+    me2_withdraw_keep: 'Garder le colis',
+    me2_withdraw_confirm: 'Oui, supprimer',
+    me2_withdraw_failed: 'La suppression a échoué. Réessayez.',
+    me2_withdraw_blocked: 'Un voyageur s’est proposé pour ce colis. Déclinez d’abord sa proposition — il attend votre réponse, et il sera prévenu. Vous pourrez supprimer le colis ensuite.',
     me2_description: 'Description',
     me2_searching_traveler_title: 'Vous êtes en recherche de voyageur.',
     me2_searching_traveler_text: 'Nous vous notifierons dès qu\'une personne accepte votre colis.',
@@ -3580,6 +3606,19 @@ export const translations: Record<Locale, Translations> = {
     me2_sub_waiting_for: 'Waiting for {name}',
     me2_sub_cancelled: 'Cancelled',
     me2_before_date: 'By {date}',
+    me2_withdraw_q: 'Delete this parcel?',
+    me2_withdraw_why: 'Why are you taking it down?',
+    me2_withdraw_reason_other_way: 'I sent it another way',
+    me2_withdraw_reason_not_needed: 'I no longer need it sent',
+    me2_withdraw_reason_plans: 'My plans changed (dates, destination)',
+    me2_withdraw_reason_nobody: 'Nobody offered to carry it',
+    me2_withdraw_reason_other: 'Another reason',
+    me2_withdraw_note_optional_ph: 'A word more (optional)',
+    me2_withdraw_note_required_ph: 'Say a little more — required for “another reason”',
+    me2_withdraw_keep: 'Keep the parcel',
+    me2_withdraw_confirm: 'Yes, delete it',
+    me2_withdraw_failed: 'Could not delete it. Please try again.',
+    me2_withdraw_blocked: 'A traveller has offered to carry this parcel. Decline their offer first — they are waiting on you, and they will be told. You can delete the parcel after that.',
     me2_description: 'Description',
     me2_searching_traveler_title: 'You\'re looking for a traveler.',
     me2_searching_traveler_text: 'We\'ll let you know as soon as someone accepts your package.',

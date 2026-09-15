@@ -23,6 +23,7 @@ import {
   travelerGotBookingEmail,
   bookingConfirmedSenderEmail,
   bookingConfirmedTravelerEmail,
+  proposalDeclinedTravelerEmail,
 } from '@/lib/email/templates';
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,8 @@ type NotifyPayload = {
     | 'sender-got-proposal'
     | 'traveler-got-booking'
     | 'booking-confirmed-sender'
-    | 'booking-confirmed-traveler';
+    | 'booking-confirmed-traveler'
+    | 'proposal-declined';
   bookingId: string;
 };
 
@@ -64,7 +66,7 @@ export async function POST(req: Request) {
    const { data: booking, error: bookingErr } = await supabase
       .from('booking_intents')
       .select(
-        'id, sender_id, traveler_user_id, traveler_trip_id, pickup_city, destination_city, proposed_price, item_description, initiated_by, pickup_code, delivery_code'
+        'id, sender_id, traveler_user_id, traveler_trip_id, pickup_city, destination_city, proposed_price, item_title, item_category, item_description, shipping_request_id, initiated_by, pickup_code, delivery_code'
       )
       .eq('id', body.bookingId)
       .maybeSingle();
@@ -178,6 +180,68 @@ export async function POST(req: Request) {
         code: booking.pickup_code,
         bookingId: booking.id,
       });
+    } else if (body.event === 'proposal-declined') {
+      // Until now this said nothing. A traveller offered to carry a parcel,
+      // the sender said no, and the traveller found out — if ever — by noticing
+      // the offer had gone grey in a list they had no reason to reopen.
+      //
+      // It also makes a rule honest elsewhere: a sender can no longer withdraw
+      // a parcel while an offer is live, they have to decline it first. That
+      // only protects the traveller if declining actually reaches them.
+      const itemLabel =
+        booking.item_title?.trim() || booking.item_description?.trim() || 'a parcel';
+
+      // What else is worth their trip. Same corridor, still open, still in
+      // date — and never the one just declined.
+      const today = new Date().toISOString().slice(0, 10);
+      let altQuery = supabase
+        .from('shipping_requests')
+        .select('id, item_title, item_category, pickup_city, destination_city, budget, desired_delivery_date')
+        .eq('pickup_city', booking.pickup_city)
+        .eq('destination_city', booking.destination_city)
+        .eq('status', 'pending')
+        .gte('desired_delivery_date', today)
+        .order('desired_delivery_date', { ascending: true })
+        .limit(3);
+      if (booking.shipping_request_id) {
+        altQuery = altQuery.neq('id', booking.shipping_request_id);
+      }
+      const { data: alts } = await altQuery;
+
+      template = proposalDeclinedTravelerEmail({
+        travelerFirstName: firstName(travelerProfile?.full_name),
+        senderFirstName: firstName(senderProfile?.full_name),
+        itemLabel,
+        pickupCity: booking.pickup_city,
+        destinationCity: booking.destination_city,
+        alternatives: (alts ?? []).map((a: any) => ({
+          itemLabel: a.item_title?.trim() || 'A parcel',
+          pickupCity: a.pickup_city,
+          destinationCity: a.destination_city,
+          budget: a.budget,
+          byDate: new Intl.DateTimeFormat('en-GB', {
+            day: 'numeric',
+            month: 'short',
+          }).format(new Date(a.desired_delivery_date)),
+        })),
+      });
+
+      // In-app too. 'proposal_declined' is a type the notifications dropdown
+      // already knows how to draw — it simply had nothing producing it.
+      // Best-effort: the notifications table is managed outside this repo's
+      // migrations, so it must not be able to take the email down with it.
+      try {
+        await supabase.from('notifications').insert({
+          user_id: recipientId,
+          type: 'proposal_declined',
+          title: `Your offer on ${booking.pickup_city} → ${booking.destination_city} was declined`,
+          body: `${firstName(senderProfile?.full_name) ?? 'The sender'} will not be sending ${itemLabel} with you. Nothing was charged.`,
+          link: '/voyager',
+          related_booking_id: booking.id,
+        });
+      } catch (e: any) {
+        console.error('[notify] proposal_declined notification failed:', e?.message);
+      }
     } else {
       return NextResponse.json({ ok: false, reason: 'unknown_event' });
     }

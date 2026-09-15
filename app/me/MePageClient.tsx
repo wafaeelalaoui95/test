@@ -776,6 +776,19 @@ export default function MyPage(
                   onAcceptProposal={(b) => setProposalToPay(b)}
                   onDeclineProposal={async (id) => {
                     await browser.updateBookingIntentStatus(id, 'cancelled');
+                    // Tell the traveller. This sent nothing at all before —
+                    // they had shaped a trip around carrying it and found out
+                    // by noticing the offer had gone grey. It matters more now
+                    // that declining is the required step before a parcel can
+                    // be withdrawn: the rule only protects them if somebody
+                    // actually says so.
+                    fetch('/api/notify', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ event: 'proposal-declined', bookingId: id }),
+                    }).catch((err) =>
+                      console.warn('[decline] notify traveller failed:', err)
+                    );
                     setMyBookings((prev) =>
                       prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' } : b))
                     );
@@ -3257,6 +3270,33 @@ function RequestListRow({
   );
 }
 
+// Why a sender takes a parcel off the market.
+//
+// Mirrors the trip reasons but shares none of them: "I sent it another way" is
+// meaningless for a flight and "my flight was cancelled" is meaningless for a
+// parcel. One list covering both would make every reader pick from options
+// that mostly do not apply, which is how a reason field becomes everyone
+// clicking the first item. Kept in step with REQUEST_REASONS in
+// /api/listing/withdraw, which is what actually validates them.
+type RequestWithdrawReason =
+  | 'sent_another_way'
+  | 'no_longer_needed'
+  | 'plans_changed'
+  | 'no_traveller_found'
+  | 'other';
+
+const WITHDRAW_REASONS: Array<{
+  value: RequestWithdrawReason;
+  labelKey: keyof Translations;
+}> = [
+  { value: 'sent_another_way', labelKey: 'me2_withdraw_reason_other_way' },
+  { value: 'no_longer_needed', labelKey: 'me2_withdraw_reason_not_needed' },
+  { value: 'plans_changed', labelKey: 'me2_withdraw_reason_plans' },
+  // The one that is about us rather than about them — worth counting.
+  { value: 'no_traveller_found', labelKey: 'me2_withdraw_reason_nobody' },
+  { value: 'other', labelKey: 'me2_withdraw_reason_other' },
+];
+
 // Detail panel for a request without traveler — simple card with route +
 // budget + reassurance message. Minimal because there's not much to do yet.
 function RequestDetailCard({
@@ -3278,20 +3318,48 @@ function RequestDetailCard({
   const [editing, setEditing] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState<RequestWithdrawReason | null>(null);
+  const [withdrawNote, setWithdrawNote] = useState('');
+  const [withdrawErr, setWithdrawErr] = useState<string | null>(null);
   const canManage = !!onEdited && !!onWithdrawn;
 
+  // 'other' is the only reason that cannot stand alone — a code meaning
+  // "something else" with nothing after it says less than no reason would.
+  const canWithdraw =
+    !!withdrawReason && (withdrawReason !== 'other' || withdrawNote.trim().length > 0);
+
   async function withdraw() {
+    if (!withdrawReason || !canWithdraw || withdrawing) return;
     setWithdrawing(true);
+    setWithdrawErr(null);
     try {
       const res = await fetch('/api/listing/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'shipping_request', id: request.id }),
+        body: JSON.stringify({
+          type: 'shipping_request',
+          id: request.id,
+          reason: withdrawReason,
+          note: withdrawNote.trim() || undefined,
+        }),
       });
-      if (res.ok) onWithdrawn?.();
+      if (res.ok) {
+        onWithdrawn?.();
+        setConfirmWithdraw(false);
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      // The block that used to be invisible. A traveller can offer between the
+      // moment this screen loaded and the moment the button is pressed, and the
+      // request then silently refused — leaving the sender to conclude the
+      // button was broken. Now it says who is waiting and what to do about it.
+      setWithdrawErr(
+        data?.error === 'has_bookings' ? t.me2_withdraw_blocked : t.me2_withdraw_failed
+      );
+    } catch {
+      setWithdrawErr(t.me2_withdraw_failed);
     } finally {
       setWithdrawing(false);
-      setConfirmWithdraw(false);
     }
   }
 
@@ -3349,33 +3417,126 @@ function RequestDetailCard({
           >
             {locale === 'en' ? 'Edit' : 'Modifier'}
           </button>
-          {confirmWithdraw ? (
-            <span className="flex items-center gap-3 text-ink-400">
-              {locale === 'en' ? 'Delete this parcel?' : 'Supprimer ce colis ?'}
-              <button
-                onClick={withdraw}
-                disabled={withdrawing}
-                className="text-blush-500 underline underline-offset-2 font-medium"
-              >
-                {locale === 'en' ? 'Yes' : 'Oui'}
-              </button>
-              <button
-                onClick={() => setConfirmWithdraw(false)}
-                className="text-ink-400 underline underline-offset-2"
-              >
-                {locale === 'en' ? 'No' : 'Non'}
-              </button>
-            </span>
-          ) : (
-            <button
-              onClick={() => setConfirmWithdraw(true)}
-              className="text-ink-400 underline underline-offset-2"
-            >
-              {locale === 'en' ? 'Delete' : 'Supprimer'}
-            </button>
-          )}
+          <button
+            onClick={() => {
+              setWithdrawReason(null);
+              setWithdrawNote('');
+              setWithdrawErr(null);
+              setConfirmWithdraw(true);
+            }}
+            className="text-ink-400 underline underline-offset-2"
+          >
+            {locale === 'en' ? 'Delete' : 'Supprimer'}
+          </button>
         </div>
       )}
+
+      {/* A real dialog, and a reason.
+          What stood here was "Delete this parcel? Yes / No" in small underlined
+          text — a destructive action one stray thumb wide, next to Edit. And it
+          asked nothing, while cancelling a trip on the other side of the
+          marketplace now asks why, refunds and writes to everyone affected. */}
+      <AnimatePresence>
+        {confirmWithdraw && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-ink-600/40 backdrop-blur-sm"
+            onClick={() => !withdrawing && setConfirmWithdraw(false)}
+          >
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 20, opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-cream-50 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-xl max-h-[88vh] overflow-y-auto"
+            >
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-12 h-12 rounded-full bg-blush-50 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-blush-500" strokeWidth={2} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-extrabold text-ink-600 tracking-[-0.02em] mb-1.5">
+                    {t.me2_withdraw_q}
+                  </h3>
+                  <p className="text-[15px] font-semibold text-ink-600 leading-snug truncate">
+                    {request.item_title || (cat ? t[cat.labelKey] : request.item_category)}
+                  </p>
+                  <p className="text-[14px] text-ink-500 leading-relaxed">
+                    {cityDisplayName(request.pickup_city, locale)} →{' '}
+                    {cityDisplayName(request.destination_city, locale)}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-[13px] font-bold text-ink-600 mb-2">{t.me2_withdraw_why}</p>
+              <div className="space-y-1.5 mb-4">
+                {WITHDRAW_REASONS.map((r) => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setWithdrawReason(r.value)}
+                    disabled={withdrawing}
+                    className={`w-full text-left px-4 py-2.5 rounded-xl text-[13.5px] border transition-colors ${
+                      withdrawReason === r.value
+                        ? 'bg-ink-500 text-cream-50 border-ink-500 font-semibold'
+                        : 'bg-white text-ink-600 border-ink-50 hover:border-ink-200'
+                    }`}
+                  >
+                    {t[r.labelKey] as string}
+                  </button>
+                ))}
+              </div>
+
+              {withdrawReason && (
+                <textarea
+                  value={withdrawNote}
+                  onChange={(e) => setWithdrawNote(e.target.value.slice(0, 500))}
+                  disabled={withdrawing}
+                  rows={2}
+                  placeholder={
+                    withdrawReason === 'other'
+                      ? t.me2_withdraw_note_required_ph
+                      : t.me2_withdraw_note_optional_ph
+                  }
+                  className="w-full px-4 py-3 mb-4 rounded-xl border border-ink-50 bg-white text-[13.5px] text-ink-600 placeholder:text-ink-300 focus:outline-none focus:border-ink-200 resize-none"
+                />
+              )}
+
+              {withdrawErr && (
+                <div className="rounded-xl bg-blush-50 px-4 py-3 text-[13px] text-blush-500 mb-4 leading-relaxed">
+                  {withdrawErr}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <button
+                  onClick={() => setConfirmWithdraw(false)}
+                  disabled={withdrawing}
+                  className="flex-1 px-5 py-3 text-[14px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors disabled:opacity-50"
+                >
+                  {t.me2_withdraw_keep}
+                </button>
+                <button
+                  onClick={withdraw}
+                  disabled={withdrawing || !canWithdraw}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-blush-500 hover:bg-blush-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-full transition-colors"
+                >
+                  {withdrawing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  {t.me2_withdraw_confirm}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {editing && (
         <EditListingModal

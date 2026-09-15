@@ -935,3 +935,113 @@ export function tripDepartureReminderEmail(input: {
     }.\n\n${n === 1 ? 'PARCEL TO COLLECT:' : 'PARCELS TO COLLECT:'}\n${parcelText}\n\nAt the handover, show your code and the sender types it in — that is what records the parcel as collected. You are paid after the delivery is confirmed at the other end.\n\nSee my trip: ${url}\n\nPlans changed? Cancel the trip from your account tonight rather than tomorrow — the sender is refunded straight away and we help them find someone else.\n\n— The Jibly team`,
   };
 }
+
+// =============================================================================
+// 11. Traveller: the sender declined their offer
+// =============================================================================
+// This got nothing at all. A traveller offered to carry a parcel, the sender
+// said no, and the traveller found out — if ever — by noticing the offer had
+// gone grey in a list they had no reason to reopen.
+//
+// It matters more than it looks. The traveller has usually shaped a plan
+// around it: a suitcase corner kept free, a meeting point half-agreed. And
+// declining is now the mandatory step before a sender can withdraw a parcel,
+// so this is the message that makes that rule honest — the block only protects
+// the traveller if somebody actually tells them.
+//
+// It does not apologise and it does not explain more than it knows. A sender
+// is allowed to change their mind, and dressing that up as a misfortune reads
+// as evasive. What the traveller can use is the next route, so that is what it
+// ends on.
+export function proposalDeclinedTravelerEmail(input: {
+  travelerFirstName: string | null;
+  senderFirstName: string | null;
+  itemLabel: string;
+  pickupCity: string;
+  destinationCity: string;
+  /** Other parcels wanted on the same corridor, if any. */
+  alternatives: Array<{
+    itemLabel: string;
+    pickupCity: string;
+    destinationCity: string;
+    budget: number;
+    byDate: string;
+  }>;
+}) {
+  const name = input.travelerFirstName || 'Hello';
+  const senderName = input.senderFirstName || 'The sender';
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+  const url = `${BASE_URL}/voyager`;
+
+  const alternativesBlock = input.alternatives.length
+    ? `
+    <p style="margin:28px 0 12px;font-size:15px;font-weight:600;color:${BRAND.ink};">
+      ${input.alternatives.length === 1 ? 'Another parcel on your route' : 'Other parcels on your route'}
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:20px;">
+      ${input.alternatives
+        .map(
+          (a) => `
+      <tr>
+        <td style="padding:0 0 8px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;">
+            <tr>
+              <td style="padding:14px 18px;">
+                <p style="margin:0 0 4px;font-size:15px;font-weight:600;color:${BRAND.ink};">
+                  ${escapeHtml(a.itemLabel)}
+                </p>
+                <p style="margin:0;font-size:13px;color:${BRAND.inkSoft};">
+                  ${escapeHtml(a.pickupCity)} → ${escapeHtml(a.destinationCity)} · by ${escapeHtml(a.byDate)} · ${formatEuros(a.budget)}
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`
+        )
+        .join('')}
+    </table>`
+    : `
+    <p style="margin:28px 0 20px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      Nothing else is waiting on ${escapeHtml(route)} right now. New parcels are posted every day, and your trip stays listed — a sender can still book it directly.
+    </p>`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Offer declined</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+      ${escapeHtml(senderName)} will not be sending ${escapeHtml(input.itemLabel)} with you
+    </h1>
+    <p style="margin:0 0 8px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${escapeHtml(name)}, your offer on ${escapeHtml(route)} was declined. Nothing was charged and nothing is owed — you are free of it.
+    </p>
+    <p style="margin:0 0 4px;font-size:14px;color:${BRAND.inkMuted};line-height:1.6;">
+      Senders change their plans, send things another way, or simply pick someone else. It is not a mark against you.
+    </p>
+    ${alternativesBlock}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+            See parcels to carry
+          </a>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const altText = input.alternatives.length
+    ? '\n\nOther parcels on your route:\n' +
+      input.alternatives
+        .map(
+          (a) =>
+            `- ${a.itemLabel} — ${a.pickupCity} -> ${a.destinationCity}, by ${a.byDate}, ${formatEuros(a.budget)}`
+        )
+        .join('\n')
+    : `\n\nNothing else is waiting on ${route} right now — new parcels are posted every day, and your trip stays listed.`;
+
+  return {
+    subject: `Offer declined · ${route}`,
+    html: wrapHtml(content, `Your offer on ${route} was not taken up`),
+    text: `${name},\n\nYour offer to carry ${input.itemLabel} (${route}) was declined by ${senderName}. Nothing was charged and nothing is owed.\n\nSenders change their plans, send things another way, or simply pick someone else. It is not a mark against you.${altText}\n\nSee parcels to carry: ${url}\n\n— The Jibly team`,
+  };
+}
