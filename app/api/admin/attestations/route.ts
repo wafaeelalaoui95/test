@@ -39,12 +39,13 @@ export async function GET(req: NextRequest) {
 
   const { data: booking } = await admin
     .from('booking_intents')
-    .select(
-      'id, sender_id, traveler_user_id, item_category, item_title, item_description, photo_url, ' +
-        'pickup_city, destination_city, created_at, user_certified_at, ' +
-        'pickup_confirmed_at, pickup_confirmed_by, received_confirmed_at, ' +
-        'delivery_proof_url, delivery_proof_uploaded_at, delivery_proof_receiver_name, status'
-    )
+    // One string literal, deliberately long rather than concatenated with `+`.
+    // supabase-js parses the select list at the TYPE level to work out the row
+    // shape, and `'a' + 'b'` widens to plain `string` — at which point it gives
+    // up and the result types as GenericStringError, so every field access
+    // below fails to compile. A template literal or a single quoted string
+    // keeps the literal type.
+    .select('id, sender_id, traveler_user_id, item_category, item_title, item_description, photo_url, pickup_city, destination_city, created_at, user_certified_at, pickup_confirmed_at, pickup_confirmed_by, received_confirmed_at, delivery_proof_url, delivery_proof_uploaded_at, delivery_proof_receiver_name, status')
     .eq('id', bookingId)
     .maybeSingle();
 
