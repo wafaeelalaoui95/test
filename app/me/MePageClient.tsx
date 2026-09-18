@@ -4436,8 +4436,10 @@ function IntentCardInline({
   // Three distinct phases once accepted:
   //   - pickup not confirmed → traveler hasn't met the sender yet
   //   - pickup confirmed but no proof → traveler is in transit
-  //   - proof uploaded but receipt not confirmed → drop-off moment, show
-  //     the delivery code to the sender/recipient
+  //   - proof uploaded but receipt not confirmed → drop-off moment. The
+  //     traveler ASKS the recipient for the delivery code and enters it.
+  //     (This comment, the pill and the onShowDeliveryCode prop name all date
+  //     from the reverse flow, where the traveler read a code out.)
   const showPickup =
     intent.status === 'confirmed' &&
     !intent.pickup_confirmed_at &&
