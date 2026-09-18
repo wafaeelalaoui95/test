@@ -149,20 +149,18 @@ export async function POST(req: Request) {
         bookingId: booking.id,
       });
     } else if (body.event === 'booking-confirmed-sender') {
-      // The SENDER holds the DELIVERY code — they, or whoever collects at the
-      // other end, read it to the traveler at drop-off. They must NOT receive
-      // the pickup code: that one is the traveler's, and if both parties hold
-      // it the sender can confirm a handover that never happened.
-      if (!booking.delivery_code) {
-        return NextResponse.json({ ok: false, reason: 'no_delivery_code' });
-      }
+      // No code goes out here any more. The sender's DELIVERY code is held
+      // back until the parcel is actually collected and sent by
+      // /api/booking/confirm-pickup, so the two parties never juggle two
+      // codes at once. The sender must in any case NEVER receive the pickup
+      // code: that one is the traveler's, and if both parties hold it the
+      // sender can confirm a handover that never happened.
       template = bookingConfirmedSenderEmail({
         senderFirstName: firstName(senderProfile?.full_name),
         travelerFirstName: firstName(travelerProfile?.full_name),
         pickupCity: booking.pickup_city,
         destinationCity: booking.destination_city,
         proposedPrice: booking.proposed_price,
-        code: booking.delivery_code,
         bookingId: booking.id,
       });
     } else if (body.event === 'booking-confirmed-traveler') {

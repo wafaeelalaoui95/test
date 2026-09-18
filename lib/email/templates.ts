@@ -202,15 +202,19 @@ export function travelerGotBookingEmail(input: {
 // =============================================================================
 // 3. Sender receives confirmation that the traveller accepted
 // =============================================================================
-// Triggered when status flips to 'confirmed'. Carries the sender's DELIVERY
-// code — read out at the destination and entered by the traveller.
+// Triggered when status flips to 'confirmed'. Carries NO code at all.
 //
-// WORDING: this says the code RECORDS the delivery. It used to say it releases
-// the traveller's payment, which is true and was the wrong thing to tell this
-// particular reader: it hands the sender a lever, and the sentence "without it
-// their payment is never released" reads as an instruction to anyone looking
-// for one. The traveller's own email still names the payment, because there it
-// describes their money rather than their counterparty's.
+// It used to carry the delivery code, sent the same minute the traveller got
+// their pickup code. Two codes landed in two inboxes days before either was
+// needed, and the first pair of testers to reach a handover had four codes
+// between them, no idea which was which, and froze. The codes were never the
+// hard part — holding both at once was.
+//
+// So the sender's code now waits for the moment it means something: the parcel
+// is collected, and only then does the delivery code go out (#3b). At any
+// point in a booking exactly one code exists in the world, and the person
+// holding it is the person about to be handed something. This email's job is
+// to set up the first of those two moments and stop there.
 //
 // SECURITY: never include the pickup code here. The rule across both handovers
 // is that WHOEVER RECEIVES holds the code and WHOEVER GIVES enters it, so the
@@ -223,12 +227,6 @@ export function bookingConfirmedSenderEmail(input: {
   pickupCity: string;
   destinationCity: string;
   proposedPrice: number;
-  /**
-   * The DELIVERY code. The sender (or whoever collects at the other end) reads
-   * it to the traveller at drop-off, and the traveller enters it to release
-   * payment.
-   */
-  code: string;
   bookingId: string;
 }) {
   const senderName = input.senderFirstName || 'Hello';
@@ -242,28 +240,21 @@ export function bookingConfirmedSenderEmail(input: {
       ${travelerName} is carrying your parcel
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      ${senderName}, it is confirmed. Here is your <strong>delivery code</strong>. Give it to the traveller <strong>at the destination</strong>, once the parcel has been handed over — to you, or to whoever collects it for you. It is how the delivery is recorded, so only share it after the parcel is in hand.
+      ${senderName}, it is confirmed. There is one code in this booking right now, and it is not yours — ${travelerName} holds it. Nothing to do until you hand the parcel over.
     </p>
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.alertBg};border-left:4px solid ${BRAND.alert};border-radius:8px;margin:0 0 24px;">
-      <tr>
-        <td style="padding:16px 18px;">
-          <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${BRAND.alert};line-height:1.5;">
-            If someone else is collecting the parcel, you must pass this code on to them.
-          </p>
-          <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
-            They read it to ${travelerName} at the moment the parcel changes hands — that is what records the delivery as done.
-          </p>
-        </td>
-      </tr>
-    </table>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:24px;">
       <tr>
-        <td style="padding:24px 20px;text-align:center;">
-          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Delivery code</p>
-          <p style="margin:0;font-size:36px;font-weight:700;color:${BRAND.ink};letter-spacing:0.2em;font-family:'SF Mono',Monaco,Consolas,monospace;">${input.code}</p>
+        <td style="padding:20px;">
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">When you hand the parcel over</p>
+          <p style="margin:0;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+            ${travelerName} reads you a code. You type it into the app — that is your proof the parcel left your hands, and it is the only code you need for now.
+          </p>
         </td>
       </tr>
     </table>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      <strong>Your own delivery code comes later</strong> — we email it to you the moment the parcel is collected, and not before. It is the one read out at the destination when the parcel arrives. One code at a time, each at the moment it is needed.
+    </p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FAF7F2;border-radius:12px;margin-bottom:24px;">
       <tr>
         <td style="padding:16px 20px;">
@@ -284,14 +275,92 @@ export function bookingConfirmedSenderEmail(input: {
       </tr>
     </table>
     <p style="margin:24px 0 0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;">
-      <strong>When you hand the parcel over</strong> at the start of the trip, ${travelerName} shows you a different code — theirs. You enter that one in the app. Keep your delivery code to yourself until the parcel arrives.
+      If someone else is collecting the parcel in ${input.destinationCity}, it is worth telling them now that a code will reach them through you. You will have it to pass on once the parcel is on its way.
     </p>
   `;
 
   return {
-    subject: `Confirmed · ${route} · delivery code ${input.code}`,
-    html: wrapHtml(content, `${travelerName} accepted — here is your delivery code`),
-    text: `${senderName},\n\n${travelerName} is carrying your parcel ${route}.\n\nYour delivery code: ${input.code}\nGive it to the traveller at the destination, once the parcel has been handed over — to you, or to whoever collects it for you. It is how the delivery is recorded, so only share it after the parcel is in hand.\n\nIf someone else is collecting the parcel, pass this code on to them. They read it to ${travelerName} at the moment the parcel changes hands.\n\nWhen you hand the parcel over at the start of the trip, ${travelerName} shows you a different code — theirs. You enter that one in the app.\n\nView my parcels: ${url}\n\n— The Jibly team`,
+    subject: `Confirmed · ${route} · ${travelerName} is carrying your parcel`,
+    html: wrapHtml(content, `${travelerName} accepted — here is what happens at the handover`),
+    text: `${senderName},\n\n${travelerName} is carrying your parcel ${route}.\n\nThere is one code in this booking right now, and it is not yours — ${travelerName} holds it. Nothing to do until you hand the parcel over.\n\nWHEN YOU HAND THE PARCEL OVER: ${travelerName} reads you a code. You type it into the app — that is your proof the parcel left your hands, and it is the only code you need for now.\n\nYour own delivery code comes later. We email it to you the moment the parcel is collected, and not before. It is the one read out at the destination when the parcel arrives.\n\nIf someone else is collecting the parcel in ${input.destinationCity}, it is worth telling them now that a code will reach them through you.\n\nView my parcels: ${url}\n\n— The Jibly team`,
+  };
+}
+
+// =============================================================================
+// 3b. Sender's parcel has been collected — NOW they get the delivery code
+// =============================================================================
+// Sent from /api/booking/confirm-pickup, the moment the sender types in the
+// traveller's code. This is the second half of the split described in #3: the
+// delivery code is withheld at booking and released here, when the parcel is
+// physically on its way and the code is about to matter.
+//
+// Sending it from the server rather than the browser is deliberate. This email
+// is now the ONLY route by which a sender learns their delivery code before
+// they open the app, so it cannot depend on a tab surviving a modal on a phone
+// at an airport.
+//
+// SECURITY: same rule as everywhere else — the delivery code goes to the
+// RECIPIENT side only. It must never appear in anything the traveller reads,
+// because entering it is what releases their own payment.
+export function pickupConfirmedSenderEmail(input: {
+  senderFirstName: string | null;
+  travelerFirstName: string | null;
+  pickupCity: string;
+  destinationCity: string;
+  /** The DELIVERY code — read out at the destination, entered by the traveller. */
+  code: string;
+}) {
+  const senderName = input.senderFirstName || 'Hello';
+  const travelerName = input.travelerFirstName || 'The traveller';
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+  const url = `${BASE_URL}/me`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">On its way</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+      ${travelerName} has your parcel
+    </h1>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${senderName}, the handover is recorded. Here is your <strong>delivery code</strong> — the second and last one. It is read out to ${travelerName} in ${input.destinationCity}, once the parcel is actually in hand. That is what records the delivery as done.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.alertBg};border-left:4px solid ${BRAND.alert};border-radius:8px;margin:0 0 24px;">
+      <tr>
+        <td style="padding:16px 18px;">
+          <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${BRAND.alert};line-height:1.5;">
+            If someone else is collecting the parcel, send them this code now.
+          </p>
+          <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
+            They have no way of getting it themselves. Without it, ${travelerName} and your recipient end up standing together, parcel in hand, unable to close the delivery.
+          </p>
+        </td>
+      </tr>
+    </table>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:24px 20px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Delivery code</p>
+          <p style="margin:0;font-size:36px;font-weight:700;color:${BRAND.ink};letter-spacing:0.2em;font-family:'SF Mono',Monaco,Consolas,monospace;">${input.code}</p>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      Only read it out once the parcel is in hand. Giving it early records a delivery that has not happened.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+            View my parcels
+          </a>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  return {
+    subject: `Collected · ${route} · delivery code ${input.code}`,
+    html: wrapHtml(content, `${travelerName} has your parcel — here is your delivery code`),
+    text: `${senderName},\n\n${travelerName} has collected your parcel ${route}. The handover is recorded.\n\nYour delivery code: ${input.code}\nIt is read out to ${travelerName} in ${input.destinationCity}, once the parcel is actually in hand. That is what records the delivery as done.\n\nIF SOMEONE ELSE IS COLLECTING THE PARCEL, SEND THEM THIS CODE NOW. They have no way of getting it themselves.\n\nOnly read it out once the parcel is in hand. Giving it early records a delivery that has not happened.\n\nView my parcels: ${url}\n\n— The Jibly team`,
   };
 }
 
@@ -452,24 +521,23 @@ function escapeHtml(s: string): string {
 // =============================================================================
 // 6. Sender reminder, the day before the trip: has the code been passed on?
 // =============================================================================
-// The delivery code is the one part of this that a sender can forget without
-// noticing. It reaches them at booking, in an email they read once, days
-// earlier — and if the parcel is being collected by someone else at the other
-// end, that person needs it and has no way to get it themselves. The failure
-// shows up at the worst possible moment: traveller and recipient standing
-// together, parcel in hand, nobody able to close the delivery.
+// The person collecting at the other end is the one this booking can quietly
+// fail on. They need a code, they have no way of getting it themselves, and
+// the failure shows up at the worst possible moment: traveller and recipient
+// standing together, parcel in hand, nobody able to close the delivery.
 //
-// So it is repeated on the eve of departure, when there is still an evening to
-// send a message. The code is included rather than linked: a reminder that
-// requires logging in to act on is a reminder half of people will not act on.
+// This fires on the eve of departure, while there is still an evening to sort
+// it out. It deliberately carries NO code: this cron only selects bookings
+// where pickup has not been confirmed, and under the split introduced in #3/#3b
+// the sender does not have their delivery code yet at this point. Printing one
+// here would put a code back in an inbox days before the handover — the exact
+// thing the split removed. So this warns, and #3b delivers.
 export function codeHandoverReminderEmail(input: {
   senderFirstName: string | null;
   travelerFirstName: string | null;
   pickupCity: string;
   destinationCity: string;
   departureDate: string;
-  /** The DELIVERY code — the one read out at the destination. */
-  code: string;
 }) {
   const senderName = input.senderFirstName || 'Hello';
   const travelerName = input.travelerFirstName || 'Your traveller';
@@ -489,10 +557,10 @@ export function codeHandoverReminderEmail(input: {
       <tr>
         <td style="padding:16px 18px;">
           <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${BRAND.alert};line-height:1.5;">
-            If someone else is collecting the parcel, make sure they have the delivery code.
+            If someone else is collecting the parcel in ${input.destinationCity}, make sure you can reach them quickly.
           </p>
           <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
-            They read it to ${travelerName} once the parcel is in their hands — that is what records the delivery as done.
+            A delivery code has to get from you to them, and they have no way of obtaining it themselves. They read it to ${travelerName} once the parcel is in their hands — that is what records the delivery as done.
           </p>
         </td>
       </tr>
@@ -500,24 +568,26 @@ export function codeHandoverReminderEmail(input: {
 
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:24px;">
       <tr>
-        <td align="center" style="padding:24px;">
-          <p style="margin:0 0 8px;font-size:12px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">Delivery code</p>
-          <p style="margin:0;font-size:36px;font-weight:700;color:${BRAND.ink};letter-spacing:0.2em;font-family:'SF Mono',Monaco,Consolas,monospace;">${input.code}</p>
+        <td style="padding:20px;">
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};letter-spacing:0.08em;text-transform:uppercase;font-weight:600;">When the code reaches you</p>
+          <p style="margin:0;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+            We email it the moment you hand the parcel to ${travelerName} and confirm the handover in the app — not before, so there is only ever one code to keep track of. Forward it to whoever is collecting as soon as it lands.
+          </p>
         </td>
       </tr>
     </table>
 
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
-      Only share it once the parcel is actually in hand: the code confirms receipt, so giving it early records a delivery that has not happened. If you are collecting it yourself, there is nothing to do.
+      They should only read it out once the parcel is actually in hand: the code confirms receipt, so giving it early records a delivery that has not happened. If you are collecting it yourself, there is nothing to do.
     </p>
 
     <a href="${url}" style="display:inline-block;background:${BRAND.ink};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:15px;font-weight:600;">View my parcels</a>
   `;
 
   return {
-    subject: `Tomorrow · ${route} · is your delivery code passed on?`,
-    html: wrapHtml(content, `${travelerName} leaves tomorrow — check the delivery code`),
-    text: `${senderName},\n\nYour parcel travels ${route} tomorrow with ${travelerName}.\n\nIF SOMEONE ELSE IS COLLECTING THE PARCEL, MAKE SURE THEY HAVE THE DELIVERY CODE. They read it to ${travelerName} once the parcel is in their hands — that is what records the delivery as done.\n\nDelivery code: ${input.code}\n\nOnly share it once the parcel is actually in hand: the code confirms receipt, so giving it early records a delivery that has not happened. If you are collecting it yourself, there is nothing to do.\n\nView my parcels: ${url}\n\n— The Jibly team`,
+    subject: `Tomorrow · ${route} · who is collecting your parcel?`,
+    html: wrapHtml(content, `${travelerName} leaves tomorrow — check who collects`),
+    text: `${senderName},\n\nYour parcel travels ${route} tomorrow with ${travelerName}.\n\nIF SOMEONE ELSE IS COLLECTING THE PARCEL IN ${input.destinationCity.toUpperCase()}, MAKE SURE YOU CAN REACH THEM QUICKLY. A delivery code has to get from you to them, and they have no way of obtaining it themselves. They read it to ${travelerName} once the parcel is in their hands — that is what records the delivery as done.\n\nWe email you that code the moment you hand the parcel to ${travelerName} and confirm the handover in the app — not before, so there is only ever one code to keep track of. Forward it to whoever is collecting as soon as it lands.\n\nThey should only read it out once the parcel is actually in hand: giving it early records a delivery that has not happened. If you are collecting it yourself, there is nothing to do.\n\nView my parcels: ${url}\n\n— The Jibly team`,
   };
 }
 

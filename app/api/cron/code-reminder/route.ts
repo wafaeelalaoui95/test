@@ -7,15 +7,19 @@ import { formatName } from '@/lib/utils';
 /**
  * GET /api/cron/code-reminder
  *
- * Remind a sender, the evening before the trip, to make sure the delivery code
- * has reached whoever is actually collecting the parcel.
+ * Remind a sender, the evening before the trip, to sort out who is actually
+ * collecting the parcel at the other end.
  *
- * The code is sent once, at booking, and that email is read days earlier. When
- * a friend or a relative is collecting at the other end, they need the code and
- * have no way to obtain it themselves — so the failure only surfaces with the
- * traveller and the recipient standing together, parcel in hand, unable to
- * close the delivery. This is the one moment where a reminder still buys an
- * evening to send a message.
+ * When a friend or a relative collects, they need the delivery code and have no
+ * way to obtain it themselves — so the failure only surfaces with the traveller
+ * and the recipient standing together, parcel in hand, unable to close the
+ * delivery. This is the one moment where a reminder still buys an evening to
+ * send a message.
+ *
+ * It carries no code. This sweep runs only on bookings that have NOT been
+ * picked up, and the delivery code is not released until they are (it is sent
+ * by /api/booking/confirm-pickup). Printing one here would put a code in an
+ * inbox days before the handover, which is what the split was for.
  *
  * Sent once per booking, ever. code_reminder_sent_at is stamped whether or not
  * the email goes out, for the same reason as the stale-request sweep: a sender
@@ -68,13 +72,13 @@ export async function GET(req: NextRequest) {
   const { data: bookings, error: bookErr } = await admin
     .from('booking_intents')
     .select(
-      'id, sender_id, traveler_user_id, traveler_trip_id, pickup_city, destination_city, delivery_code'
+      'id, sender_id, traveler_user_id, traveler_trip_id, pickup_city, destination_city'
     )
     .eq('status', 'confirmed')
-    // Already handed over: the sender is past the moment this warns about.
+    // Already handed over: the sender is past the moment this warns about, and
+    // confirm-pickup has already sent them the delivery code for real.
     .is('pickup_confirmed_at', null)
     .is('code_reminder_sent_at', null)
-    .not('delivery_code', 'is', null)
     .in(
       'traveler_trip_id',
       trips.map((t) => t.id)
@@ -135,7 +139,6 @@ export async function GET(req: NextRequest) {
         pickupCity: booking.pickup_city,
         destinationCity: booking.destination_city,
         departureDate: byTrip.get(booking.traveler_trip_id!)?.departure_date ?? tomorrow,
-        code: booking.delivery_code!,
       });
 
       const { error: sendErr } = await resend.emails.send({
