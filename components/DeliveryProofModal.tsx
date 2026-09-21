@@ -228,11 +228,23 @@ export function DeliveryProofModal({
               <span className="text-[14px] font-medium">{t.pickup_proof_photo_cta}</span>
             </button>
           )}
+          {/* No `capture` attribute, deliberately.
+
+              With capture="environment" Android skips the picker and launches
+              the camera app outright — so "Prendre / choisir une photo" could
+              only ever do the first half, and a traveller who had already
+              photographed the handover had no way to submit that photo.
+
+              It also made the upload fragile. While the camera app is in the
+              foreground the browser can evict the page; coming back it
+              remounts with fresh state, the modal is gone and the photo with
+              it — no error, no trace, which is exactly what the first
+              delivery test showed. Letting her pick an existing photo keeps
+              the whole flow inside the page. */}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
