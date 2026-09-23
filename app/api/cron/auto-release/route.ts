@@ -3,6 +3,7 @@ import { getAdminClient } from '@/lib/supabase/server';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
 import { deliveryAutoClosedEmail } from '@/lib/email/templates';
 import { AUTO_RELEASE_DAYS } from '@/lib/constants';
+import { DISPUTE_SETTLED_FILTER } from '@/lib/disputes';
 import { formatName } from '@/lib/utils';
 
 /**
@@ -26,9 +27,10 @@ import { formatName } from '@/lib/utils';
  *     starts at the proof, not the flight: the person being paid has to have
  *     shown something first.
  *   - the sender never confirmed. If they did, the normal path already paid.
- *   - nobody has an open dispute on it. Any status other than resolved or
- *     dismissed blocks — including one this code has never heard of, because
- *     the safe default for an unknown dispute state is "do not pay out".
+ *   - nobody has an open dispute on it. Any status this product does not count
+ *     as settled blocks — including one this code has never heard of, because
+ *     the safe default for an unknown dispute state is "do not pay out". The
+ *     settled list is lib/disputes.ts.
  *
  * This route does not move money. It sets auto_released_at, and settle-payouts
  * — which runs hourly — sees it on its next pass. Keeping the two apart means
@@ -95,11 +97,17 @@ export async function GET(req: NextRequest) {
   // settled" rather than "is open" on purpose — a dispute state added later
   // should block a payout by default, not slip through because this list was
   // never updated.
+  //
+  // The list itself used to be written out here as ("resolved","dismissed"),
+  // which are not statuses this product has: the filter therefore excluded
+  // nothing and a booking that had ever been disputed could never auto-close,
+  // however the argument ended. It now comes from lib/disputes.ts, shared with
+  // the payout guard so the two cannot disagree again.
   const { data: disputed } = await admin
     .from('disputes')
     .select('booking_intent_id')
     .in('booking_intent_id', candidates.map((b) => b.id))
-    .not('status', 'in', '("resolved","dismissed")');
+    .not('status', 'in', DISPUTE_SETTLED_FILTER);
 
   const blocked = new Set((disputed ?? []).map((d: any) => d.booking_intent_id));
   const targets = candidates.filter((b) => !blocked.has(b.id));

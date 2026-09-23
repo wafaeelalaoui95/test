@@ -1,11 +1,12 @@
 import { getStripe } from './server';
 import { splitAmount } from './connect';
 import { getAdminClient } from '@/lib/supabase/server';
+import { DISPUTE_SETTLED_FILTER } from '@/lib/disputes';
 
 export type PayoutResult =
   | { status: 'sent'; transferId: string; travelerCents: number; feeCents: number }
   | { status: 'already_sent'; transferId: string }
-  | { status: 'skipped'; reason: 'no_traveler' | 'not_onboarded' | 'no_charge' }
+  | { status: 'skipped'; reason: 'no_traveler' | 'not_onboarded' | 'no_charge' | 'disputed' }
   | { status: 'failed'; reason: string };
 
 /**
@@ -46,6 +47,47 @@ export async function transferToTraveler(params: {
   }
 
   const admin = getAdminClient();
+
+  // A booking somebody is still arguing about does not pay out.
+  //
+  // The guard lives HERE rather than in the callers because there are three
+  // doors into this transfer — the traveller entering the delivery code
+  // (/api/confirm-receipt), the hourly sweep picking up a proved delivery that
+  // ran its course (/api/cron/settle-payouts), and the account.updated webhook
+  // paying someone who has just finished onboarding. Only /api/cron/auto-release
+  // ever checked, which meant a dispute stopped the CLOCK and nothing else: a
+  // sender could report a problem and the traveller could still be paid minutes
+  // later by reading out a code. The terms promise a hold; a promise that
+  // depends on which door was used is not one.
+  //
+  // Phrased as "not settled" rather than "is open" — see lib/disputes.ts, which
+  // owns that list because it was previously written out here and in
+  // auto-release with two status names the schema has never had.
+  //
+  // Nothing needs to unblock it afterwards. Resolving the dispute leaves the
+  // booking captured, delivered and untransferred, which is precisely what the
+  // hourly sweep looks for — so the money moves on the next pass, by itself.
+  const { data: liveDispute, error: disputeErr } = await admin
+    .from('disputes')
+    .select('id')
+    .eq('booking_intent_id', bookingIntentId)
+    .not('status', 'in', DISPUTE_SETTLED_FILTER)
+    .limit(1);
+
+  if (disputeErr) {
+    // An unreadable disputes table is not permission to pay. Holding costs a
+    // traveller a few hours; releasing during a live dispute costs the money.
+    console.error(
+      `[payout] dispute check failed for ${bookingIntentId}, holding:`,
+      disputeErr.message
+    );
+    return { status: 'skipped', reason: 'disputed' };
+  }
+  if (liveDispute?.length) {
+    console.warn(`[payout] booking ${bookingIntentId} held — dispute under review`);
+    return { status: 'skipped', reason: 'disputed' };
+  }
+
   const { data: traveler } = await admin
     .from('profiles')
     .select('stripe_account_id, stripe_payouts_enabled')

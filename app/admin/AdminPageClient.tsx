@@ -19,6 +19,7 @@ import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
 import { AdminRefund } from '@/components/AdminRefund';
 import { AdminOverview } from '@/components/AdminOverview';
+import { AdminDisputes } from '@/components/AdminDisputes';
 
 const DEMO_REQUESTS = [
   { id: 'r1', sender: 'Lila M.', route: '🇫🇷 Paris → 🇲🇦 Rabat', category: 'Documents', date: '2026-06-05', status: 'pending' },
@@ -267,6 +268,9 @@ export function AdminPageClient() {
             mock data from before there was a backend to read. */}
         <div className="mt-10 pt-8 border-t border-ink-50 space-y-10">
           <AdminOverview />
+          {/* Above the refund tool on purpose: a dispute is usually the reason
+              somebody came here to refund, and the decision comes first. */}
+          <AdminDisputes />
           <AdminRefund />
         </div>
       </div>
