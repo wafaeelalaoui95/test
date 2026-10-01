@@ -28,7 +28,11 @@ import {
  */
 const schema = z.object({
   bookingIntentId: z.string().uuid(),
-  kind: z.enum(['sender_certification', 'traveler_inspection']),
+  kind: z.enum([
+    'sender_certification',
+    'traveler_inspection',
+    'sender_immediate_performance',
+  ]),
   locale: z.enum(['fr', 'en']),
 });
 
@@ -69,7 +73,13 @@ export async function POST(req: NextRequest) {
   // certify the contents of somebody else's parcel — an attestation signed by
   // the wrong person is worse than none, because it looks like evidence.
   const kind = body.kind as AttestationKind;
-  const role: 'sender' | 'traveler' = kind === 'sender_certification' ? 'sender' : 'traveler';
+  // Listed rather than inferred from a prefix. A naming convention is a poor
+  // thing to hang an authorisation check on — rename a kind and the wrong
+  // party silently becomes able to sign it.
+  const role: 'sender' | 'traveler' =
+    kind === 'sender_certification' || kind === 'sender_immediate_performance'
+      ? 'sender'
+      : 'traveler';
 
   if (role === 'sender' && booking.sender_id !== user.id) {
     return NextResponse.json({ error: 'not_your_parcel' }, { status: 403 });

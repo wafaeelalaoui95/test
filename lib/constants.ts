@@ -123,6 +123,46 @@ export const AUTO_RELEASE_DAYS = 3;
  */
 export const STALE_HOLD_DAYS = 60;
 
+/**
+ * The most a sender may declare an item to be worth, in euros.
+ *
+ * Not a new rule so much as a number for an old one: the prohibited-items list
+ * already excludes jewellery and luxury goods "above €500", and nothing ever
+ * measured against it. Reusing that figure keeps one threshold rather than two
+ * that will eventually disagree — and the Marketplace Terms now state it, so a
+ * change here is a change to a published term, not a tuning knob.
+ *
+ * A declared value buys nothing on its own: §9.iv and §19.v are explicit that
+ * it is for eligibility, risk and dispute handling, and is not insurance.
+ */
+export const MAX_DECLARED_VALUE_EUR = 500;
+
+/**
+ * What a sender may say their parcel weighs, in kilograms.
+ *
+ * The same three the traveller chooses between, so that for the first time the
+ * two sides of this marketplace describe a parcel in the same units. A sender
+ * previously stated nothing at all — not a weight, not a size — which made
+ * matching a parcel to a capacity impossible and left the Terms requiring
+ * information the product never asked for.
+ *
+ * 1.5 kg is the ceiling because it is the largest capacity any traveller can
+ * offer. Anything heavier is a parcel no one on the platform can carry.
+ */
+export const PARCEL_SIZES: {
+  value: AvailableSpace;
+  maxKg: number;
+  labelKey: keyof Translations;
+  sizeKey: keyof Translations;
+  icon: string;
+}[] = [
+  { value: 'enveloppe', maxKg: 0.2, labelKey: 'space_envelope', sizeKey: 'space_envelope_size', icon: '✉️' },
+  { value: 'pochette', maxKg: 0.5, labelKey: 'space_pouch', sizeKey: 'space_pouch_size', icon: '👝' },
+  { value: 'petit_sac', maxKg: 1.5, labelKey: 'space_bag', sizeKey: 'space_bag_size', icon: '🎒' },
+];
+
+export const MAX_PARCEL_WEIGHT_KG = 1.5;
+
 export const ITEM_CATEGORIES: {
   value: ItemCategory;
   labelKey: keyof Translations;

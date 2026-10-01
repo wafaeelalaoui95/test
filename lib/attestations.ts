@@ -75,7 +75,10 @@ export function prohibitedPolicyDigest(): string {
   return `${PROHIBITED_POLICY_VERSION}.${(h >>> 0).toString(16)}`;
 }
 
-export type AttestationKind = 'sender_certification' | 'traveler_inspection';
+export type AttestationKind =
+  | 'sender_certification'
+  | 'traveler_inspection'
+  | 'sender_immediate_performance';
 export type AttestationLocale = 'fr' | 'en';
 
 /**
@@ -105,6 +108,20 @@ const STATEMENTS: Record<AttestationKind, Record<AttestationLocale, string>> = {
       'Je certifie qu’il s’agit de {item}, décrit avec exactitude, ne contenant aucun ' +
       'objet interdit et conforme aux règles douanières, d’importation et d’exportation ' +
       'applicables.',
+  },
+  // Cancellation & Refund Policy §14. This is the clause that lets Jibly
+  // retain a proportionate amount for services already provided inside the
+  // statutory withdrawal period, and it works only if the request was really
+  // made — which is why it is a declaration rather than a timestamp column.
+  sender_immediate_performance: {
+    en:
+      'I ask Jibly to begin providing its marketplace services for this booking ' +
+      'immediately, and I understand that once those services have been fully ' +
+      'performed I may lose any right to cancel them.',
+    fr:
+      'Je demande à Jibly de commencer immédiatement à fournir ses services pour ' +
+      'cette réservation et je comprends qu’une fois ces services pleinement ' +
+      'exécutés, je peux perdre tout droit de rétractation les concernant.',
   },
   traveler_inspection: {
     en:
