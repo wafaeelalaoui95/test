@@ -1003,6 +1003,11 @@ export type BookingIntentInput = {
   user_certified_at?: string | null;
   // Optional photo of the parcel — see the same field on ShippingRequestRow.
   photo_url?: string | null;
+  // What the parcel weighs and what it is worth. Carried on the booking as
+  // well as the request because a parcel booked straight onto a trip has no
+  // request behind it, and these are the two facts a dispute turns on.
+  weight_kg?: number | null;
+  declared_value_eur?: number | null;
 };
 
 export async function createBookingIntent(
@@ -1031,6 +1036,8 @@ export async function createBookingIntent(
           initiated_by: input.initiated_by ?? 'sender',
           traveler_user_id: input.traveler_user_id,
           photo_url: input.photo_url ?? null,
+          weight_kg: input.weight_kg ?? null,
+          declared_value_eur: input.declared_value_eur ?? null,
           pickup_code: generateConfirmationCode(),
           delivery_code: generateConfirmationCode(),
         })

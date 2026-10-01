@@ -1241,6 +1241,14 @@ export type Translations = {
   me2_bcancel_err_note: string;
   me2_bcancel_err_handed: string;
   me2_bcancel_err_failed: string;
+  // Size and value of the parcel, asked of the sender.
+  send_size_label: string;
+  send_size_hint: string;
+  send_value_label: string;
+  send_value_hint: string;
+  send_value_ph: string;
+  send_err_size: string;
+  send_err_value: string;
   rev_dispute_desc_label: string;
   rev_dispute_desc_placeholder: string;
   rev_dispute_submit: string;
@@ -2544,6 +2552,13 @@ export const translations: Record<Locale, Translations> = {
     me2_bcancel_err_handed:
       'Le colis est déjà entre les mains du voyageur — ce n\'est plus une annulation. Signalez un problème à la place.',
     me2_bcancel_err_failed: 'Impossible d\'annuler. Réessayez.',
+    send_size_label: 'Taille du colis',
+    send_size_hint: 'Les voyageurs choisissent la même échelle — 1,5 kg maximum sur Jibly.',
+    send_value_label: 'Valeur déclarée',
+    send_value_hint: 'Valeur de remplacement, 500 € maximum. Sert en cas de litige — ce n\'est pas une assurance.',
+    send_value_ph: 'ex. 80',
+    send_err_size: 'Choisissez une taille',
+    send_err_value: 'Indiquez une valeur entre 1 et 500 €',
     rev_dispute_desc_label: 'Description détaillée',
     rev_dispute_desc_placeholder: 'Décrivez ce qu\'il s\'est passé, les dates, les échanges, et tout ce qui peut nous aider à trancher…',
     rev_dispute_submit: 'Envoyer le signalement',
@@ -3845,6 +3860,13 @@ export const translations: Record<Locale, Translations> = {
     me2_bcancel_err_handed:
       'The traveller already has the parcel — this is no longer a cancellation. Report a problem instead.',
     me2_bcancel_err_failed: 'Could not cancel. Please try again.',
+    send_size_label: 'Parcel size',
+    send_size_hint: 'Travellers pick from the same scale — 1.5 kg is the most Jibly carries.',
+    send_value_label: 'Declared value',
+    send_value_hint: 'Replacement value, €500 maximum. Used if something goes wrong — it is not insurance.',
+    send_value_ph: 'e.g. 80',
+    send_err_size: 'Choose a size',
+    send_err_value: 'Enter a value between €1 and €500',
     rev_dispute_desc_label: 'Detailed description',
     rev_dispute_desc_placeholder: 'Describe what happened, the dates, the exchanges, and anything that can help us decide…',
     rev_dispute_submit: 'Submit report',

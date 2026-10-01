@@ -102,7 +102,12 @@ export interface ShippingRequestRow {
   recipient_name: string | null;
   desired_delivery_date: string;
   budget: number;
+  // The band the sender picked, stored as its ceiling in kg so it compares
+  // directly with a traveller's available_space. See PARCEL_SIZES.
   weight_kg: number | null;
+  // Replacement value in whole euros, capped at MAX_DECLARED_VALUE_EUR. Used
+  // for eligibility and dispute handling — explicitly not insurance.
+  declared_value_eur?: number | null;
   urgency_level: Urgency;
   prescription_url: string | null;
   // Optional photo the sender attached, shown to the traveller before they

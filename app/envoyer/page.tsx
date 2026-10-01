@@ -23,12 +23,15 @@ import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
+import { ParcelSizeValue } from '@/components/ParcelSizeValue';
 import {
   ITEM_CATEGORIES,
   FORBIDDEN_CATEGORIES,
   MIN_COMPENSATION_EUR,
   MAX_COMPENSATION_EUR,
   SENDER_LOW_EUR,
+  PARCEL_SIZES,
+  MAX_DECLARED_VALUE_EUR,
 } from '@/lib/constants';
 import { isVagueDescription, detectRiskKeywords } from '@/lib/safety';
 import { attestationStatement } from '@/lib/attestations';
@@ -37,7 +40,7 @@ import { countryDisplayName, cityDisplayName } from '@/lib/countries';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
-import type { ItemCategory } from '@/lib/types';
+import type { ItemCategory, AvailableSpace } from '@/lib/types';
 import type { MatchingTrip, TieredMatchingTrip } from '@/lib/supabase/queries';
 
 // The flow now has TWO modes:
@@ -100,6 +103,8 @@ export default function EnvoyerPage() {
   const [itemTitle, setItemTitle] = useState('');
   const [description, setDescription] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [size, setSize] = useState<AvailableSpace | null>(null);
+  const [declaredValue, setDeclaredValue] = useState('');
   // Who collects the parcel at destination. true = the sender; false = a third
   // party whose name goes in recipientName.
   const [recipientSelf, setRecipientSelf] = useState(true);
@@ -179,6 +184,8 @@ export default function EnvoyerPage() {
       // The file is already uploaded by this point, so the URL survives the
       // identity redirect on its own — restoring it saves picking again.
       setPhotoUrl(d.photoUrl ?? null);
+      setSize(d.size ?? null);
+      setDeclaredValue(d.declaredValue ?? '');
       setRecipientSelf(d.recipientSelf ?? true);
       setRecipientName(d.recipientName ?? '');
       setBudget(d.budget ?? 30);
@@ -216,14 +223,15 @@ export default function EnvoyerPage() {
         JSON.stringify({
           _ts: Date.now(),
           mode, step, fromCity, fromCountry, toCity, toCountry, date,
-          category, itemTitle, description, photoUrl, recipientSelf, recipientName, budget, terms,
+          category, itemTitle, description, photoUrl, size, declaredValue,
+          recipientSelf, recipientName, budget, terms,
         })
       );
     } catch {
       /* ignore quota / private-mode errors */
     }
   }, [draftRestored, mode, step, fromCity, fromCountry, toCity, toCountry, date,
-      category, itemTitle, description, recipientSelf, recipientName, budget, terms]);
+      category, itemTitle, description, size, declaredValue, recipientSelf, recipientName, budget, terms]);
 
   // ---- WIZARD canNext (public mode only) ----
   const canNext = () => {
@@ -231,6 +239,14 @@ export default function EnvoyerPage() {
     if (step === 1) {
       // Title is required; description is optional.
       if (!category || !itemTitle.trim()) return false;
+      // Size and value are required now that the Terms say the sender provides
+      // them — an optional field the Terms describe as mandatory is the worst
+      // of both.
+      if (!size) return false;
+      const v = Number(declaredValue);
+      if (!declaredValue || !Number.isFinite(v) || v < 1 || v > MAX_DECLARED_VALUE_EUR) {
+        return false;
+      }
       // The item name must be specific — the traveler needs to know exactly
       // what they carry. Block "colis", "cadeau", "médicaments", etc.
       if (isVagueDescription(itemTitle)) return false;
@@ -274,7 +290,9 @@ export default function EnvoyerPage() {
         recipient_name: recipientSelf ? null : recipientName.trim(),
         desired_delivery_date: date,
         budget,
-        weight_kg: null,
+        // The band's ceiling, so it compares with a traveller's capacity.
+        weight_kg: PARCEL_SIZES.find((s) => s.value === size)?.maxKg ?? null,
+        declared_value_eur: declaredValue ? Number(declaredValue) : null,
         urgency_level: 'standard',
         prescription_url: null,
         photo_url: photoUrl,
@@ -738,6 +756,13 @@ export default function EnvoyerPage() {
                       traveller's one question: what am I actually carrying. */}
                   <ParcelPhotoInput value={photoUrl} onChange={setPhotoUrl} />
 
+                  <ParcelSizeValue
+                    size={size}
+                    onSize={setSize}
+                    value={declaredValue}
+                    onValue={setDeclaredValue}
+                  />
+
                   {detectRiskKeywords(`${itemTitle} ${description}`).length > 0 && (
                     <div className="bg-butter-50 border border-butter-200 rounded-2xl p-4">
                       <p className="text-[13px] text-ink-600 leading-relaxed flex items-start gap-2">
@@ -1070,6 +1095,8 @@ function InstantBookModal({
   const [itemTitle, setItemTitle] = useState('');
   const [description, setDescription] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [size, setSize] = useState<AvailableSpace | null>(null);
+  const [declaredValue, setDeclaredValue] = useState('');
   const [recipientSelf, setRecipientSelf] = useState(true);
   const [recipientName, setRecipientName] = useState('');
   const [certified, setCertified] = useState(false);
@@ -1088,6 +1115,13 @@ function InstantBookModal({
     itemTitle.trim().length > 0 &&
     !isVagueDescription(itemTitle) &&
     (recipientSelf || recipientName.trim().length > 0) &&
+    // Same requirement as the public wizard: the Terms say the sender provides
+    // a size and a value, so both flows have to ask for them or the Terms are
+    // wrong about whichever one does not.
+    !!size &&
+    !!declaredValue &&
+    Number(declaredValue) >= 1 &&
+    Number(declaredValue) <= MAX_DECLARED_VALUE_EUR &&
     certified;
 
   async function handleAuthorized(paymentIntentId: string) {
@@ -1107,7 +1141,8 @@ function InstantBookModal({
         recipient_name: recipientSelf ? null : recipientName.trim(),
         desired_delivery_date: trip.departure_date,
         budget: price,
-        weight_kg: null,
+        weight_kg: PARCEL_SIZES.find((s) => s.value === size)?.maxKg ?? null,
+        declared_value_eur: declaredValue ? Number(declaredValue) : null,
         urgency_level: 'standard',
         prescription_url: null,
         photo_url: photoUrl,
@@ -1129,6 +1164,8 @@ function InstantBookModal({
         payment_amount: Math.round(price * 100),
         shipping_request_id: req.id || null,
         photo_url: photoUrl,
+        weight_kg: PARCEL_SIZES.find((s) => s.value === size)?.maxKg ?? null,
+        declared_value_eur: declaredValue ? Number(declaredValue) : null,
         initiated_by: 'sender',
         user_certified_at: new Date().toISOString(),
       });
@@ -1281,6 +1318,13 @@ function InstantBookModal({
               {/* Same placement as the public-request form: the photo belongs
                   next to the description, not in a later step. */}
               <ParcelPhotoInput value={photoUrl} onChange={setPhotoUrl} />
+
+              <ParcelSizeValue
+                size={size}
+                onSize={setSize}
+                value={declaredValue}
+                onValue={setDeclaredValue}
+              />
 
               {detectRiskKeywords(`${itemTitle} ${description}`).length > 0 && (
                 <div className="bg-butter-50 border border-butter-200 rounded-xl px-4 py-3">
