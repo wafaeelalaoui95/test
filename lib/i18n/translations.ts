@@ -327,8 +327,9 @@ export type Translations = {
   send_recipient_label: string;
   send_recipient_me: string;
   send_recipient_other: string;
-  send_recipient_name_label: string;
-  send_recipient_name_placeholder: string;
+  send_recipient_rel_label: string;
+  send_recipient_rel_placeholder: string;
+  send_recipient_code_notice: string;
   send_prescription_required: string;
   send_upload_prescription: string;
   send_forbidden_title: string;
@@ -1640,8 +1641,10 @@ export const translations: Record<Locale, Translations> = {
     send_recipient_label: 'Qui récupère le colis à l\'arrivée ?',
     send_recipient_me: 'Moi',
     send_recipient_other: 'Quelqu\'un d\'autre',
-    send_recipient_name_label: 'Nom du destinataire',
-    send_recipient_name_placeholder: 'Ex : Sarah Benali',
+    send_recipient_rel_label: 'Qui est cette personne pour vous ?',
+    send_recipient_rel_placeholder: 'Ex : ma mère, mon frère, une amie',
+    send_recipient_code_notice:
+      'À la livraison, c\'est cette personne qui donne le code au voyageur. Vous recevrez ce code — pensez à le lui transmettre, sinon la livraison ne peut pas être validée.',
     send_prescription_required: 'Ordonnance obligatoire',
     send_upload_prescription: 'Téléverser l\'ordonnance',
     send_forbidden_title: 'Objets interdits',
@@ -2949,8 +2952,10 @@ export const translations: Record<Locale, Translations> = {
     send_recipient_label: 'Who collects the parcel on arrival?',
     send_recipient_me: 'Me',
     send_recipient_other: 'Someone else',
-    send_recipient_name_label: 'Recipient\'s name',
-    send_recipient_name_placeholder: 'E.g. Sarah Benali',
+    send_recipient_rel_label: 'Who are they to you?',
+    send_recipient_rel_placeholder: 'E.g. my mother, my brother, a friend',
+    send_recipient_code_notice:
+      'At delivery, they are the one who gives the code to the traveller. You will receive that code — remember to pass it on, or the delivery cannot be confirmed.',
     send_prescription_required: 'Prescription required',
     send_upload_prescription: 'Upload prescription',
     send_forbidden_title: 'Forbidden items',

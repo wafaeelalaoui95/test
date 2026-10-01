@@ -989,11 +989,28 @@ function RecipientPicker({
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-3"
+          className="mt-3 space-y-3"
         >
+          {/* The code, before the question about the person.
+              Sending to someone else quietly adds a step the sender does not
+              know about until the night the parcel lands: the delivery code
+              goes to THEM, and the traveller cannot close the delivery without
+              it. Discovering that at the airport is how a parcel sits in
+              someone's bag for a week. Telling them here costs one sentence. */}
+          <div className="rounded-2xl bg-butter-50 border border-butter-200 px-4 py-3">
+            <p className="text-[13px] text-ink-600 leading-relaxed">
+              {t.send_recipient_code_notice}
+            </p>
+          </div>
+
+          {/* A relationship rather than a name. Nothing has ever displayed the
+              recipient's name — not to the traveller, not in the admin — so it
+              was personal data collected for nobody. The delivery code is what
+              proves who is collecting; "ma mère" tells the traveller what they
+              need and names no one. */}
           <Input
-            label={t.send_recipient_name_label}
-            placeholder={t.send_recipient_name_placeholder}
+            label={t.send_recipient_rel_label}
+            placeholder={t.send_recipient_rel_placeholder}
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
             maxLength={80}
