@@ -1855,7 +1855,7 @@ export const translations: Record<Locale, Translations> = {
     space_envelope_size: 'jusqu\'à 200g',
     space_pouch: 'Pochette',
     space_pouch_size: 'jusqu\'à 500g',
-    space_bag: 'Petit sac',
+    space_bag: 'Petit objet',
     space_bag_size: 'jusqu\'à 1,5 kg',
 
     verif_trusted: 'Membre de confiance',
@@ -3164,7 +3164,7 @@ export const translations: Record<Locale, Translations> = {
     space_envelope_size: 'up to 200g',
     space_pouch: 'Pouch',
     space_pouch_size: 'up to 500g',
-    space_bag: 'Small bag',
+    space_bag: 'Small item',
     space_bag_size: 'up to 1.5 kg',
 
     verif_trusted: 'Trusted member',

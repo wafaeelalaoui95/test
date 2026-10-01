@@ -158,7 +158,7 @@ export const PARCEL_SIZES: {
 }[] = [
   { value: 'enveloppe', maxKg: 0.2, labelKey: 'space_envelope', sizeKey: 'space_envelope_size', icon: '✉️' },
   { value: 'pochette', maxKg: 0.5, labelKey: 'space_pouch', sizeKey: 'space_pouch_size', icon: '👝' },
-  { value: 'petit_sac', maxKg: 1.5, labelKey: 'space_bag', sizeKey: 'space_bag_size', icon: '🎒' },
+  { value: 'petit_sac', maxKg: 1.5, labelKey: 'space_bag', sizeKey: 'space_bag_size', icon: '📦' },
 ];
 
 export const MAX_PARCEL_WEIGHT_KG = 1.5;
@@ -226,7 +226,7 @@ export const SPACE_OPTIONS: {
 }[] = [
   { value: 'enveloppe', labelKey: 'space_envelope', sizeKey: 'space_envelope_size', icon: '✉️' },
   { value: 'pochette', labelKey: 'space_pouch', sizeKey: 'space_pouch_size', icon: '👝' },
-  { value: 'petit_sac', labelKey: 'space_bag', sizeKey: 'space_bag_size', icon: '🎒' },
+  { value: 'petit_sac', labelKey: 'space_bag', sizeKey: 'space_bag_size', icon: '📦' },
 ];
 
 // Demo data — travelers (international)
