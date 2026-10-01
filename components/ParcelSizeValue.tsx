@@ -79,9 +79,13 @@ export function ParcelSizeValue({
             value={value}
             placeholder={t.send_value_ph}
             onChange={(e) => {
-              // Digits only, and never above the cap. Clamping as they type
-              // rather than refusing on submit: the limit is a rule about what
-              // Jibly carries, not a trap to spring at the end of a form.
+              // Digits only, and never above the cap — but the cap is NOT
+              // stated anywhere on screen, deliberately. Naming a maximum next
+              // to a value field anchors people to it: told the limit is €500,
+              // a steady share of senders decide their parcel is worth exactly
+              // €500. The field simply stops climbing, which teaches the same
+              // rule to the few people it affects and suggests nothing to
+              // everyone else. Do not "helpfully" add it back to the hint.
               const digits = e.target.value.replace(/[^0-9]/g, '');
               if (!digits) return onValue('');
               const n = Math.min(Number(digits), MAX_DECLARED_VALUE_EUR);
