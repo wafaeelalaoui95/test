@@ -104,6 +104,25 @@ export const PLATFORM_FEE_FIXED_CENTS = 50;
  */
 export const AUTO_RELEASE_DAYS = 3;
 
+/**
+ * How long money may sit captured and untransferred before somebody is told.
+ *
+ * Capture happens when the traveller accepts, so between then and delivery the
+ * sender's money is in the Jibly balance by design — that is the arrangement,
+ * and most of it clears in two to six weeks. What this guards is the tail: a
+ * traveller who never finishes Connect onboarding, a parcel nobody ever
+ * confirms and nobody ever proves, and — since the payout guard was added — a
+ * booking with a dispute no operator has settled. All three hold money
+ * indefinitely and none of them raises its hand.
+ *
+ * Stripe's support channel cited 90 days when asked about holding limits, but
+ * the passage they quoted is about Stripe holding a platform's funds in
+ * reserve, not a cap on the interval between charge and transfer. Treat that
+ * number as unconfirmed. 60 leaves a month of room under it either way, which
+ * is the point of a warning rather than a deadline.
+ */
+export const STALE_HOLD_DAYS = 60;
+
 export const ITEM_CATEGORIES: {
   value: ItemCategory;
   labelKey: keyof Translations;

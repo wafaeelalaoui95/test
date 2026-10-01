@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/server';
 import { getAdminContext } from '@/lib/admin';
 import { travelerNetFromTotal } from '@/lib/utils';
+import { STALE_HOLD_DAYS } from '@/lib/constants';
+import { DISPUTE_SETTLED_FILTER } from '@/lib/disputes';
 
 /**
  * GET /api/admin/overview
@@ -46,6 +48,33 @@ export async function GET() {
   ]);
 
   const rows = bookings ?? [];
+
+  // Money that has been sitting here too long, whatever the reason.
+  //
+  // The buckets below answer "why is this held"; this one answers "how long",
+  // which nothing asked before. Every path that holds money is individually
+  // reasonable and indefinite: a traveller who never finishes payout setup, a
+  // parcel nobody confirmed and nobody proved, and a dispute no operator has
+  // settled. None of them complains, so the first warning would otherwise come
+  // from Stripe or from the person who was never paid.
+  const staleBefore = new Date(
+    Date.now() - STALE_HOLD_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+  const aging = rows.filter(
+    (b: any) => b.created_at < staleBefore && b.status !== 'cancelled'
+  );
+
+  // Which of them are held by an unsettled dispute, so the list can say why
+  // rather than leaving an operator to guess at a row that looks normal.
+  const { data: disputed } = aging.length
+    ? await admin
+        .from('disputes')
+        .select('booking_intent_id')
+        .in('booking_intent_id', aging.map((b: any) => b.id))
+        .not('status', 'in', DISPUTE_SETTLED_FILTER)
+    : { data: [] as any[] };
+  const disputedIds = new Set((disputed ?? []).map((d: any) => d.booking_intent_id));
+
   const delivered = rows.filter((b: any) => b.received_confirmed_at);
   // Cancelled and still holding the sender's money: /api/trip/cancel refunds
   // before it cancels, so this is the refund that did not go through. Split
@@ -73,6 +102,7 @@ export async function GET() {
         ...(reviews ?? []).flatMap((r: any) => [r.reviewer_id, r.reviewed_user_id]),
         ...delivered.map((b: any) => b.traveler_user_id),
         ...owedBack.map((b: any) => b.sender_id),
+        ...aging.flatMap((b: any) => [b.traveler_user_id, b.sender_id]),
       ].filter(Boolean)
     ),
   ];
@@ -100,6 +130,28 @@ export async function GET() {
         euros: (b.payment_amount ?? 0) / 100,
         senderName: nameById.get(b.sender_id) ?? null,
         cancelledAt: b.cancelled_at,
+      })),
+      staleDays: STALE_HOLD_DAYS,
+      staleCount: aging.length,
+      // At face value: what is actually sitting on the balance, not the
+      // traveller's share of it. This number answers "how much of other
+      // people's money have we been holding for two months".
+      staleEuros: aging.reduce((s: number, b: any) => s + (b.payment_amount ?? 0) / 100, 0),
+      stale: aging.map((b: any) => ({
+        id: b.id,
+        route: `${b.pickup_city} → ${b.destination_city}`,
+        euros: (b.payment_amount ?? 0) / 100,
+        days: Math.floor(
+          (Date.now() - new Date(b.created_at).getTime()) / (24 * 60 * 60 * 1000)
+        ),
+        travelerName: nameById.get(b.traveler_user_id) ?? null,
+        senderName: nameById.get(b.sender_id) ?? null,
+        // Why it is still here, in the order that decides what to do about it.
+        reason: disputedIds.has(b.id)
+          ? 'dispute'
+          : b.received_confirmed_at
+          ? 'payout_setup'
+          : 'undelivered',
       })),
       stuck: delivered.map((b: any) => ({
         id: b.id,

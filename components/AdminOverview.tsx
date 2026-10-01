@@ -43,6 +43,20 @@ type Overview = {
       senderName: string | null;
       cancelledAt: string | null;
     }>;
+    // Money held longer than it should be, whatever the reason. Cuts across
+    // the buckets above: a row here is also counted in "held" or "stuck".
+    staleDays: number;
+    staleCount: number;
+    staleEuros: number;
+    stale: Array<{
+      id: string;
+      route: string;
+      euros: number;
+      days: number;
+      travelerName: string | null;
+      senderName: string | null;
+      reason: 'dispute' | 'payout_setup' | 'undelivered';
+    }>;
   };
   reviews: Array<{
     id: string;
@@ -209,6 +223,48 @@ export function AdminOverview() {
           </div>
         )}
       </div>
+
+      {/* ---- Money held too long ----
+          Deliberately its own block rather than a column in the ones above:
+          every bucket up there is a normal state, and the question this one
+          asks is how long it has been normal for. */}
+      {owed.staleCount > 0 && (
+        <div>
+          <h3 className="text-[15px] font-semibold text-ink-600 mb-1">
+            Bloqué depuis plus de {owed.staleDays} jours
+          </h3>
+          <p className="text-[13px] text-ink-400 leading-relaxed mb-4">
+            {formatEuros(owed.staleEuros)} sur {owed.staleCount} réservation(s).
+            Rien ne débloquera ça tout seul — chaque ligne attend une action.
+          </p>
+          <div className="bg-butter-50 rounded-2xl border border-butter-200 overflow-hidden">
+            {owed.stale.map((b) => (
+              <div
+                key={b.id}
+                className="flex items-center gap-3 px-5 py-3 border-b border-butter-200/60 last:border-0 text-[13px] flex-wrap"
+              >
+                <span className="font-semibold text-ink-600">{b.days} j</span>
+                <span className="text-ink-400 truncate">{b.route}</span>
+                <span className="text-ink-300 text-[12px]">
+                  {b.reason === 'dispute'
+                    ? `signalement non tranché — ${b.senderName ?? 'expéditeur'}`
+                    : b.reason === 'payout_setup'
+                    ? `livré, paiements non configurés — ${b.travelerName ?? 'voyageur'}`
+                    : `jamais livré — ${b.travelerName ?? 'voyageur'}`}
+                </span>
+                <span className="ms-auto font-bold text-ink-600 num-display">
+                  {formatEuros(b.euros)}
+                </span>
+              </div>
+            ))}
+            <p className="px-5 py-3 text-[12px] text-ink-500 leading-relaxed bg-butter-100/60">
+              Un signalement se tranche plus bas. Des paiements non configurés
+              se relancent auprès du voyageur. Un colis jamais livré se
+              rembourse — personne ne le fera à ta place.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ---- Reviews ---- */}
       <div>
