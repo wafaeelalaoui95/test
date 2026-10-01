@@ -25,7 +25,7 @@ const COPY = {
   fr: {
     label: 'Photo du colis',
     optional: 'facultatif',
-    hint: 'Le voyageur pourra la voir avant d’accepter. Beaucoup préfèrent savoir ce qu’ils transportent.',
+    hint: 'Les voyageurs sont invités à vérifier l’objet avant de le transporter.',
     add: 'Ajouter une photo',
     change: 'Changer',
     remove: 'Retirer',
@@ -39,7 +39,7 @@ const COPY = {
   en: {
     label: 'Photo of the parcel',
     optional: 'optional',
-    hint: 'The traveller can look at it before accepting. Many prefer to know what they are carrying.',
+    hint: 'Travellers are encouraged to check the item before transporting it.',
     add: 'Add a photo',
     change: 'Change',
     remove: 'Remove',
