@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
+import { syncRequestVisibility } from '@/lib/listings';
 
 /**
  * POST /api/stripe/capture
@@ -109,6 +110,11 @@ export async function POST(req: NextRequest) {
       // Stripe succeeded but our DB didn't reflect it. We still return ok
       // because the money moved; the webhook will reconcile if configured.
     }
+
+    // Somebody is now carrying this parcel, so stop offering it to everyone
+    // else. No-op when the booking was made against a trip rather than a
+    // posted parcel.
+    await syncRequestVisibility(body.bookingIntentId);
 
     // NO payout here. This route runs when the traveler ACCEPTS, which is
     // before they have carried anything — paying them at that moment would

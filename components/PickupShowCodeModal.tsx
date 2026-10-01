@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Check, Package, ShieldCheck, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/lib/i18n/context';
- 
+import { attestationStatement } from '@/lib/attestations';
+
 /**
  * Code display modal — shown at one of the two trust-handoff moments. 
  *
@@ -184,7 +185,13 @@ export function PickupShowCodeModal({
                         {t.inspect_title}
                       </p>
                       <p className="text-[13px] text-ink-500 leading-relaxed">
-                        {t.inspect_statement}
+                        {/* Rendered from the frozen statement, NOT from a
+                            translation key. The sentence on screen and the
+                            sentence written to booking_attestations have to be
+                            the same words — they were two separate strings
+                            until counsel's wording landed, which is one typo
+                            away from a declaration nobody actually read. */}
+                        {attestationStatement('traveler_inspection', locale)}
                       </p>
                     </div>
                   </div>

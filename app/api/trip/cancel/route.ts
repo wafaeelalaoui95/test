@@ -10,6 +10,7 @@ import {
 } from '@/lib/stripe/release';
 import { getSiteUrl } from '@/lib/site-url';
 import { formatName } from '@/lib/utils';
+import { syncRequestVisibility } from '@/lib/listings';
 
 /**
  * POST /api/trip/cancel
@@ -246,6 +247,11 @@ export async function POST(req: NextRequest) {
     if (cancelErr) {
       console.error('[trip/cancel] booking update failed:', booking.id, cancelErr.message);
     }
+
+    // The traveller is no longer flying, so the parcel goes back on the market
+    // — the sender is being emailed alternative trips for exactly this reason,
+    // and it would be a poor welcome if their own listing had vanished.
+    await syncRequestVisibility(booking.id);
 
     // ---- 3. the sender ----------------------------------------------------
     const notified = await tellSender({

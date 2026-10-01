@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
+import { syncRequestVisibility } from '@/lib/listings';
 
 /**
  * POST /api/stripe/cancel
@@ -83,6 +84,10 @@ export async function POST(req: NextRequest) {
       .from('booking_intents')
       .update({ payment_status: 'canceled' })
       .eq('id', body.bookingIntentId);
+
+    // Nobody is carrying it after all — put the parcel back on the market.
+    await syncRequestVisibility(body.bookingIntentId);
+
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error('Stripe cancel error:', e?.message);

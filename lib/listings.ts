@@ -53,6 +53,98 @@ export function isOwnParcelPhoto(value: unknown): boolean {
   return typeof value === 'string' && value.includes(PHOTO_PREFIX);
 }
 
+/**
+ * Payment states that mean somebody has actually committed to this parcel.
+ *
+ * 'captured' covers a partial refund too, which is right: a parcel that was
+ * partly refunded is still being carried. 'canceled' and 'refunded' are the
+ * states a booking lands in when it comes apart, and a booking with no payment
+ * at all was never a commitment.
+ */
+const LIVE_PAYMENT_STATUSES = ['authorized', 'captured'];
+
+/**
+ * Take a parcel off the market once somebody is carrying it — and put it back
+ * if they stop.
+ *
+ * `listOpenRequests` shows every request whose status is 'pending', and nothing
+ * ever moved a request off 'pending': the only writes to that column were
+ * account deletion and the stale-date reminder. So a parcel that had been
+ * booked and paid for went on being offered to other travellers, who could
+ * propose on it, and the sender could accept and pay for the same parcel
+ * twice. `RequestStatus` has had a 'matched' value the whole time; nothing set
+ * it.
+ *
+ * RECOMPUTED from the bookings rather than toggled, because the way back
+ * matters as much as the way out: a decline, a cancelled trip or a refused
+ * payment has to put the parcel back on the market, and a pair of toggles in
+ * four different routes is how one of those gets forgotten and a sender's
+ * parcel disappears for good.
+ *
+ * Deliberately keyed on payment state, not on booking_intents.status. The
+ * status is written by the browser and the money columns by the server, so in
+ * the accept path this function can run before the client's write lands —
+ * reading the column the server itself has just set is the only version that
+ * does not depend on who won that race.
+ *
+ * Never throws and never blocks its caller: every call site has just moved
+ * money, and a parcel left visible one minute longer is not worth failing a
+ * capture over. Safe to call with any booking — one made against a trip has no
+ * request behind it and returns immediately.
+ */
+export async function syncRequestVisibility(bookingIntentId: string): Promise<void> {
+  try {
+    const admin = getAdminClient();
+
+    const { data: booking } = await admin
+      .from('booking_intents')
+      .select('shipping_request_id')
+      .eq('id', bookingIntentId)
+      .maybeSingle();
+
+    const requestId = booking?.shipping_request_id;
+    if (!requestId) return;
+
+    const { data: request } = await admin
+      .from('shipping_requests')
+      .select('status')
+      .eq('id', requestId)
+      .maybeSingle();
+    if (!request) return;
+
+    // Only ever moves between these two. A request that was withdrawn,
+    // delivered or flagged has been decided by somebody, and a visibility
+    // recompute is not entitled to overrule them.
+    if (request.status !== 'pending' && request.status !== 'matched') return;
+
+    const { data: live, error } = await admin
+      .from('booking_intents')
+      .select('id')
+      .eq('shipping_request_id', requestId)
+      .neq('status', 'cancelled')
+      .in('payment_status', LIVE_PAYMENT_STATUSES)
+      .limit(1);
+
+    if (error) {
+      console.error('[listings] visibility check failed for', requestId, error.message);
+      return;
+    }
+
+    const next = live?.length ? 'matched' : 'pending';
+    if (next === request.status) return;
+
+    const { error: updErr } = await admin
+      .from('shipping_requests')
+      .update({ status: next })
+      .eq('id', requestId);
+    if (updErr) {
+      console.error('[listings] could not set', requestId, 'to', next, updErr.message);
+    }
+  } catch (e: any) {
+    console.error('[listings] visibility sync threw for booking', bookingIntentId, e?.message);
+  }
+}
+
 export type ListingGuard =
   | { ok: true; row: Record<string, any> }
   | { ok: false; code: 'not_found' | 'not_owner' | 'has_bookings' | 'already_cancelled'; status: number };

@@ -107,10 +107,52 @@ const STATEMENTS: Record<AttestationKind, Record<AttestationLocale, string>> = {
       'applicables.',
   },
   traveler_inspection: {
-    en: 'I inspected the item and confirm it corresponds to the description.',
-    fr: 'J’ai inspecté l’objet et confirme qu’il correspond à la description.',
+    en:
+      'I confirm that I have had a reasonable opportunity to inspect the Item, ' +
+      'that the Item broadly matches the description and information shown in ' +
+      'the Booking, and that I am willing to carry it.',
+    fr:
+      'Je confirme avoir eu une possibilité raisonnable d’inspecter l’objet, que ' +
+      'celui-ci correspond globalement à la description et aux informations ' +
+      'figurant dans la réservation, et que j’accepte de le transporter.',
   },
 };
+
+/**
+ * When the wording above last changed, and what it said before.
+ *
+ * Kept because the file is meant to be readable years from now by somebody
+ * asking what a traveller actually agreed to on a given day. The stored row
+ * already carries its own copy of the sentence, so this is not what rescues the
+ * data — it is what stops this file quietly pretending the current wording was
+ * always the wording.
+ *
+ * Deliberately NOT folded into PROHIBITED_POLICY_VERSION. That version answers
+ * "which items were banned on the day", and nothing about the banned list
+ * changed here. Bumping it for a wording change would make every new row claim
+ * a policy revision that never happened, which is worse than useless in the one
+ * situation these records exist for.
+ */
+export const ATTESTATION_STATEMENT_VERSION = '2026-10-01';
+
+const SUPERSEDED_STATEMENTS = [
+  {
+    version: '2026-09-15',
+    inForceUntil: '2026-10-01',
+    kind: 'traveler_inspection' as AttestationKind,
+    en: 'I inspected the item and confirm it corresponds to the description.',
+    fr: 'J’ai inspecté l’objet et confirme qu’il correspond à la description.',
+    // Replaced on counsel's drafting: the original asserted that an inspection
+    // happened, which is more than a traveller can honestly promise and less
+    // than the Marketplace Terms ask for. The current wording covers the three
+    // limbs those terms require — a reasonable opportunity to inspect, a broad
+    // match with the listing, and willingness to carry.
+  },
+];
+
+// Referenced so the record above cannot be dropped by a tidy-up that sees an
+// unused binding. It is documentation, and it is meant to stay.
+export const SUPERSEDED_STATEMENT_COUNT = SUPERSEDED_STATEMENTS.length;
 
 /**
  * Render the sentence the person is about to agree to.

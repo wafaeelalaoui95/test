@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
+import { syncRequestVisibility } from '@/lib/listings';
 
 /**
  * POST /api/booking/record-authorization
@@ -101,6 +102,12 @@ export async function POST(req: NextRequest) {
     console.error('[record-authorization] DB update failed:', updErr);
     return NextResponse.json({ error: 'Failed to record authorization' }, { status: 500 });
   }
+
+  // The sender has committed to this parcel, so take it off the market before
+  // the capture attempt rather than after: the booking stands either way, and
+  // a capture that fails must not leave the parcel on offer to other
+  // travellers.
+  await syncRequestVisibility(body.bookingIntentId);
 
   // Take the money now — see the note at the top of this file.
   try {

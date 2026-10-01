@@ -53,6 +53,16 @@ export function Footer() {
                   Contact
                 </a>
               </li>
+              <li>
+                <a
+                  href="https://instagram.com/thejiblyapp"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-ink-600 transition-colors"
+                >
+                  @thejiblyapp
+                </a>
+              </li>
             </ul>
           </div>
         </div>
