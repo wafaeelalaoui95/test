@@ -2,7 +2,50 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+/**
+ * Exchange a stored photo URL for a short-lived signed one.
+ *
+ * Every reader of a parcel photo or a delivery proof goes through here, which
+ * is what lets the buckets become private without touching a single call site:
+ * the components below all take the same `url` prop they always did.
+ *
+ * There is deliberately NO fallback to the raw URL. Falling back would mean a
+ * refusal — someone asking for a delivery proof from a booking that is not
+ * theirs — silently succeeding for as long as the bucket stayed public, which
+ * is the precise failure this exists to end. A photo that cannot be signed does
+ * not appear.
+ */
+export function useSignedUrl(url: string | null, enabled = true): string | null {
+  const [signed, setSigned] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!url || !enabled) {
+      setSigned(null);
+      return;
+    }
+    let cancelled = false;
+    setSigned(null);
+    fetch('/api/media/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled) setSigned(d?.url ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setSigned(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url, enabled]);
+
+  return signed;
+}
 
 /**
  * In-page image viewer. Shows the image centred and contained (never bigger
@@ -20,6 +63,9 @@ export function ImageLightbox({
   open: boolean;
   onClose: () => void;
 }) {
+  // Only while it is open: a page listing a dozen proofs should not sign a
+  // dozen files nobody has asked to look at.
+  const viewable = useSignedUrl(src, open);
   return (
     <AnimatePresence>
       {open && (
@@ -46,12 +92,16 @@ export function ImageLightbox({
             >
               <X className="w-4 h-4" />
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt={alt ?? ''}
-              className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl"
-            />
+            {viewable ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={viewable}
+                alt={alt ?? ''}
+                className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl"
+              />
+            ) : (
+              <div className="w-[70vw] max-w-[420px] h-[40vh] rounded-2xl bg-ink-500/40 animate-pulse" />
+            )}
           </motion.div>
         </motion.div>
       )}
@@ -104,6 +154,8 @@ export function ProofThumbnail({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // Signed straight away, unlike the lightbox: this one is on screen.
+  const viewable = useSignedUrl(url);
   return (
     <>
       <button
@@ -112,8 +164,12 @@ export function ProofThumbnail({
         className="block w-full cursor-zoom-in"
         aria-label={alt}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={alt ?? ''} className={className} />
+        {viewable ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={viewable} alt={alt ?? ''} className={className} />
+        ) : (
+          <div className={`${className ?? ''} bg-ink-50 animate-pulse`} />
+        )}
       </button>
       <ImageLightbox src={url} alt={alt} open={open} onClose={() => setOpen(false)} />
     </>

@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Camera, Loader2, X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/context';
+import { useSignedUrl } from '@/components/ImageLightbox';
 
 // =============================================================================
 // ParcelPhotoInput — optional photo of the parcel, shown to the traveller
@@ -63,6 +64,9 @@ export function ParcelPhotoInput({
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // The thumbnail of a photo already uploaded. Signed like every other reader
+  // of that bucket — the uploader is not a special case once it is private.
+  const preview = useSignedUrl(value);
 
   async function pick(file: File) {
     setBusy(true);
@@ -107,12 +111,16 @@ export function ParcelPhotoInput({
 
       {value ? (
         <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={value}
-            alt=""
-            className="w-16 h-16 rounded-xl object-cover border border-ink-100"
-          />
+          {preview ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={preview}
+              alt=""
+              className="w-16 h-16 rounded-xl object-cover border border-ink-100"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-xl border border-ink-100 bg-ink-50 animate-pulse" />
+          )}
           <button
             type="button"
             onClick={() => input.current?.click()}
