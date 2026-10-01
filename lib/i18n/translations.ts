@@ -1220,6 +1220,27 @@ export type Translations = {
   rev_dispute_cat_refused_desc: string;
   rev_dispute_cat_disruption: string;
   rev_dispute_cat_disruption_desc: string;
+  // A sender ending a booking the traveller has already accepted.
+  me2_bcancel_link: string;
+  me2_bcancel_title: string;
+  me2_bcancel_intro: string;
+  me2_bcancel_reason_not_needed: string;
+  me2_bcancel_reason_another_way: string;
+  me2_bcancel_reason_handover: string;
+  me2_bcancel_reason_unresponsive: string;
+  me2_bcancel_reason_not_agreed: string;
+  me2_bcancel_reason_other: string;
+  me2_bcancel_note_label: string;
+  me2_bcancel_note_ph: string;
+  me2_bcancel_money_captured: string;
+  me2_bcancel_money_hold: string;
+  me2_bcancel_listing_down: string;
+  me2_bcancel_submit: string;
+  me2_bcancel_keep: string;
+  me2_bcancel_err_reason: string;
+  me2_bcancel_err_note: string;
+  me2_bcancel_err_handed: string;
+  me2_bcancel_err_failed: string;
   rev_dispute_desc_label: string;
   rev_dispute_desc_placeholder: string;
   rev_dispute_submit: string;
@@ -2498,6 +2519,31 @@ export const translations: Record<Locale, Translations> = {
     rev_dispute_cat_refused_desc: 'Le voyageur n\'a pas accepté de le transporter',
     rev_dispute_cat_disruption: 'Voyage perturbé',
     rev_dispute_cat_disruption_desc: 'Vol annulé, retard ou problème de douane',
+    me2_bcancel_link: 'Annuler cette réservation',
+    me2_bcancel_title: 'Annuler cette réservation',
+    me2_bcancel_intro:
+      'Le voyageur a accepté de transporter ce colis et s\'est organisé en conséquence. Dites-lui pourquoi vous arrêtez — il le verra.',
+    me2_bcancel_reason_not_needed: 'Je n\'ai plus besoin de l\'envoyer',
+    me2_bcancel_reason_another_way: 'Je l\'ai envoyé autrement',
+    me2_bcancel_reason_handover: 'Je ne peux pas être là pour la remise',
+    me2_bcancel_reason_unresponsive: 'Le voyageur ne répond plus',
+    me2_bcancel_reason_not_agreed: 'On n\'a jamais réussi à convenir d\'un rendez-vous',
+    me2_bcancel_reason_other: 'Autre raison',
+    me2_bcancel_note_label: 'Précisez (obligatoire pour « Autre raison »)',
+    me2_bcancel_note_ph: 'Ce que le voyageur doit savoir…',
+    me2_bcancel_money_captured:
+      'Votre paiement a déjà été encaissé et n\'est pas remboursé automatiquement. Nous examinons chaque annulation : ce qui vous est rendu dépend du moment et de ce que le voyageur avait déjà engagé. Vous serez recontacté.',
+    me2_bcancel_money_hold:
+      'Rien n\'a encore été débité : l\'empreinte bancaire est libérée immédiatement.',
+    me2_bcancel_listing_down:
+      'Votre annonce sera retirée en même temps. Republiez-la quand vous voudrez.',
+    me2_bcancel_submit: 'Annuler la réservation',
+    me2_bcancel_keep: 'Garder la réservation',
+    me2_bcancel_err_reason: 'Choisissez une raison',
+    me2_bcancel_err_note: 'Précisez votre raison',
+    me2_bcancel_err_handed:
+      'Le colis est déjà entre les mains du voyageur — ce n\'est plus une annulation. Signalez un problème à la place.',
+    me2_bcancel_err_failed: 'Impossible d\'annuler. Réessayez.',
     rev_dispute_desc_label: 'Description détaillée',
     rev_dispute_desc_placeholder: 'Décrivez ce qu\'il s\'est passé, les dates, les échanges, et tout ce qui peut nous aider à trancher…',
     rev_dispute_submit: 'Envoyer le signalement',
@@ -3774,6 +3820,31 @@ export const translations: Record<Locale, Translations> = {
     rev_dispute_cat_refused_desc: 'The traveller wouldn\'t take it',
     rev_dispute_cat_disruption: 'Travel disrupted',
     rev_dispute_cat_disruption_desc: 'Cancelled flight, delay or customs problem',
+    me2_bcancel_link: 'Cancel this booking',
+    me2_bcancel_title: 'Cancel this booking',
+    me2_bcancel_intro:
+      'The traveller agreed to carry this parcel and has planned around it. Tell them why you are stopping — they will see it.',
+    me2_bcancel_reason_not_needed: 'I no longer need it sent',
+    me2_bcancel_reason_another_way: 'I have sent it another way',
+    me2_bcancel_reason_handover: 'I cannot be there for the handover',
+    me2_bcancel_reason_unresponsive: 'The traveller stopped replying',
+    me2_bcancel_reason_not_agreed: 'We never managed to agree a meeting',
+    me2_bcancel_reason_other: 'Another reason',
+    me2_bcancel_note_label: 'Tell them more (required for "Another reason")',
+    me2_bcancel_note_ph: 'What the traveller should know…',
+    me2_bcancel_money_captured:
+      'Your payment has already been taken and is not refunded automatically. We review each cancellation: what comes back depends on when you cancelled and what the traveller had already done. We will be in touch.',
+    me2_bcancel_money_hold:
+      'Nothing has been charged yet — the hold on your card is released straight away.',
+    me2_bcancel_listing_down:
+      'Your listing comes down at the same time. Post it again whenever you like.',
+    me2_bcancel_submit: 'Cancel the booking',
+    me2_bcancel_keep: 'Keep the booking',
+    me2_bcancel_err_reason: 'Choose a reason',
+    me2_bcancel_err_note: 'Say a little more',
+    me2_bcancel_err_handed:
+      'The traveller already has the parcel — this is no longer a cancellation. Report a problem instead.',
+    me2_bcancel_err_failed: 'Could not cancel. Please try again.',
     rev_dispute_desc_label: 'Detailed description',
     rev_dispute_desc_placeholder: 'Describe what happened, the dates, the exchanges, and anything that can help us decide…',
     rev_dispute_submit: 'Submit report',

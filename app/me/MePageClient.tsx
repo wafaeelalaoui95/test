@@ -39,6 +39,7 @@ import { ChatModal } from '@/components/ChatModal';
 import { Input } from '@/components/ui/Form';
 // Trust & safety: dispute reporting + code-based handoff verification
 import { DisputeModal } from '@/components/DisputeModal';
+import { CancelBookingModal } from '@/components/CancelBookingModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
 import { PayoutStatusCard } from '@/components/PayoutSetup';
@@ -213,6 +214,7 @@ export default function MyPage(
   // When the sender accepts a traveler's proposal, we open a Stripe payment
   // modal. The proposal booking is held here while paying.
   const [proposalToPay, setProposalToPay] = useState<MyBooking | null>(null);
+  const [cancelBookingFor, setCancelBookingFor] = useState<MyBooking | null>(null);
   // Incoming request whose details popup is open (opened from the card's
   // "Voir la demande" button OR deep-linked from a notification via ?booking=).
   const [detailsFor, setDetailsFor] = useState<IncomingIntent | null>(null);
@@ -807,6 +809,7 @@ export default function MyPage(
                       contextLine: `${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`,
                     });
                   }}
+                  onCancelBooking={(booking) => setCancelBookingFor(booking)}
                   onReportProblem={(booking) => {
                     // Sender reports the traveler on this booking.
                     if (!booking.traveler_profile) return;
@@ -952,6 +955,24 @@ export default function MyPage(
                   window.history.replaceState({}, '', url.toString());
                 }
               }
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sender ends a booking the traveller had accepted. The money question
+          is answered inside the dialog, not here: nothing is refunded on the
+          spot, and saying so before they commit is the point of it. */}
+      <AnimatePresence>
+        {cancelBookingFor && (
+          <CancelBookingModal
+            booking={cancelBookingFor}
+            onClose={() => setCancelBookingFor(null)}
+            onCancelled={(id) => {
+              setMyBookings((prev) =>
+                prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' } : b))
+              );
+              setCancelBookingFor(null);
             }}
           />
         )}
@@ -1452,6 +1473,7 @@ function BookingCard({
   onDeclineProposal,
   onOpenChat,
   onReportProblem,
+  onCancelBooking,
   onShowPickupCode,
   onEnterDeliveryCode,
   onOpenReview,
@@ -1464,6 +1486,7 @@ function BookingCard({
   onDeclineProposal?: (id: string) => void;
   onOpenChat?: (b: MyBooking) => void;
   onReportProblem?: (b: MyBooking) => void;
+  onCancelBooking?: (b: MyBooking) => void;
   onShowPickupCode?: (b: MyBooking) => void;
   onEnterDeliveryCode?: (b: MyBooking) => void;
   onOpenReview?: (b: MyBooking) => void;
@@ -1726,16 +1749,33 @@ function BookingCard({
           {/* Trust & safety — discreet "Signaler un problème" link.
               Subtle by design: we don't want to encourage misuse, but it
               must be one click away if something genuinely goes wrong. */}
-          {onReportProblem && (
-            <div className="mt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => onReportProblem(booking)}
-                className="inline-flex items-center gap-1 text-[12px] text-ink-400 hover:text-blush-500 transition-colors"
-              >
-                <Flag className="w-3 h-3" strokeWidth={1.75} />
-                {t.me2_report_problem}
-              </button>
+          {(onReportProblem || onCancelBooking) && (
+            <div className="mt-3 flex justify-end gap-4">
+              {/* Only while it is still a cancellation. Once the traveller has
+                  the parcel the policy stops calling it that, and the server
+                  refuses — so offering the button would be a promise the next
+                  screen breaks. */}
+              {onCancelBooking &&
+                booking.status === 'confirmed' &&
+                !booking.pickup_confirmed_at && (
+                  <button
+                    type="button"
+                    onClick={() => onCancelBooking(booking)}
+                    className="inline-flex items-center gap-1 text-[12px] text-ink-400 hover:text-blush-500 transition-colors"
+                  >
+                    {t.me2_bcancel_link}
+                  </button>
+                )}
+              {onReportProblem && (
+                <button
+                  type="button"
+                  onClick={() => onReportProblem(booking)}
+                  className="inline-flex items-center gap-1 text-[12px] text-ink-400 hover:text-blush-500 transition-colors"
+                >
+                  <Flag className="w-3 h-3" strokeWidth={1.75} />
+                  {t.me2_report_problem}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -2940,6 +2980,7 @@ function SendsView({
   onDeclineProposal,
   onOpenChat,
   onReportProblem,
+  onCancelBooking,
   onShowPickupCode,
   onEnterDeliveryCode,
   onOpenReview,
@@ -2957,6 +2998,7 @@ function SendsView({
   onDeclineProposal: (id: string) => void;
   onOpenChat: (b: MyBooking) => void;
   onReportProblem: (b: MyBooking) => void;
+  onCancelBooking: (b: MyBooking) => void;
   onShowPickupCode: (b: MyBooking) => void;
   onEnterDeliveryCode: (b: MyBooking) => void;
   onOpenReview: (b: MyBooking) => void;
@@ -3146,6 +3188,7 @@ function SendsView({
           onDeclineProposal={onDeclineProposal}
           onOpenChat={onOpenChat}
           onReportProblem={onReportProblem}
+          onCancelBooking={onCancelBooking}
           onShowPickupCode={onShowPickupCode}
           onEnterDeliveryCode={onEnterDeliveryCode}
           onOpenReview={onOpenReview}
