@@ -1211,6 +1211,15 @@ export type Translations = {
   rev_dispute_cat_mismatch_desc: string;
   rev_dispute_cat_no_confirm: string;
   rev_dispute_cat_no_confirm_desc: string;
+  // The three the Cancellation & Refund Policy turns on. Everything above is
+  // about a parcel that arrived wrong; these are about a journey that never
+  // happened, which is most of what the policy actually decides.
+  rev_dispute_cat_no_show: string;
+  rev_dispute_cat_no_show_desc: string;
+  rev_dispute_cat_refused: string;
+  rev_dispute_cat_refused_desc: string;
+  rev_dispute_cat_disruption: string;
+  rev_dispute_cat_disruption_desc: string;
   rev_dispute_desc_label: string;
   rev_dispute_desc_placeholder: string;
   rev_dispute_submit: string;
@@ -2483,6 +2492,12 @@ export const translations: Record<Locale, Translations> = {
     rev_dispute_cat_mismatch_desc: 'L\'objet ne correspond pas à la description',
     rev_dispute_cat_no_confirm: 'Le destinataire refuse de confirmer',
     rev_dispute_cat_no_confirm_desc: 'J\'ai livré mais la réception n\'est pas confirmée',
+    rev_dispute_cat_no_show: 'Personne n\'est venu',
+    rev_dispute_cat_no_show_desc: 'L\'autre partie ne s\'est pas présentée au rendez-vous',
+    rev_dispute_cat_refused: 'Colis refusé à la remise',
+    rev_dispute_cat_refused_desc: 'Le voyageur n\'a pas accepté de le transporter',
+    rev_dispute_cat_disruption: 'Voyage perturbé',
+    rev_dispute_cat_disruption_desc: 'Vol annulé, retard ou problème de douane',
     rev_dispute_desc_label: 'Description détaillée',
     rev_dispute_desc_placeholder: 'Décrivez ce qu\'il s\'est passé, les dates, les échanges, et tout ce qui peut nous aider à trancher…',
     rev_dispute_submit: 'Envoyer le signalement',
@@ -3753,6 +3768,12 @@ export const translations: Record<Locale, Translations> = {
     rev_dispute_cat_mismatch_desc: 'The item doesn\'t match the description',
     rev_dispute_cat_no_confirm: 'The recipient won\'t confirm',
     rev_dispute_cat_no_confirm_desc: 'I delivered it but receipt isn\'t confirmed',
+    rev_dispute_cat_no_show: 'Nobody turned up',
+    rev_dispute_cat_no_show_desc: 'The other party didn\'t come to the meeting',
+    rev_dispute_cat_refused: 'Refused at handover',
+    rev_dispute_cat_refused_desc: 'The traveller wouldn\'t take it',
+    rev_dispute_cat_disruption: 'Travel disrupted',
+    rev_dispute_cat_disruption_desc: 'Cancelled flight, delay or customs problem',
     rev_dispute_desc_label: 'Detailed description',
     rev_dispute_desc_placeholder: 'Describe what happened, the dates, the exchanges, and anything that can help us decide…',
     rev_dispute_submit: 'Submit report',

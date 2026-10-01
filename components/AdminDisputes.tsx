@@ -43,6 +43,9 @@ const CATEGORY_LABELS: Record<string, string> = {
   damaged: 'Colis abîmé',
   wrong_item: 'Mauvais objet',
   late_delivery: 'Très en retard',
+  no_show: 'Personne n’est venu',
+  refused_at_handover: 'Refusé à la remise',
+  travel_disruption: 'Voyage perturbé',
   other: 'Autre problème',
 };
 

@@ -798,7 +798,18 @@ export type Dispute = {
   booking_intent_id: string;
   reporter_id: string;
   reported_user_id: string;
-  category: 'not_delivered' | 'damaged' | 'wrong_item' | 'late_delivery' | 'other';
+  category:
+    | 'not_delivered'
+    | 'damaged'
+    | 'wrong_item'
+    | 'late_delivery'
+    // Added 2026-10-01 for the cases the Cancellation & Refund Policy turns on.
+    // The column is plain text with no constraint, so this union is the only
+    // thing describing what may be in it — keep it honest.
+    | 'no_show'
+    | 'refused_at_handover'
+    | 'travel_disruption'
+    | 'other';
   description: string | null;
   photos_urls: string[];
   status: 'open' | 'investigating' | 'resolved_for_reporter' | 'resolved_for_reported' | 'closed';

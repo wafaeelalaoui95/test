@@ -49,16 +49,26 @@ export function DisputeModal({
   // Categories tailored to who's reporting. A sender's biggest concern
   // is non-delivery / damage; a traveler's is usually false accusations
   // from the sender ("they claim I didn't deliver when I did").
+  // Every category above the line is about a parcel that arrived wrong. The
+  // three below it are about a journey that never happened — a no-show, a
+  // refusal at handover, a cancelled flight — which is most of what the
+  // Cancellation & Refund Policy actually decides. Until they existed, all of
+  // that arrived as "Autre problème" and had to be read out of free text.
   const senderCategories = [
     { value: 'not_delivered', icon: '📭', label: t.rev_dispute_cat_not_delivered, desc: t.rev_dispute_cat_not_delivered_desc },
     { value: 'damaged', icon: '💥', label: t.rev_dispute_cat_damaged, desc: t.rev_dispute_cat_damaged_desc },
     { value: 'wrong_item', icon: '🤔', label: t.rev_dispute_cat_wrong_item, desc: t.rev_dispute_cat_wrong_item_desc },
     { value: 'late_delivery', icon: '🐌', label: t.rev_dispute_cat_late, desc: t.rev_dispute_cat_late_desc },
+    { value: 'no_show', icon: '🕐', label: t.rev_dispute_cat_no_show, desc: t.rev_dispute_cat_no_show_desc },
+    { value: 'travel_disruption', icon: '✈️', label: t.rev_dispute_cat_disruption, desc: t.rev_dispute_cat_disruption_desc },
     { value: 'other', icon: '⚠️', label: t.rev_dispute_cat_other, desc: t.rev_dispute_cat_other_desc },
   ];
   const travelerCategories = [
     { value: 'wrong_item', icon: '🤔', label: t.rev_dispute_cat_mismatch, desc: t.rev_dispute_cat_mismatch_desc },
     { value: 'not_delivered', icon: '📭', label: t.rev_dispute_cat_no_confirm, desc: t.rev_dispute_cat_no_confirm_desc },
+    { value: 'refused_at_handover', icon: '🛑', label: t.rev_dispute_cat_refused, desc: t.rev_dispute_cat_refused_desc },
+    { value: 'no_show', icon: '🕐', label: t.rev_dispute_cat_no_show, desc: t.rev_dispute_cat_no_show_desc },
+    { value: 'travel_disruption', icon: '✈️', label: t.rev_dispute_cat_disruption, desc: t.rev_dispute_cat_disruption_desc },
     { value: 'other', icon: '⚠️', label: t.rev_dispute_cat_other, desc: t.rev_dispute_cat_other_desc },
   ];
   const categories = reporterRole === 'sender' ? senderCategories : travelerCategories;
