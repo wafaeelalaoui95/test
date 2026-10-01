@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Instagram } from 'lucide-react';
 import { Logo } from '@/components/illustrations/Logo';
 import { useI18n } from '@/lib/i18n/context';
 
@@ -58,9 +59,11 @@ export function Footer() {
                   href="https://instagram.com/thejiblyapp"
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:text-ink-600 transition-colors"
+                  aria-label="Instagram — @thejiblyapp"
+                  title="@thejiblyapp"
+                  className="inline-flex text-ink-400 hover:text-ink-600 transition-colors"
                 >
-                  @thejiblyapp
+                  <Instagram className="w-[18px] h-[18px]" strokeWidth={1.75} />
                 </a>
               </li>
             </ul>
