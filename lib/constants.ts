@@ -17,18 +17,31 @@ import type { Translations } from '@/lib/i18n/translations';
  * so this is the single place that decides it. Listings created while the floor
  * was 5 keep their price — this governs new input, not existing rows.
  */
-export const MIN_COMPENSATION_EUR = 5;
-// ⚠️ TEMPORARY — back to 10 after the live end-to-end run of 2026-10-07.
+export const MIN_COMPENSATION_EUR = 15;
+// Raised from 10 on 2026-10-07, and this time for arithmetic rather than feel.
 //
-// Lowered so a real transaction can be exercised for €5 plus commission
-// (€6.25 all in) rather than €11.50. It was 5 for the same reason once before
-// and had to be put back, so this note exists to make sure it is.
+// Stripe Connect bills two different things: a fee on each charge, and a flat
+// monthly fee for every connected account that was ACTIVE that month. The
+// second one does not scale with the booking — a traveller who carries one
+// parcel costs the same as one who carries ten — so on an occasional traveller
+// it lands almost entirely on their single transaction.
 //
-// Leaving it at 5 is not neutral: it anchors what a sender thinks a trip is
-// worth, and nobody detours through an airport for five euros. Listings
-// published while it is low keep their price, so the cost of forgetting is a
-// slow one — a market that quietly prices itself below what travellers will
-// accept, visible only as parcels nobody answers.
+// Working it through at a €2 monthly account fee and roughly 2.5% + €0.25 per
+// charge, with the sender paying 1.15P + 0.50 and Jibly keeping 0.15P + 0.50:
+//
+//   price   1 trip/month   2 trips   4 trips
+//   €5        -1.16         -0.16     +0.34
+//   €10       -0.55         +0.45     +0.95
+//   €15       +0.06         +1.06     +1.56
+//   €20       +0.66         +1.66     +2.16
+//
+// One trip a month is the realistic case for someone flying home now and then,
+// and €15 is where that stops losing money. The old €10 floor lost about 55
+// cents on every such booking — quietly, and faster the better the marketplace
+// did at attracting one-off travellers.
+//
+// If the fee assumptions above turn out wrong, this number moves. Confirm them
+// against a real charge in the Stripe dashboard rather than a rate card.
 
 /**
  * Highest compensation a sender can offer or a traveler can ask for.
