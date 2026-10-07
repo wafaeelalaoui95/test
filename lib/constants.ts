@@ -17,7 +17,18 @@ import type { Translations } from '@/lib/i18n/translations';
  * so this is the single place that decides it. Listings created while the floor
  * was 5 keep their price — this governs new input, not existing rows.
  */
-export const MIN_COMPENSATION_EUR = 10;
+export const MIN_COMPENSATION_EUR = 5;
+// ⚠️ TEMPORARY — back to 10 after the live end-to-end run of 2026-10-07.
+//
+// Lowered so a real transaction can be exercised for €5 plus commission
+// (€6.25 all in) rather than €11.50. It was 5 for the same reason once before
+// and had to be put back, so this note exists to make sure it is.
+//
+// Leaving it at 5 is not neutral: it anchors what a sender thinks a trip is
+// worth, and nobody detours through an airport for five euros. Listings
+// published while it is low keep their price, so the cost of forgetting is a
+// slow one — a market that quietly prices itself below what travellers will
+// accept, visible only as parcels nobody answers.
 
 /**
  * Highest compensation a sender can offer or a traveler can ask for.
