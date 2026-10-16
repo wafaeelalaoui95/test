@@ -28,3 +28,6 @@ next-env.d.ts
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Weekly marketing drafts — local, reviewed by hand
+marketing/drafts/
