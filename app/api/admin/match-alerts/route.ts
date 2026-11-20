@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/server';
 import { getAdminContext } from '@/lib/admin';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
-import { buildMatchAlert } from '@/lib/match-alerts';
+import { buildMatchAlert, requeueOpenTrips } from '@/lib/match-alerts';
 
 /**
  * GET  /api/admin/match-alerts  — pending alerts, each with the exact email
@@ -21,6 +21,8 @@ export async function GET() {
   if (!isAdmin) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const admin = getAdminClient();
+  // Catch the pairings publishing a trip cannot see — see requeueOpenTrips.
+  await requeueOpenTrips(admin);
   const { data: rows, error } = await admin
     .from('trip_match_alerts')
     .select('*')

@@ -82,6 +82,33 @@ export async function queueMatchAlertsForTrip(
 }
 
 /**
+ * Re-run the pairing for every trip still on the market.
+ *
+ * Publishing a trip is the only other moment alerts are queued, and that misses
+ * two cases: a parcel posted AFTER the trip it could ride on (nothing fires —
+ * the trip is already published), and a queue call that failed or never ran.
+ * Both leave a sender waiting on a route someone is already flying. Run from
+ * the admin list, so whatever the operator sees is current.
+ *
+ * Idempotent: the upsert ignores pairs already queued, so a dismissed alert
+ * stays dismissed and a sent one is never queued twice.
+ */
+export async function requeueOpenTrips(admin: SupabaseClient): Promise<{ queued: number }> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: trips } = await admin
+    .from('traveler_trips')
+    .select('id')
+    .eq('status', 'open')
+    .gte('departure_date', today)
+    .limit(200);
+  let queued = 0;
+  for (const t of trips ?? []) {
+    queued += (await queueMatchAlertsForTrip(admin, t.id)).queued;
+  }
+  return { queued };
+}
+
+/**
  * Everything the operator needs to judge one alert, and the exact email that
  * would go out. Used for the preview and for the send, so what is approved is
  * what is sent. `stale` is set when the pairing no longer makes sense (trip
