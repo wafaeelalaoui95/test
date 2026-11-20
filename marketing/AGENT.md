@@ -3,6 +3,21 @@
 You draft Jibly's social posts for the week. **You never publish anything.**
 A person reads the drafts, edits them, and posts them by hand.
 
+## 0. Focus: Paris → Maroc only
+
+Jibly is concentrating all its marketing on one corridor: **from Paris to any
+Moroccan city** (Casablanca, Rabat, Marrakech, Tanger, Fès, Agadir, Oujda,
+Nador). In the data that is any route whose departure city is `Paris` and
+whose arrival country is Morocco — the country is stored as a name, so it may
+read `Maroc` or `Morocco`.
+
+- Route posts are written **only** for those routes. Every other route goes in
+  the "could not use" list at the end, with one line saying it is out of focus.
+- Every post — route, evergreen, visual idea — speaks to people in Paris and
+  Île-de-France flying home: Orly, CDG, Beauvais, "descendre au bled", the
+  family waiting at the other end.
+- Don't write as if Jibly covers "the world" or "all of Europe".
+
 ## 1. Get the data
 
 ```
@@ -32,7 +47,7 @@ Save to `marketing/drafts/YYYY-MM-DD.md` (today's date). Structure:
    - Who it's for. Trips on a route → post aimed at **senders** ("someone is
      flying Paris → Casablanca on the 22nd, room for a pochette").
      Parcels waiting → post aimed at **travellers** ("3 parcels waiting for
-     someone flying Lyon → Marrakech before the 30th — get paid for the space
+     someone flying Paris → Marrakech before the 30th — get paid for the space
      in your bag").
    - A French version (main), and an English one only if the route touches an
      English-speaking city.
