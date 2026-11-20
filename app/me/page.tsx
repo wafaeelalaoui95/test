@@ -10,7 +10,9 @@
 // data already inlined. The user sees content on first paint instead of a
 // spinner.
 
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { isAdminUserId } from '@/lib/admin';
 import { getServerClient } from '@/lib/supabase/server';
 import {
   getProfile,
@@ -92,6 +94,18 @@ export default async function MePage() {
   );
 
   return (
+    <>
+    {/* Operators only — the console has no other way in but typing its URL. */}
+    {isAdminUserId(user.id) && (
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 pt-6">
+        <Link
+          href="/admin"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ink-500 text-cream-50 text-[13px] font-semibold hover:bg-ink-600 transition-colors"
+        >
+          Console admin →
+        </Link>
+      </div>
+    )}
     <MePageClient
       initialUser={{ id: user.id, email: user.email ?? null }}
       initialProfile={profile}
@@ -103,5 +117,6 @@ export default async function MePage() {
       initialMyProposals={myProposals as any}
       initialReviews={reviews as any}
     />
+    </>
   );
 }
