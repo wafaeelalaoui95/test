@@ -230,20 +230,6 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
             </div>
           </div>
           <div className="h-px bg-ink-50" />
-          {/* What the parcel actually is. The description is mandatory when a
-              sender posts, so a traveller should never offer without reading it. */}
-          {(request.item_title?.trim() || request.item_description?.trim()) && (
-            <div>
-              {request.item_title?.trim() && (
-                <div className="text-[14px] font-semibold text-ink-600">{request.item_title.trim()}</div>
-              )}
-              {request.item_description?.trim() && (
-                <p className="text-[13px] text-ink-500 leading-relaxed whitespace-pre-line mt-0.5">
-                  {request.item_description.trim()}
-                </p>
-              )}
-            </div>
-          )}
           <div className="grid grid-cols-2 gap-3 text-[13px]">
             <div>
               <div className="text-[11px] text-ink-300 uppercase tracking-[0.06em] mb-1">{t.rev_respond_category}</div>
@@ -259,6 +245,21 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
               </div>
             </div>
           </div>
+          {/* What the parcel actually is. The description is mandatory when a
+              sender posts, so a traveller should never offer without reading it.
+              The title, when the sender gave one that differs, leads it. */}
+          {(request.item_description?.trim() || request.item_title?.trim()) && (
+            <div className="text-[13px]">
+              <div className="text-[11px] text-ink-300 uppercase tracking-[0.06em] mb-1">{t.send_label_description}</div>
+              <p className="text-ink-600 font-medium leading-relaxed whitespace-pre-line">
+                {request.item_title?.trim() &&
+                  request.item_description?.trim() &&
+                  request.item_title.trim() !== request.item_description.trim() &&
+                  `${request.item_title.trim()} — `}
+                {request.item_description?.trim() || request.item_title?.trim()}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Trip selection */}
