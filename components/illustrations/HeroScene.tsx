@@ -48,8 +48,11 @@ export function HeroScene({ className = '' }: { className?: string }) {
           strokeWidth="10"
           fill="none"
           strokeLinecap="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 0.28 }}
+          // `as any`: with no lockfile, a clean install can pull type packages
+          // that reject pathLength here. Runtime is unaffected; framer-motion
+          // animates pathLength on any path.
+          initial={{ pathLength: 0, opacity: 0 } as any}
+          animate={{ pathLength: 1, opacity: 0.28 } as any}
           transition={{ duration: 1.8, ease: 'easeOut', delay: 0.2 }}
         />
 
@@ -61,8 +64,8 @@ export function HeroScene({ className = '' }: { className?: string }) {
           fill="none"
           strokeDasharray="0.1 10"
           strokeLinecap="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 0.85 }}
+          initial={{ pathLength: 0, opacity: 0 } as any}
+          animate={{ pathLength: 1, opacity: 0.85 } as any}
           transition={{ duration: 2.0, ease: 'easeOut', delay: 0.3 }}
         />
 
