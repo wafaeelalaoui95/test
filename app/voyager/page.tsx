@@ -235,7 +235,7 @@ export default function VoyagerPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      await browser.createTrip({
+      const trip = await browser.createTrip({
         user_id: user.id,
         departure_country: fromCountry,
         departure_city: fromCity,
@@ -258,6 +258,16 @@ export default function VoyagerPage() {
         terms_agreed_at: new Date().toISOString(),
         status: 'open',
       });
+      // Queue "a traveller is on your route" alerts for senders waiting on this
+      // corridor. Nothing is emailed here — the operator reviews each one on
+      // /admin. Fire-and-forget: a failure must not undo a published trip.
+      if (trip?.id) {
+        fetch('/api/trip/announce', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tripId: trip.id }),
+        }).catch(() => {});
+      }
       // Trip published — clear the saved draft so it doesn't resurface.
       try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setSubmitted(true);

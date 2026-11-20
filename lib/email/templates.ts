@@ -1115,3 +1115,98 @@ export function proposalDeclinedTravelerEmail(input: {
     text: `${name},\n\nYour offer to carry ${input.itemLabel} (${route}) was declined by ${senderName}. Nothing was charged and nothing is owed.\n\nSenders change their plans, send things another way, or simply pick someone else. It is not a mark against you.${altText}\n\nSee parcels to carry: ${url}\n\n— The Jibly team`,
   };
 }
+
+// =============================================================================
+// Sender: a traveller has posted a trip on (or near) their route
+// =============================================================================
+// Queued when a trip is published, sent only after the operator approves it on
+// /admin (lib/match-alerts.ts). French first, English underneath — the one
+// bilingual template, because it goes to people who have not booked anything
+// yet and may never have read an English email from us.
+//
+// The button books the trip; it does not open a chat. Contact comes with the
+// booking (memory: no chat before the money is captured).
+export function tripMatchSenderEmail(input: {
+  senderFirstName: string | null;
+  travelerFirstName: string | null;
+  tier: 'exact' | 'nearby';
+  tripDepartureCity: string;
+  tripArrivalCity: string;
+  /** YYYY-MM-DD */
+  tripDate: string;
+  requestPickupCity: string;
+  itemLabel: string | null;
+  bookUrlPath: string;
+}) {
+  const url = `${BASE_URL}${input.bookUrlPath}`;
+  const d = new Date(`${input.tripDate}T12:00:00Z`);
+  const dateFr = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' }).format(d);
+  const dateEn = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long' }).format(d);
+  const route = `${input.tripDepartureCity} → ${input.tripArrivalCity}`;
+  const nearby = input.tier === 'nearby';
+  const traveler = input.travelerFirstName;
+
+  const fr = {
+    hello: input.senderFirstName ? `Bonjour ${input.senderFirstName},` : 'Bonjour,',
+    eyebrow: nearby ? 'Un voyageur près de chez vous' : 'Un voyageur sur votre trajet',
+    title: nearby
+      ? `${traveler ?? 'Un voyageur'} part de ${input.tripDepartureCity} pour ${input.tripArrivalCity} le ${dateFr}`
+      : `${traveler ?? 'Un voyageur'} fait ${route} le ${dateFr}`,
+    body: nearby
+      ? `Vous attendez quelqu’un pour envoyer ${input.itemLabel ? `« ${input.itemLabel} »` : 'votre colis'} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Personne ne part de ${input.requestPickupCity} pour l’instant, mais ce voyageur part de ${input.tripDepartureCity}. Si vous pouvez faire parvenir votre colis à ${input.tripDepartureCity} avant son départ, il peut l’emporter.`
+      : `Vous attendez quelqu’un pour envoyer ${input.itemLabel ? `« ${input.itemLabel} »` : 'votre colis'} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Ce voyageur fait exactement ce trajet.`,
+    ask: nearby ? 'Ça vous intéresse ?' : 'Vous voulez lui confier votre colis ?',
+    cta: 'Voir le trajet et réserver',
+    note: 'Si ce trajet ne vous convient pas, ignorez simplement cet e-mail : votre demande reste en ligne.',
+  };
+  const en = {
+    hello: input.senderFirstName ? `Hello ${input.senderFirstName},` : 'Hello,',
+    title: nearby
+      ? `${traveler ?? 'A traveller'} is flying from ${input.tripDepartureCity} to ${input.tripArrivalCity} on ${dateEn}`
+      : `${traveler ?? 'A traveller'} is flying ${route} on ${dateEn}`,
+    body: nearby
+      ? `You are waiting for someone to take ${input.itemLabel ? `“${input.itemLabel}”` : 'your parcel'} from ${input.requestPickupCity} to ${input.tripArrivalCity}. Nobody is leaving from ${input.requestPickupCity} yet, but this traveller leaves from ${input.tripDepartureCity}. If you can get your parcel to ${input.tripDepartureCity} before they fly, they can take it.`
+      : `You are waiting for someone to take ${input.itemLabel ? `“${input.itemLabel}”` : 'your parcel'} from ${input.requestPickupCity} to ${input.tripArrivalCity}. This traveller is flying exactly that route.`,
+    ask: nearby ? 'Interested?' : 'Want them to carry it?',
+    cta: 'See the trip and book',
+    note: 'If this trip does not suit you, just ignore this email: your request stays listed.',
+  };
+
+  const button = (label: string) => `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:20px auto 12px;">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+            ${label}
+          </a>
+        </td>
+      </tr>
+    </table>`;
+
+  const section = (c: typeof fr | typeof en, lang: string) => `
+    <div lang="${lang}">
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+        ${escapeHtml(c.title)}
+      </h1>
+      <p style="margin:0 0 8px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">${escapeHtml(c.hello)}</p>
+      <p style="margin:0 0 8px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">${escapeHtml(c.body)}</p>
+      <p style="margin:12px 0 0;font-size:15px;font-weight:600;color:${BRAND.ink};">${escapeHtml(c.ask)}</p>
+      ${button(escapeHtml(c.cta))}
+      <p style="margin:0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;text-align:center;">${escapeHtml(c.note)}</p>
+    </div>`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">${fr.eyebrow}</p>
+    ${section(fr, 'fr')}
+    <p style="margin:32px 0 24px;font-size:12px;color:${BRAND.inkMuted};text-align:center;border-top:1px solid #EFE9E2;padding-top:24px;">English below</p>
+    ${section(en, 'en')}
+  `;
+
+  return {
+    subject: nearby
+      ? `Un voyageur part de ${input.tripDepartureCity} pour ${input.tripArrivalCity} · A traveller near your route`
+      : `Un voyageur sur votre trajet ${route} · A traveller on your route`,
+    html: wrapHtml(content, `${fr.title} · ${en.title}`),
+    text: `${fr.hello}\n\n${fr.title}.\n\n${fr.body}\n\n${fr.ask} ${fr.cta} : ${url}\n\n${fr.note}\n\n— L’équipe Jibly\n\n----- English below -----\n\n${en.hello}\n\n${en.title}.\n\n${en.body}\n\n${en.ask} ${en.cta}: ${url}\n\n${en.note}\n\n— The Jibly team`,
+  };
+}
