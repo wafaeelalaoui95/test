@@ -5,6 +5,7 @@ import { AdminRefund } from '@/components/AdminRefund';
 import { AdminOverview } from '@/components/AdminOverview';
 import { AdminDisputes } from '@/components/AdminDisputes';
 import { AdminMatchAlerts } from '@/components/AdminMatchAlerts';
+import { AdminUsers } from '@/components/AdminUsers';
 
 /**
  * Operator console — only the tools that read and act on real data.
@@ -34,6 +35,7 @@ export function AdminPageClient() {
           {/* Above the refund tool on purpose: a dispute is usually the reason
               somebody came here to refund, and the decision comes first. */}
           <AdminDisputes />
+          <AdminUsers />
           <AdminOverview />
           <AdminRefund />
         </div>
