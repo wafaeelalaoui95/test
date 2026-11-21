@@ -41,6 +41,7 @@ export function Footer() {
               <li><Link href="/securite" className="hover:text-ink-600 transition-colors">{t.footer_safety}</Link></li>
               <li><Link href="/cgu" className="hover:text-ink-600 transition-colors">{t.footer_terms}</Link></li>
               <li><Link href="/confidentialite" className="hover:text-ink-600 transition-colors">{t.footer_privacy}</Link></li>
+              <li><Link href="/annulation-remboursement" className="hover:text-ink-600 transition-colors">{t.footer_refund}</Link></li>
             </ul>
           </div>
 

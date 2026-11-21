@@ -5,7 +5,7 @@ const siteUrl = getSiteUrl();
 
 // Public, indexable routes only. Authenticated areas (/me, /wallet, …) are
 // excluded here and in robots.ts.
-const routes = ['', '/envoyer', '/voyager', '/trust', '/objets-autorises', '/securite', '/cgu', '/confidentialite', '/login', '/signup'];
+const routes = ['', '/envoyer', '/voyager', '/trust', '/objets-autorises', '/securite', '/cgu', '/confidentialite', '/annulation-remboursement', '/login', '/signup'];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return routes.map((path) => ({

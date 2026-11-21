@@ -68,6 +68,8 @@ export type Translations = {
   footer_allowed_items: string;
   footer_terms: string;
   footer_privacy: string;
+  footer_refund: string;
+  legal_english_only: string;
   footer_safety: string;
   pay_security_note: string;
   pay_submitting: string;
@@ -1389,6 +1391,8 @@ export const translations: Record<Locale, Translations> = {
     footer_allowed_items: 'Objets autorisés',
     footer_terms: 'CGU',
     footer_privacy: 'Confidentialité',
+    footer_refund: 'Annulation et remboursement',
+    legal_english_only: 'Ce document juridique est rédigé en anglais. Jibly Limited est une société de droit anglais.',
     footer_safety: 'Règles de sécurité',
     pay_security_note: 'Paiement sécurisé par Stripe. Votre carte est autorisée mais pas débitée. Le montant ne sera prélevé que si le voyageur accepte. En cas de refus, l’autorisation est libérée.',
     pay_submitting: 'Confirmation…',
@@ -2700,6 +2704,8 @@ export const translations: Record<Locale, Translations> = {
     footer_allowed_items: 'Allowed items',
     footer_terms: 'Terms',
     footer_privacy: 'Privacy',
+    footer_refund: 'Cancellations & refunds',
+    legal_english_only: '',
     footer_safety: 'Safety rules',
     pay_security_note: 'Secure payment by Stripe. Your card is authorized but not charged. The amount is only taken if the traveler accepts. If they decline, the authorization is released.',
     pay_submitting: 'Confirming…',
