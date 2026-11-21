@@ -25,17 +25,15 @@ import { isAdminUserId } from '@/lib/admin';
  * sequence lives in lib/stripe/release.ts, shared with /api/trip/cancel — two
  * copies of it is how one of them forgets the reversal.
  *
- * WHO MAY CALL THIS. The sender, or an operator (see lib/admin.ts). Not the
- * traveler: refunding themselves makes no sense, and self-service refunds by
- * the paid party are an obvious abuse vector.
+ * WHO MAY CALL THIS. An operator only (see lib/admin.ts).
  *
- * The sender's own access is itself narrow by accident of state, and worth
- * understanding before widening it: capture happens when the traveler ACCEPTS,
- * and release happens when the recipient CONFIRMS DELIVERY. So between those
- * two moments a sender can refund money for a service the traveler may already
- * have performed. That is why no self-service refund button exists in the UI —
- * a disputed delivery is a decision, not a click, and it belongs to an
- * operator.
+ * The sender used to be allowed too. No button ever exposed it, but the route
+ * answered them: a sender could POST their own booking id at any point after
+ * capture — after delivery included — and get a full refund, with the
+ * traveller's transfer reversed. The Cancellation & Refund Policy makes every
+ * refund after confirmation Jibly's decision ("does not automatically entitle
+ * you to a refund"), so the only caller is the operator's AdminRefund tool.
+ * Senders ask through a dispute or /api/booking/cancel; the money moves here.
  *
  * Refunding here rather than in the Stripe dashboard matters: the dashboard
  * refunds the sender but does NOT reverse the traveler's transfer and does NOT
@@ -72,13 +70,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  // Decided BEFORE the read, because it decides which client does the reading:
-  // an operator is not the sender, so RLS would hide the row from the
-  // user-scoped client and the request would fail as "not found" rather than
-  // working. isAdminUserId needs no row of its own.
-  const actingAsAdmin = isAdminUserId(user.id);
+  // Operators only — see the header. 404 rather than 403, like every other
+  // operator route: nobody else should learn this exists.
+  if (!isAdminUserId(user.id)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
 
-  const query = (actingAsAdmin ? getAdminClient() : supabase)
+  const query = getAdminClient()
     .from('booking_intents')
     .select(`sender_id, ${RELEASE_COLUMNS}`);
 
@@ -90,9 +88,6 @@ export async function POST(req: NextRequest) {
 
   if (!intent) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
-  }
-  if (intent.sender_id !== user.id && !actingAsAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   if (intent.payment_status !== 'captured') {
     return NextResponse.json(
