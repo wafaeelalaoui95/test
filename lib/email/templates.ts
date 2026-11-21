@@ -200,6 +200,80 @@ export function travelerGotBookingEmail(input: {
 }
 
 // =============================================================================
+// 2b. Same moment, but the traveller has not verified their identity yet
+// =============================================================================
+// Travellers may publish before verifying; they cannot accept until they do
+// (booking_intents trigger + /api/stripe/capture). So the booking email has to
+// lead with the one thing standing between them and the parcel. Bilingual,
+// like the match alert: it often reaches someone who has never used the app
+// beyond publishing.
+export function travelerGotBookingUnverifiedEmail(input: {
+  travelerFirstName: string | null;
+  senderFirstName: string | null;
+  pickupCity: string;
+  destinationCity: string;
+  travelerReceives: number;
+  bookingId: string;
+}) {
+  const url = `${BASE_URL}/me?booking=${input.bookingId}`;
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+  const amount = formatEuros(input.travelerReceives);
+
+  const fr = {
+    hello: input.travelerFirstName ? `Bonjour ${input.travelerFirstName},` : 'Bonjour,',
+    eyebrow: 'Nouvelle réservation · à débloquer',
+    title: `${input.senderFirstName ?? 'Quelqu’un'} veut vous confier un colis`,
+    body: `${input.senderFirstName ?? 'Un expéditeur'} a réservé votre trajet ${route}. Vous recevrez ${amount} après la livraison.`,
+    lock: 'Pour accepter cette réservation, vous devez d’abord vérifier votre identité. C’est obligatoire pour transporter un colis sur Jibly, et ça prend 2 minutes.',
+    cta: 'Vérifier mon identité et débloquer',
+    note: 'Le voyage ne se fera pas tant que votre identité n’est pas vérifiée. Ne tardez pas : l’expéditeur attend votre réponse.',
+  };
+  const en = {
+    hello: input.travelerFirstName ? `Hello ${input.travelerFirstName},` : 'Hello,',
+    title: `${input.senderFirstName ?? 'Someone'} wants you to carry a parcel`,
+    body: `${input.senderFirstName ?? 'A sender'} booked your trip ${route}. You will receive ${amount} after delivery.`,
+    lock: 'To accept this booking, you first need to verify your identity. It is required to carry a parcel on Jibly, and it takes 2 minutes.',
+    cta: 'Verify my identity and unlock',
+    note: 'The trip will not go ahead until your identity is verified. Don’t wait too long: the sender is waiting for your answer.',
+  };
+
+  const section = (c: typeof fr | typeof en, lang: string) => `
+    <div lang="${lang}">
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
+        ${escapeHtml(c.title)}
+      </h1>
+      <p style="margin:0 0 8px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">${escapeHtml(c.hello)}</p>
+      <p style="margin:0 0 16px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">${escapeHtml(c.body)}</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FFF6DD;border-radius:12px;">
+        <tr><td style="padding:16px 18px;font-size:15px;font-weight:600;color:${BRAND.ink};line-height:1.5;">🔒 ${escapeHtml(c.lock)}</td></tr>
+      </table>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:20px auto 12px;">
+        <tr>
+          <td style="background:${BRAND.ink};border-radius:999px;">
+            <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+              ${escapeHtml(c.cta)}
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;text-align:center;">${escapeHtml(c.note)}</p>
+    </div>`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">${fr.eyebrow}</p>
+    ${section(fr, 'fr')}
+    <p style="margin:32px 0 24px;font-size:12px;color:${BRAND.inkMuted};text-align:center;border-top:1px solid #EFE9E2;padding-top:24px;">English below</p>
+    ${section(en, 'en')}
+  `;
+
+  return {
+    subject: `${fr.title} · Vérifiez votre identité pour débloquer / Verify to unlock`,
+    html: wrapHtml(content, `${fr.title} · ${en.title}`),
+    text: `${fr.hello}\n\n${fr.body}\n\n${fr.lock}\n\n${fr.cta} : ${url}\n\n${fr.note}\n\n— L’équipe Jibly\n\n----- English below -----\n\n${en.hello}\n\n${en.body}\n\n${en.lock}\n\n${en.cta}: ${url}\n\n${en.note}\n\n— The Jibly team`,
+  };
+}
+
+// =============================================================================
 // 3. Sender receives confirmation that the traveller accepted
 // =============================================================================
 // Triggered when status flips to 'confirmed'. Carries NO code at all.
@@ -1141,6 +1215,8 @@ export function tripMatchSenderEmail(input: {
   requestPickupCity: string;
   itemLabel: string | null;
   bookUrlPath: string;
+  /** False when the traveller published without verifying their identity. */
+  travelerVerified: boolean;
 }) {
   const url = `${BASE_URL}${input.bookUrlPath}`;
   const d = new Date(`${input.tripDate}T12:00:00Z`);
@@ -1172,6 +1248,7 @@ export function tripMatchSenderEmail(input: {
       ?`Vous attendez quelqu’un pour envoyer ${input.itemLabel ? `« ${input.itemLabel} »` : 'votre colis'} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Personne ne part de ${input.requestPickupCity} pour l’instant, mais ce voyageur part de ${input.tripDepartureCity}. Si vous pouvez faire parvenir votre colis à ${input.tripDepartureCity} avant son départ, il peut l’emporter.`
       : `Vous attendez quelqu’un pour envoyer ${input.itemLabel ? `« ${input.itemLabel} »` : 'votre colis'} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Ce voyageur fait exactement ce trajet.`,
     ask: late ? 'Toujours intéressé(e) ? Réservez le trajet.' : nearby ? 'Ça vous intéresse ?' : 'Vous voulez lui confier votre colis ?',
+    unverified: 'Ce voyageur n’a pas encore vérifié son identité : le voyage ne se fera qu’une fois que ce sera fait. D’ici là, votre paiement est seulement réservé, pas encaissé.',
     cta: 'Voir le trajet et réserver',
     // A request past its date is no longer listed, so don't promise it is.
     note: late
@@ -1191,6 +1268,7 @@ export function tripMatchSenderEmail(input: {
       ? `You are waiting for someone to take ${input.itemLabel ? `“${input.itemLabel}”` : 'your parcel'} from ${input.requestPickupCity} to ${input.tripArrivalCity}. Nobody is leaving from ${input.requestPickupCity} yet, but this traveller leaves from ${input.tripDepartureCity}. If you can get your parcel to ${input.tripDepartureCity} before they fly, they can take it.`
       : `You are waiting for someone to take ${input.itemLabel ? `“${input.itemLabel}”` : 'your parcel'} from ${input.requestPickupCity} to ${input.tripArrivalCity}. This traveller is flying exactly that route.`,
     ask: late ? 'Still interested? Book the trip.' : nearby ? 'Interested?' : 'Want them to carry it?',
+    unverified: 'This traveller has not verified their identity yet: the trip only goes ahead once they have. Until then your payment is only held, not taken.',
     cta: 'See the trip and book',
     note: late
       ? 'If you no longer need it, just ignore this email.'
@@ -1215,6 +1293,7 @@ export function tripMatchSenderEmail(input: {
       </h1>
       <p style="margin:0 0 8px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">${escapeHtml(c.hello)}</p>
       <p style="margin:0 0 8px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">${escapeHtml(c.body)}</p>
+      ${input.travelerVerified ? '' : `<p style="margin:12px 0 0;padding:12px 14px;background:#FFF6DD;border-radius:10px;font-size:14px;color:${BRAND.ink};line-height:1.5;">${escapeHtml(c.unverified)}</p>`}
       <p style="margin:12px 0 0;font-size:15px;font-weight:600;color:${BRAND.ink};">${escapeHtml(c.ask)}</p>
       ${button(escapeHtml(c.cta))}
       <p style="margin:0;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;text-align:center;">${escapeHtml(c.note)}</p>
@@ -1234,6 +1313,6 @@ export function tripMatchSenderEmail(input: {
       ? `Un voyageur part de ${input.tripDepartureCity} pour ${input.tripArrivalCity} · A traveller near your route`
       : `Un voyageur sur votre trajet ${route} · A traveller on your route`,
     html: wrapHtml(content, `${fr.title} · ${en.title}`),
-    text: `${fr.hello}\n\n${fr.title}.\n\n${fr.body}\n\n${fr.ask} ${fr.cta} : ${url}\n\n${fr.note}\n\n— L’équipe Jibly\n\n----- English below -----\n\n${en.hello}\n\n${en.title}.\n\n${en.body}\n\n${en.ask} ${en.cta}: ${url}\n\n${en.note}\n\n— The Jibly team`,
+    text: `${fr.hello}\n\n${fr.title}.\n\n${fr.body}${input.travelerVerified ? '' : `\n\n${fr.unverified}`}\n\n${fr.ask} ${fr.cta} : ${url}\n\n${fr.note}\n\n— L’équipe Jibly\n\n----- English below -----\n\n${en.hello}\n\n${en.title}.\n\n${en.body}${input.travelerVerified ? '' : `\n\n${en.unverified}`}\n\n${en.ask} ${en.cta}: ${url}\n\n${en.note}\n\n— The Jibly team`,
   };
 }

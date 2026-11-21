@@ -41,7 +41,8 @@ import { Input } from '@/components/ui/Form';
 import { DisputeModal } from '@/components/DisputeModal';
 import { CancelBookingModal } from '@/components/CancelBookingModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
-import { VerifyIdentityButton } from '@/components/IdentityGate';
+import { VerifyIdentityButton, useIdentityGate } from '@/components/IdentityGate';
+import { VerifyToUnlockCard } from '@/components/UnverifiedTraveller';
 import { PayoutStatusCard } from '@/components/PayoutSetup';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
 import { ViewProofButton } from '@/components/ImageLightbox';
@@ -218,11 +219,16 @@ export default function MyPage(
   // Incoming request whose details popup is open (opened from the card's
   // "Voir la demande" button OR deep-linked from a notification via ?booking=).
   const [detailsFor, setDetailsFor] = useState<IncomingIntent | null>(null);
+  const identityGate = useIdentityGate();
 
   // Accept/decline an incoming request: update status, capture/cancel the
   // Stripe hold, reflect locally. Shared by the trips list and the details
   // popup (from a notification).
   async function handleUpdateIntent(id: string, status: 'confirmed' | 'cancelled') {
+    // Travellers may publish unverified, but accepting is where it stops: the
+    // trip only happens once they are verified. Declining stays open to all.
+    // The server enforces the same rule (capture route + DB trigger).
+    if (status === 'confirmed' && !identityGate.ensureVerified()) return;
     await browser.updateBookingIntentStatus(id, status);
     const intent = incomingIntents.find((i) => i.id === id);
     if (intent?.payment_intent_id) {
@@ -636,6 +642,13 @@ export default function MyPage(
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
+              {/* An unverified traveller with a trip online: their trips
+                  cannot go ahead until they verify. Says so above the list. */}
+              {tab === 'trips' && trips.length > 0 && (
+                <div className="mb-6">
+                  <VerifyToUnlockCard />
+                </div>
+              )}
               {tab === 'trips' && (
                 <TripsView
                   trips={trips}
@@ -1000,6 +1013,9 @@ export default function MyPage(
           />
         )}
       </AnimatePresence>
+
+      {/* Opens when an unverified traveller tries to accept a booking. */}
+      {identityGate.modal}
 
       {/* Incoming request details popup (from a card or a notification). */}
       {detailsFor && (

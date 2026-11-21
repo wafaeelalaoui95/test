@@ -22,6 +22,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
+import { UnverifiedTripNotice } from '@/components/UnverifiedTraveller';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
 import { ParcelSizeValue } from '@/components/ParcelSizeValue';
 import {
@@ -1082,6 +1083,12 @@ function TripBookableCard({
           {t.env_book}
         </button>
       </div>
+      {/* Travellers publish before verifying; the trip only happens after. */}
+      {!verified && (
+        <div className="mt-2">
+          <UnverifiedTripNotice />
+        </div>
+      )}
     </div>
   );
 }
@@ -1418,6 +1425,14 @@ function InstantBookModal({
                   {err}
                 </div>
               )}
+              {/* Said before the card is entered, not after: the sender is
+                  paying someone whose identity nobody has checked yet. */}
+              {trip.user?.verification_level !== 'id_verified' &&
+                trip.user?.verification_level !== 'trusted' && (
+                  <div className="rounded-xl bg-butter-50 border border-butter-200 px-4 py-3 mb-4 text-[13px] text-ink-600 leading-relaxed">
+                    {t.unverified_book_note}
+                  </div>
+                )}
               <StripePaymentForm
                 amountEuros={price}
                 description={`Jibly · ${cityDisplayName(pickupCity, locale)} → ${cityDisplayName(destinationCity, locale)}`}

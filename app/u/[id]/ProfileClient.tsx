@@ -30,6 +30,7 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
 import type { Profile, TravelerTripRow } from '@/lib/supabase/types';
+import { UnverifiedTripNotice } from '@/components/UnverifiedTraveller';
 
 type PublicProfile = Pick<
   Profile,
@@ -341,6 +342,11 @@ export function ProfileClient({
                   transition={{ duration: 0.3, delay: i * 0.05 }}
                   className="bg-white rounded-2xl p-6 border border-ink-50 flex flex-col"
                 >
+                  {!isIdentityVerified && (
+                    <div className="mb-4">
+                      <UnverifiedTripNotice />
+                    </div>
+                  )}
                   <div className="mb-4">
                     <div className="text-[17px] font-bold text-ink-600 mb-2 tracking-[-0.01em]">
                       {cityDisplayName(tr.departure_city, locale)}
@@ -571,6 +577,13 @@ export function ProfileClient({
                   {submitErr && (
                     <div className="rounded-xl bg-blush-50 px-4 py-3 text-[13px] text-blush-500 mb-4">
                       {submitErr}
+                    </div>
+                  )}
+                  {/* Before the card is entered: this traveller still has to
+                      verify before they can accept. */}
+                  {!isIdentityVerified && (
+                    <div className="rounded-xl bg-butter-50 border border-butter-200 px-4 py-3 mb-4 text-[13px] text-ink-600 leading-relaxed">
+                      {t.unverified_book_note}
                     </div>
                   )}
                   <StripePaymentForm

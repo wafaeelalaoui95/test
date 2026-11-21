@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { openPickerOnClick } from '@/components/ui/Form';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
+import { UnverifiedTripNotice } from '@/components/UnverifiedTraveller';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { getCitiesForCountry, cityDisplayName, countryDisplayName } from '@/lib/countries';
 import { formatShortDate, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
@@ -879,6 +880,14 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
               {trip.flight_time && <span>· {trip.flight_time}</span>}
             </div>
           </div>
+
+          {/* Travellers publish before verifying; the trip only happens after. */}
+          {trip.profile?.verification_level !== 'id_verified' &&
+            trip.profile?.verification_level !== 'trusted' && (
+              <div className="mb-3">
+                <UnverifiedTripNotice />
+              </div>
+            )}
 
           {categories.length > 0 ? (
             <div className="flex-1 content-start">

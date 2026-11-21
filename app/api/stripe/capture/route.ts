@@ -88,6 +88,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // A traveller accepting is the moment their identity must be verified:
+  // they may publish a trip without it, but no booking goes ahead until they
+  // are. The page checks first; this is the check that cannot be skipped.
+  if (isTraveler && !isSender) {
+    const { data: me } = await getAdminClient()
+      .from('profiles')
+      .select('identity_verified_at')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (!me?.identity_verified_at) {
+      return NextResponse.json({ error: 'identity_required' }, { status: 403 });
+    }
+  }
+
   // Idempotency: already captured → return success without re-calling Stripe.
   if (intent.payment_status === 'captured') {
     return NextResponse.json({ ok: true, alreadyCaptured: true });

@@ -379,6 +379,13 @@ export type Translations = {
   trip_engagement_4: string;
   trip_engagement_terms: string;
   trip_publish: string;
+  unverified_badge: string;
+  unverified_trip_note: string;
+  unverified_own_title: string;
+  unverified_own_text: string;
+  unverified_own_cta: string;
+  unverified_book_note: string;
+  unverified_accept_blocked: string;
   trip_success_title: string;
   trip_success_text: string;
 
@@ -1693,6 +1700,13 @@ export const translations: Record<Locale, Translations> = {
     trip_engagement_4: 'Je remets l\'objet à la bonne personne',
     trip_engagement_terms: 'Je m\'engage à respecter ces règles et j\'accepte les conditions d\'utilisation de Jibly.',
     trip_publish: 'Publier mon trajet',
+    unverified_badge: 'Identité non vérifiée',
+    unverified_trip_note: 'Ce voyage ne se fera que lorsque le voyageur aura vérifié son identité.',
+    unverified_own_title: 'Dernière étape : vérifiez votre identité',
+    unverified_own_text: 'Votre trajet est en ligne et peut déjà être réservé. Mais il ne se fera que lorsque votre identité sera vérifiée : avant ça, vous ne pourrez accepter aucune réservation. Ça prend 2 minutes.',
+    unverified_own_cta: 'Vérifier mon identité',
+    unverified_book_note: 'Ce voyageur n’a pas encore vérifié son identité. Il devra le faire avant de pouvoir accepter votre réservation : d’ici là, votre paiement est seulement réservé, pas encaissé.',
+    unverified_accept_blocked: 'Vérifiez votre identité pour accepter cette réservation.',
     trip_success_title: 'Bon voyage ✈️',
     trip_success_text: 'Votre trajet est publié. On vous prévient si quelqu\'un veut envoyer quelque chose.',
 
@@ -1800,7 +1814,7 @@ export const translations: Record<Locale, Translations> = {
     common_cancel: 'Annuler',
     common_close: 'Fermer',
     gate_identity_required:
-      'Vérifiez votre identité pour continuer. Obligatoire avant de publier un trajet, réserver ou proposer votre aide. Vérification gratuite et chiffrée par Stripe.',
+      'Vérifiez votre identité pour continuer. Obligatoire avant d’accepter une réservation, de publier une demande, de réserver ou de proposer votre aide. Vérification gratuite et chiffrée par Stripe.',
     common_save: 'Enregistrer',
     common_loading: 'Chargement...',
     common_optional: 'optionnel',
@@ -3004,6 +3018,13 @@ export const translations: Record<Locale, Translations> = {
     trip_engagement_4: 'I hand the item to the right person',
     trip_engagement_terms: 'I commit to these rules and accept Jibly\'s terms of use.',
     trip_publish: 'Publish my trip',
+    unverified_badge: 'Identity not verified',
+    unverified_trip_note: 'This trip only goes ahead once the traveller has verified their identity.',
+    unverified_own_title: 'One last step: verify your identity',
+    unverified_own_text: 'Your trip is live and can already be booked. But it only goes ahead once your identity is verified: until then you cannot accept any booking. It takes 2 minutes.',
+    unverified_own_cta: 'Verify my identity',
+    unverified_book_note: 'This traveller has not verified their identity yet. They must do so before they can accept your booking: until then your payment is only held, not taken.',
+    unverified_accept_blocked: 'Verify your identity to accept this booking.',
     trip_success_title: 'Safe travels ✈️',
     trip_success_text: 'Your trip is live. We\'ll let you know if someone wants to send something.',
 
@@ -3111,7 +3132,7 @@ export const translations: Record<Locale, Translations> = {
     common_cancel: 'Cancel',
     common_close: 'Close',
     gate_identity_required:
-      'Verify your identity to continue. Required before publishing a trip, booking, or proposing help. Verification is free and encrypted by Stripe.',
+      'Verify your identity to continue. Required before accepting a booking, posting a request, booking, or offering help. Verification is free and encrypted by Stripe.',
     common_save: 'Save',
     common_loading: 'Loading...',
     common_optional: 'optional',

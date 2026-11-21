@@ -169,7 +169,7 @@ export async function buildMatchAlert(admin: SupabaseClient, alert: any) {
 
   const { data: profiles } = await admin
     .from('profiles')
-    .select('id, full_name')
+    .select('id, full_name, identity_verified_at')
     .in('id', [trip.user_id, request.user_id]);
   const firstName = (id: string) => {
     const full = (profiles ?? []).find((p: any) => p.id === id)?.full_name;
@@ -194,6 +194,7 @@ export async function buildMatchAlert(admin: SupabaseClient, alert: any) {
     requestPickupCity: request.pickup_city,
     itemLabel: request.item_title?.trim() || request.item_description?.trim() || null,
     bookUrlPath: `/u/${trip.user_id}?book=${trip.id}`,
+    travelerVerified: !!(profiles ?? []).find((p: any) => p.id === trip.user_id)?.identity_verified_at,
   });
 
   const stale =

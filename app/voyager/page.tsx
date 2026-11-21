@@ -21,6 +21,7 @@ import { Textarea, Checkbox, Input, openPickerOnClick } from '@/components/ui/Fo
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate } from '@/components/IdentityGate';
+import { VerifyToUnlockCard } from '@/components/UnverifiedTraveller';
 import { PayoutReminder, PayoutCountriesNotice } from '@/components/PayoutSetup';
 import {
   ITEM_CATEGORIES,
@@ -219,8 +220,11 @@ export default function VoyagerPage() {
       router.push('/login?next=/voyager');
       return;
     }
-    // Identity must be verified before a trip can be published.
-    if (!gate.ensureVerified()) return;
+    // No identity gate here, deliberately. Asking for an ID before anyone has
+    // shown interest is where travellers gave up. They publish freely; the
+    // check moves to the moment it matters — accepting a booking — which an
+    // unverified traveller cannot do (see /api/stripe/capture and the
+    // booking_intents trigger in 2026-11-21-traveller-verify-on-match.sql).
     // No payout gate anywhere in this flow — see PayoutReminder. Travelers
     // publish and propose freely; unpaid-out money waits safely in the platform
     // balance until they finish setup, and the webhook releases it then.
@@ -304,6 +308,12 @@ export default function VoyagerPage() {
             {t.trip_success_title}
           </h1>
           <p className="text-[16px] text-ink-400 mb-7 leading-relaxed">{t.trip_success_text}</p>
+
+          {/* Published without an ID check — say plainly that the trip only
+              happens once they verify. Renders nothing if already verified. */}
+          <div className="mb-5">
+            <VerifyToUnlockCard />
+          </div>
 
           {/* The moment a traveler is most likely to leave, and the last one
               where telling them costs nothing. The reminder inside the wizard

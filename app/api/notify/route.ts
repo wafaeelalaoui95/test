@@ -21,6 +21,7 @@ import { travelerNetFromTotal, formatName } from '@/lib/utils';
 import {
   senderGotProposalEmail,
   travelerGotBookingEmail,
+  travelerGotBookingUnverifiedEmail,
   bookingConfirmedSenderEmail,
   bookingConfirmedTravelerEmail,
   proposalDeclinedTravelerEmail,
@@ -139,7 +140,23 @@ export async function POST(req: Request) {
         bookingId: booking.id,
       });
     } else if (body.event === 'traveler-got-booking') {
-      template = travelerGotBookingEmail({
+      // An unverified traveller cannot accept (DB trigger + capture route), so
+      // their email leads with verifying instead of "see the booking".
+      const { data: travelerIdentity } = await supabase
+        .from('profiles')
+        .select('identity_verified_at')
+        .eq('id', travelerId)
+        .maybeSingle();
+      template = !travelerIdentity?.identity_verified_at
+        ? travelerGotBookingUnverifiedEmail({
+            travelerFirstName: firstName(travelerProfile?.full_name),
+            senderFirstName: firstName(senderProfile?.full_name),
+            pickupCity: booking.pickup_city,
+            destinationCity: booking.destination_city,
+            travelerReceives: travelerNetFromTotal(booking.proposed_price),
+            bookingId: booking.id,
+          })
+        : travelerGotBookingEmail({
         travelerFirstName: firstName(travelerProfile?.full_name),
         senderFirstName: firstName(senderProfile?.full_name),
         pickupCity: booking.pickup_city,
