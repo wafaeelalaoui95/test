@@ -18,8 +18,28 @@ import { tripMatchSenderEmail } from '@/lib/email/templates';
 // listed below, where a sender can realistically get a document to another
 // city of departure (Fès → Agadir by CTM or a friend). Across France, Lille to
 // Marseille is not "nearby" in the same sense.
+//
+// "Late" = exact route, but the trip leaves up to LATE_WINDOW_DAYS after the
+// sender's date. The email says so and lets them decide whether it can wait.
 
 const NEARBY_COUNTRY_CODES = new Set(['MA']);
+
+/** How many days after the sender's date a trip on their exact route still counts. */
+export const LATE_WINDOW_DAYS = 15;
+
+/** YYYY-MM-DD plus `days` (negative to go back). */
+function shiftDate(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Whole days from `from` to `to`, both YYYY-MM-DD. */
+function daysBetween(from: string, to: string): number {
+  return Math.round(
+    (new Date(`${to}T12:00:00Z`).getTime() - new Date(`${from}T12:00:00Z`).getTime()) / 86_400_000
+  );
+}
 
 function sameText(a: string | null | undefined, b: string | null | undefined) {
   return (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
@@ -54,13 +74,30 @@ export async function queueMatchAlertsForTrip(
   query = nearbyAllowed
     ? query.eq('pickup_country', trip.departure_country)
     : query.eq('pickup_city', trip.departure_city);
-  const { data: requests } = await query;
+  const { data: onTime } = await query;
+
+  // "Better late than never": same exact route, but the trip leaves after the
+  // sender's date — by at most LATE_WINDOW_DAYS. Exact cities only: asking
+  // someone to wait AND to get their parcel to another city is too much.
+  // Queued as tier 'exact'; how late it is is worked out again from the dates
+  // when the email is built, so nothing extra needs storing.
+  const { data: late } = await admin
+    .from('shipping_requests')
+    .select('id, user_id, pickup_country, pickup_city, item_category')
+    .eq('destination_city', trip.arrival_city)
+    .eq('pickup_city', trip.departure_city)
+    .eq('status', 'pending')
+    .lt('desired_delivery_date', trip.departure_date)
+    .gte('desired_delivery_date', shiftDate(trip.departure_date, -LATE_WINDOW_DAYS))
+    .neq('user_id', trip.user_id)
+    .limit(100);
+  const requests = [...(onTime ?? []), ...(late ?? [])];
 
   const accepted: string[] | null = Array.isArray(trip.accepted_categories) && trip.accepted_categories.length
     ? trip.accepted_categories
     : null;
 
-  const rows = (requests ?? [])
+  const rows = requests
     // A traveller who said "documents only" should not be pitched for keys.
     .filter((r: any) => !accepted || accepted.includes(r.item_category))
     .map((r: any) => ({
@@ -141,10 +178,15 @@ export async function buildMatchAlert(admin: SupabaseClient, alert: any) {
   const { data: userRes } = await admin.auth.admin.getUserById(request.user_id);
   const toEmail = userRes?.user?.email ?? null;
 
+  // > 0 when the trip leaves after the sender's date (see LATE_WINDOW_DAYS).
+  const daysLate = Math.max(0, daysBetween(request.desired_delivery_date, trip.departure_date));
+
   const template = tripMatchSenderEmail({
     senderFirstName: firstName(request.user_id),
     travelerFirstName: firstName(trip.user_id),
     tier: alert.tier,
+    daysLate,
+    requestDate: request.desired_delivery_date,
     tripDepartureCity: trip.departure_city,
     tripArrivalCity: trip.arrival_city,
     tripDate: trip.departure_date,
@@ -161,6 +203,7 @@ export async function buildMatchAlert(admin: SupabaseClient, alert: any) {
   return {
     id: alert.id as string,
     tier: alert.tier as 'exact' | 'nearby',
+    daysLate,
     createdAt: alert.created_at as string,
     toEmail,
     stale,

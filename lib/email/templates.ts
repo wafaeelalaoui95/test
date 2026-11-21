@@ -1130,6 +1130,10 @@ export function tripMatchSenderEmail(input: {
   senderFirstName: string | null;
   travelerFirstName: string | null;
   tier: 'exact' | 'nearby';
+  /** Days the trip leaves after the sender's date; 0 = on time. */
+  daysLate: number;
+  /** YYYY-MM-DD — the sender's "before" date. */
+  requestDate: string;
   tripDepartureCity: string;
   tripArrivalCity: string;
   /** YYYY-MM-DD */
@@ -1144,32 +1148,53 @@ export function tripMatchSenderEmail(input: {
   const dateEn = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long' }).format(d);
   const route = `${input.tripDepartureCity} → ${input.tripArrivalCity}`;
   const nearby = input.tier === 'nearby';
+  // Exact route, but after the sender's date — "better late than never".
+  const late = !nearby && input.daysLate > 0;
+  const n = input.daysLate;
+  const rd = new Date(`${input.requestDate}T12:00:00Z`);
+  const reqDateFr = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' }).format(rd);
+  const reqDateEn = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long' }).format(rd);
   const traveler = input.travelerFirstName;
+  const itemFr = input.itemLabel ? `« ${input.itemLabel} »` : 'votre colis';
+  const itemEn = input.itemLabel ? `“${input.itemLabel}”` : 'your parcel';
 
   const fr = {
     hello: input.senderFirstName ? `Bonjour ${input.senderFirstName},` : 'Bonjour,',
-    eyebrow: nearby ? 'Un voyageur près de chez vous' : 'Un voyageur sur votre trajet',
-    title: nearby
+    eyebrow: late ? 'Mieux vaut tard que jamais' : nearby ? 'Un voyageur près de chez vous' : 'Un voyageur sur votre trajet',
+    title: late
+      ? `${traveler ?? 'Un voyageur'} fait ${route} le ${dateFr}, ${n} jour${n > 1 ? 's' : ''} après votre date`
+      : nearby
       ? `${traveler ?? 'Un voyageur'} part de ${input.tripDepartureCity} pour ${input.tripArrivalCity} le ${dateFr}`
       : `${traveler ?? 'Un voyageur'} fait ${route} le ${dateFr}`,
-    body: nearby
-      ? `Vous attendez quelqu’un pour envoyer ${input.itemLabel ? `« ${input.itemLabel} »` : 'votre colis'} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Personne ne part de ${input.requestPickupCity} pour l’instant, mais ce voyageur part de ${input.tripDepartureCity}. Si vous pouvez faire parvenir votre colis à ${input.tripDepartureCity} avant son départ, il peut l’emporter.`
+    body: late
+      ? `Vous vouliez envoyer ${itemFr} de ${input.requestPickupCity} à ${input.tripArrivalCity} avant le ${reqDateFr}. Ce voyageur fait exactement ce trajet, ${n} jour${n > 1 ? 's' : ''} plus tard. Si votre envoi peut encore attendre un peu, mieux vaut tard que jamais !`
+      : nearby
+      ?`Vous attendez quelqu’un pour envoyer ${input.itemLabel ? `« ${input.itemLabel} »` : 'votre colis'} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Personne ne part de ${input.requestPickupCity} pour l’instant, mais ce voyageur part de ${input.tripDepartureCity}. Si vous pouvez faire parvenir votre colis à ${input.tripDepartureCity} avant son départ, il peut l’emporter.`
       : `Vous attendez quelqu’un pour envoyer ${input.itemLabel ? `« ${input.itemLabel} »` : 'votre colis'} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Ce voyageur fait exactement ce trajet.`,
-    ask: nearby ? 'Ça vous intéresse ?' : 'Vous voulez lui confier votre colis ?',
+    ask: late ? 'Toujours intéressé(e) ? Réservez le trajet.' : nearby ? 'Ça vous intéresse ?' : 'Vous voulez lui confier votre colis ?',
     cta: 'Voir le trajet et réserver',
-    note: 'Si ce trajet ne vous convient pas, ignorez simplement cet e-mail : votre demande reste en ligne.',
+    // A request past its date is no longer listed, so don't promise it is.
+    note: late
+      ? 'Si ce n’est plus utile, ignorez simplement cet e-mail.'
+      : 'Si ce trajet ne vous convient pas, ignorez simplement cet e-mail : votre demande reste en ligne.',
   };
   const en = {
     hello: input.senderFirstName ? `Hello ${input.senderFirstName},` : 'Hello,',
-    title: nearby
+    title: late
+      ? `${traveler ?? 'A traveller'} is flying ${route} on ${dateEn}, ${n} day${n > 1 ? 's' : ''} after your date`
+      : nearby
       ? `${traveler ?? 'A traveller'} is flying from ${input.tripDepartureCity} to ${input.tripArrivalCity} on ${dateEn}`
       : `${traveler ?? 'A traveller'} is flying ${route} on ${dateEn}`,
-    body: nearby
+    body: late
+      ? `You wanted to send ${itemEn} from ${input.requestPickupCity} to ${input.tripArrivalCity} before ${reqDateEn}. This traveller is flying exactly that route, ${n} day${n > 1 ? 's' : ''} later. If it can wait a little longer, better late than never!`
+      : nearby
       ? `You are waiting for someone to take ${input.itemLabel ? `“${input.itemLabel}”` : 'your parcel'} from ${input.requestPickupCity} to ${input.tripArrivalCity}. Nobody is leaving from ${input.requestPickupCity} yet, but this traveller leaves from ${input.tripDepartureCity}. If you can get your parcel to ${input.tripDepartureCity} before they fly, they can take it.`
       : `You are waiting for someone to take ${input.itemLabel ? `“${input.itemLabel}”` : 'your parcel'} from ${input.requestPickupCity} to ${input.tripArrivalCity}. This traveller is flying exactly that route.`,
-    ask: nearby ? 'Interested?' : 'Want them to carry it?',
+    ask: late ? 'Still interested? Book the trip.' : nearby ? 'Interested?' : 'Want them to carry it?',
     cta: 'See the trip and book',
-    note: 'If this trip does not suit you, just ignore this email: your request stays listed.',
+    note: late
+      ? 'If you no longer need it, just ignore this email.'
+      : 'If this trip does not suit you, just ignore this email: your request stays listed.',
   };
 
   const button = (label: string) => `
@@ -1203,7 +1228,9 @@ export function tripMatchSenderEmail(input: {
   `;
 
   return {
-    subject: nearby
+    subject: late
+      ? `Mieux vaut tard que jamais : un voyageur fait ${route} le ${dateFr} · Better late than never`
+      : nearby
       ? `Un voyageur part de ${input.tripDepartureCity} pour ${input.tripArrivalCity} · A traveller near your route`
       : `Un voyageur sur votre trajet ${route} · A traveller on your route`,
     html: wrapHtml(content, `${fr.title} · ${en.title}`),

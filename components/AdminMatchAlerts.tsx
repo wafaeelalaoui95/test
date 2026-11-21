@@ -13,6 +13,7 @@ import { Loader2, Send, X } from 'lucide-react';
 type Alert = {
   id: string;
   tier: 'exact' | 'nearby';
+  daysLate: number;
   createdAt: string;
   toEmail: string | null;
   stale: boolean;
@@ -86,6 +87,9 @@ export function AdminMatchAlerts() {
               <div className="min-w-0">
                 <div className="text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-300 mb-1">
                   {a.tier === 'exact' ? 'Même trajet' : 'Ville proche'}
+                  {a.daysLate > 0 && (
+                    <span className="ml-2 text-butter-600">· {a.daysLate} j après sa date</span>
+                  )}
                   {a.stale && <span className="ml-2 text-blush-500">· plus d&apos;actualité</span>}
                 </div>
                 <div className="text-[14px] text-ink-600">
