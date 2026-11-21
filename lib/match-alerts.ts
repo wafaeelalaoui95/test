@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { findCountryByName } from '@/lib/countries';
 import { formatName } from '@/lib/utils';
 import { tripMatchSenderEmail } from '@/lib/email/templates';
+import { getResend, FROM_EMAIL } from '@/lib/email/resend';
 
 // =============================================================================
 // Trip match alerts — "someone is travelling on (or near) your route"
@@ -211,4 +212,98 @@ export async function buildMatchAlert(admin: SupabaseClient, alert: any) {
     request: `${request.pickup_city} → ${request.destination_city} · avant le ${request.desired_delivery_date}`,
     template,
   };
+}
+
+/**
+ * Send one pending alert. Shared by the operator's "Envoyer" button and the
+ * automatic sends below, so both go through the same checks.
+ *
+ * The row is claimed (pending → sent) before Resend is called, so a double
+ * click or two overlapping runs cannot email twice; a failed send puts it back.
+ */
+export async function sendMatchAlert(
+  admin: SupabaseClient,
+  row: any
+): Promise<{ ok: true } | { ok: false; reason: 'stale' | 'no_email' | 'handled' | 'send_failed' }> {
+  const alert = await buildMatchAlert(admin, row);
+  if (!alert || alert.stale) return { ok: false, reason: 'stale' };
+  if (!alert.toEmail) return { ok: false, reason: 'no_email' };
+
+  const { data: claimed } = await admin
+    .from('trip_match_alerts')
+    .update({ status: 'sent', decided_at: new Date().toISOString() })
+    .eq('id', row.id)
+    .eq('status', 'pending')
+    .select('id');
+  if (!claimed?.length) return { ok: false, reason: 'handled' };
+
+  try {
+    await getResend().emails.send({
+      from: FROM_EMAIL,
+      to: alert.toEmail,
+      subject: alert.template.subject,
+      html: alert.template.html,
+      text: alert.template.text,
+    });
+  } catch (e: any) {
+    console.error('[match-alerts] send failed:', e?.message);
+    await admin
+      .from('trip_match_alerts')
+      .update({ status: 'pending', decided_at: null })
+      .eq('id', row.id);
+    return { ok: false, reason: 'send_failed' };
+  }
+  return { ok: true };
+}
+
+// One email per parcel per day, whatever the number of trips posted on it.
+// Anything held back stays pending and goes out on a later run.
+const AUTO_SEND_GAP_MS = 24 * 3_600_000;
+// Bounded so one bad run cannot turn into a mass mailing.
+const AUTO_SEND_MAX_PER_RUN = 50;
+
+/**
+ * Email exact-route alerts without waiting for the operator — on time or up to
+ * LATE_WINDOW_DAYS late. "Nearby" alerts are never sent here: whether someone
+ * can get a parcel to another city is a judgement call, so those stay on
+ * /admin for a human.
+ *
+ * Stale pairings (trip cancelled or gone, parcel booked) are left pending for
+ * the operator to dismiss rather than dismissed silently.
+ */
+export async function autoSendExactAlerts(
+  admin: SupabaseClient,
+  opts: { tripId?: string } = {}
+): Promise<{ sent: number }> {
+  let q = admin
+    .from('trip_match_alerts')
+    .select('*')
+    .eq('status', 'pending')
+    .eq('tier', 'exact')
+    .order('created_at', { ascending: true })
+    .limit(AUTO_SEND_MAX_PER_RUN);
+  if (opts.tripId) q = q.eq('trip_id', opts.tripId);
+  const { data: rows } = await q;
+
+  let sent = 0;
+  const emailedThisRun = new Set<string>();
+  for (const row of rows ?? []) {
+    if (emailedThisRun.has(row.request_id)) continue;
+    const since = new Date(Date.now() - AUTO_SEND_GAP_MS).toISOString();
+    const { data: recent } = await admin
+      .from('trip_match_alerts')
+      .select('id')
+      .eq('request_id', row.request_id)
+      .eq('status', 'sent')
+      .gte('decided_at', since)
+      .limit(1);
+    if (recent?.length) continue;
+
+    const res = await sendMatchAlert(admin, row);
+    if (res.ok) {
+      sent += 1;
+      emailedThisRun.add(row.request_id);
+    }
+  }
+  return { sent };
 }

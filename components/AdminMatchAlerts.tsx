@@ -75,8 +75,10 @@ export function AdminMatchAlerts() {
         Alertes trajet à valider ({alerts.length})
       </h3>
       <p className="text-[13px] text-ink-400 leading-relaxed mb-4">
-        Un voyageur vient de publier un trajet qui peut servir une demande en
-        attente. Rien n&apos;est parti : relisez l&apos;e-mail, puis envoyez ou ignorez.
+        Les alertes « Même trajet » partent toutes seules. Ici restent les
+        « Ville proche » (rien n&apos;est parti : relisez l&apos;e-mail, puis envoyez
+        ou ignorez), et les « Même trajet » qui n&apos;ont pas pu partir, par
+        exemple parce que le trajet a été annulé.
       </p>
       {error && <p className="text-[13px] text-blush-500 mb-3">{error}</p>}
       {!alerts.length && <p className="text-[13px] text-ink-300">Aucune alerte en attente.</p>}

@@ -5,6 +5,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/match-alerts",
+      "schedule": "40 * * * *"
+    },
+    {
       "path": "/api/cron/stale-requests",
       "schedule": "30 8 * * *"
     },

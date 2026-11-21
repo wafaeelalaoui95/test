@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/server';
 import { getAdminContext } from '@/lib/admin';
-import { getResend, FROM_EMAIL } from '@/lib/email/resend';
-import { buildMatchAlert, requeueOpenTrips } from '@/lib/match-alerts';
+import { buildMatchAlert, requeueOpenTrips, sendMatchAlert } from '@/lib/match-alerts';
 
 /**
  * GET  /api/admin/match-alerts  — pending alerts, each with the exact email
  * POST /api/admin/match-alerts  { alertId, action: 'send' | 'dismiss' }
  *
- * The approval step for "a traveller is on your route" emails. Nothing reaches
- * a sender until the operator presses send here. The email is rebuilt at send
+ * The approval step for "a traveller near your route" emails. Exact-route
+ * alerts go out on their own (autoSendExactAlerts); "nearby" ones reach a
+ * sender only when the operator presses send here. The email is rebuilt at send
  * time from the same function as the preview, and refused if the pairing went
  * stale in between (trip cancelled, parcel already booked).
  */
@@ -59,38 +59,16 @@ export async function POST(req: NextRequest) {
   if (!row) return NextResponse.json({ error: 'Already handled' }, { status: 409 });
 
   if (action === 'send') {
-    const alert = await buildMatchAlert(admin, row);
-    if (!alert || alert.stale) {
-      return NextResponse.json({ error: 'Stale — dismiss it instead' }, { status: 409 });
-    }
-    if (!alert.toEmail) return NextResponse.json({ error: 'Sender has no email' }, { status: 409 });
-
-    // Claim the row before sending, so a double click cannot email twice.
-    const { data: claimed } = await admin
-      .from('trip_match_alerts')
-      .update({ status: 'sent', decided_at: new Date().toISOString() })
-      .eq('id', alertId)
-      .eq('status', 'pending')
-      .select('id');
-    if (!claimed?.length) return NextResponse.json({ error: 'Already handled' }, { status: 409 });
-
-    try {
-      await getResend().emails.send({
-        from: FROM_EMAIL,
-        to: alert.toEmail,
-        subject: alert.template.subject,
-        html: alert.template.html,
-        text: alert.template.text,
-      });
-    } catch (e: any) {
-      console.error('[admin/match-alerts] send failed:', e?.message);
-      await admin
-        .from('trip_match_alerts')
-        .update({ status: 'pending', decided_at: null })
-        .eq('id', alertId);
-      return NextResponse.json({ error: 'Send failed' }, { status: 502 });
-    }
-    return NextResponse.json({ ok: true });
+    const res = await sendMatchAlert(admin, row);
+    if (res.ok) return NextResponse.json({ ok: true });
+    const errors = {
+      stale: ['Stale — dismiss it instead', 409],
+      no_email: ['Sender has no email', 409],
+      handled: ['Already handled', 409],
+      send_failed: ['Send failed', 502],
+    } as const;
+    const [msg, status] = errors[res.reason];
+    return NextResponse.json({ error: msg }, { status });
   }
 
   await admin

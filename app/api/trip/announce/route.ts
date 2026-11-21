@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
-import { queueMatchAlertsForTrip } from '@/lib/match-alerts';
+import { queueMatchAlertsForTrip, autoSendExactAlerts } from '@/lib/match-alerts';
 
 /**
  * POST /api/trip/announce  { tripId }
  *
  * Called by /voyager right after a trip is published. Queues "a traveller is
- * on your route" alerts for waiting senders — it sends nothing. The operator
- * approves each alert on /admin (see lib/match-alerts.ts).
+ * on your route" alerts for waiting senders, emails the exact-route ones at
+ * once, and leaves "nearby" ones for the operator on /admin (see
+ * lib/match-alerts.ts).
  *
  * Only the trip's own traveller can call it, so nobody can make Jibly queue
  * alerts for a trip that is not theirs.
@@ -37,5 +38,7 @@ export async function POST(req: Request) {
   }
 
   const { queued } = await queueMatchAlertsForTrip(admin, tripId);
-  return NextResponse.json({ ok: true, queued });
+  // Exact-route alerts go straight out; "nearby" ones wait on /admin.
+  const { sent } = queued ? await autoSendExactAlerts(admin, { tripId }) : { sent: 0 };
+  return NextResponse.json({ ok: true, queued, sent });
 }
