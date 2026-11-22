@@ -213,7 +213,10 @@ function Flow({
   );
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [errCode, setErrCode] = useState<string | null>(null);
+  // Technical codes go to the console for us, never on screen.
+  const setErrCode = (code: string | null) => {
+    if (code) console.warn('[payout-onboarding]', code);
+  };
   const [pending, setPending] = useState(false);
 
   // Identity
@@ -656,9 +659,6 @@ function Flow({
       )}
 
       {err && <p className="mt-3 text-[12px] text-blush-500 text-center">{err}</p>}
-      {errCode && (
-        <p className="mt-1 text-[11px] text-ink-300 text-center font-mono">{errCode}</p>
-      )}
     </div>
   );
 }

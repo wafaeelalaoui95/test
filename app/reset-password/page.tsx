@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 
 export default function ResetPasswordPage() {
   const { t, locale } = useI18n();
@@ -30,7 +31,7 @@ export default function ResetPasswordPage() {
       // same neutral confirmation either way.
       setSent(true);
     } catch (err: any) {
-      setError(err?.message ?? t.reset_error_generic);
+      setError(userMessage(t, err, t.reset_error_generic));
     } finally {
       setLoading(false);
     }

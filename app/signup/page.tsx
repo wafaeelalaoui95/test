@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Form';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { withTimeout } from '@/lib/supabase/timeout';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 import { formatName } from '@/lib/utils';
 
 export default function SignupPage() {
@@ -70,7 +71,7 @@ export default function SignupPage() {
         setNeedsConfirmation(true);
       }
     } catch (err: any) {
-      setError(err.message ?? t.auth_error_generic);
+      setError(userMessage(t, err, t.auth_error_generic));
     } finally {
       setLoading(false);
     }

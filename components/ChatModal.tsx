@@ -7,6 +7,7 @@ import { browser, type MessageRowChat } from '@/lib/supabase/queries';
 import { containsPhoneNumber } from '@/lib/safety';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 
 type ChatModalProps = {
   bookingIntentId: string;
@@ -123,7 +124,7 @@ export function ChatModal({
           if (!cancelled) onMessagesReadRef.current?.();
         });
       } catch (e: any) {
-        if (!cancelled) setErr(e?.message ?? t.chat_load_error);
+        if (!cancelled) setErr(userMessage(t, e, t.chat_load_error));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -194,10 +195,9 @@ export function ChatModal({
         const data = await res.json().catch(() => ({}));
         // The server speaks in codes, not prose. This one has a sentence of
         // its own — reached only by a client that skipped the check above.
-        throw new Error(
-          data.error === 'phone_number_blocked'
-            ? t.chat_no_phone
-            : data.error ?? t.chat_send_error
+        throw Object.assign(
+          new Error(data.error === 'phone_number_blocked' ? t.chat_no_phone : 'send_failed'),
+          { code: data.error, status: res.status }
         );
       }
       const data = await res.json();
@@ -209,7 +209,7 @@ export function ChatModal({
       // Rollback: remove the optimistic message
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       setDraft(body);
-      setErr(e?.message ?? t.chat_send_error_retry);
+      setErr(userMessage(t, e, t.chat_send_error_retry));
     } finally {
       setSending(false);
       inputRef.current?.focus();

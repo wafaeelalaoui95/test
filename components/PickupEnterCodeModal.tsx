@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { CodeInput } from './CodeInput';
 import { browser } from '@/lib/supabase/queries';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 
 /**
  * Code entry modal — shown at one of the two trust-handoff moments.
@@ -113,7 +114,7 @@ export function PickupEnterCodeModal({
         setCode('');
       }
     } catch (e: any) {
-      setError(e?.message ?? t.pickup_enter_err_unexpected);
+      setError(userMessage(t, e, t.pickup_enter_err_unexpected));
     } finally {
       setBusy(false);
     }

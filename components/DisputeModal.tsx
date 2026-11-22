@@ -5,6 +5,7 @@ import { X, AlertTriangle, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { browser } from '@/lib/supabase/queries';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 
 /**
  * "Signaler un problème" modal — opens a dispute on a booking.
@@ -97,7 +98,7 @@ export function DisputeModal({
       setCategory('');
       setDescription('');
     } catch (e: any) {
-      setError(e?.message ?? t.rev_dispute_err_submit_failed);
+      setError(userMessage(t, e, t.rev_dispute_err_submit_failed));
     } finally {
       setBusy(false);
     }

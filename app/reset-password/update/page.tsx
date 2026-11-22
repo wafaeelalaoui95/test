@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 
 export default function UpdatePasswordPage() {
   const { t } = useI18n();
@@ -27,7 +28,13 @@ export default function UpdatePasswordPage() {
       if (error) throw error;
       setDone(true);
     } catch (err: any) {
-      setError(err?.message ?? t.reset_error_generic);
+      // Without the recovery session the link has expired (or was opened
+      // elsewhere): "sign in again" would be the wrong advice here.
+      setError(
+        /auth session missing|session_not_found/i.test(`${err?.code ?? ''} ${err?.message ?? ''}`)
+          ? t.err_reset_link_expired
+          : userMessage(t, err, t.reset_error_generic)
+      );
     } finally {
       setLoading(false);
     }

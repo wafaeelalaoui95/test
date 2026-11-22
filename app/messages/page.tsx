@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 import { ChatModal } from '@/components/ChatModal';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 import { cityDisplayName } from '@/lib/countries';
 
 export default function MessagesPage() {
@@ -24,7 +25,7 @@ export default function MessagesPage() {
     browser
       .listMyConversations(user.id)
       .then(setConversations)
-      .catch((e) => setError(e?.message ?? t.sec_load_error));
+      .catch((e) => setError(userMessage(t, e, t.sec_load_error)));
   }
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export default function MessagesPage() {
       })
       .catch((e) => {
         if (cancelled) return;
-        setError(e?.message ?? t.sec_load_error);
+        setError(userMessage(t, e, t.sec_load_error));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

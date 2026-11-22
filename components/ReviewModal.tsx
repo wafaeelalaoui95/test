@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Form';
 import { browser } from '@/lib/supabase/queries';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 
 type Props = {
   // The booking being reviewed.
@@ -101,7 +102,7 @@ export function ReviewModal({
       } else if (msg.includes('row-level security') || msg.includes('policy')) {
         setErr(t.rev_err_cannot_review_yet);
       } else {
-        setErr(msg || t.rev_err_save_failed);
+        setErr(userMessage(t, e, t.rev_err_save_failed));
       }
     } finally {
       setBusy(false);

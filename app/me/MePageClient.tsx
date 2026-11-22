@@ -69,7 +69,7 @@ import {
   TravelerPriceDecisionModal,
 } from '@/components/PriceNegotiation';
 import { awaitingParty, canSenderCounter } from '@/lib/negotiation';
-import { friendlyError } from '@/lib/user-error';
+import { friendlyError, userMessage } from '@/lib/user-error';
 import { attestationStatement } from '@/lib/attestations';
 import { cn } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
@@ -2333,14 +2333,16 @@ function ProfileTab({
       const res = await fetch('/api/account/delete', { method: 'POST' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        // The API returns a human-readable `message` for expected cases (e.g.
-        // an active obligation blocking deletion); fall back to `error`.
-        throw new Error(body.message || body.error || 'Failed');
+        // The route answers in codes; only this one has a sentence of its own.
+        throw Object.assign(
+          new Error(body.error === 'active_obligation' ? t.account_delete_active_obligation : 'delete_failed'),
+          { code: body.error, status: res.status }
+        );
       }
       // Hard reload to clear all client state
       window.location.href = '/';
     } catch (e: any) {
-      setDeleteErr(e.message ?? t.auth_error_generic);
+      setDeleteErr(userMessage(t, e, t.auth_error_generic));
       setDeleting(false);
     }
   }
@@ -2365,7 +2367,7 @@ function ProfileTab({
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e: any) {
-      setErr(e.message ?? t.auth_error_generic);
+      setErr(userMessage(t, e, t.auth_error_generic));
     } finally {
       setSaving(false);
     }

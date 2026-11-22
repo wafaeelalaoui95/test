@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Loader2, Wallet, Check, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 import { payoutCountryNames } from '@/lib/stripe/payout-countries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { VerifyIdentityButton } from '@/components/IdentityGate';
@@ -39,7 +40,10 @@ export function SetupPayoutsButton({
   // Stripe's short error code, shown small under the message. Not for the
   // user to interpret — it's so they can quote it to support instead of
   // "it didn't work".
-  const [errCode, setErrCode] = useState<string | null>(null);
+  // Technical codes go to the console for us, never on screen.
+  const setErrCode = (code: string | null) => {
+    if (code) console.warn('[payout]', code);
+  };
 
   // Stripe requires identity.country on a v2 account (identity_country_required)
   // and it can never be changed afterwards. So we ask outright rather than
@@ -88,7 +92,7 @@ export function SetupPayoutsButton({
       }
       window.location.href = data.url;
     } catch (e: any) {
-      setErr(e.message ?? t.me2_error_retry);
+      setErr(userMessage(t, e, t.payout_start_failed));
       setLoading(false);
     }
   }
@@ -134,11 +138,6 @@ export function SetupPayoutsButton({
       </Button>
       {err && (
         <p className="mt-2 text-[12px] text-blush-500 text-center">{err}</p>
-      )}
-      {errCode && (
-        <p className="mt-1 text-[11px] text-ink-300 text-center font-mono">
-          {errCode}
-        </p>
       )}
     </>
   );

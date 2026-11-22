@@ -966,6 +966,16 @@ export type Translations = {
   err_booking_changed: string;
   err_payment_setup: string;
   err_payment_failed: string;
+  err_network: string;
+  err_too_many_attempts: string;
+  err_invalid_credentials: string;
+  err_email_not_confirmed: string;
+  err_weak_password: string;
+  err_same_password: string;
+  err_invalid_email: string;
+  err_account_exists: string;
+  err_reset_link_expired: string;
+  account_delete_active_obligation: string;
   neg_propose_other_price: string;
   neg_your_price_label: string;
   neg_min_hint: string;
@@ -2302,6 +2312,16 @@ export const translations: Record<Locale, Translations> = {
     err_booking_changed: 'Cette réservation a changé entre-temps. Rechargez la page pour voir où elle en est.',
     err_payment_setup: 'Le paiement n’a pas pu être préparé. Réessayez dans un instant ; si cela continue, écrivez-nous à contact@jibly.io.',
     err_payment_failed: 'Le paiement n’a pas abouti. Aucun montant n’a été débité. Réessayez ou utilisez une autre carte.',
+    err_network: 'La connexion a été interrompue. Vérifiez votre réseau, puis réessayez.',
+    err_too_many_attempts: 'Trop de tentatives d’affilée. Patientez quelques minutes, puis réessayez.',
+    err_invalid_credentials: 'Email ou mot de passe incorrect.',
+    err_email_not_confirmed: 'Confirmez d’abord votre adresse email : le lien est dans votre boîte de réception.',
+    err_weak_password: 'Ce mot de passe est trop facile à deviner. Choisissez-en un d’au moins 8 caractères.',
+    err_same_password: 'Choisissez un mot de passe différent de l’ancien.',
+    err_invalid_email: 'Cette adresse email ne semble pas valide.',
+    err_account_exists: 'Un compte existe déjà avec cet email. Connectez-vous ou réinitialisez votre mot de passe.',
+    err_reset_link_expired: 'Ce lien de réinitialisation a expiré. Demandez-en un nouveau.',
+    account_delete_active_obligation: 'Vous avez un envoi ou un trajet en cours. Terminez-le ou annulez-le avant de supprimer votre compte.',
     neg_propose_other_price: 'Proposer un autre prix',
     neg_your_price_label: 'Votre prix (total, frais Jibly inclus)',
     neg_min_hint: 'Minimum {min} · le voyageur recevra {net}',
@@ -3656,6 +3676,16 @@ export const translations: Record<Locale, Translations> = {
     err_booking_changed: 'This booking changed in the meantime. Reload the page to see where it stands.',
     err_payment_setup: 'The payment could not be prepared. Please try again in a moment; if it keeps happening, write to contact@jibly.io.',
     err_payment_failed: 'The payment did not go through. Nothing was charged. Try again or use another card.',
+    err_network: 'The connection was interrupted. Check your network, then try again.',
+    err_too_many_attempts: 'Too many attempts in a row. Wait a few minutes, then try again.',
+    err_invalid_credentials: 'Wrong email or password.',
+    err_email_not_confirmed: 'Please confirm your email address first: the link is in your inbox.',
+    err_weak_password: 'This password is too easy to guess. Choose one with at least 8 characters.',
+    err_same_password: 'Choose a password different from your old one.',
+    err_invalid_email: 'This email address does not look valid.',
+    err_account_exists: 'An account already exists with this email. Sign in or reset your password.',
+    err_reset_link_expired: 'This reset link has expired. Please request a new one.',
+    account_delete_active_obligation: 'You have a shipment or trip in progress. Finish or cancel it before deleting your account.',
     neg_propose_other_price: 'Propose another price',
     neg_your_price_label: 'Your price (total, Jibly fee included)',
     neg_min_hint: 'Minimum {min} · the traveller would receive {net}',

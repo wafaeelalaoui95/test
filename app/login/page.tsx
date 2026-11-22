@@ -10,6 +10,7 @@ import { getBrowserClient } from '@/lib/supabase/client';
 import { purgeStaleSession } from '@/lib/supabase/auth-provider';
 import { withTimeout } from '@/lib/supabase/timeout';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 
 function LoginInner() {
   const router = useRouter();
@@ -44,7 +45,7 @@ function LoginInner() {
       // fresh session cookie in hand.
       window.location.href = next;
     } catch (err: any) {
-      setError(err.message ?? t.auth_error_generic);
+      setError(userMessage(t, err, t.auth_error_generic));
     } finally {
       setLoading(false);
     }

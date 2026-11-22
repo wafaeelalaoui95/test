@@ -33,6 +33,7 @@ import {
 import { cityDisplayName } from '@/lib/countries';
 import { formatShortDate, displayName, nameInitial, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
 import type { AvailableSpace } from '@/lib/types';
@@ -272,7 +273,7 @@ export default function VoyagerPage() {
       try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setSubmitted(true);
     } catch (err: any) {
-      setSubmitError(err.message ?? t.auth_error_generic);
+      setSubmitError(userMessage(t, err, t.auth_error_generic));
     } finally {
       setSubmitting(false);
     }
@@ -1185,7 +1186,7 @@ function InstantProposeModal({
       });
       onSuccess(request.id, tripId);
     } catch (e: any) {
-      setErr(e?.message ?? t.voy_send_failed);
+      setErr(userMessage(t, e, t.voy_send_failed));
     } finally {
       setBusy(false);
     }

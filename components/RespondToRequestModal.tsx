@@ -11,6 +11,7 @@ import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 import { openPickerOnClick } from '@/components/ui/Form';
 import type { ShippingRequestRow, Profile, TravelerTripRow } from '@/lib/supabase/types';
 
@@ -177,7 +178,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
       onSuccess();
       router.push('/me');
     } catch (e: any) {
-      setErr(e?.message ?? t.rev_respond_err_failed);
+      setErr(userMessage(t, e, t.rev_respond_err_failed));
     } finally {
       setSubmitting(false);
     }

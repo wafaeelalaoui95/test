@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, CheckCircle2, Loader2, X, AlertCircle } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 
 // Downscale + re-encode large photos in the browser before upload. Phone
 // photos are routinely 3–12 MB, above the serverless request-body limit,
@@ -147,7 +148,7 @@ export function DeliveryProofModal({
 
       onSuccess(data.url);
     } catch (e: any) {
-      setErr(e?.message ?? t.pickup_proof_err_generic);
+      setErr(userMessage(t, e, t.pickup_proof_err_generic));
     } finally {
       setSubmitting(false);
     }

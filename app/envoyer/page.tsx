@@ -38,6 +38,7 @@ import { attestationStatement } from '@/lib/attestations';
 import { formatShortDate, displayName, nameInitial, formatEuros, priceBreakdown } from '@/lib/utils';
 import { countryDisplayName, cityDisplayName } from '@/lib/countries';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
 import type { ItemCategory, AvailableSpace } from '@/lib/types';
@@ -303,7 +304,7 @@ export default function EnvoyerPage() {
       try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setSubmitted(true);
     } catch (err: any) {
-      setSubmitError(err.message ?? t.auth_error_generic);
+      setSubmitError(userMessage(t, err, t.auth_error_generic));
     } finally {
       setSubmitting(false);
     }
@@ -1211,7 +1212,7 @@ function InstantBookModal({
 
       setPhase('success');
     } catch (e: any) {
-      setErr(e?.message ?? t.env_creation_failed);
+      setErr(userMessage(t, e, t.env_creation_failed));
     } finally {
       setBusy(false);
     }

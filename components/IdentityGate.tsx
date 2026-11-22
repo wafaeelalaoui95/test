@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ShieldCheck, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
+import { userMessage } from '@/lib/user-error';
 import { useAuth } from '@/lib/supabase/auth-provider';
 
 // =============================================================================
@@ -29,7 +30,10 @@ export function VerifyIdentityButton({
   const [err, setErr] = useState<string | null>(null);
   // Stripe's short error code, shown small under the message so a failure is
   // reportable without digging through server logs.
-  const [errCode, setErrCode] = useState<string | null>(null);
+  // Technical codes go to the console for us, never on screen.
+  const setErrCode = (code: string | null) => {
+    if (code) console.warn('[identity]', code);
+  };
 
   async function start() {
     setLoading(true);
@@ -66,7 +70,7 @@ export function VerifyIdentityButton({
       // Redirect to Stripe's hosted flow
       window.location.href = data.url;
     } catch (e: any) {
-      setErr(e.message ?? t.me2_error_retry);
+      setErr(userMessage(t, e, t.me2_verify_start_failed));
       setLoading(false);
     }
   }
@@ -83,11 +87,6 @@ export function VerifyIdentityButton({
       </Button>
       {err && (
         <p className="mt-2 text-[12px] text-blush-500 text-center">{err}</p>
-      )}
-      {errCode && (
-        <p className="mt-1 text-[11px] text-ink-300 text-center font-mono">
-          {errCode}
-        </p>
       )}
     </>
   );
