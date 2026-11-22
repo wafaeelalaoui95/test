@@ -189,14 +189,21 @@ export default function MyPage(
   // and sees their trips — with no sign anything happened. The param is then
   // stripped so a later refresh doesn't yank them off whatever tab they moved
   // to, matching how the `booking` param is handled below.
+  //
+  // Also ?tab=sends, which sender emails have linked to for a while (the
+  // date-reached and offer-waiting reminders) — it used to be ignored, so the
+  // sender landed on Trips and had to find their offer themselves.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
-    const wantsPayouts =
-      url.searchParams.has('payouts') ||
-      url.searchParams.get('tab') === 'payouts';
-    if (!wantsPayouts) return;
-    setTab('payouts');
+    const wanted: TabId | null =
+      url.searchParams.has('payouts') || url.searchParams.get('tab') === 'payouts'
+        ? 'payouts'
+        : url.searchParams.get('tab') === 'sends'
+        ? 'sends'
+        : null;
+    if (!wanted) return;
+    setTab(wanted);
     url.searchParams.delete('payouts');
     url.searchParams.delete('tab');
     window.history.replaceState({}, '', url.toString());

@@ -34,9 +34,15 @@ const BRAND = {
 const BASE_URL = getSiteUrl();
 
 // Shared HTML scaffold — used by every email template
-function wrapHtml(content: string, preheader: string): string {
+// `lang` only changes the wrapper's own words (footer). Defaults to English,
+// which every email used before the first French-only one.
+function wrapHtml(content: string, preheader: string, lang: 'en' | 'fr' = 'en'): string {
+  const footer =
+    lang === 'fr'
+      ? { why: 'Vous recevez cet e-mail car vous avez un compte Jibly.', link: 'Accéder à mon espace' }
+      : { why: 'You are receiving this because you have a Jibly account.', link: 'Go to your account' };
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -60,8 +66,8 @@ function wrapHtml(content: string, preheader: string): string {
           <tr>
             <td style="padding:24px 32px;border-top:1px solid #EFE9E2;">
               <p style="margin:0;font-size:12px;color:${BRAND.inkMuted};line-height:1.6;">
-                You are receiving this because you have a Jibly account.<br>
-                <a href="${BASE_URL}/me" style="color:${BRAND.inkSoft};text-decoration:underline;">Go to your account</a>
+                ${footer.why}<br>
+                <a href="${BASE_URL}/me" style="color:${BRAND.inkSoft};text-decoration:underline;">${footer.link}</a>
               </p>
             </td>
           </tr>
@@ -1235,5 +1241,78 @@ export function tripMatchSenderEmail(input: {
       : `Un voyageur sur votre trajet ${route} · A traveller on your route`,
     html: wrapHtml(content, `${fr.title} · ${en.title}`),
     text: `${fr.hello}\n\n${fr.title}.\n\n${fr.body}\n\n${fr.ask} ${fr.cta} : ${url}\n\n${fr.note}\n\n— L’équipe Jibly\n\n----- English below -----\n\n${en.hello}\n\n${en.title}.\n\n${en.body}\n\n${en.ask} ${en.cta}: ${url}\n\n${en.note}\n\n— The Jibly team`,
+  };
+}
+
+// =============================================================================
+// Sender: their date is (almost) here and a traveller's offer is unanswered
+// =============================================================================
+// Sent on the day of the sender's date — at noon Paris time by
+// /api/cron/offer-reminders, or by hand from /admin (lib/offer-reminders.ts).
+// `isToday: false` ("demain") is supported but not used. The deadline-day email ("nobody has
+// taken your parcel yet") deliberately skips any request with an offer on it,
+// so without this a sender with a waiting offer heard nothing at all — and the
+// traveller who offered never got an answer.
+//
+// French only, at the operator's request. The button books (accept + pay); it
+// does not open a chat — contact comes with the booking.
+export function offerWaitingReminderEmail(input: {
+  senderFirstName: string | null;
+  /** First name of the traveller when there is exactly one offer. */
+  travelerFirstName: string | null;
+  offerCount: number;
+  itemLabel: string | null;
+  pickupCity: string;
+  destinationCity: string;
+  /** YYYY-MM-DD — the sender's "before" date. */
+  requestDate: string;
+  /** True when the date is today (Paris time), false when it is tomorrow. */
+  isToday: boolean;
+}) {
+  const url = `${BASE_URL}/me?tab=sends`;
+  const d = new Date(`${input.requestDate}T12:00:00Z`);
+  const date = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' }).format(d);
+  const when = input.isToday ? `aujourd’hui, le ${date}` : `demain, le ${date}`;
+  const item = input.itemLabel ? `« ${input.itemLabel} »` : 'votre colis';
+  const one = input.offerCount <= 1;
+  const traveler = input.travelerFirstName ?? 'Un voyageur';
+
+  const hello = input.senderFirstName ? `Bonjour ${input.senderFirstName},` : 'Bonjour,';
+  const title = input.isToday ? 'Votre colis peut encore partir aujourd’hui' : 'Votre colis peut encore partir à temps';
+  const intro = `Vous souhaitiez envoyer ${item} de ${input.pickupCity} à ${input.destinationCity} avant ${when}.`;
+  const news = one
+    ? `Bonne nouvelle : ${traveler} s’est proposé pour le transporter, et son offre vous attend toujours.`
+    : `Bonne nouvelle : ${input.offerCount} voyageurs se sont proposés pour le transporter, et leurs offres vous attendent toujours.`;
+  const next = one
+    ? `Si elle vous convient, acceptez-la et réglez en ligne : votre réservation est confirmée tout de suite. Si vous n’en avez plus besoin, vous pouvez aussi la refuser, pour que ${input.travelerFirstName ?? 'le voyageur'} le sache.`
+    : 'Si l’une d’elles vous convient, acceptez-la et réglez en ligne : votre réservation est confirmée tout de suite. Si vous n’en avez plus besoin, vous pouvez aussi les refuser, pour que les voyageurs le sachent.';
+  const cta = one && input.travelerFirstName ? `Voir l’offre de ${input.travelerFirstName}` : one ? 'Voir l’offre' : 'Voir les offres';
+  const help = 'Une question ? Écrivez-nous à contact@jibly.io, nous vous répondrons avec plaisir.';
+
+  const p = (text: string, extra = '') =>
+    `<p style="margin:0 0 14px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;${extra}">${text}</p>`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Un voyageur attend votre réponse</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">${escapeHtml(title)}</h1>
+    ${p(escapeHtml(hello))}
+    ${p(escapeHtml(intro))}
+    ${p(`<strong style="color:${BRAND.ink};">${escapeHtml(news)}</strong>`)}
+    ${p(escapeHtml(next))}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px auto 24px;">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(cta)}</a>
+        </td>
+      </tr>
+    </table>
+    ${p(`Une question ? Écrivez-nous à <a href="mailto:contact@jibly.io" style="color:${BRAND.ink};font-weight:600;">contact@jibly.io</a>, nous vous répondrons avec plaisir.`)}
+    <p style="margin:0;font-size:15px;color:${BRAND.inkSoft};">— L’équipe Jibly</p>
+  `;
+
+  return {
+    subject: one ? 'Un voyageur attend votre réponse' : `${input.offerCount} voyageurs attendent votre réponse`,
+    html: wrapHtml(content, `${news}`, 'fr'),
+    text: `${hello}\n\n${intro}\n\n${news}\n\n${next}\n\n${cta} : ${url}\n\n${help}\n\n— L’équipe Jibly`,
   };
 }
