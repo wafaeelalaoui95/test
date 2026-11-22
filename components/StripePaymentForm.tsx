@@ -11,6 +11,7 @@ import type { StripeElementsOptions } from '@stripe/stripe-js';
 import { Loader2, Lock } from 'lucide-react';
 import { getStripeClient } from '@/lib/stripe/client';
 import { useI18n } from '@/lib/i18n/context';
+import { friendlyError } from '@/lib/user-error';
 
 type Props = {
   /**
@@ -54,6 +55,7 @@ export function StripePaymentForm({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  const { t: tr, locale } = useI18n();
   // A stable key so a re-render with an equal object doesn't mint a second
   // PaymentIntent.
   const payForKey =
@@ -68,8 +70,8 @@ export function StripePaymentForm({
       body: JSON.stringify({ ...payFor, description }),
     })
       .then(async (r) => {
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error ?? 'Payment setup failed');
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw Object.assign(new Error('payment_setup'), { code: data.error, status: r.status });
         return data;
       })
       .then(({ clientSecret, paymentIntentId }) => {
@@ -79,7 +81,8 @@ export function StripePaymentForm({
       })
       .catch((e: any) => {
         if (cancelled) return;
-        setInitError(e.message ?? 'Payment setup failed');
+        // A sentence for the person, never the route's code.
+        setInitError(friendlyError(tr, e?.code ?? e?.message, e?.status));
       });
     return () => {
       cancelled = true;
@@ -105,6 +108,8 @@ export function StripePaymentForm({
 
   const options: StripeElementsOptions = {
     clientSecret,
+    // Stripe's own card messages ("Votre carte a été refusée") in the page's language.
+    locale: locale === 'en' ? 'en' : 'fr',
     appearance: {
       theme: 'flat',
       variables: {
@@ -166,7 +171,13 @@ function InnerForm({
     });
 
     if (error) {
-      setErr(error.message ?? 'Payment failed');
+      // Card and form errors are written by Stripe for the cardholder and
+      // localised; anything else is technical and gets our own sentence.
+      setErr(
+        (error.type === 'card_error' || error.type === 'validation_error') && error.message
+          ? error.message
+          : t.err_payment_failed
+      );
       setSubmitting(false);
       return;
     }
@@ -179,7 +190,8 @@ function InnerForm({
 
     // Should not reach here in our flow — but cover the case where Stripe
     // returns a different terminal status.
-    setErr(`Unexpected status: ${paymentIntent?.status ?? 'unknown'}`);
+    console.warn('[payment] unexpected status', paymentIntent?.status);
+    setErr(t.err_payment_failed);
     setSubmitting(false);
   }
 

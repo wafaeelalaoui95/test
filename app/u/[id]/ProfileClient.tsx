@@ -31,6 +31,7 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { OfferPriceBox } from '@/components/PriceNegotiation';
+import { friendlyError } from '@/lib/user-error';
 import type { Profile, TravelerTripRow } from '@/lib/supabase/types';
 
 type PublicProfile = Pick<
@@ -182,7 +183,7 @@ export function ProfileClient({
           }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error ?? t.neg_err_generic);
+        if (!res.ok) throw Object.assign(new Error('trip_offer'), { code: data.error, status: res.status });
         setBookingStep('success');
         return;
       }
@@ -206,7 +207,7 @@ export function ProfileClient({
       });
       setBookingStep('success');
     } catch (e: any) {
-      setSubmitErr(e.message ?? t.prof_error_occurred);
+      setSubmitErr(friendlyError(t, e?.code ?? e?.message, e?.status));
     } finally {
       setSubmitting(false);
     }

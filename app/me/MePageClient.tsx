@@ -69,6 +69,7 @@ import {
   TravelerPriceDecisionModal,
 } from '@/components/PriceNegotiation';
 import { awaitingParty, canSenderCounter } from '@/lib/negotiation';
+import { friendlyError } from '@/lib/user-error';
 import { attestationStatement } from '@/lib/attestations';
 import { cn } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
@@ -2699,7 +2700,7 @@ function ProposalPaymentModal({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error ?? t.me2_update_failed);
+        throw Object.assign(new Error('record_authorization'), { code: data.error, status: res.status });
       }
       setPaidCaptured(data.captured === true);
 
@@ -2721,7 +2722,7 @@ function ProposalPaymentModal({
 
       setPaidIntentId(paymentIntentId);
     } catch (e: any) {
-      setErr(e?.message ?? t.me2_update_failed);
+      setErr(friendlyError(t, e?.code ?? e?.message, e?.status));
     } finally {
       setBusy(false);
     }

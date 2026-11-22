@@ -960,6 +960,12 @@ export type Translations = {
   me2_status_declined: string;
   me2_decline: string;
   me2_pay: string;
+  err_session_expired: string;
+  err_identity_required_short: string;
+  err_trip_unavailable: string;
+  err_booking_changed: string;
+  err_payment_setup: string;
+  err_payment_failed: string;
   neg_propose_other_price: string;
   neg_your_price_label: string;
   neg_min_hint: string;
@@ -2290,6 +2296,12 @@ export const translations: Record<Locale, Translations> = {
     me2_status_declined: 'refusée',
     me2_decline: 'Refuser',
     me2_pay: 'Payer {amount}',
+    err_session_expired: 'Votre session a expiré. Reconnectez-vous, puis réessayez.',
+    err_identity_required_short: 'Vérifiez votre identité pour continuer.',
+    err_trip_unavailable: 'Ce trajet n’est plus disponible.',
+    err_booking_changed: 'Cette réservation a changé entre-temps. Rechargez la page pour voir où elle en est.',
+    err_payment_setup: 'Le paiement n’a pas pu être préparé. Réessayez dans un instant ; si cela continue, écrivez-nous à contact@jibly.io.',
+    err_payment_failed: 'Le paiement n’a pas abouti. Aucun montant n’a été débité. Réessayez ou utilisez une autre carte.',
     neg_propose_other_price: 'Proposer un autre prix',
     neg_your_price_label: 'Votre prix (total, frais Jibly inclus)',
     neg_min_hint: 'Minimum {min} · le voyageur recevra {net}',
@@ -3638,6 +3650,12 @@ export const translations: Record<Locale, Translations> = {
     me2_status_declined: 'declined',
     me2_decline: 'Decline',
     me2_pay: 'Pay {amount}',
+    err_session_expired: 'Your session has expired. Please sign in again, then retry.',
+    err_identity_required_short: 'Verify your identity to continue.',
+    err_trip_unavailable: 'This trip is no longer available.',
+    err_booking_changed: 'This booking changed in the meantime. Reload the page to see where it stands.',
+    err_payment_setup: 'The payment could not be prepared. Please try again in a moment; if it keeps happening, write to contact@jibly.io.',
+    err_payment_failed: 'The payment did not go through. Nothing was charged. Try again or use another card.',
     neg_propose_other_price: 'Propose another price',
     neg_your_price_label: 'Your price (total, Jibly fee included)',
     neg_min_hint: 'Minimum {min} · the traveller would receive {net}',
