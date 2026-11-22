@@ -1332,3 +1332,115 @@ export function offerWaitingReminderEmail(input: {
     text: `${hello}\n\n${intro}\n\n${news}\n\n${next}\n\n${cta} : ${url}\n\n${help}\n\n— L’équipe Jibly`,
   };
 }
+
+// =============================================================================
+// Price bargaining — a new price to answer, or an answer to a price
+// =============================================================================
+// One template, three moments (rules in lib/negotiation.ts):
+//   'offer_to_traveler'  the sender proposes a price — on a listed trip, or as
+//                        a counter to the traveller's offer. The traveller sees
+//                        what THEY would receive, net of Jibly's fee.
+//   'counter_to_sender'  the traveller answers with a price of their own. The
+//                        sender sees the total they would pay.
+//   'refused_to_sender'  the traveller turned the sender's price down. The card
+//                        hold is released; nothing was charged.
+//
+// French first, English underneath: these go to both sides of a Paris ⇄ Maroc
+// corridor and nothing records anyone's language. No chat link — the
+// conversation only opens once a price is agreed and paid.
+export function priceNegotiationEmail(input: {
+  kind: 'offer_to_traveler' | 'counter_to_sender' | 'refused_to_sender';
+  recipientFirstName: string | null;
+  otherFirstName: string | null;
+  pickupCity: string;
+  destinationCity: string;
+  itemLabel: string | null;
+  /** offer_to_traveler: the traveller's net. Otherwise: the sender's total. */
+  amount: number;
+  /** offer_to_traveler only: the total the sender pays, shown small. */
+  senderTotal?: number;
+  /** True when the recipient can still answer with one counter-proposal. */
+  canCounter: boolean;
+  /** Where the recipient answers. */
+  path: string;
+}) {
+  const url = `${BASE_URL}${input.path}`;
+  const route = `${input.pickupCity} → ${input.destinationCity}`;
+  const other = input.otherFirstName;
+  const hello = input.recipientFirstName ? `Bonjour ${input.recipientFirstName},` : 'Bonjour,';
+  const helloEn = input.recipientFirstName ? `Hi ${input.recipientFirstName},` : 'Hi,';
+  const item = input.itemLabel ? ` (« ${input.itemLabel} »)` : '';
+  const amount = formatEuros(input.amount);
+
+  let label: string, title: string, fr: string, frNext: string, en: string, cta: string, amountLabel: string;
+  if (input.kind === 'offer_to_traveler') {
+    label = 'Nouvelle proposition de prix';
+    title = `${other ?? 'Un expéditeur'} vous propose ${amount}`;
+    amountLabel = 'Vous recevrez';
+    fr = `${other ?? 'Un expéditeur'} souhaite vous confier un colis${item} sur ${route} et propose un autre prix. Son paiement est déjà bloqué sur sa carte, rien n’est encore débité.`;
+    frNext = input.canCounter
+      ? 'Vous pouvez accepter, refuser, ou faire une contre-proposition (une seule).'
+      : 'Vous pouvez accepter ou refuser.';
+    en = `${other ?? 'A sender'} proposes a different price for ${route}: you would receive ${amount}. Their card is already authorised. ${input.canCounter ? 'Accept, decline, or make one counter-offer.' : 'Accept or decline.'}`;
+    cta = 'Répondre à la proposition';
+  } else if (input.kind === 'counter_to_sender') {
+    label = 'Contre-proposition';
+    title = `${other ?? 'Le voyageur'} propose ${amount}`;
+    amountLabel = 'Prix total proposé';
+    fr = `Pour votre colis${item} sur ${route}, ${other ?? 'le voyageur'} vous fait une contre-proposition à ${amount} (frais Jibly inclus). Votre précédente autorisation de paiement a été annulée.`;
+    frNext = input.canCounter
+      ? 'Vous pouvez l’accepter en payant, la refuser, ou proposer un dernier prix.'
+      : 'Vous pouvez l’accepter en payant (la réservation est alors confirmée), ou la refuser.';
+    en = `For your parcel on ${route}, ${other ?? 'the traveller'} counter-offers ${amount} (Jibly fee included). Your earlier card authorisation was cancelled. ${input.canCounter ? 'Pay to accept, decline, or propose a last price.' : 'Pay to accept, or decline.'}`;
+    cta = 'Voir la contre-proposition';
+  } else {
+    label = 'Proposition refusée';
+    title = `${other ?? 'Le voyageur'} n’a pas accepté votre prix`;
+    amountLabel = 'Prix proposé';
+    fr = `${other ?? 'Le voyageur'} a refusé votre proposition à ${amount} sur ${route}. Rien n’a été débité : le blocage sur votre carte est levé.`;
+    frNext = 'Votre demande reste visible : d’autres voyageurs peuvent encore vous faire une offre.';
+    en = `${other ?? 'The traveller'} declined your price of ${amount} on ${route}. Nothing was charged and the hold on your card is released.`;
+    cta = 'Voir mes envois';
+  }
+
+  const small =
+    input.kind === 'offer_to_traveler' && input.senderTotal != null
+      ? `<p style="margin:6px 0 0;font-size:12px;color:${BRAND.inkMuted};">L’expéditeur paie ${formatEuros(input.senderTotal)} frais Jibly inclus.</p>`
+      : '';
+  const p = (text: string, extra = '') =>
+    `<p style="margin:0 0 14px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;${extra}">${text}</p>`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">${escapeHtml(label)}</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">${escapeHtml(title)}</h1>
+    ${p(escapeHtml(hello))}
+    ${p(escapeHtml(fr))}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.lavenderLight};border-radius:12px;margin-bottom:20px;">
+      <tr>
+        <td style="padding:18px 20px;">
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Trajet</p>
+          <p style="margin:0 0 14px;font-size:17px;font-weight:600;color:${BRAND.ink};">${escapeHtml(route)}</p>
+          <p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">${escapeHtml(amountLabel)}</p>
+          <p style="margin:0;font-size:20px;font-weight:700;color:${BRAND.ink};">${amount}</p>
+          ${small}
+        </td>
+      </tr>
+    </table>
+    ${p(escapeHtml(frNext))}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px auto 24px;">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(cta)}</a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 14px;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;border-top:1px solid #EFE9E2;padding-top:14px;">${escapeHtml(helloEn)} ${escapeHtml(en)}</p>
+    <p style="margin:0;font-size:15px;color:${BRAND.inkSoft};">— L’équipe Jibly</p>
+  `;
+
+  return {
+    subject: `${title} · ${route}`,
+    html: wrapHtml(content, fr, 'fr'),
+    text: `${hello}\n\n${fr}\n\n${amountLabel} : ${amount}\n\n${frNext}\n\n${cta} : ${url}\n\n---\n${helloEn} ${en}\n\n— L’équipe Jibly`,
+  };
+}

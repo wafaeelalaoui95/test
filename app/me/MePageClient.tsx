@@ -62,6 +62,13 @@ import { getBrowserClient } from '@/lib/supabase/client';
 import { EditListingModal } from '@/components/EditListingModal';
 import { CancelTripModal } from '@/components/CancelTripModal';
 import { CancelledBookingPanel } from '@/components/CancelledBookingPanel';
+import {
+  BOOKING_PATCH_EVENT,
+  SenderCounterModal,
+  TravelerPriceDecision,
+  TravelerPriceDecisionModal,
+} from '@/components/PriceNegotiation';
+import { awaitingParty, canSenderCounter } from '@/lib/negotiation';
 import { attestationStatement } from '@/lib/attestations';
 import { cn } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
@@ -144,6 +151,11 @@ type IncomingIntent = {
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
+  // Price bargaining (2026-11-23-price-bargaining.sql, lib/negotiation.ts).
+  original_price?: number | null;
+  price_pending_by?: 'sender' | 'traveler' | null;
+  sender_countered?: boolean;
+  traveler_countered?: boolean;
   // Trust & safety fields (08_trust_and_safety.sql)
   pickup_code?: string | null;
   delivery_code?: string | null;
@@ -247,20 +259,40 @@ export default function MyPage(
     setIncomingIntents((prev) => prev.map((it) => (it.id === id ? { ...it, status } : it)));
   }
 
+  // A price changed through PriceNegotiation (accept / refuse / counter):
+  // patch whichever list holds that booking, so the card moves without a
+  // reload. Only one of the three lists contains any given id.
+  useEffect(() => {
+    function onPatch(e: Event) {
+      const { id, patch } = (e as CustomEvent).detail ?? {};
+      if (!id) return;
+      setIncomingIntents((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+      setMyBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+      setMyProposals((prev) => prev.map((pr) => (pr.id === id ? { ...pr, ...patch } : pr)));
+    }
+    window.addEventListener(BOOKING_PATCH_EVENT, onPatch);
+    return () => window.removeEventListener(BOOKING_PATCH_EVENT, onPatch);
+  }, []);
+
   // Deep-link from a booking notification: ?booking=<id> opens the request
-  // details popup once the incoming requests have loaded.
+  // details popup once the incoming requests have loaded. A traveller's own
+  // offer that the sender answered with a price lives in myProposals, so it
+  // is looked up there too (same row shape, minus the trip).
   useEffect(() => {
     if (typeof window === 'undefined' || detailsFor) return;
     const id = new URLSearchParams(window.location.search).get('booking');
     if (!id) return;
-    const found = incomingIntents.find((i) => i.id === id);
+    const ownOffer = myProposals.find((pr) => pr.id === id);
+    const found =
+      incomingIntents.find((i) => i.id === id) ??
+      (ownOffer ? ({ ...ownOffer, traveler_trip: null } as unknown as IncomingIntent) : undefined);
     if (found) {
       setDetailsFor(found);
       const url = new URL(window.location.href);
       url.searchParams.delete('booking');
       window.history.replaceState({}, '', url.toString());
     }
-  }, [incomingIntents, detailsFor]);
+  }, [incomingIntents, myProposals, detailsFor]);
 
   // Chat modal — pick a booking to open. We stash everything the modal
   // needs so it doesn't have to re-query.
@@ -594,11 +626,10 @@ export default function MyPage(
               //   Mes voyages : count of pending incoming requests + bookings to deliver
               //   Mes envois  : count of pending traveler proposals on my requests
               const tripsTodoCount =
-                incomingIntents.filter((i) => i.status === 'pending').length +
+                incomingIntents.filter((i) => awaitingParty(i) === 'traveler').length +
+                myProposals.filter((pr) => awaitingParty(pr) === 'traveler').length +
                 incomingIntents.filter((i) => i.status === 'confirmed' && !i.delivery_proof_url).length;
-              const sendsTodoCount = myBookings.filter(
-                (b) => b.status === 'pending' && b.initiated_by === 'traveler'
-              ).length;
+              const sendsTodoCount = myBookings.filter((b) => awaitingParty(b) === 'sender').length;
               const showTripsBadge = tabItem.id === 'trips' && tripsTodoCount > 0;
               const showSendsBadge = tabItem.id === 'sends' && sendsTodoCount > 0;
               const badgeCount = showTripsBadge ? tripsTodoCount : showSendsBadge ? sendsTodoCount : 0;
@@ -1358,6 +1389,11 @@ type TravelerProposal = {
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
   traveler_user_id: string | null;
+  // Price bargaining (2026-11-23-price-bargaining.sql, lib/negotiation.ts).
+  original_price?: number | null;
+  price_pending_by?: 'sender' | 'traveler' | null;
+  sender_countered?: boolean;
+  traveler_countered?: boolean;
   // Trust & safety fields (08_trust_and_safety.sql)
   pickup_code?: string | null;
   delivery_code?: string | null;
@@ -1391,6 +1427,11 @@ type MyBooking = {
   shipping_request_id: string | null;
   traveler_message: string | null;
   initiated_by: 'sender' | 'traveler';
+  // Price bargaining (2026-11-23-price-bargaining.sql, lib/negotiation.ts).
+  original_price?: number | null;
+  price_pending_by?: 'sender' | 'traveler' | null;
+  sender_countered?: boolean;
+  traveler_countered?: boolean;
   // Trust & safety fields (08_trust_and_safety.sql)
   pickup_code?: string | null;
   delivery_code?: string | null;
@@ -1512,6 +1553,7 @@ function BookingCard({
   // time the sender sees this booking as confirmed, then never again (gated
   // per booking in localStorage). Keeps the card itself light.
   const [showAcceptedPopup, setShowAcceptedPopup] = useState(false);
+  const [counterOpen, setCounterOpen] = useState(false);
   useEffect(() => {
     if (booking.status !== 'confirmed' || booking.delivery_proof_url) return;
     const key = `jibly:booking-accepted-seen:${booking.id}`;
@@ -1842,7 +1884,11 @@ function BookingCard({
   //      waiting for the traveler. Payment already authorized.
   //   B) initiated_by='traveler' → A traveler responded to my public
   //      request. Payment NOT yet made. I need to Accept & Pay.
-  const isTravelerProposal = booking.initiated_by === 'traveler' && booking.status === 'pending';
+  // "Waiting on me" now also covers a traveller's counter to my price.
+  const isTravelerProposal = awaitingParty(booking) === 'sender';
+  const isCounter = isTravelerProposal && booking.price_pending_by === 'traveler';
+  const canCounter = canSenderCounter(booking);
+  const myPriceWaiting = booking.status === 'pending' && booking.price_pending_by === 'sender';
 
   return (
     <div className={`bg-white rounded-xl px-3 py-2.5 border ${isTravelerProposal ? 'border-lavender-300' : 'border-ink-50'}`}>
@@ -1864,16 +1910,29 @@ function BookingCard({
           <span className="text-ink-300">·</span>
           <span className="text-ink-400 truncate">{travelerName}</span>
           {isTravelerProposal && (
-            <span className="text-[11px] text-lavender-600 ml-1">✨ {t.me2_status_new}</span>
+            <span className="text-[11px] text-lavender-600 ml-1">
+              {isCounter ? `↔ ${t.neg_pill_counter}` : `✨ ${t.me2_status_new}`}
+            </span>
           )}
-          {booking.status === 'pending' && !isTravelerProposal && (
+          {myPriceWaiting && (
+            <span className="text-[11px] text-ink-400 ml-1">⏳ {t.neg_pill_price_proposed} · {t.neg_waiting_traveler}</span>
+          )}
+          {booking.status === 'pending' && !isTravelerProposal && !myPriceWaiting && (
             <span className="text-[11px] text-ink-300 ml-1">⏳ {t.me2_status_pending}</span>
           )}
         </div>
 
         {/* Actions inline */}
         {isTravelerProposal && onAcceptProposal && onDeclineProposal && (
-          <div className="flex-shrink-0 flex items-center gap-1.5">
+          <div className="flex-shrink-0 flex items-center gap-1.5 flex-wrap justify-end">
+            {canCounter && (
+              <button
+                onClick={() => setCounterOpen(true)}
+                className="px-3 py-1.5 text-[12px] font-semibold text-lavender-700 bg-lavender-100 hover:bg-lavender-200 rounded-full transition-colors"
+              >
+                {t.neg_counter}
+              </button>
+            )}
             <button
               onClick={() => onDeclineProposal(booking.id)}
               className="px-3 py-1.5 text-[12px] font-medium text-ink-500 hover:text-ink-600 bg-cream-100 hover:bg-cream-200 rounded-full transition-colors"
@@ -1890,12 +1949,34 @@ function BookingCard({
         )}
       </div>
 
+      {/* Where the price came from, while it is being discussed. */}
+      {isCounter && (
+        <p className="mt-2 ml-11 text-[12px] text-ink-500 leading-snug">
+          {booking.original_price != null && Number(booking.original_price) !== Number(booking.proposed_price) && (
+            <span className="text-ink-400">
+              {t.neg_listed_price} {formatEuros(Number(booking.original_price))} ·{' '}
+            </span>
+          )}
+          {t.neg_last_word}
+        </p>
+      )}
+
       {/* Traveler's message — only when there's one and it's a proposal */}
       {isTravelerProposal && booking.traveler_message && (
         <p className="mt-2 ml-11 text-[12px] text-ink-400 leading-snug line-clamp-2">
           « {booking.traveler_message} »
         </p>
       )}
+
+      <AnimatePresence>
+        {counterOpen && (
+          <SenderCounterModal
+            booking={booking}
+            travelerName={travelerName}
+            onClose={() => setCounterOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -2971,7 +3052,8 @@ function bucketForSendBooking(b: MyBooking): 'todo' | 'inProgress' | 'delivered'
   // I need to act on it:
   //  - a traveler proposed and I haven't accepted/paid yet
   //  - the traveler delivered + uploaded proof, I need to click "I received"
-  if (b.status === 'pending' && b.initiated_by === 'traveler') return 'todo';
+  //  - a price (the traveller's offer or counter-offer) waits on my answer
+  if (awaitingParty(b) === 'sender') return 'todo';
   if (b.status === 'confirmed' && b.delivery_proof_url && !b.received_confirmed_at)
     return 'todo';
   // Fully closed
@@ -3263,8 +3345,12 @@ function SendListRow({
 
   // Status line (without the route — the route is prepended below).
   let statusText = '';
-  if (bucket === 'todo' && booking.status === 'pending') {
+  if (bucket === 'todo' && booking.status === 'pending' && booking.price_pending_by === 'traveler') {
+    statusText = `↔ ${t.neg_traveler_counters.replace('{name}', travelerName).replace('{amount}', formatEuros(booking.proposed_price))}`;
+  } else if (bucket === 'todo' && booking.status === 'pending') {
     statusText = t.me2_sub_proposes.replace('{name}', travelerName);
+  } else if (booking.status === 'pending' && booking.price_pending_by === 'sender') {
+    statusText = `${t.neg_pill_price_proposed} · ${t.neg_waiting_traveler}`;
   } else if (bucket === 'todo' && booking.delivery_proof_url) {
     statusText = `📸 ${t.me2_sub_delivered_by.replace('{name}', travelerName)} · ${t.me2_sub_to_confirm}`;
   } else if (bucket === 'inProgress' && booking.status === 'confirmed') {
@@ -4390,6 +4476,12 @@ function RequestDetailsModal({
         <div className="rounded-xl bg-ink-500 text-cream-50 px-4 py-2.5 mb-4 text-[13px] font-semibold">
           {t.me2_accept_doubt}
         </div>
+        {intent.status === 'pending' && intent.price_pending_by === 'sender' ? (
+          <TravelerPriceDecision booking={intent} senderName={senderName} onDone={onClose} />
+        ) : intent.status === 'pending' && intent.price_pending_by === 'traveler' ? (
+          <p className="text-[13px] text-ink-500 text-center py-2">⏳ {t.neg_waiting_sender}</p>
+        ) : (
+        <>
         <label className="flex items-start gap-2.5 cursor-pointer mb-5">
           <input
             type="checkbox"
@@ -4414,6 +4506,8 @@ function RequestDetailsModal({
             {t.me2_accept_confirm}
           </button>
         </div>
+        </>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -4482,7 +4576,10 @@ function IntentCardInline({
     }
   }
 
-  const showAccept = intent.status === 'pending';
+  // Only when it is my move: a counter I sent waits on the sender.
+  const showAccept = awaitingParty(intent) === 'traveler';
+  const priceProposed = intent.status === 'pending' && intent.price_pending_by === 'sender';
+  const waitingOnSender = intent.status === 'pending' && intent.price_pending_by === 'traveler';
   // Three distinct phases once accepted:
   //   - pickup not confirmed → traveler hasn't met the sender yet
   //   - pickup confirmed but no proof → traveler is in transit
@@ -4512,7 +4609,13 @@ function IntentCardInline({
   // Status pill with all phases
   let statusText: string | null = null;
   let statusClass = '';
-  if (intent.status === 'pending') {
+  if (priceProposed) {
+    statusText = `↔ ${t.neg_pill_price_proposed}`;
+    statusClass = 'text-lavender-700 bg-lavender-50';
+  } else if (waitingOnSender) {
+    statusText = `⏳ ${t.neg_waiting_sender}`;
+    statusClass = 'text-ink-500 bg-cream-100';
+  } else if (intent.status === 'pending') {
     statusText = t.me2_pill_new_request;
     statusClass = 'text-butter-700 bg-butter-50';
   } else if (intent.status === 'confirmed' && intent.received_confirmed_at && intent.transfer_id) {
@@ -4694,7 +4797,7 @@ function IntentCardInline({
 
       {/* Progress journey — role-aware reminders (traveler side). Shown once
           the booking is accepted (not on a pending request). */}
-      {!showAccept && (
+      {intent.status === 'confirmed' && (
         <div className="mt-3 ml-1">
           <ShipmentJourney
             booking={intent}
@@ -4820,6 +4923,14 @@ function IntentCardInline({
               <div className="rounded-xl bg-ink-500 text-cream-50 px-4 py-2.5 mb-4 text-[13px] font-semibold">
                 {t.me2_accept_doubt}
               </div>
+              {priceProposed ? (
+                <TravelerPriceDecision
+                  booking={intent}
+                  senderName={senderName}
+                  onDone={() => setShowAcceptModal(false)}
+                />
+              ) : (
+              <>
               <label className="flex items-start gap-2.5 cursor-pointer mb-5">
                 <input
                   type="checkbox"
@@ -4850,6 +4961,8 @@ function IntentCardInline({
                   {t.me2_accept_confirm}
                 </button>
               </div>
+              </>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -4934,14 +5047,27 @@ function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
   const senderName = shortName(proposal.sender_profile?.full_name) || t.me2_role_sender;
   const initial = nameInitial(proposal.sender_profile?.full_name);
   const netTraveler = travelerNetFromTotal(proposal.proposed_price);
+  const [deciding, setDeciding] = useState(false);
 
   const accepted = proposal.status === 'confirmed';
-  const statusText = accepted ? `✓ ${t.me2_status_accepted}` : proposal.status === 'cancelled' ? `✕ ${t.me2_status_declined}` : `⏳ ${t.me2_status_pending}`;
+  // The sender answered my offer with a price of their own: my move.
+  const priceProposed = proposal.status === 'pending' && proposal.price_pending_by === 'sender';
+  const statusText = accepted
+    ? `✓ ${t.me2_status_accepted}`
+    : proposal.status === 'cancelled'
+      ? `✕ ${t.me2_status_declined}`
+      : priceProposed
+        ? `↔ ${t.neg_pill_price_proposed}`
+        : proposal.price_pending_by === 'traveler'
+          ? `⏳ ${t.neg_pill_counter} · ${t.neg_waiting_sender}`
+          : `⏳ ${t.me2_status_pending}`;
   const statusClass = accepted
     ? 'text-mint-700 bg-mint-50'
     : proposal.status === 'cancelled'
       ? 'text-ink-400 bg-cream-100'
-      : 'text-butter-700 bg-butter-50';
+      : priceProposed
+        ? 'text-lavender-700 bg-lavender-50'
+        : 'text-butter-700 bg-butter-50';
 
   return (
     <div className="flex items-center gap-3">
@@ -4956,6 +5082,25 @@ function ProposalCardInline({ proposal }: { proposal: TravelerProposal }) {
           {statusText}
         </span>
       </div>
+      {priceProposed && (
+        <div className="flex-shrink-0">
+          <button
+            onClick={() => setDeciding(true)}
+            className="px-3.5 py-1.5 text-[12px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
+          >
+            {t.me2_view_request}
+          </button>
+        </div>
+      )}
+      <AnimatePresence>
+        {deciding && (
+          <TravelerPriceDecisionModal
+            booking={proposal}
+            senderName={senderName}
+            onClose={() => setDeciding(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

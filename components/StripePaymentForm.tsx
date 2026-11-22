@@ -19,7 +19,11 @@ type Props = {
    * as given). `tripId`: booking a traveller's trip. `bookingIntentId`:
    * paying a traveller's proposal.
    */
-  payFor: { tripId: string } | { bookingIntentId: string };
+  payFor:
+    | { tripId: string; offerTotal?: number }
+    | { bookingIntentId: string; offerTotal?: number };
+  // offerTotal: the sender proposes this price instead (bargaining). The server
+  // checks it against the minimum and the price on the table.
   description?: string;
   /**
    * Called with the paymentIntentId once the card has been successfully
@@ -52,7 +56,9 @@ export function StripePaymentForm({
   const [initError, setInitError] = useState<string | null>(null);
   // A stable key so a re-render with an equal object doesn't mint a second
   // PaymentIntent.
-  const payForKey = 'tripId' in payFor ? `trip:${payFor.tripId}` : `booking:${payFor.bookingIntentId}`;
+  const payForKey =
+    ('tripId' in payFor ? `trip:${payFor.tripId}` : `booking:${payFor.bookingIntentId}`) +
+    (payFor.offerTotal != null ? `:offer:${payFor.offerTotal}` : '');
 
   useEffect(() => {
     let cancelled = false;

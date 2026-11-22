@@ -75,14 +75,20 @@ export async function findOfferReminders(admin: SupabaseClient, requestId?: stri
 
   const { data: intents } = await admin
     .from('booking_intents')
-    .select('shipping_request_id, status, initiated_by, traveler_user_id, created_at')
+    .select('shipping_request_id, status, initiated_by, traveler_user_id, created_at, price_pending_by')
     .in('shipping_request_id', requests.map((r) => r.id))
     .neq('status', 'cancelled');
 
   const out: OfferReminder[] = [];
   for (const request of requests) {
     const mine = (intents ?? []).filter((i) => i.shipping_request_id === request.id);
-    const offers = mine.filter((i) => i.initiated_by === 'traveler' && i.status === 'pending');
+    // Waiting on the SENDER: a traveller's offer, or a traveller's counter to
+    // the sender's price. Once the sender has countered (price_pending_by =
+    // 'sender') it is the traveller's move, and that row counts as something
+    // already under way below.
+    const offers = mine.filter(
+      (i) => i.initiated_by === 'traveler' && i.status === 'pending' && i.price_pending_by !== 'sender'
+    );
     // Only an unanswered offer, and nothing already under way on this parcel.
     if (!offers.length || offers.length !== mine.length) continue;
 

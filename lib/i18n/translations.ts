@@ -960,6 +960,42 @@ export type Translations = {
   me2_status_declined: string;
   me2_decline: string;
   me2_pay: string;
+  neg_propose_other_price: string;
+  neg_your_price_label: string;
+  neg_min_hint: string;
+  neg_err_below_minimum: string;
+  neg_err_not_lower: string;
+  neg_err_not_higher: string;
+  neg_err_above_original: string;
+  neg_err_generic: string;
+  neg_err_payment_expired: string;
+  neg_listed_price: string;
+  neg_keep_listed: string;
+  neg_offer_note: string;
+  neg_offer_sent_title: string;
+  neg_offer_sent_desc: string;
+  neg_sender_proposes: string;
+  neg_you_would_receive: string;
+  neg_sender_pays: string;
+  neg_instead_of: string;
+  neg_accept_price: string;
+  neg_refuse: string;
+  neg_counter: string;
+  neg_counter_title: string;
+  neg_counter_traveler_label: string;
+  neg_counter_traveler_hint: string;
+  neg_counter_sender_hint: string;
+  neg_counter_once: string;
+  neg_send_counter: string;
+  neg_waiting_traveler: string;
+  neg_waiting_sender: string;
+  neg_traveler_counters: string;
+  neg_your_offer_was: string;
+  neg_last_word: string;
+  neg_authorise: string;
+  neg_sender_counter_note: string;
+  neg_pill_price_proposed: string;
+  neg_pill_counter: string;
   me2_cancel_failed: string;
   me2_cancel_already_done: string;
   me2_from_price: string;
@@ -2254,6 +2290,42 @@ export const translations: Record<Locale, Translations> = {
     me2_status_declined: 'refusée',
     me2_decline: 'Refuser',
     me2_pay: 'Payer {amount}',
+    neg_propose_other_price: 'Proposer un autre prix',
+    neg_your_price_label: 'Votre prix (total, frais Jibly inclus)',
+    neg_min_hint: 'Minimum {min} · le voyageur recevra {net}',
+    neg_err_below_minimum: 'Le prix minimum est {min}.',
+    neg_err_not_lower: 'Proposez un prix inférieur à {price}.',
+    neg_err_not_higher: 'Proposez un prix supérieur à {price}.',
+    neg_err_above_original: 'Vous ne pouvez pas demander plus que {price}.',
+    neg_err_generic: 'Impossible d’envoyer la proposition. Réessayez.',
+    neg_err_payment_expired: 'L’autorisation de paiement de l’expéditeur a expiré. Refusez la proposition : il pourra réserver à nouveau.',
+    neg_listed_price: 'Prix annoncé',
+    neg_keep_listed: 'Garder le prix annoncé',
+    neg_offer_note: 'Votre carte est autorisée à ce prix, rien n’est débité. Le voyageur peut accepter, refuser ou vous faire une contre-proposition. S’il refuse ou contre-propose, l’autorisation est annulée.',
+    neg_offer_sent_title: 'Proposition envoyée',
+    neg_offer_sent_desc: '{name} a reçu votre proposition à {amount}. Rien n’est débité tant qu’elle n’est pas acceptée.',
+    neg_sender_proposes: '{name} propose un autre prix',
+    neg_you_would_receive: 'Vous recevriez',
+    neg_sender_pays: 'L’expéditeur paie {amount} frais Jibly inclus',
+    neg_instead_of: 'au lieu de {amount}',
+    neg_accept_price: 'Accepter ce prix',
+    neg_refuse: 'Refuser',
+    neg_counter: 'Contre-proposer',
+    neg_counter_title: 'Votre contre-proposition',
+    neg_counter_traveler_label: 'Vous souhaitez recevoir',
+    neg_counter_traveler_hint: 'Entre {min} et {max} pour vous · l’expéditeur paiera {total}',
+    neg_counter_sender_hint: 'Entre {min} et {max}, frais Jibly inclus',
+    neg_counter_once: 'Une seule contre-proposition possible : ensuite, l’autre partie accepte ou refuse.',
+    neg_send_counter: 'Envoyer la contre-proposition',
+    neg_waiting_traveler: 'En attente de la réponse du voyageur',
+    neg_waiting_sender: 'En attente de la réponse de l’expéditeur',
+    neg_traveler_counters: '{name} propose {amount}',
+    neg_your_offer_was: 'Votre proposition : {amount}',
+    neg_last_word: 'Dernière proposition : accepter ou refuser.',
+    neg_authorise: 'Autoriser {amount}',
+    neg_sender_counter_note: 'Votre carte sera autorisée à ce prix, rien n’est débité. Le voyageur peut accepter, refuser ou faire une dernière contre-proposition.',
+    neg_pill_price_proposed: 'Prix proposé',
+    neg_pill_counter: 'Contre-proposition',
     me2_cancel_failed: 'Échec de l\'annulation. Réessayez.',
     me2_cancel_already_done: 'Ce trajet a déjà été annulé.',
     me2_from_price: '{amount}€',
@@ -3566,6 +3638,42 @@ export const translations: Record<Locale, Translations> = {
     me2_status_declined: 'declined',
     me2_decline: 'Decline',
     me2_pay: 'Pay {amount}',
+    neg_propose_other_price: 'Propose another price',
+    neg_your_price_label: 'Your price (total, Jibly fee included)',
+    neg_min_hint: 'Minimum {min} · the traveller would receive {net}',
+    neg_err_below_minimum: 'The minimum price is {min}.',
+    neg_err_not_lower: 'Propose a price below {price}.',
+    neg_err_not_higher: 'Propose a price above {price}.',
+    neg_err_above_original: 'You cannot ask for more than {price}.',
+    neg_err_generic: 'Couldn’t send the offer. Please try again.',
+    neg_err_payment_expired: 'The sender’s card authorisation has expired. Decline the offer: they can book again.',
+    neg_listed_price: 'Listed price',
+    neg_keep_listed: 'Keep the listed price',
+    neg_offer_note: 'Your card is authorised at this price; nothing is charged. The traveller can accept, decline or counter-offer. If they decline or counter, the authorisation is cancelled.',
+    neg_offer_sent_title: 'Offer sent',
+    neg_offer_sent_desc: '{name} has received your offer of {amount}. Nothing is charged unless it is accepted.',
+    neg_sender_proposes: '{name} proposes a different price',
+    neg_you_would_receive: 'You would receive',
+    neg_sender_pays: 'The sender pays {amount} incl. Jibly fee',
+    neg_instead_of: 'instead of {amount}',
+    neg_accept_price: 'Accept this price',
+    neg_refuse: 'Decline',
+    neg_counter: 'Counter-offer',
+    neg_counter_title: 'Your counter-offer',
+    neg_counter_traveler_label: 'You want to receive',
+    neg_counter_traveler_hint: 'Between {min} and {max} for you · the sender would pay {total}',
+    neg_counter_sender_hint: 'Between {min} and {max}, Jibly fee included',
+    neg_counter_once: 'Only one counter-offer: after that, the other side accepts or declines.',
+    neg_send_counter: 'Send counter-offer',
+    neg_waiting_traveler: 'Waiting for the traveller’s answer',
+    neg_waiting_sender: 'Waiting for the sender’s answer',
+    neg_traveler_counters: '{name} proposes {amount}',
+    neg_your_offer_was: 'Your offer: {amount}',
+    neg_last_word: 'Final offer: accept or decline.',
+    neg_authorise: 'Authorise {amount}',
+    neg_sender_counter_note: 'Your card will be authorised at this price; nothing is charged. The traveller can accept, decline or make one last counter-offer.',
+    neg_pill_price_proposed: 'Price proposed',
+    neg_pill_counter: 'Counter-offer',
     me2_cancel_failed: 'Couldn\'t cancel. Please try again.',
     me2_cancel_already_done: 'This trip has already been cancelled.',
     me2_from_price: '{amount}€',

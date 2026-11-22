@@ -29,6 +29,20 @@ export async function paymentIntentMismatch(
   }
 
   if (md.pricedBy === 'server') {
+    // A price the SENDER proposed (bargaining) is below the listing, so it is
+    // only good for a booking that records exactly that price. Otherwise an
+    // offer authorised at 17,75 € could be attached to a booking showing the
+    // traveller the full listed price.
+    if (md.offer === 'sender') {
+      const { data: row } = await supabase
+        .from('booking_intents')
+        .select('proposed_price')
+        .eq('id', booking.id)
+        .maybeSingle();
+      if (!row || Math.round(Number(row.proposed_price) * 100) !== pi.amount) {
+        return 'offer amount does not match the booking price';
+      }
+    }
     if (md.bookingIntentId) {
       return md.bookingIntentId === booking.id ? null : 'priced for another booking';
     }

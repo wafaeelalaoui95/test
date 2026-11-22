@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
-    .select('id, sender_id, payment_status, proposed_price, status')
+    .select('id, sender_id, payment_status, proposed_price, status, price_pending_by')
     .eq('id', body.bookingIntentId)
     .maybeSingle();
   if (intentErr || !intent) {
@@ -90,7 +90,12 @@ export async function POST(req: NextRequest) {
   const md = pi.metadata ?? {};
   const expectedCents = Math.round(Number(intent.proposed_price) * 100);
   const reason =
-    md.userId && md.userId !== user.id
+    // A price the sender proposed (bargaining) waits for the TRAVELLER to
+    // accept it — through /api/booking/negotiate. Recording it here would
+    // confirm and capture a price the traveller never agreed to.
+    md.offer === 'sender' || intent.price_pending_by === 'sender'
+      ? 'sender offer awaiting the traveller'
+      : md.userId && md.userId !== user.id
       ? 'paid by someone else'
       : md.pricedBy === 'server' && md.bookingIntentId !== body.bookingIntentId
         ? 'priced for another booking'
@@ -101,7 +106,7 @@ export async function POST(req: NextRequest) {
     console.error('[record-authorization] refused %s for %s: %s', pi.id, body.bookingIntentId, reason);
     // Release the hold rather than leave the sender's card blocked for a week
     // — but only the caller's own: never cancel somebody else's intent.
-    if (md.userId === user.id) {
+    if (md.userId === user.id && md.offer !== 'sender') {
       await stripe.paymentIntents.cancel(pi.id).catch(() => {});
     }
     return NextResponse.json({ error: 'payment_mismatch' }, { status: 400 });
@@ -116,6 +121,8 @@ export async function POST(req: NextRequest) {
     .from('booking_intents')
     .update({
       status: 'confirmed',
+      // Paying a traveller's counter settles the negotiation.
+      price_pending_by: null,
       payment_intent_id: pi.id,
       payment_status: 'authorized',
       payment_amount: pi.amount, // from Stripe, not the client

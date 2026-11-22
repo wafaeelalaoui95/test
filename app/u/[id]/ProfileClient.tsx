@@ -21,7 +21,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { VerificationBadge } from '@/components/ui/Badge';
-import { formatShortDate, formatName, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial, displayName, priceBreakdown, formatEuros, travelerNetFromTotal } from '@/lib/utils';
+import { MIN_OFFER_TOTAL_EUR, checkSenderOffer, roundEuros } from '@/lib/negotiation';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
@@ -69,6 +70,13 @@ export function ProfileClient({
   const [intentDescription, setIntentDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
+  // Bargaining: the sender may propose a lower total than the listing (see
+  // lib/negotiation.ts). Closed means the listed price.
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [offerInput, setOfferInput] = useState('');
+  // The offer actually sent to payment — frozen when moving to step 2 so
+  // editing the field behind the form cannot change what is being paid.
+  const [offerTotal, setOfferTotal] = useState<number | null>(null);
 
 
   function openBooking(trip: TravelerTripRow) {
@@ -84,6 +92,25 @@ export function ProfileClient({
     setIntentTitle('');
     setIntentDescription('');
     setSubmitErr(null);
+    setOfferOpen(false);
+    setOfferInput('');
+    setOfferTotal(null);
+  }
+
+  /** The typed offer as a number (accepts "20,50"), or null when empty/invalid. */
+  function parsedOffer(): number | null {
+    const v = Number(offerInput.replace(',', '.').replace(/[^0-9.]/g, ''));
+    return offerInput.trim() && Number.isFinite(v) && v > 0 ? roundEuros(v) : null;
+  }
+
+  function offerError(listedTotal: number): string | null {
+    if (!offerOpen || !offerInput.trim()) return null;
+    const v = parsedOffer();
+    const err = v == null ? 'invalid_amount' : checkSenderOffer(v, listedTotal);
+    if (err === 'below_minimum') return t.neg_err_below_minimum.replace('{min}', formatEuros(MIN_OFFER_TOTAL_EUR));
+    if (err === 'not_lower') return t.neg_err_not_lower.replace('{price}', formatEuros(listedTotal));
+    if (err) return t.neg_err_below_minimum.replace('{min}', formatEuros(MIN_OFFER_TOTAL_EUR));
+    return null;
   }
 
   // Deep-link support: the "Book this trip" cards on the home page link here
@@ -114,6 +141,20 @@ export function ProfileClient({
       setSubmitErr(t.send_item_name_label);
       return;
     }
+    if (offerOpen && bookingTrip) {
+      const listed = priceBreakdown(bookingTrip.compensation_min).total;
+      const v = parsedOffer();
+      const err = v == null ? 'invalid_amount' : checkSenderOffer(v, listed);
+      if (err || v == null) {
+        setSubmitErr(
+          offerError(listed) ?? t.neg_err_below_minimum.replace('{min}', formatEuros(MIN_OFFER_TOTAL_EUR))
+        );
+        return;
+      }
+      setOfferTotal(v);
+    } else {
+      setOfferTotal(null);
+    }
     setSubmitErr(null);
     setBookingStep('payment');
   }
@@ -124,6 +165,26 @@ export function ProfileClient({
     setSubmitErr(null);
     setSubmitting(true);
     try {
+      if (offerTotal != null) {
+        // A proposed price: the server creates the booking from the
+        // authorisation itself, so the price on it is the one Stripe holds.
+        const res = await fetch('/api/booking/negotiate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'trip-offer',
+            paymentIntentId,
+            tripId: bookingTrip.id,
+            item_category: intentCategory,
+            item_title: intentTitle.trim() || null,
+            item_description: intentDescription || null,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? t.neg_err_generic);
+        setBookingStep('success');
+        return;
+      }
       await browser.createBookingIntent({
         sender_id: user.id,
         traveler_trip_id: bookingTrip.id,
@@ -516,6 +577,52 @@ export function ProfileClient({
                         </span>
                       </div>
                     </div>
+                    {/* Bargaining — a structured counter-offer, not a chat. */}
+                    {!offerOpen ? (
+                      <button
+                        type="button"
+                        onClick={() => { setOfferOpen(true); setSubmitErr(null); }}
+                        className="mt-2.5 text-[13px] font-semibold text-lavender-600 hover:text-lavender-700 underline underline-offset-2"
+                      >
+                        {t.neg_propose_other_price}
+                      </button>
+                    ) : (
+                      <div className="mt-3 rounded-xl bg-white border border-lavender-200 px-4 py-3">
+                        <label htmlFor="offer-total" className="block text-[13px] font-semibold text-ink-600 mb-2">
+                          {t.neg_your_price_label}
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            id="offer-total"
+                            inputMode="decimal"
+                            autoFocus
+                            value={offerInput}
+                            onChange={(e) => setOfferInput(e.target.value)}
+                            placeholder={MIN_OFFER_TOTAL_EUR.toFixed(2).replace('.', ',')}
+                            className="w-32 px-3 py-2 rounded-lg bg-cream-50 border border-ink-100 text-[15px] num-display focus:outline-none focus:ring-2 focus:ring-lavender-200"
+                          />
+                          <span className="text-[15px] text-ink-500">€</span>
+                        </div>
+                        <p className="text-[12px] text-ink-400 mt-2">
+                          {t.neg_min_hint
+                            .replace('{min}', formatEuros(MIN_OFFER_TOTAL_EUR))
+                            .replace('{net}', formatEuros(travelerNetFromTotal(parsedOffer() ?? MIN_OFFER_TOTAL_EUR)))}
+                        </p>
+                        {offerError(priceBreakdown(bookingTrip.compensation_min).total) && (
+                          <p className="text-[12px] text-blush-500 mt-1">
+                            {offerError(priceBreakdown(bookingTrip.compensation_min).total)}
+                          </p>
+                        )}
+                        <p className="text-[12px] text-ink-500 leading-relaxed mt-2">{t.neg_offer_note}</p>
+                        <button
+                          type="button"
+                          onClick={() => { setOfferOpen(false); setOfferInput(''); setSubmitErr(null); }}
+                          className="mt-2 text-[12px] font-medium text-ink-400 hover:text-ink-600 underline underline-offset-2"
+                        >
+                          {t.neg_keep_listed}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {submitErr && (
                     <div className="rounded-xl bg-blush-50 px-4 py-3 text-[13px] text-blush-500 mb-4">
@@ -555,8 +662,16 @@ export function ProfileClient({
                         {t.prof_payment_step_2}
                       </div>
                       <h2 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em]">
-                        {formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}
+                        {formatEuros(offerTotal ?? priceBreakdown(bookingTrip.compensation_min).total)}
                       </h2>
+                      {offerTotal != null && (
+                        <div className="text-[12px] text-lavender-600 font-semibold mt-1">
+                          {t.neg_pill_price_proposed} ·{' '}
+                          <span className="line-through text-ink-300 font-normal">
+                            {formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}
+                          </span>
+                        </div>
+                      )}
                       <div className="text-[13px] text-ink-400 mt-1.5">
                         {cityDisplayName(bookingTrip.departure_city, locale)} → {cityDisplayName(bookingTrip.arrival_city, locale)} · {formatShortDate(bookingTrip.departure_date)}
                       </div>
@@ -574,7 +689,7 @@ export function ProfileClient({
                     </div>
                   )}
                   <StripePaymentForm
-                    payFor={{ tripId: bookingTrip.id }}
+                    payFor={offerTotal != null ? { tripId: bookingTrip.id, offerTotal } : { tripId: bookingTrip.id }}
                     description={`Jibly · ${cityDisplayName(bookingTrip.departure_city, locale)} → ${cityDisplayName(bookingTrip.arrival_city, locale)}`}
                     onAuthorized={handlePaymentAuthorized}
                     onCancel={() => setBookingStep('details')}
@@ -593,11 +708,17 @@ export function ProfileClient({
                     <CheckCircle2 className="w-7 h-7 text-white" strokeWidth={2.5} />
                   </div>
                   <h3 className="text-2xl font-extrabold text-ink-600 tracking-[-0.02em] mb-2">
-                    {t.prof_payment_authorized}
+                    {offerTotal != null ? t.neg_offer_sent_title : t.prof_payment_authorized}
                   </h3>
-                  <p className="text-[15px] text-ink-400 mb-7 leading-relaxed">
-                    {t.prof_payment_authorized_desc_before} <strong className="text-ink-600 num-display">{formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}</strong>{t.prof_payment_authorized_desc_after}
-                  </p>
+                  {offerTotal != null ? (
+                    <p className="text-[15px] text-ink-400 mb-7 leading-relaxed">
+                      {t.neg_offer_sent_desc.replace('{name}', firstName).replace('{amount}', formatEuros(offerTotal))}
+                    </p>
+                  ) : (
+                    <p className="text-[15px] text-ink-400 mb-7 leading-relaxed">
+                      {t.prof_payment_authorized_desc_before} <strong className="text-ink-600 num-display">{formatEuros(priceBreakdown(bookingTrip.compensation_min).total)}</strong>{t.prof_payment_authorized_desc_after}
+                    </p>
+                  )}
                   <div className="flex flex-col gap-2.5">
                     <Link href="/me">
                       <Button variant="secondary" fullWidth>

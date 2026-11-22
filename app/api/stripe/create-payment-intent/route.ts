@@ -4,6 +4,7 @@ import { getStripe } from '@/lib/stripe/server';
 import { getServerClient } from '@/lib/supabase/server';
 import { ensureCustomer, forgetCustomer } from '@/lib/stripe/customer';
 import { priceBreakdown } from '@/lib/utils';
+import { canSenderCounter, checkSenderOffer, roundEuros } from '@/lib/negotiation';
 
 /**
  * POST /api/stripe/create-payment-intent
@@ -32,10 +33,14 @@ import { priceBreakdown } from '@/lib/utils';
 const schema = z.union([
   z.object({
     tripId: z.string().uuid(),
+    // A lower price than the listing: the sender's offer, total incl. fee.
+    offerTotal: z.number().positive().max(10_000).optional(),
     description: z.string().max(500).optional(),
   }),
   z.object({
     bookingIntentId: z.string().uuid(),
+    // A counter to the traveller's price (see lib/negotiation.ts).
+    offerTotal: z.number().positive().max(10_000).optional(),
     description: z.string().max(500).optional(),
   }),
 ]);
@@ -101,12 +106,22 @@ export async function POST(req: NextRequest) {
     if (trip.user_id === user.id) {
       return NextResponse.json({ error: 'Cannot book your own trip' }, { status: 400 });
     }
-    amountCents = toCents(priceBreakdown(Number(trip.compensation_min)).total);
+    const listed = priceBreakdown(Number(trip.compensation_min)).total;
+    if (body.offerTotal != null) {
+      // Bargaining: the sender authorises THEIR price. Bounds are checked here
+      // and again when the booking is created (/api/booking/negotiate).
+      const err = checkSenderOffer(body.offerTotal, listed);
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+      amountCents = toCents(roundEuros(body.offerTotal));
+      pricedFor.offer = 'sender';
+    } else {
+      amountCents = toCents(listed);
+    }
     pricedFor.tripId = trip.id;
   } else {
     const { data: booking } = await supabase
       .from('booking_intents')
-      .select('id, sender_id, status, payment_status, proposed_price')
+      .select('id, sender_id, status, initiated_by, payment_status, proposed_price, original_price, price_pending_by, sender_countered, traveler_countered')
       .eq('id', body.bookingIntentId)
       .maybeSingle();
     if (!booking) {
@@ -119,7 +134,23 @@ export async function POST(req: NextRequest) {
     if (booking.status !== 'pending' || (booking.payment_status && booking.payment_status !== 'unpaid')) {
       return NextResponse.json({ error: 'booking_not_payable' }, { status: 409 });
     }
-    amountCents = toCents(Number(booking.proposed_price));
+    if (body.offerTotal != null) {
+      // The sender counters the traveller's price instead of paying it.
+      if (!canSenderCounter(booking)) {
+        return NextResponse.json({ error: 'not_allowed' }, { status: 409 });
+      }
+      const err = checkSenderOffer(body.offerTotal, Number(booking.proposed_price));
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+      amountCents = toCents(roundEuros(body.offerTotal));
+      pricedFor.offer = 'sender';
+    } else {
+      // Paying the price on the table. A price the SENDER proposed is not
+      // theirs to pay again: it is waiting on the traveller.
+      if (booking.price_pending_by === 'sender') {
+        return NextResponse.json({ error: 'booking_not_payable' }, { status: 409 });
+      }
+      amountCents = toCents(Number(booking.proposed_price));
+    }
     pricedFor.bookingIntentId = booking.id;
   }
 
@@ -157,6 +188,11 @@ export async function POST(req: NextRequest) {
         bookingIntentId: pricedFor.bookingIntentId ?? '',
         tripId: pricedFor.tripId ?? '',
         pricedBy: 'server',
+        // 'sender' when this authorises a price the sender proposed (an
+        // offer or counter). Only /api/booking/negotiate may attach such an
+        // intent; record-authorization refuses it (its amount is below the
+        // price on the table) and the capture check requires an exact match.
+        offer: pricedFor.offer ?? '',
       },
     });
 
