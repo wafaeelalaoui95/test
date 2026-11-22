@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { VerificationBadge } from '@/components/ui/Badge';
-import { formatShortDate, formatName, nameInitial, displayName, priceBreakdown, formatEuros, travelerNetFromTotal } from '@/lib/utils';
+import { formatShortDate, formatName, nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { MIN_OFFER_TOTAL_EUR, checkSenderOffer, roundEuros } from '@/lib/negotiation';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
@@ -30,6 +30,7 @@ import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
 import { useIdentityGate } from '@/components/IdentityGate';
+import { OfferPriceBox } from '@/components/PriceNegotiation';
 import type { Profile, TravelerTripRow } from '@/lib/supabase/types';
 
 type PublicProfile = Pick<
@@ -578,51 +579,14 @@ export function ProfileClient({
                       </div>
                     </div>
                     {/* Bargaining — a structured counter-offer, not a chat. */}
-                    {!offerOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => { setOfferOpen(true); setSubmitErr(null); }}
-                        className="mt-2.5 text-[13px] font-semibold text-lavender-600 hover:text-lavender-700 underline underline-offset-2"
-                      >
-                        {t.neg_propose_other_price}
-                      </button>
-                    ) : (
-                      <div className="mt-3 rounded-xl bg-white border border-lavender-200 px-4 py-3">
-                        <label htmlFor="offer-total" className="block text-[13px] font-semibold text-ink-600 mb-2">
-                          {t.neg_your_price_label}
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            id="offer-total"
-                            inputMode="decimal"
-                            autoFocus
-                            value={offerInput}
-                            onChange={(e) => setOfferInput(e.target.value)}
-                            placeholder={MIN_OFFER_TOTAL_EUR.toFixed(2).replace('.', ',')}
-                            className="w-32 px-3 py-2 rounded-lg bg-cream-50 border border-ink-100 text-[15px] num-display focus:outline-none focus:ring-2 focus:ring-lavender-200"
-                          />
-                          <span className="text-[15px] text-ink-500">€</span>
-                        </div>
-                        <p className="text-[12px] text-ink-400 mt-2">
-                          {t.neg_min_hint
-                            .replace('{min}', formatEuros(MIN_OFFER_TOTAL_EUR))
-                            .replace('{net}', formatEuros(travelerNetFromTotal(parsedOffer() ?? MIN_OFFER_TOTAL_EUR)))}
-                        </p>
-                        {offerError(priceBreakdown(bookingTrip.compensation_min).total) && (
-                          <p className="text-[12px] text-blush-500 mt-1">
-                            {offerError(priceBreakdown(bookingTrip.compensation_min).total)}
-                          </p>
-                        )}
-                        <p className="text-[12px] text-ink-500 leading-relaxed mt-2">{t.neg_offer_note}</p>
-                        <button
-                          type="button"
-                          onClick={() => { setOfferOpen(false); setOfferInput(''); setSubmitErr(null); }}
-                          className="mt-2 text-[12px] font-medium text-ink-400 hover:text-ink-600 underline underline-offset-2"
-                        >
-                          {t.neg_keep_listed}
-                        </button>
-                      </div>
-                    )}
+                    <OfferPriceBox
+                      open={offerOpen}
+                      value={offerInput}
+                      error={offerError(priceBreakdown(bookingTrip.compensation_min).total)}
+                      onOpen={() => { setOfferOpen(true); setSubmitErr(null); }}
+                      onChange={setOfferInput}
+                      onClose={() => { setOfferOpen(false); setOfferInput(''); setSubmitErr(null); }}
+                    />
                   </div>
                   {submitErr && (
                     <div className="rounded-xl bg-blush-50 px-4 py-3 text-[13px] text-blush-500 mb-4">

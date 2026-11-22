@@ -495,3 +495,71 @@ export function SenderCounterModal({
     </motion.div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// SENDER — "Proposer un autre prix" under a listed trip's price
+// -----------------------------------------------------------------------------
+// Controlled by the booking modal (app/u/[id]/ProfileClient.tsx), which owns
+// the value because it freezes it before payment and validates it on submit.
+export function OfferPriceBox({
+  open,
+  value,
+  error,
+  onOpen,
+  onChange,
+  onClose,
+}: {
+  open: boolean;
+  value: string;
+  error: string | null;
+  onOpen: () => void;
+  onChange: (v: string) => void;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="mt-2.5 text-[13px] font-semibold text-lavender-600 hover:text-lavender-700 underline underline-offset-2"
+      >
+        {t.neg_propose_other_price}
+      </button>
+    );
+  }
+  const typed = parseEuros(value);
+  return (
+    <div className="mt-3 rounded-xl bg-white border border-lavender-200 px-4 py-3">
+      <label htmlFor="offer-total" className="block text-[13px] font-semibold text-ink-600 mb-2">
+        {t.neg_your_price_label}
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          id="offer-total"
+          inputMode="decimal"
+          autoFocus
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={MIN_OFFER_TOTAL_EUR.toFixed(2).replace('.', ',')}
+          className="w-32 px-3 py-2 rounded-lg bg-cream-50 border border-ink-100 text-[15px] num-display focus:outline-none focus:ring-2 focus:ring-lavender-200"
+        />
+        <span className="text-[15px] text-ink-500">€</span>
+      </div>
+      <p className="text-[12px] text-ink-400 mt-2">
+        {t.neg_min_hint
+          .replace('{min}', formatEuros(MIN_OFFER_TOTAL_EUR))
+          .replace('{net}', formatEuros(travelerNetFromTotal(typed ?? MIN_OFFER_TOTAL_EUR)))}
+      </p>
+      {error && <p className="text-[12px] text-blush-500 mt-1">{error}</p>}
+      <p className="text-[12px] text-ink-500 leading-relaxed mt-2">{t.neg_offer_note}</p>
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-2 text-[12px] font-medium text-ink-400 hover:text-ink-600 underline underline-offset-2"
+      >
+        {t.neg_keep_listed}
+      </button>
+    </div>
+  );
+}
