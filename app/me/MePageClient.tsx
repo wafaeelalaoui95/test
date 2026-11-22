@@ -2732,7 +2732,7 @@ function ProposalPaymentModal({
 
             {certified ? (
               <StripePaymentForm
-                amountEuros={booking.proposed_price}
+                payFor={{ bookingIntentId: booking.id }}
                 description={`Jibly · ${cityDisplayName(booking.pickup_city, locale)} → ${cityDisplayName(booking.destination_city, locale)}`}
                 onAuthorized={handleAuthorized}
                 onCancel={onClose}

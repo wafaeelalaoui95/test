@@ -508,6 +508,32 @@ create trigger booking_intents_guard_money_ins
   before insert on public.booking_intents
   for each row execute function public.booking_intents_guard_money();
 
+-- Price and payment columns cannot be changed from a browser session once the
+-- row exists (see migrations/2026-11-23-guard-booking-price.sql). The column
+-- REVOKE above does not bite while `authenticated` holds the table-wide
+-- UPDATE grant; this trigger does.
+create or replace function public.booking_intents_guard_price()
+returns trigger language plpgsql as $$
+begin
+  if coalesce(auth.role(), '') = 'service_role'
+     or current_user not in ('authenticated', 'anon') then
+    return new;
+  end if;
+  if new.proposed_price    is distinct from old.proposed_price
+  or new.payment_amount    is distinct from old.payment_amount
+  or new.payment_status    is distinct from old.payment_status
+  or new.payment_intent_id is distinct from old.payment_intent_id then
+    raise exception 'booking price and payment columns are server-owned';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists booking_intents_guard_price_upd on public.booking_intents;
+create trigger booking_intents_guard_price_upd
+  before update on public.booking_intents
+  for each row execute function public.booking_intents_guard_price();
+
 -- ----- reviews -----
 drop policy if exists "reviews_select_all" on public.reviews;
 create policy "reviews_select_all" on public.reviews

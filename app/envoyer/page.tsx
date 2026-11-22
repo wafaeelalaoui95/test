@@ -1419,7 +1419,7 @@ function InstantBookModal({
                 </div>
               )}
               <StripePaymentForm
-                amountEuros={price}
+                payFor={{ tripId: trip.id }}
                 description={`Jibly · ${cityDisplayName(pickupCity, locale)} → ${cityDisplayName(destinationCity, locale)}`}
                 onAuthorized={handleAuthorized}
                 onCancel={() => setPhase('describe')}

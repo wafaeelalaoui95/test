@@ -574,7 +574,7 @@ export function ProfileClient({
                     </div>
                   )}
                   <StripePaymentForm
-                    amountEuros={priceBreakdown(bookingTrip.compensation_min).total}
+                    payFor={{ tripId: bookingTrip.id }}
                     description={`Jibly · ${cityDisplayName(bookingTrip.departure_city, locale)} → ${cityDisplayName(bookingTrip.arrival_city, locale)}`}
                     onAuthorized={handlePaymentAuthorized}
                     onCancel={() => setBookingStep('details')}

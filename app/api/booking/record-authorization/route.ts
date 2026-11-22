@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
-    .select('id, sender_id, payment_status')
+    .select('id, sender_id, payment_status, proposed_price, status')
     .eq('id', body.bookingIntentId)
     .maybeSingle();
   if (intentErr || !intent) {
@@ -82,6 +82,29 @@ export async function POST(req: NextRequest) {
       { error: `Payment not authorised (status=${pi.status})` },
       { status: 400 }
     );
+  }
+
+  // The intent must have been priced for THIS proposal, by this sender, at
+  // the proposal's price. Before, any authorised intent was accepted here —
+  // including one minted for 1 € — and the booking was confirmed on it.
+  const md = pi.metadata ?? {};
+  const expectedCents = Math.round(Number(intent.proposed_price) * 100);
+  const reason =
+    md.userId && md.userId !== user.id
+      ? 'paid by someone else'
+      : md.pricedBy === 'server' && md.bookingIntentId !== body.bookingIntentId
+        ? 'priced for another booking'
+        : pi.amount < expectedCents
+          ? `amount ${pi.amount} below price ${expectedCents}`
+          : null;
+  if (reason) {
+    console.error('[record-authorization] refused %s for %s: %s', pi.id, body.bookingIntentId, reason);
+    // Release the hold rather than leave the sender's card blocked for a week
+    // — but only the caller's own: never cancel somebody else's intent.
+    if (md.userId === user.id) {
+      await stripe.paymentIntents.cancel(pi.id).catch(() => {});
+    }
+    return NextResponse.json({ error: 'payment_mismatch' }, { status: 400 });
   }
 
   // Record the authorisation BEFORE capturing. If the capture then fails we

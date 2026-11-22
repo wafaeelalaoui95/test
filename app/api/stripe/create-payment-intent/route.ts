@@ -3,26 +3,47 @@ import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import { getServerClient } from '@/lib/supabase/server';
 import { ensureCustomer, forgetCustomer } from '@/lib/stripe/customer';
+import { priceBreakdown } from '@/lib/utils';
 
 /**
  * POST /api/stripe/create-payment-intent
- * Body: { amountEuros: number, bookingIntentId?: string, description?: string }
+ * Body: { tripId: string, description?: string }            — booking a traveller's trip
+ *    or { bookingIntentId: string, description?: string }   — paying a traveller's proposal
  *
  * Creates a Stripe PaymentIntent in manual-capture mode. We *authorise* the
  * sender's card now (so they enter their details before knowing if the
  * traveler accepts), and capture later when the traveler accepts. If the
  * traveler declines, we cancel the authorisation and no money moves.
  *
+ * THE AMOUNT IS DECIDED HERE, never by the browser. This route used to take
+ * `amountCents` from the request body and charge exactly that, so anyone who
+ * edited the request could book a 23,50 € trip for 1 €. The client now says
+ * WHAT it is paying for, and the price is read from the database:
+ *   - a trip: priceBreakdown(trip.compensation_min).total
+ *   - a proposal: booking_intents.proposed_price (locked against client
+ *     updates by the booking_intents_guard_price trigger)
+ * What was priced is written into the PaymentIntent metadata, and
+ * /api/stripe/capture and /api/booking/record-authorization check it before
+ * any money is taken, so a PaymentIntent priced for one thing cannot be
+ * attached to another.
+ *
  * Returns the client_secret needed by Stripe Elements on the frontend.
  */
-// Validation: amount is in CENTS (Stripe's native unit). The frontend
-// converts euros to cents before sending. This avoids decimal-number
-// validation headaches.
-const schema = z.object({
-  amountCents: z.number().int().positive().max(1000000),
-  bookingIntentId: z.string().uuid().optional(),
-  description: z.string().max(500).optional(),
-});
+const schema = z.union([
+  z.object({
+    tripId: z.string().uuid(),
+    description: z.string().max(500).optional(),
+  }),
+  z.object({
+    bookingIntentId: z.string().uuid(),
+    description: z.string().max(500).optional(),
+  }),
+]);
+
+/** Euros (possibly fractional) → integer cents, without float dust. */
+function toCents(euros: number): number {
+  return Math.round(Number(euros) * 100);
+}
 
 export async function POST(req: NextRequest) {
   // Must be authenticated — anonymous users shouldn't be able to mint
@@ -59,6 +80,56 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
+  // ===== Price, from the database =====
+  let amountCents: number;
+  const pricedFor: Record<string, string> = {};
+
+  if ('tripId' in body) {
+    const { data: trip } = await supabase
+      .from('traveler_trips')
+      .select('id, user_id, status, compensation_min')
+      .eq('id', body.tripId)
+      .maybeSingle();
+    if (!trip) {
+      return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
+    }
+    // A trip can carry several parcels, so 'matched' still takes bookings;
+    // only a finished or withdrawn trip cannot be paid for.
+    if (trip.status === 'cancelled' || trip.status === 'completed') {
+      return NextResponse.json({ error: 'trip_not_open' }, { status: 409 });
+    }
+    if (trip.user_id === user.id) {
+      return NextResponse.json({ error: 'Cannot book your own trip' }, { status: 400 });
+    }
+    amountCents = toCents(priceBreakdown(Number(trip.compensation_min)).total);
+    pricedFor.tripId = trip.id;
+  } else {
+    const { data: booking } = await supabase
+      .from('booking_intents')
+      .select('id, sender_id, status, payment_status, proposed_price')
+      .eq('id', body.bookingIntentId)
+      .maybeSingle();
+    if (!booking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+    // Only the sender pays, and only for a proposal still waiting on them.
+    if (booking.sender_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (booking.status !== 'pending' || (booking.payment_status && booking.payment_status !== 'unpaid')) {
+      return NextResponse.json({ error: 'booking_not_payable' }, { status: 409 });
+    }
+    amountCents = toCents(Number(booking.proposed_price));
+    pricedFor.bookingIntentId = booking.id;
+  }
+
+  // Stripe's own floor is 0,50 €; anything at or below it means bad data,
+  // not a real price. Refuse rather than authorise a meaningless amount.
+  if (!Number.isFinite(amountCents) || amountCents <= 50 || amountCents > 1_000_000) {
+    console.error('[create-payment-intent] refused amount %s for %o', amountCents, pricedFor);
+    return NextResponse.json({ error: 'invalid_price' }, { status: 400 });
+  }
+
   const stripe = getStripe();
 
   // Who is paying, in Stripe's own terms. Best-effort: null just means the
@@ -71,7 +142,7 @@ export async function POST(req: NextRequest) {
 
   const create = (customer?: string) =>
     stripe.paymentIntents.create({
-      amount: body.amountCents,
+      amount: amountCents,
       currency: 'eur',
       capture_method: 'manual', // authorise now, capture later
       automatic_payment_methods: { enabled: true },
@@ -79,10 +150,13 @@ export async function POST(req: NextRequest) {
       customer,
       // Keep the metadata even with a customer attached: it's what let us
       // trace the payments made before customers existed, and it survives a
-      // customer being deleted.
+      // customer being deleted. tripId / bookingIntentId record what this
+      // amount was computed for — the capture routes refuse a mismatch.
       metadata: {
         userId: user.id,
-        bookingIntentId: body.bookingIntentId ?? '',
+        bookingIntentId: pricedFor.bookingIntentId ?? '',
+        tripId: pricedFor.tripId ?? '',
+        pricedBy: 'server',
       },
     });
 
@@ -106,6 +180,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       clientSecret: intent.client_secret,
       paymentIntentId: intent.id,
+      amountCents,
     });
   } catch (e: any) {
     console.error('Stripe create intent error:', e?.message);

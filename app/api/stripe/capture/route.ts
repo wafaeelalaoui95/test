@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 import { syncRequestVisibility } from '@/lib/listings';
+import { paymentIntentMismatch } from '@/lib/stripe/verify-intent';
 
 /**
  * POST /api/stripe/capture
@@ -94,15 +95,39 @@ export async function POST(req: NextRequest) {
   }
 
   const stripe = getStripe();
+
+  // ===== Is this PaymentIntent really for this booking? =====
+  // The booking row (and its payment_intent_id) is inserted by the browser, so
+  // without this check a PaymentIntent authorised for a cheap trip could be
+  // attached to an expensive one and captured here. The server priced the
+  // intent and wrote what it priced into the metadata; hold it to that.
+  let pi;
+  try {
+    pi = await stripe.paymentIntents.retrieve(body.paymentIntentId);
+  } catch {
+    return NextResponse.json({ error: 'Payment intent not found' }, { status: 400 });
+  }
+  const mismatch = await paymentIntentMismatch(pi, intent, supabase);
+  if (mismatch) {
+    console.error('[capture] refused %s for booking %s: %s', pi.id, intent.id, mismatch);
+    return NextResponse.json({ error: 'payment_mismatch' }, { status: 400 });
+  }
+
   try {
     const captured = await stripe.paymentIntents.capture(body.paymentIntentId);
 
     // Mirror the Stripe status into our DB so the UI sees it immediately
     // without waiting for the webhook. Written with the service-role client:
     // the money columns are not client-writable (RLS), so the server owns them.
+    // proposed_price is realigned on what was actually charged: the browser
+    // wrote it at insert, Stripe's figure is the one that is true.
     const { error: updateErr } = await getAdminClient()
       .from('booking_intents')
-      .update({ payment_status: 'captured', payment_amount: captured.amount })
+      .update({
+        payment_status: 'captured',
+        payment_amount: captured.amount,
+        proposed_price: captured.amount / 100,
+      })
       .eq('id', body.bookingIntentId);
 
     if (updateErr) {

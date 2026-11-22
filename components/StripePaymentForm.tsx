@@ -13,7 +13,13 @@ import { getStripeClient } from '@/lib/stripe/client';
 import { useI18n } from '@/lib/i18n/context';
 
 type Props = {
-  amountEuros: number;
+  /**
+   * WHAT is being paid for. The server reads the price from the database —
+   * the browser never sends an amount (it used to, and the server charged it
+   * as given). `tripId`: booking a traveller's trip. `bookingIntentId`:
+   * paying a traveller's proposal.
+   */
+  payFor: { tripId: string } | { bookingIntentId: string };
   description?: string;
   /**
    * Called with the paymentIntentId once the card has been successfully
@@ -36,7 +42,7 @@ type Props = {
  *      handles 3D Secure popups if needed. On success we call onAuthorized.
  */
 export function StripePaymentForm({
-  amountEuros,
+  payFor,
   description,
   onAuthorized,
   onCancel,
@@ -44,18 +50,16 @@ export function StripePaymentForm({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  // A stable key so a re-render with an equal object doesn't mint a second
+  // PaymentIntent.
+  const payForKey = 'tripId' in payFor ? `trip:${payFor.tripId}` : `booking:${payFor.bookingIntentId}`;
 
   useEffect(() => {
     let cancelled = false;
-   fetch('/api/stripe/create-payment-intent', {
+    fetch('/api/stripe/create-payment-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        // Stripe works in cents. Round to avoid floating-point dust
-        // (51.7499999...) that breaks the integer check on the server.
-        amountCents: Math.round(amountEuros * 100),
-        description,
-      }),
+      body: JSON.stringify({ ...payFor, description }),
     })
       .then(async (r) => {
         const data = await r.json();
@@ -74,7 +78,8 @@ export function StripePaymentForm({
     return () => {
       cancelled = true;
     };
-  }, [amountEuros, description]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payForKey, description]);
 
   if (initError) {
     return (

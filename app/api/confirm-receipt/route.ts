@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import { transferToTraveler } from '@/lib/stripe/payout';
+import { paymentIntentMismatch } from '@/lib/stripe/verify-intent';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 
 /**
@@ -163,6 +164,17 @@ export async function POST(req: NextRequest) {
       captured: false,
       reason: `payment_status=${intent.payment_status}`,
     });
+  }
+
+  // Same guard as /api/stripe/capture: the intent must have been priced for
+  // this booking before we take the money.
+  {
+    const pi = await stripe.paymentIntents.retrieve(intent.payment_intent_id);
+    const mismatch = await paymentIntentMismatch(pi, intent, supabase);
+    if (mismatch) {
+      console.error('[confirm-receipt] refused %s for booking %s: %s', pi.id, intent.id, mismatch);
+      return NextResponse.json({ ok: false, reason: 'payment_mismatch' }, { status: 400 });
+    }
   }
 
   try {
