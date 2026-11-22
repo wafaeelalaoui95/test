@@ -627,9 +627,9 @@ export function HomeClient({
             ) : (
               <>
                 {filteredTrips.exact.length > 0 && (
-                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
                     {filteredTrips.exact.map((tv, i) => (
-                      <div key={tv.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
+                      <div key={tv.id} className="min-w-0">
                         <TripCard trip={tv} delay={(i % 6) * 0.04} t={t} />
                       </div>
                     ))}
@@ -638,9 +638,9 @@ export function HomeClient({
                 {filteredTrips.nearby.length > 0 && (
                   <>
                     <NearbyHeading />
-                    <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
                       {filteredTrips.nearby.map((tv, i) => (
-                        <div key={tv.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
+                        <div key={tv.id} className="min-w-0">
                           <TripCard trip={tv} delay={(i % 6) * 0.04} t={t} />
                         </div>
                       ))}
@@ -661,9 +661,9 @@ export function HomeClient({
             ) : (
               <>
                 {filteredRequests.exact.length > 0 && (
-                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
                     {filteredRequests.exact.map((r, i) => (
-                      <div key={r.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
+                      <div key={r.id} className="min-w-0">
                         <RequestCard
                           request={r}
                           delay={(i % 6) * 0.04}
@@ -677,9 +677,9 @@ export function HomeClient({
                 {filteredRequests.nearby.length > 0 && (
                   <>
                     <NearbyHeading />
-                    <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-px-5 pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-5 lg:gap-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
                       {filteredRequests.nearby.map((r, i) => (
-                        <div key={r.id} className="snap-start shrink-0 basis-[78%] w-[78%] sm:basis-auto sm:w-auto">
+                        <div key={r.id} className="min-w-0">
                           <RequestCard
                             request={r}
                             delay={(i % 6) * 0.04}
@@ -814,26 +814,11 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
   const name = displayName(trip.profile?.full_name);
   const initial = nameInitial(trip.profile?.full_name);
 
-  let categories: string[] = [];
-  let plainNote: string | null = null;
-  if (trip.notes) {
-    try {
-      const parsed = JSON.parse(trip.notes);
-      if (Array.isArray(parsed?.accepted_categories)) {
-        categories = parsed.accepted_categories;
-      }
-      // The edit modal can store a note alongside the categories. Without
-      // reading it back, a traveler writes one, saves, and watches it vanish.
-      if (typeof parsed?.note === 'string' && parsed.note.trim()) {
-        plainNote = parsed.note;
-      }
-    } catch {
-      plainNote = trip.notes;
-    }
-  }
+  // What the traveller accepts is deliberately not on the card — it is on
+  // their profile page, one tap away, and the list stays about where and when.
 
   return (
-    <Link href={`/u/${trip.user_id}?book=${trip.id}`} className="block group">
+    <Link href={`/u/${trip.user_id}?book=${trip.id}`} className="block group h-full">
       <motion.article
         initial={{ opacity: 0, y: 14 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -841,93 +826,75 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
         transition={{ duration: 0.4, delay }}
         className="bg-white rounded-2xl border border-ink-50 group-hover:border-ink-200 group-hover:shadow-[0_8px_30px_-12px_rgba(24,20,16,0.12)] transition-all flex flex-col h-full overflow-hidden"
       >
-        {/* Ticket body */}
+        {/* Ticket body. Order follows what a sender scans for: when, where,
+            then who. */}
         <div className="p-4 flex-1 flex flex-col">
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[13px] text-lavender-700 flex-shrink-0">
+          {/* When — date always, time and flight number when the traveller
+              gave them (they are also what tells two otherwise identical
+              trips apart). */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cream-100 text-[13px] font-semibold text-ink-600 num-display whitespace-nowrap">
+              <Calendar className="w-3.5 h-3.5 text-ink-400" />
+              {formatTripDate(trip.departure_date, locale)}
+              {trip.flight_time && (
+                <span className="text-ink-400 font-medium">· {trip.flight_time}</span>
+              )}
+            </span>
+            {trip.flight_number && (
+              <span className="text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-300 num-display truncate">
+                {trip.flight_number}
+              </span>
+            )}
+          </div>
+
+          {/* Where — the headline of the card. */}
+          <div className="flex items-center gap-2 mb-3 text-[18px] font-extrabold text-ink-600 tracking-[-0.02em] leading-tight min-w-0">
+            <span className="truncate">{cityDisplayName(trip.departure_city, locale)}</span>
+            {/* Dotted flight path with the plane centred between the cities. */}
+            <span className="flex-1 min-w-[40px] flex items-center gap-1 text-lavender-500" aria-hidden>
+              <span className="flex-1 border-t-2 border-dotted border-ink-200" />
+              <Plane className="w-4 h-4 rotate-45 flex-shrink-0" />
+              <span className="flex-1 border-t-2 border-dotted border-ink-200" />
+            </span>
+            <span className="truncate">{cityDisplayName(trip.arrival_city, locale)}</span>
+          </div>
+
+          {/* Who — secondary, pinned to the bottom of the body. */}
+          <div className="flex items-center gap-2 mt-auto">
+            <div className="w-8 h-8 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[12px] text-lavender-700 flex-shrink-0">
               {initial}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-ink-600 truncate text-[15px] tracking-[-0.005em]">
-                  {name || '-'}
-                </span>
-                {trip.profile?.verification_level && (
-                  <span className="flex-shrink-0">
-                    <VerificationBadge level={trip.profile.verification_level} />
-                  </span>
-                )}
-              </div>
-              {/* Rating and trip count hidden until they are real. Neither
-                  profiles.rating nor profiles.trips_completed is computed from
-                  anything — the migration that revoked them from clients left
-                  the trigger to write them "TODO", so every star on the site
-                  showed a number nobody earned. Verification badges carry trust
-                  in the meantime; they at least mean something. */}
+            {/* Name and badge side by side; the badge wraps under a long name
+                instead of squeezing it down to "Zak…". */}
+            <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span className="font-semibold text-ink-600 truncate max-w-full text-[14px] tracking-[-0.005em]">
+                {name || '-'}
+              </span>
+              {trip.profile?.verification_level && (
+                <VerificationBadge level={trip.profile.verification_level} />
+              )}
             </div>
+            {/* Rating and trip count hidden until they are real. Neither
+                profiles.rating nor profiles.trips_completed is computed from
+                anything — the migration that revoked them from clients left
+                the trigger to write them "TODO", so every star on the site
+                showed a number nobody earned. Verification badges carry trust
+                in the meantime; they at least mean something. */}
           </div>
-
-          <div className="mb-3">
-            <div className="flex items-baseline gap-2 text-[16px] font-bold text-ink-600 mb-1 tracking-[-0.015em]">
-              <span className="truncate">{cityDisplayName(trip.departure_city, locale)}</span>
-              <Plane className="w-3.5 h-3.5 text-ink-300 flex-shrink-0" />
-              <span className="truncate">{cityDisplayName(trip.arrival_city, locale)}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[12px] text-ink-400">
-              <Calendar className="w-3 h-3" />
-              <span className="num-display">{formatShortDate(trip.departure_date)}</span>
-              {trip.flight_time && <span>· {trip.flight_time}</span>}
-            </div>
-          </div>
-
-          {categories.length > 0 ? (
-            <div className="flex-1 content-start">
-              <div className="text-[10px] font-semibold text-ink-400 tracking-[0.06em] uppercase mb-1.5">
-                {t.disc_can_transport}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {categories.slice(0, 3).map((cat) => {
-                  const meta = ITEM_CATEGORIES.find((c) => c.value === cat);
-                  if (!meta) return null;
-                  return (
-                    <span
-                      key={cat}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-lavender-50 text-lavender-700 rounded-full text-[11px] font-medium"
-                    >
-                      <span>{meta.icon}</span>
-                      <span>{t[meta.labelKey]}</span>
-                    </span>
-                  );
-                })}
-                {categories.length > 3 && (
-                  <span className="inline-flex items-center px-2 py-0.5 bg-cream-100 text-ink-400 rounded-full text-[11px] font-medium">
-                    +{categories.length - 3}
-                  </span>
-                )}
-              </div>
-            </div>
-          ) : plainNote ? (
-            <p className="text-[13px] text-ink-400 line-clamp-2 leading-relaxed flex-1">
-              {plainNote}
-            </p>
-          ) : (
-            <div className="flex-1" />
-          )}
         </div>
 
-        {/* Boarding-pass stub — dashed perforation + notches + price + CTA */}
-        <div className="relative border-t-2 border-dashed border-ink-100 bg-lavender-50 px-4 py-2.5 flex items-center justify-between gap-2">
+        {/* Boarding-pass stub — dashed perforation + notches + price + CTA.
+            Always the last row, so price and button line up across a grid row. */}
+        <div className="relative border-t-2 border-dashed border-ink-100 bg-lavender-50/60 px-4 py-2.5 flex items-center justify-between gap-3">
           <div className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-cream-50" />
           <div className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-cream-50" />
           <div className="min-w-0 leading-tight">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-lavender-600">
-              {t.disc_price_from}
-            </div>
-            <div className="font-bold text-ink-600 text-[16px] num-display tracking-[-0.015em]">
+            <div className="font-extrabold text-ink-600 text-[18px] num-display tracking-[-0.02em]">
               {formatEuros(priceBreakdown(trip.compensation_min).total)}
             </div>
+            <div className="text-[11px] text-ink-400 whitespace-nowrap">{t.disc_protection_included}</div>
           </div>
-          <span className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-ink-500 group-hover:bg-ink-600 text-cream-50 text-[12px] font-semibold transition-colors">
+          <span className="flex-shrink-0 inline-flex items-center gap-1 px-3 sm:px-3.5 py-2 rounded-full bg-ink-500 group-hover:bg-ink-600 text-cream-50 text-[12px] sm:text-[13px] font-semibold transition-colors">
             {t.disc_book_trip}
             <ArrowRight className="w-3.5 h-3.5" />
           </span>
@@ -935,6 +902,17 @@ function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t:
       </motion.article>
     </Link>
   );
+}
+
+/** "sam. 22 nov." / "Sat 22 Nov". Parsed at noon so no timezone shifts the day. */
+function formatTripDate(date: string, locale: string): string {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00`) : new Date(date);
+  if (isNaN(d.getTime())) return date;
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(d);
 }
 
 // ---------------------------------------------------------------------------
