@@ -50,7 +50,9 @@ function greet(firstName: string | null): string {
 // Shared HTML scaffold — used by every email template
 // `lang` only changes the wrapper's own words (footer). Every email is French
 // now, so French is the default.
-function wrapHtml(content: string, preheader: string, lang: 'en' | 'fr' = 'fr'): string {
+// `unsubscribeUrl`: only for e-mails sent to every member (lib/broadcast.ts),
+// never for booking, payment or security e-mails, which nobody can opt out of.
+function wrapHtml(content: string, preheader: string, lang: 'en' | 'fr' = 'fr', unsubscribeUrl?: string): string {
   const footer =
     lang === 'fr'
       ? { why: 'Vous recevez cet e-mail car vous avez un compte Jibly.', link: 'Accéder à mon espace' }
@@ -81,7 +83,11 @@ function wrapHtml(content: string, preheader: string, lang: 'en' | 'fr' = 'fr'):
             <td style="padding:24px 32px;border-top:1px solid #EFE9E2;">
               <p style="margin:0;font-size:12px;color:${BRAND.inkMuted};line-height:1.6;">
                 ${footer.why}<br>
-                <a href="${BASE_URL}/me" style="color:${BRAND.inkSoft};text-decoration:underline;">${footer.link}</a>
+                <a href="${BASE_URL}/me" style="color:${BRAND.inkSoft};text-decoration:underline;">${footer.link}</a>${
+                  unsubscribeUrl
+                    ? `<br>Vous ne souhaitez plus recevoir ces rappels ? <a href="${unsubscribeUrl}" style="color:${BRAND.inkSoft};text-decoration:underline;">Se désabonner</a>`
+                    : ''
+                }
               </p>
             </td>
           </tr>
@@ -1436,5 +1442,55 @@ export function priceNegotiationEmail(input: {
     subject: `${title} · ${route}`,
     html: wrapHtml(content, fr, 'fr'),
     text: `${hello}\n\n${fr}\n\n${amountLabel} : ${amount}\n\n${frNext}\n\n${cta} : ${url}\n\n— L’équipe Jibly`,
+  };
+}
+
+// =============================================================================
+// Every member: "add all your upcoming flights"
+// =============================================================================
+// Sent by hand from /admin → "E-mail à tous" (lib/broadcast.ts), never by a
+// cron. Not transactional, so it carries an unsubscribe link (the privacy
+// policy promises one) and goes only to people who have not opted out.
+export function tripReminderBroadcastEmail(input: {
+  firstName: string | null;
+  unsubscribeUrl: string;
+}) {
+  const url = `${BASE_URL}/voyager`;
+  const fr = {
+    hello: greet(input.firstName),
+    eyebrow: 'Petit rappel',
+    title: 'Ajoutez tous vos prochains vols sur Jibly',
+    preheader: 'Chaque vol enregistré peut dépanner un expéditeur, et vous rapporter un peu.',
+    p1: 'Vous avez un voyage prévu dans les semaines ou les mois qui viennent ? Enregistrez-le dès maintenant sur Jibly, même s’il est encore loin.',
+    p2: 'Chaque trajet publié est visible par les expéditeurs qui cherchent quelqu’un sur cette route. Ils peuvent vous confier leur colis, et vous gagnez de l’argent avec les kilos que vous n’utilisez pas.',
+    p3: 'Plusieurs voyages prévus ? Ajoutez-les tous : chaque vol est une chance de plus d’être contacté(e).',
+    cta: 'Ajouter un vol',
+    note: 'Ça prend une minute.',
+  };
+
+  const p = (t: string) =>
+    `<p style="margin:0 0 12px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">${escapeHtml(t)}</p>`;
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">${fr.eyebrow}</p>
+    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">${escapeHtml(fr.title)}</h1>
+    ${p(fr.hello)}
+    ${p(fr.p1)}
+    ${p(fr.p2)}
+    ${p(fr.p3)}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:20px auto 12px;">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(fr.cta)}</a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 20px;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;text-align:center;">${escapeHtml(fr.note)}</p>
+    <p style="margin:0;font-size:15px;color:${BRAND.inkSoft};">— L’équipe Jibly</p>
+  `;
+
+  return {
+    subject: 'Vous voyagez bientôt ? Ajoutez vos prochains vols sur Jibly',
+    html: wrapHtml(content, fr.preheader, 'fr', input.unsubscribeUrl),
+    text: `${fr.hello}\n\n${fr.title}\n\n${fr.p1}\n\n${fr.p2}\n\n${fr.p3}\n\n${fr.cta} : ${url}\n\n— L’équipe Jibly\n\nSe désabonner de ces rappels : ${input.unsubscribeUrl}`,
   };
 }
