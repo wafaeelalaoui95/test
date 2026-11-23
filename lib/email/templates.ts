@@ -1345,9 +1345,8 @@ export function offerWaitingReminderEmail(input: {
 //   'refused_to_sender'  the traveller turned the sender's price down. The card
 //                        hold is released; nothing was charged.
 //
-// French first, English underneath: these go to both sides of a Paris ⇄ Maroc
-// corridor and nothing records anyone's language. No chat link — the
-// conversation only opens once a price is agreed and paid.
+// French only, like every Jibly email. No chat link — the conversation only
+// opens once a price is agreed and paid.
 export function priceNegotiationEmail(input: {
   kind: 'offer_to_traveler' | 'counter_to_sender' | 'refused_to_sender';
   recipientFirstName: string | null;
@@ -1368,11 +1367,10 @@ export function priceNegotiationEmail(input: {
   const route = `${input.pickupCity} → ${input.destinationCity}`;
   const other = input.otherFirstName;
   const hello = input.recipientFirstName ? `Bonjour ${input.recipientFirstName},` : 'Bonjour,';
-  const helloEn = input.recipientFirstName ? `Hi ${input.recipientFirstName},` : 'Hi,';
   const item = input.itemLabel ? ` (« ${input.itemLabel} »)` : '';
   const amount = formatEuros(input.amount);
 
-  let label: string, title: string, fr: string, frNext: string, en: string, cta: string, amountLabel: string;
+  let label: string, title: string, fr: string, frNext: string, cta: string, amountLabel: string;
   if (input.kind === 'offer_to_traveler') {
     label = 'Nouvelle proposition de prix';
     title = `${other ?? 'Un expéditeur'} vous propose ${amount}`;
@@ -1381,7 +1379,6 @@ export function priceNegotiationEmail(input: {
     frNext = input.canCounter
       ? 'Vous pouvez accepter, refuser, ou faire une contre-proposition (une seule).'
       : 'Vous pouvez accepter ou refuser.';
-    en = `${other ?? 'A sender'} proposes a different price for ${route}: you would receive ${amount}. Their card is already authorised. ${input.canCounter ? 'Accept, decline, or make one counter-offer.' : 'Accept or decline.'}`;
     cta = 'Répondre à la proposition';
   } else if (input.kind === 'counter_to_sender') {
     label = 'Contre-proposition';
@@ -1391,7 +1388,6 @@ export function priceNegotiationEmail(input: {
     frNext = input.canCounter
       ? 'Vous pouvez l’accepter en payant, la refuser, ou proposer un dernier prix.'
       : 'Vous pouvez l’accepter en payant (la réservation est alors confirmée), ou la refuser.';
-    en = `For your parcel on ${route}, ${other ?? 'the traveller'} counter-offers ${amount} (Jibly fee included). Your earlier card authorisation was cancelled. ${input.canCounter ? 'Pay to accept, decline, or propose a last price.' : 'Pay to accept, or decline.'}`;
     cta = 'Voir la contre-proposition';
   } else {
     label = 'Proposition refusée';
@@ -1399,7 +1395,6 @@ export function priceNegotiationEmail(input: {
     amountLabel = 'Prix proposé';
     fr = `${other ?? 'Le voyageur'} a refusé votre proposition à ${amount} sur ${route}. Rien n’a été débité : le blocage sur votre carte est levé.`;
     frNext = 'Votre demande reste visible : d’autres voyageurs peuvent encore vous faire une offre.';
-    en = `${other ?? 'The traveller'} declined your price of ${amount} on ${route}. Nothing was charged and the hold on your card is released.`;
     cta = 'Voir mes envois';
   }
 
@@ -1434,13 +1429,12 @@ export function priceNegotiationEmail(input: {
         </td>
       </tr>
     </table>
-    <p style="margin:0 0 14px;font-size:13px;color:${BRAND.inkMuted};line-height:1.6;border-top:1px solid #EFE9E2;padding-top:14px;">${escapeHtml(helloEn)} ${escapeHtml(en)}</p>
     <p style="margin:0;font-size:15px;color:${BRAND.inkSoft};">— L’équipe Jibly</p>
   `;
 
   return {
     subject: `${title} · ${route}`,
     html: wrapHtml(content, fr, 'fr'),
-    text: `${hello}\n\n${fr}\n\n${amountLabel} : ${amount}\n\n${frNext}\n\n${cta} : ${url}\n\n---\n${helloEn} ${en}\n\n— L’équipe Jibly`,
+    text: `${hello}\n\n${fr}\n\n${amountLabel} : ${amount}\n\n${frNext}\n\n${cta} : ${url}\n\n— L’équipe Jibly`,
   };
 }
