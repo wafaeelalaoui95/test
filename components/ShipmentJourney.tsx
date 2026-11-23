@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Check, Package, Plane, Flag } from 'lucide-react';
 import { formatShortDate } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
+import { useI18n } from '@/lib/i18n/context';
 
 type Role = 'sender' | 'traveler';
 
@@ -49,6 +50,19 @@ export function ShipmentJourney({
   const activeIndex = done.indexOf(false); // -1 once everything is done
 
   const dateStr = departureDate ? formatShortDate(departureDate) : '';
+  const { locale } = useI18n();
+  // "28 novembre" / "28 November" — written out in the trip sentence.
+  const longDate = departureDate
+    ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(departureDate) ? `${departureDate}T12:00:00` : departureDate)
+        .toLocaleDateString(locale === 'en' ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'long' })
+    : '';
+  // While the trip is the current step, it says who carries the parcel and
+  // when, in place of the generic "à faire" (and of the "Départ le…" line).
+  const tripNow = longDate
+    ? (role === 'sender' ? t.sj_voyage_now_sender : t.sj_voyage_now_traveler)
+        .replace('{name}', otherFirstName)
+        .replace('{date}', longDate)
+    : '';
   const name = otherFirstName;
 
   const TRIP = 2;
@@ -85,7 +99,8 @@ export function ShipmentJourney({
         const isLast = i === steps.length - 1;
         const Icon = state === 'done' ? Check : s.icon;
         // Past steps say what happened; the trip always shows its date.
-        const showSub = !!s.sub && (state === 'done' || i === TRIP);
+        const tripActive = i === TRIP && state === 'active' && !!tripNow;
+        const showSub = !!s.sub && (state === 'done' || (i === TRIP && !tripActive));
         return (
           <div key={i} className="flex gap-3">
             <div className="flex flex-col items-center self-stretch">
@@ -117,7 +132,7 @@ export function ShipmentJourney({
               >
                 {s.title}
                 {state === 'active' && (
-                  <span className="text-[11px] font-medium text-lavender-600"> · {t.sj_now}</span>
+                  <span className={`font-medium text-lavender-600 ${tripActive ? 'text-[13px]' : 'text-[11px]'}`}> · {tripActive ? tripNow : t.sj_now}</span>
                 )}
               </div>
               {state === 'active' && activeContent && <div className="mt-2">{activeContent}</div>}

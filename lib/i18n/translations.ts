@@ -935,6 +935,8 @@ export type Translations = {
   sj_voyage: string;
   sj_delivered: string;
   sj_now: string;
+  sj_voyage_now_sender: string;
+  sj_voyage_now_traveler: string;
   sj_accepted_sub_sender: string;
   sj_accepted_sub_traveler: string;
   sj_pickup_done_sender: string;
@@ -2287,6 +2289,8 @@ export const translations: Record<Locale, Translations> = {
     sj_voyage: 'Voyage',
     sj_delivered: 'Colis remis',
     sj_now: 'à faire',
+    sj_voyage_now_sender: '{name} transportera votre colis le {date}',
+    sj_voyage_now_traveler: 'Vous transporterez le colis de {name} le {date}',
     sj_accepted_sub_sender: '{name} a accepté votre demande.',
     sj_accepted_sub_traveler: 'Vous transportez pour {name}.',
     sj_pickup_done_sender: 'Colis remis au voyageur.',
@@ -3657,6 +3661,8 @@ export const translations: Record<Locale, Translations> = {
     sj_voyage: 'Trip',
     sj_delivered: 'Parcel delivered',
     sj_now: 'to do',
+    sj_voyage_now_sender: '{name} will carry your parcel on {date}',
+    sj_voyage_now_traveler: 'You will carry {name}’s parcel on {date}',
     sj_accepted_sub_sender: '{name} accepted your request.',
     sj_accepted_sub_traveler: 'You\'re carrying for {name}.',
     sj_pickup_done_sender: 'Parcel handed to the traveler.',
