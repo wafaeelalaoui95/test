@@ -234,8 +234,9 @@ export function ChatModal({
 
   // Contextual code-handoff hint, shown at the end of the thread so people
   // know a code is coming and who reads it to whom. Role + stage aware:
-  //  - before pickup  → handover phase (sender reads the code, traveler enters)
-  //  - after pickup, before receipt → delivery phase (roles reverse)
+  //  - before pickup  → handover phase (traveler gives the code, sender enters)
+  //  - after pickup, before receipt → delivery phase (recipient side gives the
+  //    code, traveler enters)
   //  - once received → nothing more to do, no hint.
   const firstName = otherName.split(' ')[0];
   let codeHint: string | null = null;

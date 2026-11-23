@@ -1617,7 +1617,7 @@ function BookingCard({
             {onOpenChat && (
               <button
                 onClick={() => onOpenChat(booking)}
-                className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[13px] font-semibold transition-colors"
+                className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-lavender-200 hover:bg-lavender-50 text-lavender-700 text-[13px] font-semibold transition-colors"
               >
                 💬 {t.me2_message}
               </button>

@@ -2041,13 +2041,13 @@ export const translations: Record<Locale, Translations> = {
     chat_traceability_notice:
       'Gardez vos échanges sur Jibly : c\'est ce qui nous permet d\'assurer le suivi du colis et de vous protéger en cas de litige.',
     chat_code_hint_handover_sender:
-      'À la remise du colis, transmettez le code à 4 chiffres à {name}.',
+      'Quand vous remettez le colis à {name}, il / elle vous donne un code à 4 chiffres : saisissez-le.',
     chat_code_hint_handover_traveler:
-      'Après la remise du colis, {name} vous transmettra un code à 4 chiffres à saisir.',
+      'Quand {name} vous remet le colis, donnez-lui votre code à 4 chiffres.',
     chat_code_hint_delivery_traveler:
-      'À la livraison du colis, transmettez le code à 4 chiffres à {name}.',
+      'À la livraison, le destinataire vous donne un code à 4 chiffres : saisissez-le.',
     chat_code_hint_delivery_sender:
-      'À la réception du colis, {name} vous transmettra un code à 4 chiffres à saisir.',
+      'À la livraison, vous (ou votre proche qui réceptionne) donnez le code de livraison à {name}.',
     chat_empty_line1: 'Pas encore de message.',
     chat_empty_line2: 'Dites bonjour à {name} 👋',
     chat_input_placeholder: 'Écrire à {name}…',
@@ -2292,7 +2292,7 @@ export const translations: Record<Locale, Translations> = {
     sj_pickup_rem_sender_code: 'Saisissez le code à 4 chiffres que le voyageur vous montre.',
     sj_pickup_rem_sender_thirdparty: 'Un tiers réceptionne à l\'arrivée ? Prévenez-le et envoyez-lui le code.',
     sj_pickup_rem_traveler: 'Montrez votre code à 4 chiffres à l\'expéditeur pour valider la remise.',
-    sj_voyage_sub: 'Départ le {date}.',
+    sj_voyage_sub: 'Départ le {date}',
     sj_delivered_done: 'Colis livré et confirmé.',
     sj_delivered_hint_sender: 'Le destinataire communique le code au voyageur pour confirmer.',
     sj_delivered_hint_traveler: 'Saisissez le code que le destinataire vous donne.',
@@ -2304,8 +2304,8 @@ export const translations: Record<Locale, Translations> = {
     me2_carried_by: 'Voyageur : {name}',
     me2_call: 'Appeler',
     me2_whatsapp_not_provided: 'WhatsApp non renseigné',
-    me2_handoff_code_title: 'Confirmer la remise',
-    me2_handoff_code_desc: 'Demandez son code à {name} sur place et saisissez-le pour confirmer que vous lui remettez le colis.',
+    me2_handoff_code_title: 'Remise du colis',
+    me2_handoff_code_desc: 'Quand vous donnez le colis à {name}, il / elle vous montre un code à 4 chiffres. Saisissez-le.',
     me2_view_code: 'Saisir le code',
     me2_package_handed_to: 'Colis remis à {name}',
     me2_report_problem: 'Signaler un problème',
@@ -3409,13 +3409,13 @@ export const translations: Record<Locale, Translations> = {
     chat_traceability_notice:
       'Keep your exchanges on Jibly: it lets us track the parcel and protect you in case of a dispute.',
     chat_code_hint_handover_sender:
-      'When you hand the parcel over, give the 4-digit code to {name}.',
+      'When you hand the parcel to {name}, they give you a 4-digit code: enter it.',
     chat_code_hint_handover_traveler:
-      'After the hand-over, {name} will give you a 4-digit code to enter.',
+      'When {name} hands you the parcel, give them your 4-digit code.',
     chat_code_hint_delivery_traveler:
-      'When you deliver the parcel, give the 4-digit code to {name}.',
+      'On delivery, the recipient gives you a 4-digit code: enter it.',
     chat_code_hint_delivery_sender:
-      'On delivery, {name} will give you a 4-digit code to enter.',
+      'On delivery, you (or whoever receives it) give the delivery code to {name}.',
     chat_empty_line1: 'No messages yet.',
     chat_empty_line2: 'Say hi to {name} 👋',
     chat_input_placeholder: 'Message {name}…',
@@ -3660,7 +3660,7 @@ export const translations: Record<Locale, Translations> = {
     sj_pickup_rem_sender_code: 'Enter the 4-digit code the traveler shows you.',
     sj_pickup_rem_sender_thirdparty: 'A third party receives it on arrival? Tell them and send them the code.',
     sj_pickup_rem_traveler: 'Show your 4-digit code to the sender to confirm the handover.',
-    sj_voyage_sub: 'Departs {date}.',
+    sj_voyage_sub: 'Departs {date}',
     sj_delivered_done: 'Parcel delivered and confirmed.',
     sj_delivered_hint_sender: 'The recipient gives the code to the traveler to confirm.',
     sj_delivered_hint_traveler: 'Enter the code the recipient gives you.',
@@ -3672,8 +3672,8 @@ export const translations: Record<Locale, Translations> = {
     me2_carried_by: 'Traveller: {name}',
     me2_call: 'Call',
     me2_whatsapp_not_provided: 'WhatsApp not provided',
-    me2_handoff_code_title: 'Confirm the handover',
-    me2_handoff_code_desc: 'Ask {name} for their code in person and enter it to confirm you\'re handing over the parcel.',
+    me2_handoff_code_title: 'Parcel handover',
+    me2_handoff_code_desc: 'When you give the parcel to {name}, they show you a 4-digit code. Enter it.',
     me2_view_code: 'Enter code',
     me2_package_handed_to: 'Package handed to {name}',
     me2_report_problem: 'Report a problem',

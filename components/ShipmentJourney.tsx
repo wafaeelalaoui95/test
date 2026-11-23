@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Package, Plane, Flag, KeyRound, Users, Eye } from 'lucide-react';
+import { Check, Package, Plane, Flag } from 'lucide-react';
 import { formatShortDate } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
 
@@ -14,10 +14,13 @@ type JourneyBooking = {
 
 /**
  * Vertical progress "parcours" shown on each shipment card, role-aware.
- * Steps: accepted → handed over → trip → delivered. The step the user is
- * currently on carries reminders tailored to sender vs traveler; steps not
- * yet reached are greyed. State is derived purely from the booking's
- * lifecycle timestamps, so it always reflects reality.
+ * Steps: accepted → handed over → trip → delivered. State is derived purely
+ * from the booking's lifecycle timestamps, so it always reflects reality.
+ *
+ * Kept deliberately quiet: it says WHERE the shipment is, not what to do. The
+ * one thing to do right now lives in the card's action block (enter the code,
+ * show the code…), so the timeline never repeats it. Steps not reached yet show
+ * their title only — the trip step keeps its date, the one useful fact there.
  */
 export function ShipmentJourney({
   booking,
@@ -42,13 +45,8 @@ export function ShipmentJourney({
   const dateStr = departureDate ? formatShortDate(departureDate) : '';
   const name = otherFirstName;
 
-  type Rem = { icon: typeof KeyRound; text: string };
-  const steps: {
-    icon: typeof Package;
-    title: string;
-    sub?: string;
-    reminders: Rem[];
-  }[] = [
+  const TRIP = 2;
+  const steps: { icon: typeof Package; title: string; sub?: string }[] = [
     {
       icon: Check,
       title: t.sj_accepted,
@@ -56,34 +54,21 @@ export function ShipmentJourney({
         role === 'sender'
           ? t.sj_accepted_sub_sender.replace('{name}', name)
           : t.sj_accepted_sub_traveler.replace('{name}', name),
-      reminders: [],
     },
     {
       icon: Package,
       title: t.sj_pickup,
       sub: role === 'sender' ? t.sj_pickup_done_sender : t.sj_pickup_done_traveler,
-      reminders:
-        role === 'sender'
-          ? [
-              { icon: KeyRound, text: t.sj_pickup_rem_sender_code },
-              { icon: Users, text: t.sj_pickup_rem_sender_thirdparty },
-            ]
-          : [{ icon: Eye, text: t.sj_pickup_rem_traveler }],
     },
     {
       icon: Plane,
       title: t.sj_voyage,
-      sub: t.sj_voyage_sub.replace('{date}', dateStr),
-      reminders: [],
+      sub: dateStr ? t.sj_voyage_sub.replace('{date}', dateStr) : undefined,
     },
     {
       icon: Flag,
       title: t.sj_delivered,
       sub: t.sj_delivered_done,
-      reminders:
-        role === 'sender'
-          ? [{ icon: KeyRound, text: t.sj_delivered_hint_sender }]
-          : [{ icon: KeyRound, text: t.sj_delivered_hint_traveler }],
     },
   ];
 
@@ -93,6 +78,8 @@ export function ShipmentJourney({
         const state = done[i] ? 'done' : i === activeIndex ? 'active' : 'upcoming';
         const isLast = i === steps.length - 1;
         const Icon = state === 'done' ? Check : s.icon;
+        // Past steps say what happened; the trip always shows its date.
+        const showSub = !!s.sub && (state === 'done' || i === TRIP);
         return (
           <div key={i} className="flex gap-3">
             <div className="flex flex-col items-center self-stretch">
@@ -116,7 +103,7 @@ export function ShipmentJourney({
               )}
             </div>
 
-            <div className="pb-4 flex-1 min-w-0">
+            <div className={`flex-1 min-w-0 ${isLast ? '' : 'pb-3'}`}>
               <div
                 className={`text-[14px] font-semibold ${
                   state === 'upcoming' ? 'text-ink-300' : 'text-ink-600'
@@ -127,23 +114,7 @@ export function ShipmentJourney({
                   <span className="text-[11px] font-medium text-lavender-600"> · {t.sj_now}</span>
                 )}
               </div>
-
-              {state === 'active' && s.reminders.length > 0 ? (
-                <div className="mt-2 space-y-1.5">
-                  {s.reminders.map((r, j) => {
-                    const RIcon = r.icon;
-                    return (
-                      <div
-                        key={j}
-                        className="flex gap-2 items-start bg-lavender-50 border border-lavender-200 rounded-xl px-2.5 py-2 text-[12.5px] text-lavender-700 leading-snug"
-                      >
-                        <RIcon className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                        <span>{r.text}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : s.sub ? (
+              {showSub && (
                 <div
                   className={`text-[12px] mt-0.5 ${
                     state === 'upcoming' ? 'text-ink-300' : 'text-ink-400'
@@ -151,7 +122,7 @@ export function ShipmentJourney({
                 >
                   {s.sub}
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
         );
