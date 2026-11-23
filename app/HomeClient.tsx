@@ -280,9 +280,9 @@ export function HomeClient({
       {/* HERO — editorial split with paper plane + search box side by side */}
       <section className="relative">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 pt-8 sm:pt-10 lg:pt-14 pb-8 lg:pb-10">
-          {/* lg:items-end: on desktop the headline block sits at the bottom of
-              the row, so the intro paragraph lands just above the search bar. */}
-          <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start lg:items-end">
+          {/* lg:items-center: on desktop the headline block is centred against
+              the illustration — lower than the top, not glued to the search bar. */}
+          <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start lg:items-center">
             {/* LEFT — claim + search box */}
             <div className="lg:col-span-7 order-2 lg:order-1">
               {/* initial={false}: the hero text is the LCP element, so it must be
