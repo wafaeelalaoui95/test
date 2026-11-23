@@ -264,6 +264,43 @@ export async function ensureBusinessProfile(
 }
 
 /**
+ * The line a traveler sees on their bank statement when their money arrives.
+ *
+ * Left unset, Stripe falls back to the platform's bank descriptor from the
+ * dashboard, which need not say Jibly at all — and a traveler who cannot
+ * recognise a credit is a traveler who writes to ask what it is.
+ */
+export const PAYOUT_STATEMENT_DESCRIPTOR = 'JIBLY';
+
+/**
+ * Backfill the payout descriptor on an account created before it was set at
+ * creation. Idempotent: does nothing when it is already right, so calling it
+ * from the account.updated webhook cannot loop.
+ *
+ * Never throws: a missing label must not stop a traveler from being paid.
+ */
+export async function ensurePayoutDescriptor(account: Stripe.Account): Promise<void> {
+  if (account.settings?.payouts?.statement_descriptor === PAYOUT_STATEMENT_DESCRIPTOR) return;
+  try {
+    await getStripe().accounts.update(account.id, {
+      settings: { payouts: { statement_descriptor: PAYOUT_STATEMENT_DESCRIPTOR } },
+    });
+  } catch (e: any) {
+    console.warn(`[connect] could not set payout descriptor on ${account.id}:`, e?.message);
+  }
+}
+
+/** Same, from an account id — for callers that do not hold the account. */
+export async function ensurePayoutDescriptorById(accountId: string): Promise<void> {
+  try {
+    const account = await getStripe().accounts.retrieve(accountId);
+    await ensurePayoutDescriptor(account);
+  } catch (e: any) {
+    console.warn(`[connect] could not read ${accountId} for payout descriptor:`, e?.message);
+  }
+}
+
+/**
  * Create a connected account for a traveler.
  *
  * Accounts v1, `type: 'custom'`. Custom means no Stripe dashboard and no direct
@@ -328,7 +365,13 @@ async function createRecipientAccount(
         // someone who just carried a parcel across a border expects. Stripe
         // still holds the FIRST payout of a new account for a week or two —
         // that delay is Stripe's and this setting does not shorten it.
-        settings: { payouts: { schedule: { interval: 'daily' } } },
+        settings: {
+          payouts: {
+            schedule: { interval: 'daily' },
+            // What the traveler reads on their own bank statement.
+            statement_descriptor: PAYOUT_STATEMENT_DESCRIPTOR,
+          },
+        },
         metadata: { userId },
       },
       { idempotencyKey: `connect_account_${userId}_${bucket}` }
@@ -387,6 +430,10 @@ export async function syncConnectAccount(
 ): Promise<string | null> {
   const admin = getAdminClient();
   const payable = isAccountPayable(account);
+
+  // Every account passes through here (webhook, /wallet, terms), which makes
+  // it the place where accounts created before the descriptor existed get it.
+  await ensurePayoutDescriptor(account);
 
   // Normally metadata.userId, written at account creation. But an account that
   // lost it — or never had it — used to make this function return silently,

@@ -1,5 +1,5 @@
 import { getStripe } from './server';
-import { splitAmount } from './connect';
+import { splitAmount, ensurePayoutDescriptorById } from './connect';
 import { getAdminClient } from '@/lib/supabase/server';
 import { DISPUTE_SETTLED_FILTER } from '@/lib/disputes';
 
@@ -104,6 +104,11 @@ export async function transferToTraveler(params: {
   }
 
   const { feeCents, travelerCents } = splitAmount(amountCents);
+
+  // Make sure the payout this transfer leads to reads "JIBLY" on the
+  // traveler's bank statement, even on an account no webhook has touched since
+  // the descriptor was introduced. Never throws.
+  await ensurePayoutDescriptorById(traveler.stripe_account_id);
 
   try {
     const transfer = await getStripe().transfers.create(
