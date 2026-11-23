@@ -27,13 +27,14 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ fontSize: 34, fontWeight: 800, color: '#5B41C9', marginBottom: 36 }}>Jibly</div>
-        <div style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.05, letterSpacing: -2 }}>
-          Envoyez vos documents et petits colis
+        <div style={{ fontSize: 80, fontWeight: 800, lineHeight: 1.05, letterSpacing: -2 }}>
+          Quelqu’un voyage déjà
         </div>
-        <div style={{ fontSize: 76, fontWeight: 500, fontStyle: 'italic', color: '#5B41C9', lineHeight: 1.1 }}>
-          avec un voyageur.
+        <div style={{ fontSize: 80, fontWeight: 500, fontStyle: 'italic', color: '#5B41C9', lineHeight: 1.1 }}>
+          dans votre direction.
         </div>
-        <div style={{ fontSize: 30, color: '#5A5145', marginTop: 40 }}>Envoi de colis entre particuliers · jibly.io</div>
+        <div style={{ fontSize: 36, fontWeight: 700, color: '#2C2620', marginTop: 32 }}>Envoi de colis entre particuliers</div>
+        <div style={{ fontSize: 26, color: '#5A5145', marginTop: 28 }}>jibly.io</div>
       </div>
     ),
     size

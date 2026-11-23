@@ -291,6 +291,11 @@ export function HomeClient({
               >
                 {t.hero_title_1}{' '}
                 <span className="italic font-medium text-lavender-600">{t.hero_title_2}</span>
+                {/* Smaller line, still inside the H1 so the search keyword is in
+                    the page's main heading. */}
+                <span className="block mt-4 text-xl sm:text-2xl font-bold text-ink-500 tracking-[-0.015em] leading-snug">
+                  {t.hero_title_keyword}
+                </span>
               </motion.h1>
 
               <motion.p

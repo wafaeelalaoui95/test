@@ -28,6 +28,7 @@ export type Translations = {
   hero_badge: string;
   hero_title_1: string;
   hero_title_2: string;
+  hero_title_keyword: string;
   hero_subtitle: string;
   hero_search_from: string;
   hero_search_to: string;
@@ -1403,8 +1404,9 @@ export const translations: Record<Locale, Translations> = {
     nav_menu: 'Menu',
 
     hero_badge: 'Communauté de voyageurs vérifiés',
-    hero_title_1: 'Envoyez vos documents et petits colis',
-    hero_title_2: 'avec un voyageur.',
+    hero_title_1: 'Quelqu\'un voyage déjà',
+    hero_title_2: 'dans votre direction.',
+    hero_title_keyword: 'Envoi de colis entre particuliers',
     hero_subtitle: 'Besoin d\'envoyer un document, des clés ou un petit colis ? Trouvez un voyageur qui effectue déjà le trajet, choisissez votre prix et réservez en toute sécurité avec Jibly.',
     hero_search_from: 'Ville de départ',
     hero_search_to: 'Ville d\'arrivée',
@@ -2769,8 +2771,9 @@ export const translations: Record<Locale, Translations> = {
     nav_menu: 'Menu',
 
     hero_badge: 'Verified traveler community',
-    hero_title_1: 'Send your documents and small parcels',
-    hero_title_2: 'with a traveller.',
+    hero_title_1: 'Someone is already going',
+    hero_title_2: 'your way.',
+    hero_title_keyword: 'Peer-to-peer parcel delivery',
     hero_subtitle: 'Need to send a document, keys or a small parcel? Find a traveller already making the trip, set your price and book securely with Jibly.',
     hero_search_from: 'Departure city',
     hero_search_to: 'Arrival city',
