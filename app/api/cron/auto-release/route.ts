@@ -45,7 +45,7 @@ export const dynamic = 'force-dynamic';
 const MAX_PER_RUN = 200;
 
 function emailDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat('fr-FR', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
       const template = deliveryAutoClosedEmail({
         senderFirstName: firstName(senderProfile.data?.full_name),
         travelerFirstName: firstName((travelerProfile as any).data?.full_name),
-        itemLabel: booking.item_title?.trim() || 'Your parcel',
+        itemLabel: booking.item_title?.trim() ? `« ${booking.item_title.trim()} »` : 'votre colis',
         pickupCity: booking.pickup_city,
         destinationCity: booking.destination_city,
         days: AUTO_RELEASE_DAYS,

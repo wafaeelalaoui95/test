@@ -28,15 +28,15 @@ const MAX_PER_RUN = 100;
 
 // ITEM_CATEGORIES carries translation KEYS, and a cron has no locale context to
 // resolve them with — `cat.value` is the slug ('cles'), which would put
-// "Still need cles carried?" in someone's inbox. Emails are English-only, so
-// the English words live here.
+// "cles" in someone's inbox. Emails are French-only, so the French words live
+// here, ready to drop into a sentence.
 const CATEGORY_LABEL: Record<string, string> = {
-  documents: 'your documents',
-  cles: 'your keys',
-  vetements: 'your clothes',
-  electronique: 'your electronics',
-  petits_objets: 'your parcel',
-  otc: 'your medicine',
+  documents: 'vos documents',
+  cles: 'vos clés',
+  vetements: 'vos vêtements',
+  electronique: 'vos appareils électroniques',
+  petits_objets: 'votre colis',
+  otc: 'vos médicaments',
 };
 
 export async function GET(req: NextRequest) {
@@ -121,10 +121,10 @@ export async function GET(req: NextRequest) {
           : null,
         // The sender's own words when they gave any, so the subject line names
         // the thing they remember rather than a category.
-        itemLabel:
-          request.item_title?.trim() ||
-          CATEGORY_LABEL[request.item_category] ||
-          'your parcel',
+        // Their own words go in guillemets: « Livres ».
+        itemLabel: request.item_title?.trim()
+          ? `« ${request.item_title.trim()} »`
+          : CATEGORY_LABEL[request.item_category] || 'votre colis',
         pickupCity: request.pickup_city,
         destinationCity: request.destination_city,
         budget: request.budget,

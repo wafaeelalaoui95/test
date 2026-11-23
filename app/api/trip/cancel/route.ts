@@ -66,7 +66,7 @@ const schema = z.object({
 });
 
 /**
- * The reason, as the sender reads it. Emails are English-only (see
+ * The reason, as the sender reads it. Emails are French-only (see
  * lib/email/templates.ts) so there is one version of each.
  *
  * Written from the sender's point of view, not the traveller's: they are not
@@ -75,11 +75,11 @@ const schema = z.object({
  * trust the next traveller.
  */
 const REASON_LINE: Record<(typeof REASONS)[number], string> = {
-  flight_cancelled: 'Their flight was cancelled or moved by the airline.',
-  plans_changed: 'They are no longer making the trip.',
-  no_space: 'They are still travelling but can no longer carry anything.',
-  safety_concern: 'They were not comfortable carrying it.',
-  other: 'They did not travel in the end.',
+  flight_cancelled: 'Son vol a été annulé ou déplacé par la compagnie aérienne.',
+  plans_changed: 'Le voyage n’est plus prévu.',
+  no_space: 'Le voyage est maintenu, mais il n’y a plus de place pour transporter quoi que ce soit.',
+  safety_concern: 'Le voyageur ne se sentait pas à l’aise pour transporter ce colis.',
+  other: 'Le voyage n’a finalement pas eu lieu.',
 };
 
 /**
@@ -107,24 +107,22 @@ type BookingRow = ReleasableBooking & {
 // reason: ITEM_CATEGORIES holds translation KEYS, and a server route has no
 // locale to resolve them with — 'cles' would reach an inbox as "cles".
 const CATEGORY_LABEL: Record<string, string> = {
-  documents: 'your documents',
-  cles: 'your keys',
-  vetements: 'your clothes',
-  electronique: 'your electronics',
-  petits_objets: 'your parcel',
-  otc: 'your medicine',
+  documents: 'vos documents',
+  cles: 'vos clés',
+  vetements: 'vos vêtements',
+  electronique: 'vos appareils électroniques',
+  petits_objets: 'votre colis',
+  otc: 'vos médicaments',
 };
 
 /**
- * A date for an English email.
+ * A date for a French email: "3 déc. 2026".
  *
- * Not formatShortDate: that one is fr-FR and drops the year, which is right on
- * a card next to today's trips and wrong here — these emails are English, and
- * an alternative trip can be months out, where "3 janv." says neither the
- * right language nor the right year.
+ * Not formatShortDate: that one drops the year, which is right on a card next
+ * to today's trips and wrong here — an alternative trip can be months out.
  */
 function emailDate(date: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat('fr-FR', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -329,8 +327,9 @@ async function tellSender(params: {
   const { booking, trip, travelerFirstName, reason, note, money } = params;
   const admin = getAdminClient();
 
-  const itemLabel =
-    booking.item_title?.trim() || CATEGORY_LABEL[booking.item_category] || 'your parcel';
+  const itemLabel = booking.item_title?.trim()
+    ? `« ${booking.item_title.trim()} »`
+    : CATEGORY_LABEL[booking.item_category] || 'votre colis';
   const route = `${booking.pickup_city} → ${booking.destination_city}`;
 
   const alternatives = await findAlternativeTrips({
@@ -356,12 +355,14 @@ async function tellSender(params: {
     const { error } = await admin.from('notifications').insert({
       user_id: booking.sender_id,
       type: 'trip_cancelled',
-      title: `${itemLabel} is not being carried`,
+      title: `Trajet annulé pour ${itemLabel}`,
       body: alternatives.length
-        ? `The trip ${route} was cancelled. ${alternatives.length} other traveller${
-            alternatives.length > 1 ? 's are' : ' is'
-          } going that way.`
-        : `The trip ${route} was cancelled. Nobody else is listed on this route yet.`,
+        ? `Le trajet ${route} a été annulé. ${
+            alternatives.length > 1
+              ? `${alternatives.length} autres voyageurs font`
+              : 'Un autre voyageur fait'
+          } ce trajet.`
+        : `Le trajet ${route} a été annulé. Aucun autre voyageur n’est encore inscrit sur ce trajet.`,
       link: `/me?booking=${booking.id}`,
       related_booking_id: booking.id,
       related_trip_id: trip.id,

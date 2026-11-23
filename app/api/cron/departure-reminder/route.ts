@@ -36,12 +36,12 @@ const MAX_PER_RUN = 100;
 // Same list as the other server-side senders: ITEM_CATEGORIES holds
 // translation KEYS, and a cron has no locale to resolve them with.
 const CATEGORY_LABEL: Record<string, string> = {
-  documents: 'Documents',
-  cles: 'Keys',
-  vetements: 'Clothes',
-  electronique: 'Electronics',
-  petits_objets: 'A parcel',
-  otc: 'Medicine',
+  documents: 'Des documents',
+  cles: 'Des clés',
+  vetements: 'Des vêtements',
+  electronique: 'Des appareils électroniques',
+  petits_objets: 'Un colis',
+  otc: 'Des médicaments',
 };
 
 export async function GET(req: NextRequest) {
@@ -152,14 +152,14 @@ export async function GET(req: NextRequest) {
           : null,
         departureCity: trip.departure_city,
         arrivalCity: trip.arrival_city,
-        departureDate: new Intl.DateTimeFormat('en-GB', {
+        departureDate: new Intl.DateTimeFormat('fr-FR', {
           day: 'numeric',
-          month: 'short',
+          month: 'long',
         }).format(new Date(trip.departure_date)),
         flightNumber: trip.flight_number,
         parcels: carried.map((p: any) => ({
           itemLabel:
-            p.item_title?.trim() || CATEGORY_LABEL[p.item_category] || 'A parcel',
+            p.item_title?.trim() || CATEGORY_LABEL[p.item_category] || 'Un colis',
           senderName: senderName.get(p.sender_id)
             ? formatName(senderName.get(p.sender_id) as string).split(' ')[0]
             : null,

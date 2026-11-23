@@ -186,8 +186,9 @@ export async function POST(req: Request) {
       // It also makes a rule honest elsewhere: a sender can no longer withdraw
       // a parcel while an offer is live, they have to decline it first. That
       // only protects the traveller if declining actually reaches them.
-      const itemLabel =
-        booking.item_title?.trim() || booking.item_description?.trim() || 'a parcel';
+      // French, ready for a sentence: their own words in guillemets.
+      const itemWords = booking.item_title?.trim() || booking.item_description?.trim();
+      const itemLabel = itemWords ? `« ${itemWords} »` : 'ce colis';
 
       // What else is worth their trip. Same corridor, still open, still in
       // date — and never the one just declined.
@@ -213,11 +214,11 @@ export async function POST(req: Request) {
         pickupCity: booking.pickup_city,
         destinationCity: booking.destination_city,
         alternatives: (alts ?? []).map((a: any) => ({
-          itemLabel: a.item_title?.trim() || 'A parcel',
+          itemLabel: a.item_title?.trim() || 'Un colis',
           pickupCity: a.pickup_city,
           destinationCity: a.destination_city,
           budget: a.budget,
-          byDate: new Intl.DateTimeFormat('en-GB', {
+          byDate: new Intl.DateTimeFormat('fr-FR', {
             day: 'numeric',
             month: 'short',
           }).format(new Date(a.desired_delivery_date)),
@@ -232,8 +233,8 @@ export async function POST(req: Request) {
         await supabase.from('notifications').insert({
           user_id: recipientId,
           type: 'proposal_declined',
-          title: `Your offer on ${booking.pickup_city} → ${booking.destination_city} was declined`,
-          body: `${firstName(senderProfile?.full_name) ?? 'The sender'} will not be sending ${itemLabel} with you. Nothing was charged.`,
+          title: `Votre offre sur le trajet ${booking.pickup_city} → ${booking.destination_city} a été refusée`,
+          body: `${firstName(senderProfile?.full_name) ?? 'L’expéditeur'} n’enverra pas ${itemLabel} avec vous. Rien n’a été facturé.`,
           link: '/voyager',
           related_booking_id: booking.id,
         });

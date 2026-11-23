@@ -162,11 +162,11 @@ async function tellSenderTheClockStarted(bookingIntentId: string) {
   const template = deliveryProvedEmail({
     senderFirstName: first(senderProfile.data?.full_name),
     travelerFirstName: first(travelerProfile.data?.full_name),
-    itemLabel: booking.item_title?.trim() || 'your parcel',
+    itemLabel: booking.item_title?.trim() ? `« ${booking.item_title.trim()} »` : 'votre colis',
     pickupCity: booking.pickup_city,
     destinationCity: booking.destination_city,
     receiverName: booking.delivery_proof_receiver_name,
-    deadline: new Intl.DateTimeFormat('en-GB', {
+    deadline: new Intl.DateTimeFormat('fr-FR', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
