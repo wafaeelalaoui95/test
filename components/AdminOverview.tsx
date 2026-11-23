@@ -29,6 +29,7 @@ type Overview = {
       route: string;
       euros: number;
       travelerName: string | null;
+      travelerEmail: string | null;
       deliveredAt: string | null;
     }>;
     // Cancelled bookings whose automatic refund failed — see /api/trip/cancel,
@@ -154,9 +155,19 @@ export function AdminOverview() {
                 key={b.id}
                 className="flex items-center gap-3 px-5 py-3 border-b border-ink-50 last:border-0 text-[13px]"
               >
-                <span className="font-semibold text-ink-600">
-                  {b.travelerName ?? 'Voyageur inconnu'}
-                </span>
+                {b.travelerEmail ? (
+                  <a
+                    href={`mailto:${b.travelerEmail}`}
+                    title={b.travelerName ?? undefined}
+                    className="font-semibold text-ink-600 hover:underline truncate"
+                  >
+                    {b.travelerEmail}
+                  </a>
+                ) : (
+                  <span className="font-semibold text-ink-600">
+                    {b.travelerName ?? 'Voyageur inconnu'}
+                  </span>
+                )}
                 <span className="text-ink-400 truncate">{b.route}</span>
                 {b.deliveredAt && (
                   <span className="text-ink-300 text-[12px]">

@@ -111,6 +111,16 @@ export async function GET() {
     : { data: [] as any[] };
   const nameById = new Map((people ?? []).map((p: any) => [p.id, p.full_name]));
 
+  // E-mails of the travellers waiting for their payout: the operator writes to
+  // them to finish their payout setup. auth.users holds the e-mail, not profiles.
+  const emailById = new Map<string, string | null>();
+  await Promise.all(
+    [...new Set(delivered.map((b: any) => b.traveler_user_id).filter(Boolean))].map(async (id: any) => {
+      const { data } = await admin.auth.admin.getUserById(id);
+      emailById.set(id, data?.user?.email ?? null);
+    })
+  );
+
   return NextResponse.json({
     owed: {
       stuckEuros: sum(delivered),
@@ -158,6 +168,7 @@ export async function GET() {
         route: `${b.pickup_city} → ${b.destination_city}`,
         euros: travelerNetFromTotal((b.payment_amount ?? 0) / 100),
         travelerName: nameById.get(b.traveler_user_id) ?? null,
+        travelerEmail: emailById.get(b.traveler_user_id) ?? null,
         deliveredAt: b.received_confirmed_at,
       })),
     },
