@@ -617,6 +617,13 @@ export function ProfileClient({
                       {t.prof_continue_to_payment}
                     </button>
                   </div>
+                  {/* A greyed button alone doesn't say why: the two fields sit
+                      above the fold, so name what is still missing. */}
+                  {(!intentCategory || !intentTitle.trim()) && (
+                    <p className="mt-3 text-[12.5px] text-ink-400 text-center">
+                      {t.prof_fill_to_continue}
+                    </p>
+                  )}
                 </>
               )}
               {bookingStep === 'payment' && (

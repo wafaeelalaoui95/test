@@ -142,6 +142,7 @@ export type Translations = {
   prof_book_this_trip: string;
   prof_booking_step_1: string;
   prof_what_to_send: string;
+  prof_fill_to_continue: string;
   prof_description_optional: string;
   prof_description_placeholder: string;
   prof_payment_detail: string;
@@ -1516,6 +1517,7 @@ export const translations: Record<Locale, Translations> = {
     prof_book_this_trip: 'Réserver ce trajet',
     prof_booking_step_1: 'Réservation · Étape 1/2',
     prof_what_to_send: 'Que voulez-vous envoyer ?',
+    prof_fill_to_continue: 'Choisissez une catégorie et décrivez votre colis pour continuer.',
     prof_description_optional: 'Description (optionnel)',
     prof_description_placeholder: 'Ex: un trousseau de clés, une enveloppe avec des documents…',
     prof_payment_detail: 'Détail du paiement',
@@ -2880,6 +2882,7 @@ export const translations: Record<Locale, Translations> = {
     prof_book_this_trip: 'Book this trip',
     prof_booking_step_1: 'Booking · Step 1/2',
     prof_what_to_send: 'What do you want to send?',
+    prof_fill_to_continue: 'Choose a category and describe your parcel to continue.',
     prof_description_optional: 'Description (optional)',
     prof_description_placeholder: 'E.g. a set of keys, an envelope with documents…',
     prof_payment_detail: 'Payment breakdown',
