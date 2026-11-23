@@ -833,18 +833,20 @@ export default function VoyagerPage() {
                             key={c.value}
                             type="button"
                             onClick={() => toggleCategory(c.value)}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-start transition-all ${
+                            className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-start transition-all ${
                               active
                                 ? 'border-lavender-500 bg-lavender-50'
                                 : 'border-ink-100 bg-white hover:border-ink-300'
                             }`}
                           >
                             <span className="text-xl flex-shrink-0">{c.icon}</span>
-                            <span className={`text-[14px] font-medium ${active ? 'text-lavender-700' : 'text-ink-500'}`}>
+                            {/* flex-1 + min-w-0: the label takes the room left and wraps
+                                inside it, instead of running under the check icon on a phone. */}
+                            <span className={`flex-1 min-w-0 break-words text-[14px] font-medium ${active ? 'text-lavender-700' : 'text-ink-500'}`}>
                               {t[c.labelKey]}
                             </span>
                             {active && (
-                              <CheckCircle2 className="w-4 h-4 text-lavender-500 ml-auto flex-shrink-0" strokeWidth={2.5} />
+                              <CheckCircle2 className="w-4 h-4 text-lavender-500 flex-shrink-0" strokeWidth={2.5} />
                             )}
                           </button>
                         );
