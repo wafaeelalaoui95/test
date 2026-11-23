@@ -1648,6 +1648,23 @@ function BookingCard({
                       {t.me2_view_code}
                     </button>
                   </div>
+                ) : booking.pickup_confirmed_at && !booking.received_confirmed_at && onEnterDeliveryCode ? (
+                  /* Delivery code — the recipient side (the sender, or a
+                     relative receiving for them) gives it to the traveller,
+                     who enters it to confirm delivery. */
+                  <div className="max-w-md rounded-xl bg-lavender-50/70 border border-lavender-200/60 px-3.5 py-3">
+                    <div className="text-[13px] text-ink-600 leading-snug">
+                      {t.me2_delivery_code_desc.replace('{name}', travelerName.split(' ')[0])}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onEnterDeliveryCode(booking)}
+                      className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      {t.me2_view_delivery_code}
+                    </button>
+                  </div>
                 ) : undefined
               }
               t={t}
@@ -1713,21 +1730,6 @@ function BookingCard({
               </div>
             )}
 
-          {/* Delivery code — the recipient side (you, or a relative receiving
-              on your behalf) holds this code and gives it to the traveler, who
-              enters it to confirm delivery and release the payment. Tap to see
-              it (and share it with your relative if they receive for you). */}
-          {booking.pickup_confirmed_at && !booking.received_confirmed_at && onEnterDeliveryCode && (
-            <button
-              type="button"
-              onClick={() => onEnterDeliveryCode(booking)}
-              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[13px] font-semibold transition-colors mt-1"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              {t.me2_view_delivery_code}
-            </button>
-          )}
-
           {/* Once reception is confirmed, the sender can rate the traveler. */}
           {booking.received_confirmed_at && onOpenReview && (
             <div className="mt-2 flex justify-end">
@@ -1767,18 +1769,6 @@ function BookingCard({
               {otherReview.comment && (
                 <span className="text-ink-500">· « {otherReview.comment} »</span>
               )}
-            </div>
-          )}
-
-          {/* "Remis ✓" status — once the traveler has typed the code on
-              their side, we surface that visually so the sender knows
-              the package is now on its way. */}
-          {booking.pickup_confirmed_at && !booking.delivery_proof_url && (
-            <div className="rounded-xl bg-mint-50 border border-mint-200/60 px-4 py-3 mt-3 flex items-center gap-2.5">
-              <KeyRound className="w-4 h-4 text-mint-700 flex-shrink-0" />
-              <div className="text-[13px] font-semibold text-mint-700">
-                {t.me2_package_handed_to.replace('{name}', travelerName.split(' ')[0])} ✓
-              </div>
             </div>
           )}
 

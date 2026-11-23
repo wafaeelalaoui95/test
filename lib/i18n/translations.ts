@@ -1166,6 +1166,7 @@ export type Translations = {
   me2_i_picked_up: string;
   me2_traveler_handoff_desc: string;
   me2_view_delivery_code: string;
+  me2_delivery_code_desc: string;
   me2_confirm_delivery: string;
   me2_history_empty: string;
   me2_history_missions: string;
@@ -2536,6 +2537,7 @@ export const translations: Record<Locale, Translations> = {
     me2_i_picked_up: 'Afficher mon code',
     me2_traveler_handoff_desc: 'Quand {name} vous remet le colis, vérifiez-le puis montrez-lui votre code à 4 chiffres : c’est ce qui confirme la remise et lui permet de suivre son colis jusqu’à la livraison.',
     me2_view_delivery_code: 'Voir le code de livraison',
+    me2_delivery_code_desc: 'À l’arrivée, donnez ce code à {name} (ou transmettez-le au proche qui réceptionne) : c’est ce qui confirme la livraison.',
     me2_confirm_delivery: 'Confirmer la livraison',
     me2_history_empty: 'Votre historique est vide. Acceptez votre première mission pour commencer.',
     me2_history_missions: 'Missions livrées ou refusées',
@@ -3904,6 +3906,7 @@ export const translations: Record<Locale, Translations> = {
     me2_i_picked_up: 'Show my code',
     me2_traveler_handoff_desc: 'When {name} hands you the parcel, check it, then show them your 4-digit code: that confirms the handover and lets them track their parcel until delivery.',
     me2_view_delivery_code: 'View delivery code',
+    me2_delivery_code_desc: 'On arrival, give this code to {name} (or send it to whoever receives it): that confirms the delivery.',
     me2_confirm_delivery: 'Confirm delivery',
     me2_history_empty: 'Your history is empty. Accept your first mission to get started.',
     me2_history_missions: 'Missions delivered or declined',
