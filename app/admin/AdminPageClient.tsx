@@ -5,6 +5,7 @@ import { AdminRefund } from '@/components/AdminRefund';
 import { AdminOverview } from '@/components/AdminOverview';
 import { AdminDisputes } from '@/components/AdminDisputes';
 import { AdminMatchAlerts } from '@/components/AdminMatchAlerts';
+import { AdminChats } from '@/components/AdminChats';
 import { AdminUsers } from '@/components/AdminUsers';
 import { AdminOfferReminders } from '@/components/AdminOfferReminders';
 
@@ -37,6 +38,8 @@ export function AdminPageClient() {
           {/* Above the refund tool on purpose: a dispute is usually the reason
               somebody came here to refund, and the decision comes first. */}
           <AdminDisputes />
+          {/* Right after disputes: reading the chat is how a report gets judged. */}
+          <AdminChats />
           <AdminUsers />
           <AdminOverview />
           <AdminRefund />
