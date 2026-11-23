@@ -9,6 +9,7 @@ import { AdminMatchAlerts } from '@/components/AdminMatchAlerts';
 import { AdminChats } from '@/components/AdminChats';
 import { AdminUsers } from '@/components/AdminUsers';
 import { AdminOfferReminders } from '@/components/AdminOfferReminders';
+import { AdminTransactions } from '@/components/AdminTransactions';
 
 /**
  * Operator console — only the tools that read and act on real data.
@@ -21,9 +22,10 @@ import { AdminOfferReminders } from '@/components/AdminOfferReminders';
  * The last section picked is remembered per browser, as a convenience only.
  */
 
-type SectionId = 'alerts' | 'offers' | 'disputes' | 'chats' | 'users' | 'money' | 'refund';
+type SectionId = 'transactions' | 'alerts' | 'offers' | 'disputes' | 'chats' | 'users' | 'money' | 'refund';
 
 const SECTIONS: { id: SectionId; label: string; hint: string; Component: ComponentType }[] = [
+  { id: 'transactions', label: 'Transactions', hint: 'Tout, photos et statut', Component: AdminTransactions },
   { id: 'alerts', label: 'Alertes trajet', hint: 'Alertes à valider', Component: AdminMatchAlerts },
   { id: 'offers', label: 'Offres sans réponse', hint: 'Date limite aujourd’hui', Component: AdminOfferReminders },
   { id: 'disputes', label: 'Signalements', hint: 'Litiges à trancher', Component: AdminDisputes },
@@ -67,7 +69,7 @@ export function AdminPageClient() {
           </h1>
         </div>
 
-        <nav className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-10">
+        <nav className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-10">
           {SECTIONS.map((s) => {
             const on = s.id === active;
             return (
