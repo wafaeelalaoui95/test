@@ -370,8 +370,11 @@ export function ChatModal({
         {/* Input */}
         <div className="px-3 py-3 border-t border-ink-100 bg-cream-50">
           {/* Quick replies — steer toward address & parcel topics. Tapping
-              fills the input so the user can complete/edit before sending. */}
-          <div className="flex gap-1.5 overflow-x-auto pb-2.5 -mx-0.5 px-0.5 scrollbar-hide">
+              fills the input so the user can complete/edit before sending.
+              They wrap rather than scroll: a sideways row with a hidden
+              scrollbar cannot be scrolled with a mouse, so the last chips
+              were simply unreachable on a computer. */}
+          <div className="flex flex-wrap gap-1.5 pb-2.5">
             {quickReplies.map((qr) => (
               <button
                 key={qr.label}
