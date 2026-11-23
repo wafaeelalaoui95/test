@@ -17,7 +17,8 @@ type JourneyBooking = {
  * Steps: accepted → handed over → trip → delivered. State is derived purely
  * from the booking's lifecycle timestamps, so it always reflects reality.
  *
- * Kept deliberately quiet: it says WHERE the shipment is, not what to do. The
+ * Past steps are greyed (a filled grey check), so the eye goes to the purple
+ * current step. Kept deliberately quiet: it says WHERE the shipment is, not what to do. The
  * one thing to do right now lives in the card's action block (enter the code,
  * show the code…), so the timeline never repeats it. Steps not reached yet show
  * their title only — the trip step keeps its date, the one useful fact there.
@@ -86,7 +87,7 @@ export function ShipmentJourney({
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
                   state === 'done'
-                    ? 'bg-mint-500 text-white'
+                    ? 'bg-ink-100 text-ink-400'
                     : state === 'active'
                       ? 'bg-lavender-500 text-white'
                       : 'bg-white border-2 border-ink-100 text-ink-300'
@@ -97,7 +98,7 @@ export function ShipmentJourney({
               {!isLast && (
                 <div
                   className={`w-0.5 flex-1 my-1 rounded-full min-h-[14px] ${
-                    done[i] ? 'bg-mint-500' : 'bg-ink-100'
+                    done[i] ? 'bg-ink-200' : 'bg-ink-100'
                   }`}
                 />
               )}
@@ -106,7 +107,7 @@ export function ShipmentJourney({
             <div className={`flex-1 min-w-0 ${isLast ? '' : 'pb-3'}`}>
               <div
                 className={`text-[14px] font-semibold ${
-                  state === 'upcoming' ? 'text-ink-300' : 'text-ink-600'
+                  state === 'active' ? 'text-ink-600' : state === 'done' ? 'text-ink-400' : 'text-ink-300'
                 }`}
               >
                 {s.title}
@@ -117,7 +118,7 @@ export function ShipmentJourney({
               {showSub && (
                 <div
                   className={`text-[12px] mt-0.5 ${
-                    state === 'upcoming' ? 'text-ink-300' : 'text-ink-400'
+                    state === 'active' ? 'text-ink-400' : 'text-ink-300'
                   }`}
                 >
                   {s.sub}
