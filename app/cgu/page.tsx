@@ -13,7 +13,9 @@ import { LegalDocument, type LegalBlock } from '@/components/LegalDocument';
 import terms from '@/lib/legal/terms.json';
 
 export const metadata: Metadata = {
-  title: 'Marketplace Terms and Conditions · Jibly',
+  title: 'Marketplace Terms and Conditions',
+  description: 'The terms that apply to every sender and traveller using the Jibly marketplace.',
+  alternates: { canonical: '/cgu' },
 };
 
 export default function TermsPage() {

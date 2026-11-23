@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Manrope } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
@@ -10,23 +11,32 @@ import { getSiteUrl } from '@/lib/site-url';
 
 const siteUrl = getSiteUrl();
 
+// Self-hosted by Next at build time: no render-blocking Google Fonts @import.
+const manrope = Manrope({ subsets: ['latin'], display: 'swap', variable: '--font-manrope' });
+
+const DEFAULT_TITLE = 'Envoi de colis entre particuliers | Jibly';
+const DEFAULT_DESCRIPTION =
+  'Envoi de colis entre particuliers : envoyez documents, clés ou petits colis avec un voyageur vérifié qui fait déjà le trajet. Prix fixé entre vous, réservation sécurisée.';
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'Jibly - Send things with a traveler',
-  description:
-    'Someone is already going your way. Send your documents, keys or small items with a community of verified travelers.',
-  keywords: ['Jibly', 'envoi documents', 'voyageurs', 'peer-to-peer', 'community travel'],
+  // Pages set their own title; the template adds the brand. No canonical here:
+  // it would be inherited by every page (each page sets its own).
+  title: { default: DEFAULT_TITLE, template: '%s | Jibly' },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: 'Jibly',
   openGraph: {
-    title: 'Jibly - Someone is already going your way',
-    description: 'Send your stuff with a community of verified travellers already going your way.',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
     type: 'website',
     url: siteUrl,
     siteName: 'Jibly',
+    locale: 'fr_FR',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Jibly - Someone is already going your way',
-    description: 'Send your stuff with a community of verified travellers already going your way.',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
   },
 };
 
@@ -38,7 +48,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" className={manrope.variable} suppressHydrationWarning>
       <body className="min-h-screen bg-cream-50 text-ink-500">
         <I18nProvider>
           <AuthProvider>

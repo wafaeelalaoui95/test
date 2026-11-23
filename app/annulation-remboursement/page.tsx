@@ -9,7 +9,9 @@ import { LegalDocument, type LegalBlock } from '@/components/LegalDocument';
 import policy from '@/lib/legal/cancellation-refund.json';
 
 export const metadata: Metadata = {
-  title: 'Cancellation & Refund Policy · Jibly',
+  title: 'Cancellation & Refund Policy',
+  description: 'When and how a Jibly booking can be cancelled, and how refunds work.',
+  alternates: { canonical: '/annulation-remboursement' },
 };
 
 export default function CancellationRefundPage() {

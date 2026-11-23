@@ -27,7 +27,7 @@ import type { TravelerTripRow, Profile, ShippingRequestRow } from '@/lib/supabas
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { RespondToRequestModal } from '@/components/RespondToRequestModal';
 
-type TripWithProfile = TravelerTripRow & {
+export type TripWithProfile = TravelerTripRow & {
   profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'> | null;
 };
 
@@ -283,10 +283,10 @@ export function HomeClient({
           <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
             {/* LEFT — claim + search box */}
             <div className="lg:col-span-7 order-2 lg:order-1">
+              {/* initial={false}: the hero text is the LCP element, so it must be
+                  visible in the server HTML instead of waiting for hydration. */}
               <motion.h1
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
+                initial={false}
                 className="text-[44px] sm:text-5xl lg:text-7xl font-extrabold text-ink-600 leading-[1.02] tracking-[-0.035em] text-balance"
               >
                 {t.hero_title_1}{' '}
@@ -294,9 +294,7 @@ export function HomeClient({
               </motion.h1>
 
               <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
+                initial={false}
                 className="mt-7 text-lg sm:text-xl text-ink-400 max-w-measure leading-relaxed"
               >
                 {t.hero_subtitle}
@@ -319,9 +317,7 @@ export function HomeClient({
 
           {/* SEARCH BOX — full width, below the hero split */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            initial={false}
             className="mt-4 lg:mt-2"
           >
             <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(24,20,16,0.10)] border border-ink-50/60 p-2">
@@ -809,7 +805,8 @@ export function HomeClient({
   );
 }
 
-function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t: any }) {
+// Also used by the route landing pages (components/RouteTrips.tsx).
+export function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: number; t: any }) {
   const { locale } = useI18n();
   const name = displayName(trip.profile?.full_name);
   const initial = nameInitial(trip.profile?.full_name);

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Instagram } from 'lucide-react';
 import { Logo } from '@/components/illustrations/Logo';
 import { useI18n } from '@/lib/i18n/context';
+import { ROUTE_PAGES } from '@/lib/route-pages';
 
 export function Footer() {
   const { t } = useI18n();
@@ -27,6 +28,12 @@ export function Footer() {
               <li><Link href="/voyager" className="hover:text-ink-600 transition-colors">{t.nav_travel}</Link></li>
               <li><Link href="/" className="hover:text-ink-600 transition-colors">{t.nav_discover}</Link></li>
               <li><Link href="/me" className="hover:text-ink-600 transition-colors">{t.nav_my_space}</Link></li>
+            </ul>
+            {/* Popular routes — the only links to the route landing pages. */}
+            <ul className="mt-6 space-y-3 text-[14px] text-ink-400">
+              {ROUTE_PAGES.map((r) => (
+                <li key={r.path}><Link href={r.path} className="hover:text-ink-600 transition-colors">{t.footer_route_prefix} {r.label}</Link></li>
+              ))}
             </ul>
           </div>
 

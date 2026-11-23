@@ -66,6 +66,7 @@ export type Translations = {
   signup_name_placeholder: string;
   sec_wallet_withdraw_subject: string;
   footer_allowed_items: string;
+  footer_route_prefix: string;
   footer_terms: string;
   footer_privacy: string;
   footer_refund: string;
@@ -1402,9 +1403,9 @@ export const translations: Record<Locale, Translations> = {
     nav_menu: 'Menu',
 
     hero_badge: 'Communauté de voyageurs vérifiés',
-    hero_title_1: 'Quelqu\'un voyage déjà',
-    hero_title_2: 'dans votre direction.',
-    hero_subtitle: 'Envoyez vos affaires avec un voyageur. Prix libres, fixés entre vous. Simple, humain, entre voyageurs à travers le monde.',
+    hero_title_1: 'Envoyez vos documents et petits colis',
+    hero_title_2: 'avec un voyageur.',
+    hero_subtitle: 'Besoin d\'envoyer un document, des clés ou un petit colis ? Trouvez un voyageur qui effectue déjà le trajet, choisissez votre prix et réservez en toute sécurité avec Jibly.',
     hero_search_from: 'Ville de départ',
     hero_search_to: 'Ville d\'arrivée',
     hero_search_button: 'Trouver un voyageur',
@@ -1442,6 +1443,7 @@ export const translations: Record<Locale, Translations> = {
     signup_name_placeholder: 'Salma El Amrani',
     sec_wallet_withdraw_subject: 'Retrait de mes gains',
     footer_allowed_items: 'Objets autorisés',
+    footer_route_prefix: 'Colis',
     footer_terms: 'CGU',
     footer_privacy: 'Confidentialité',
     footer_refund: 'Annulation et remboursement',
@@ -2767,9 +2769,9 @@ export const translations: Record<Locale, Translations> = {
     nav_menu: 'Menu',
 
     hero_badge: 'Verified traveler community',
-    hero_title_1: 'Someone is already going',
-    hero_title_2: 'your way.',
-    hero_subtitle: 'Send your stuff with a traveller. Prices are open, set between you. Simple, human, between travellers across the world.',
+    hero_title_1: 'Send your documents and small parcels',
+    hero_title_2: 'with a traveller.',
+    hero_subtitle: 'Need to send a document, keys or a small parcel? Find a traveller already making the trip, set your price and book securely with Jibly.',
     hero_search_from: 'Departure city',
     hero_search_to: 'Arrival city',
     hero_search_button: 'Find a traveler',
@@ -2807,6 +2809,7 @@ export const translations: Record<Locale, Translations> = {
     signup_name_placeholder: 'Jane Doe',
     sec_wallet_withdraw_subject: 'Withdrawal of my earnings',
     footer_allowed_items: 'Allowed items',
+    footer_route_prefix: 'Parcels',
     footer_terms: 'Terms',
     footer_privacy: 'Privacy',
     footer_refund: 'Cancellations & refunds',

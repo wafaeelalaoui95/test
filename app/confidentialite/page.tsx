@@ -9,7 +9,9 @@ import { LegalDocument, type LegalBlock } from '@/components/LegalDocument';
 import privacy from '@/lib/legal/privacy.json';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy · Jibly',
+  title: 'Privacy Policy',
+  description: 'How Jibly collects, uses and protects your personal data.',
+  alternates: { canonical: '/confidentialite' },
 };
 
 export default function PrivacyPage() {

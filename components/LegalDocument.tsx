@@ -67,7 +67,7 @@ export function LegalDocument({ blocks }: { blocks: LegalBlock[] }) {
       <div className="mx-auto max-w-3xl px-5 sm:px-8 py-10 sm:py-14">
         <LegalPageHeader title={title.r.map((r) => r.t).join('')} />
 
-        <article className="text-[15px] leading-relaxed text-ink-500">
+        <article lang="en" className="text-[15px] leading-relaxed text-ink-500">
           {body.map((b, i) => {
             const id = `b${i}`;
             if (b.h === 1) {
