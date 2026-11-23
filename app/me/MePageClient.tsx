@@ -4519,6 +4519,8 @@ function IntentCardInline({
   // Delivery-before-flight confirmation.
   const [showEarlyModal, setShowEarlyModal] = useState(false);
   const [earlyAck, setEarlyAck] = useState(false);
+  // An early delivery surprises the sender: make the traveller say they told them.
+  const [earlyToldSender, setEarlyToldSender] = useState(false);
   const [earlyReason, setEarlyReason] = useState('');
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
 
@@ -4529,6 +4531,7 @@ function IntentCardInline({
   function startDeliver() {
     if (isBeforeFlight) {
       setEarlyAck(false);
+      setEarlyToldSender(false);
       setShowEarlyModal(true);
     } else {
       setShowProofModal(true);
@@ -4990,7 +4993,7 @@ function IntentCardInline({
                   className="w-full px-4 py-3 rounded-xl bg-white border border-ink-100 text-[14px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300 resize-none"
                 />
               </div>
-              <label className="flex items-start gap-2.5 cursor-pointer mb-5">
+              <label className="flex items-start gap-2.5 cursor-pointer mb-3">
                 <input
                   type="checkbox"
                   checked={earlyAck}
@@ -5001,6 +5004,17 @@ function IntentCardInline({
                   {t.me2_early_deliver_ack}
                 </span>
               </label>
+              <label className="flex items-start gap-2.5 cursor-pointer mb-5">
+                <input
+                  type="checkbox"
+                  checked={earlyToldSender}
+                  onChange={(e) => setEarlyToldSender(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-ink-300 text-ink-500 focus:ring-2 focus:ring-lavender-500/30 cursor-pointer"
+                />
+                <span className="text-[13px] text-ink-600 leading-relaxed">
+                  {t.me2_early_deliver_told_sender}
+                </span>
+              </label>
               <div className="flex gap-2.5">
                 <button
                   onClick={() => setShowEarlyModal(false)}
@@ -5009,7 +5023,7 @@ function IntentCardInline({
                   {t.me2_accept_cancel}
                 </button>
                 <button
-                  disabled={!earlyAck || !earlyReason.trim()}
+                  disabled={!earlyAck || !earlyToldSender || !earlyReason.trim()}
                   onClick={() => { setShowEarlyModal(false); setShowProofModal(true); }}
                   className="flex-1 px-4 py-2.5 text-[14px] font-semibold text-cream-50 bg-lavender-500 hover:bg-lavender-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >

@@ -1083,6 +1083,7 @@ export type Translations = {
   me2_early_deliver_reason_label: string;
   me2_early_deliver_reason_placeholder: string;
   me2_early_deliver_ack: string;
+  me2_early_deliver_told_sender: string;
   me2_early_deliver_confirm: string;
   me2_open_conversation: string;
   me2_messages: string;
@@ -2440,10 +2441,11 @@ export const translations: Record<Locale, Translations> = {
     me2_accept_confirm: 'Accepter la demande',
     me2_accept_cancel: 'Annuler',
     me2_early_deliver_title: 'Livraison en avance ?',
-    me2_early_deliver_text: 'Votre vol n\'est prévu que le {date}. Êtes-vous sûr d\'avoir déjà remis le colis ?',
+    me2_early_deliver_text: 'Votre vol n\'est prévu que le {date} : êtes-vous sûr(e) d\'avoir déjà remis le colis ?',
     me2_early_deliver_reason_label: 'Raison de la livraison anticipée',
     me2_early_deliver_reason_placeholder: 'Ex : je voyage plus tôt que prévu',
     me2_early_deliver_ack: 'Oui, je confirme avoir remis le colis au destinataire.',
+    me2_early_deliver_told_sender: 'J\'ai prévenu l\'expéditeur / l\'expéditrice de cette livraison anticipée.',
     me2_early_deliver_confirm: 'Continuer',
     me2_open_conversation: 'Ouvrir la conversation',
     me2_messages: 'Messages',
@@ -3811,10 +3813,11 @@ export const translations: Record<Locale, Translations> = {
     me2_accept_confirm: 'Accept the request',
     me2_accept_cancel: 'Cancel',
     me2_early_deliver_title: 'Delivering early?',
-    me2_early_deliver_text: 'Your flight isn\'t until {date}. Are you sure you\'ve already handed over the parcel?',
+    me2_early_deliver_text: 'Your flight isn\'t until {date}: are you sure you\'ve already handed over the parcel?',
     me2_early_deliver_reason_label: 'Reason for the early delivery',
     me2_early_deliver_reason_placeholder: 'e.g. I\'m travelling earlier than planned',
     me2_early_deliver_ack: 'Yes, I confirm I handed the parcel to the recipient.',
+    me2_early_deliver_told_sender: 'I have told the sender about this early delivery.',
     me2_early_deliver_confirm: 'Continue',
     me2_open_conversation: 'Open conversation',
     me2_messages: 'Messages',
