@@ -4685,13 +4685,6 @@ function IntentCardInline({
             >
               <Flag className="w-3.5 h-3.5" strokeWidth={1.75} />
             </button>
-            <button
-              onClick={() => onEnterPickupCode(intent)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold text-cream-50 bg-mint-500 hover:bg-mint-600 rounded-full transition-colors"
-            >
-              <KeyRound className="w-3 h-3" />
-              {t.me2_i_picked_up}
-            </button>
           </div>
         )}
 
@@ -4784,6 +4777,25 @@ function IntentCardInline({
             role="traveler"
             otherFirstName={senderName.split(' ')[0]}
             departureDate={intent.traveler_trip?.departure_date}
+            activeContent={
+              /* Pickup code — the traveller's side of the handover, under the
+                 step it belongs to (mirrors the sender card). */
+              showPickup ? (
+                <div className="max-w-md rounded-xl bg-lavender-50/70 border border-lavender-200/60 px-3.5 py-3">
+                  <div className="text-[13px] text-ink-600 leading-snug">
+                    {t.me2_traveler_handoff_desc.replace('{name}', senderName.split(' ')[0])}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onEnterPickupCode(intent)}
+                    className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    {t.me2_i_picked_up}
+                  </button>
+                </div>
+              ) : undefined
+            }
             t={t}
           />
         </div>

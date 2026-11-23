@@ -1164,6 +1164,7 @@ export type Translations = {
   me2_pill_payment_held_to_pickup: string;
   me2_pill_to_deliver: string;
   me2_i_picked_up: string;
+  me2_traveler_handoff_desc: string;
   me2_view_delivery_code: string;
   me2_confirm_delivery: string;
   me2_history_empty: string;
@@ -2533,6 +2534,7 @@ export const translations: Record<Locale, Translations> = {
     me2_pill_payment_held_to_pickup: 'Paiement réservé · à récupérer',
     me2_pill_to_deliver: 'À livrer',
     me2_i_picked_up: 'Afficher mon code',
+    me2_traveler_handoff_desc: 'Quand {name} vous remet le colis, vérifiez-le puis montrez-lui votre code à 4 chiffres : c’est ce qui confirme la remise et lui permet de suivre son colis jusqu’à la livraison.',
     me2_view_delivery_code: 'Voir le code de livraison',
     me2_confirm_delivery: 'Confirmer la livraison',
     me2_history_empty: 'Votre historique est vide. Acceptez votre première mission pour commencer.',
@@ -3900,6 +3902,7 @@ export const translations: Record<Locale, Translations> = {
     me2_pill_payment_held_to_pickup: 'Payment held · to pick up',
     me2_pill_to_deliver: 'To deliver',
     me2_i_picked_up: 'Show my code',
+    me2_traveler_handoff_desc: 'When {name} hands you the parcel, check it, then show them your 4-digit code: that confirms the handover and lets them track their parcel until delivery.',
     me2_view_delivery_code: 'View delivery code',
     me2_confirm_delivery: 'Confirm delivery',
     me2_history_empty: 'Your history is empty. Accept your first mission to get started.',
