@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Check, Package, Plane, Flag } from 'lucide-react';
 import { formatShortDate } from '@/lib/utils';
 import type { Translations } from '@/lib/i18n/translations';
@@ -28,12 +29,16 @@ export function ShipmentJourney({
   role,
   otherFirstName,
   departureDate,
+  activeContent,
   t,
 }: {
   booking: JourneyBooking;
   role: Role;
   otherFirstName: string;
   departureDate?: string | null;
+  /** The action for the current step (e.g. "enter the code"), shown right
+   *  under it so what to do sits where the shipment is. */
+  activeContent?: ReactNode;
   t: Translations;
 }) {
   const picked = !!booking.pickup_confirmed_at;
@@ -115,6 +120,7 @@ export function ShipmentJourney({
                   <span className="text-[11px] font-medium text-lavender-600"> · {t.sj_now}</span>
                 )}
               </div>
+              {state === 'active' && activeContent && <div className="mt-2">{activeContent}</div>}
               {showSub && (
                 <div
                   className={`text-[12px] mt-0.5 ${

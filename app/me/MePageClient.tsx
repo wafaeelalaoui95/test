@@ -1631,6 +1631,25 @@ function BookingCard({
               role="sender"
               otherFirstName={travelerName.split(' ')[0]}
               departureDate={trip?.departure_date}
+              activeContent={
+                /* Pickup code — the sender's side of the handover, placed
+                   under the step it belongs to. Gone once pickup is confirmed. */
+                onShowPickupCode && !booking.pickup_confirmed_at ? (
+                  <div className="max-w-md rounded-xl bg-lavender-50/70 border border-lavender-200/60 px-3.5 py-3">
+                    <div className="text-[13px] text-ink-600 leading-snug">
+                      {t.me2_handoff_code_desc.replace('{name}', travelerName.split(' ')[0])}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onShowPickupCode(booking)}
+                      className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      {t.me2_view_code}
+                    </button>
+                  </div>
+                ) : undefined
+              }
               t={t}
             />
           </div>
@@ -1748,35 +1767,6 @@ function BookingCard({
               {otherReview.comment && (
                 <span className="text-ink-500">· « {otherReview.comment} »</span>
               )}
-            </div>
-          )}
-
-          {/* Pickup code block — sender's side of the trust handoff.
-              Visible only BEFORE the traveler has confirmed pickup. Once
-              they have, the code has no use anymore and we hide the block
-              to declutter the card. */}
-          {onShowPickupCode && !booking.pickup_confirmed_at && (
-            <div className="rounded-xl bg-lavender-50/60 border border-lavender-200/60 px-4 py-3 mt-3">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-9 h-9 rounded-full bg-lavender-100 flex items-center justify-center">
-                  <KeyRound className="w-4 h-4 text-lavender-700" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-bold text-ink-600 leading-tight">
-                    {t.me2_handoff_code_title}
-                  </div>
-                  <div className="text-[12px] text-ink-500 leading-snug mt-0.5">
-                    {t.me2_handoff_code_desc.replace('{name}', travelerName.split(' ')[0])}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onShowPickupCode(booking)}
-                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-500 hover:bg-lavender-600 text-white text-[12px] font-semibold transition-colors"
-                >
-                  {t.me2_view_code}
-                </button>
-              </div>
             </div>
           )}
 
