@@ -27,6 +27,9 @@ export async function POST(req: NextRequest) {
   const receiverName = form.get('receiverName');
   const notes = form.get('notes');
   const earlyReason = form.get('earlyReason');
+  // The two boxes ticked in the "Livraison en avance ?" popup.
+  const earlyHandedOver = form.get('earlyHandedOver') === '1';
+  const earlySenderInformed = form.get('earlySenderInformed') === '1';
   const photo = form.get('photo');
 
   if (typeof bookingIntentId !== 'string' || typeof receiverName !== 'string') {
@@ -104,6 +107,29 @@ export async function POST(req: NextRequest) {
 
   if (updateErr) {
     return NextResponse.json({ error: `db: ${updateErr.message}` }, { status: 500 });
+  }
+
+  // Early-delivery declarations, stamped with the server's clock. A separate,
+  // non-fatal write on purpose: if the columns are missing (migration
+  // 2026-11-23-early-delivery-confirmations.sql not run yet), the delivery
+  // proof above must still go through.
+  if (earlyHandedOver || earlySenderInformed) {
+    const now = new Date().toISOString();
+    const { error: declErr } = await admin
+      .from('booking_intents')
+      .update({
+        ...(earlyHandedOver ? { delivery_early_handed_over_at: now } : {}),
+        ...(earlySenderInformed ? { delivery_early_sender_informed_at: now } : {}),
+      })
+      .eq('id', bookingIntentId);
+    if (declErr) {
+      console.error(
+        '[upload-proof] could not store early-delivery declarations for',
+        bookingIntentId,
+        { earlyHandedOver, earlySenderInformed },
+        declErr.message
+      );
+    }
   }
 
   // Start the sender's clock out loud.

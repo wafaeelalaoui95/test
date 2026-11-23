@@ -4821,6 +4821,8 @@ function IntentCardInline({
           <DeliveryProofModal
             bookingIntentId={intent.id}
             earlyReason={earlyReason.trim() || undefined}
+            earlyHandedOver={isBeforeFlight && earlyAck}
+            earlySenderInformed={isBeforeFlight && earlyToldSender}
             onClose={() => setShowProofModal(false)}
             onSuccess={(url) => {
               onProofUploaded(intent.id, url, '');

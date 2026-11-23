@@ -57,6 +57,9 @@ type Props = {
   // Reason captured in the "Delivering early?" modal. Sent as a separate,
   // non-editable field so it's recorded verbatim (not merged into the note).
   earlyReason?: string;
+  // The two boxes ticked in that same modal, recorded server-side with a timestamp.
+  earlyHandedOver?: boolean;
+  earlySenderInformed?: boolean;
   onSuccess: (photoUrl: string) => void;
   onClose: () => void;
 };
@@ -66,6 +69,8 @@ export function DeliveryProofModal({
   prefilledReceiverName,
   prefilledNotes,
   earlyReason,
+  earlyHandedOver,
+  earlySenderInformed,
   onSuccess,
   onClose,
 }: Props) {
@@ -113,6 +118,8 @@ export function DeliveryProofModal({
       if (earlyReason && earlyReason.trim()) {
         form.append('earlyReason', earlyReason.trim());
       }
+      if (earlyHandedOver) form.append('earlyHandedOver', '1');
+      if (earlySenderInformed) form.append('earlySenderInformed', '1');
       form.append('photo', toUpload);
 
       const res = await fetch('/api/delivery/upload-proof', {
