@@ -691,6 +691,7 @@ export type Translations = {
   chat_load_error: string;
   chat_send_error: string;
   chat_no_phone: string;
+  chat_no_email: string;
   chat_send_error_retry: string;
   chat_close: string;
   chat_send: string;
@@ -2051,6 +2052,7 @@ export const translations: Record<Locale, Translations> = {
     chat_empty_line2: 'Dites bonjour à {name} 👋',
     chat_input_placeholder: 'Écrire à {name}…',
     chat_load_error: 'Échec du chargement',
+    chat_no_email: 'Pour votre sécurité, les adresses e-mail ne peuvent pas être envoyées ici. Gardez les échanges sur Jibly : c’est ce qui nous permet d’intervenir en cas de problème.',
     chat_no_phone: 'Pour votre sécurité, les numéros de téléphone ne peuvent pas être envoyés ici. Gardez les échanges sur Jibly : c’est ce qui nous permet d’intervenir en cas de problème.',
     chat_send_error: 'Échec de l\'envoi',
     chat_send_error_retry: 'Échec de l\'envoi. Réessayez.',
@@ -3418,6 +3420,7 @@ export const translations: Record<Locale, Translations> = {
     chat_empty_line2: 'Say hi to {name} 👋',
     chat_input_placeholder: 'Message {name}…',
     chat_load_error: 'Failed to load',
+    chat_no_email: 'For your safety, email addresses can’t be sent here. Keeping the conversation on Jibly is what lets us step in if something goes wrong.',
     chat_no_phone: 'For your safety, phone numbers can’t be sent here. Keeping the conversation on Jibly is what lets us step in if something goes wrong.',
     chat_send_error: 'Failed to send',
     chat_send_error_retry: 'Failed to send. Try again.',

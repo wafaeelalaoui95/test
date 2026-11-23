@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Send, Loader2, ArrowLeft, ShieldCheck, KeyRound } from 'lucide-react';
 import { browser, type MessageRowChat } from '@/lib/supabase/queries';
-import { containsPhoneNumber } from '@/lib/safety';
+import { containsPhoneNumber, containsEmail } from '@/lib/safety';
 import { displayName, nameInitial, formatShortDate } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { userMessage } from '@/lib/user-error';
@@ -170,6 +170,10 @@ export function ChatModal({
       setErr(t.chat_no_phone);
       return;
     }
+    if (containsEmail(body)) {
+      setErr(t.chat_no_email);
+      return;
+    }
     setSending(true);
     setErr(null);
     // Optimistic update: show the message immediately, replace once the
@@ -196,7 +200,11 @@ export function ChatModal({
         // The server speaks in codes, not prose. This one has a sentence of
         // its own — reached only by a client that skipped the check above.
         throw Object.assign(
-          new Error(data.error === 'phone_number_blocked' ? t.chat_no_phone : 'send_failed'),
+          new Error(
+            data.error === 'phone_number_blocked' ? t.chat_no_phone
+            : data.error === 'email_blocked' ? t.chat_no_email
+            : 'send_failed'
+          ),
           { code: data.error, status: res.status }
         );
       }

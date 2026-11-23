@@ -141,3 +141,30 @@ export function containsPhoneNumber(text: string): boolean {
     (run) => (run.match(/\d/g) ?? []).length >= PHONE_MIN_DIGITS
   );
 }
+
+// ---------------------------------------------------------------------------
+// Email addresses in chat
+// ---------------------------------------------------------------------------
+// Same reason as phone numbers: an address is a way off the platform. Unlike
+// phone numbers there is no date-shaped look-alike, so the rule can be strict.
+// Catches the plain form and the usual dodges ("nom [at] gmail.com",
+// "nom arobase gmail.com"). Jibly's own addresses stay allowed — people do
+// tell each other to write to contact@jibly.io.
+// A plain "@" must touch both sides, so "rdv @ Orly. Ok ?" is not an address.
+const EMAIL_PLAIN = /[a-z0-9._%+-]+@([a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,})/gi;
+// Spelled-out forms are distinctive enough to allow spaces around them.
+const SEP_DOT = String.raw`\s*(?:\.|\[dot\]|\(dot\)|\bpoint\b|\bdot\b)\s*`;
+const EMAIL_SPELLED = new RegExp(
+  String.raw`[a-z0-9._%+-]+\s*(?:\[at\]|\(at\)|\barobase\b)\s*([a-z0-9-]+(?:${SEP_DOT}[a-z0-9-]+)*${SEP_DOT}[a-z]{2,})`,
+  'gi'
+);
+
+export function containsEmail(text: string): boolean {
+  for (const re of [EMAIL_PLAIN, EMAIL_SPELLED]) {
+    for (const m of text.matchAll(re)) {
+      const domain = m[1].replace(/\s+/g, '').replace(/\[dot\]|\(dot\)|point|dot/gi, '.').toLowerCase();
+      if (domain !== 'jibly.io') return true;
+    }
+  }
+  return false;
+}

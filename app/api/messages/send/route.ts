@@ -1,5 +1,5 @@
 import { getSiteUrl } from '@/lib/site-url';
-import { containsPhoneNumber } from '@/lib/safety';
+import { containsPhoneNumber, containsEmail } from '@/lib/safety';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerClient } from '@/lib/supabase/server';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
   // to the route — an old cached bundle, a script — meets it too.
   if (containsPhoneNumber(body)) {
     return NextResponse.json({ error: 'phone_number_blocked' }, { status: 400 });
+  }
+  if (containsEmail(body)) {
+    return NextResponse.json({ error: 'email_blocked' }, { status: 400 });
   }
 
   const supabase = getServerClient();
