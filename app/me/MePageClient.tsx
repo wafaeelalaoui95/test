@@ -12,7 +12,6 @@ import {
   Plus,
   ShieldCheck,
   Mail,
-  Phone,
   CheckCircle2,
   MapPin,
   ArrowRight,
@@ -1567,11 +1566,8 @@ function BookingCard({
     }
   }, [booking.id, booking.status, booking.delivery_proof_url]);
 
-  // Use Supabase auth.users email — we don't have it on the public profile
-  // (RLS hides emails). For the contact info to be visible the simplest
-  // path is to expose `phone` only, plus a "send a message" mailto via
-  // a server route. We'll show the phone if set, and a generic message
-  // otherwise — see the "Contact" block below.
+  // No contact details are exchanged: Jibly does not collect phone numbers,
+  // and the chat blocks them. Every conversation stays in the in-app chat.
 
   // Confirmed (any phase, up to fully received) → full detailed view with the
   // progress journey. We intentionally do NOT collapse to a compact card once
@@ -2311,7 +2307,6 @@ function ProfileTab({
   locale: string;
 }) {
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
-  const [phone, setPhone] = useState(profile?.phone ?? '');
   const [city, setCity] = useState(profile?.city ?? '');
   const [country, setCountry] = useState(profile?.country ?? '');
   const [saving, setSaving] = useState(false);
@@ -2359,7 +2354,6 @@ function ProfileTab({
         // by submitting with the keyboard, and this is the value that gets
         // shown to every other user.
         full_name: titleCaseName(fullName.trim()) || null,
-        phone: phone.trim() || null,
         city: city.trim() || null,
         country: country.trim() || null,
       });
@@ -2426,13 +2420,6 @@ function ProfileTab({
             <label className="block text-[13px] font-medium text-ink-500 mb-2">{t.me_profile_email}</label>
             <div className="px-4 py-3 rounded-xl bg-cream-100 text-[15px] text-ink-500">{email}</div>
           </div>
-          <Input
-            label={t.me_profile_phone}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+33 6 12 34 56 78"
-            hint={t.me2_phone_hint}
-          />
           <div className="grid grid-cols-2 gap-3">
             <Input
               label={t.me2_city}
