@@ -35,7 +35,7 @@ export const ROUTE_PAGES: RoutePage[] = [
       {
         heading: 'Pourquoi passer par un voyageur ?',
         body:
-          'Pour un petit envoi, un voyageur qui part déjà de Paris est souvent plus simple qu’un transporteur : vous le rencontrez, vous lui remettez l’objet en main propre et il le remet à votre destinataire à Casablanca. Le prix est libre et se décide entre vous.',
+          'Pour un petit envoi, un voyageur qui part déjà de Paris est souvent plus simple qu’un transporteur : vous le rencontrez, vous lui remettez l’objet en main propre et il / elle le remet à votre destinataire à Casablanca. Le prix est libre et se décide entre vous.',
       },
       {
         heading: 'Ce que vous pouvez envoyer',
@@ -72,12 +72,12 @@ export const ROUTE_PAGES: RoutePage[] = [
       {
         heading: 'Un envoi simple, de main à main',
         body:
-          'Vous remettez l’objet au voyageur à Casablanca, il le transporte dans ses bagages et le remet à votre destinataire à Paris. Vous savez qui transporte votre envoi : chaque voyageur vérifie son identité avant de pouvoir être réservé.',
+          'Vous remettez l’objet au voyageur à Casablanca, il / elle le transporte dans ses bagages et le remet à votre destinataire à Paris. Vous savez qui transporte votre envoi : chaque voyageur vérifie son identité avant de pouvoir être réservé.',
       },
       {
         heading: 'Les règles à connaître',
         body:
-          'Seuls les objets des catégories autorisées peuvent être confiés à un voyageur. Le voyageur regarde le contenu avant d’accepter et peut refuser sans pénalité s’il a un doute. Les médicaments sur ordonnance sont strictement interdits.',
+          'Seuls les objets des catégories autorisées peuvent être confiés à un voyageur. Le voyageur regarde le contenu avant d’accepter et peut refuser sans pénalité s’il / elle a un doute. Les médicaments sur ordonnance sont strictement interdits.',
       },
     ],
     faq: [

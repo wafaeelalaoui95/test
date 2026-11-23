@@ -171,7 +171,7 @@ export function AdminOverview() {
             <p className="px-5 py-3 text-[12px] text-ink-400 leading-relaxed bg-cream-100">
               Presque toujours un voyageur qui n&apos;a pas terminé la
               configuration de ses paiements. Rien à faire de ton côté : dès
-              qu&apos;il ajoute son IBAN, le webhook rattrape tous ses versements
+              qu&apos;il / elle ajoute son IBAN, le webhook rattrape tous ses versements
               en attente. Relance-le si ça dure.
             </p>
           </div>

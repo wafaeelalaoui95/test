@@ -34,7 +34,7 @@ const CONTENT: Record<'fr' | 'en', {
       {
         icon: Eye,
         tone: 'plain',
-        title: 'Le voyageur doit toujours savoir ce qu’il transporte',
+        title: 'Le voyageur doit toujours savoir ce qu’il / elle transporte',
         body: 'L’objet doit être décrit précisément et correspondre exactement à ce qui est annoncé. Vous pouvez toujours le voir et poser des questions avant d’accepter.',
       },
       {
@@ -86,7 +86,7 @@ const CONTENT: Record<'fr' | 'en', {
         icon: ShieldCheck,
         tone: 'good',
         title: 'Droit de refus sans pénalité',
-        body: 'Le voyageur peut refuser ou annuler sans pénalité si l’objet ne correspond pas à la description, s’il est fermé/scellé, si l’inspection est refusée, si l’objet semble interdit ou risqué, ou s’il n’est tout simplement pas à l’aise.',
+        body: 'Le voyageur peut refuser ou annuler sans pénalité si l’objet ne correspond pas à la description, s’il est fermé/scellé, si l’inspection est refusée, si l’objet semble interdit ou risqué, ou s’il / elle n’est tout simplement pas à l’aise.',
       },
       {
         icon: Flag,

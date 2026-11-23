@@ -1219,7 +1219,7 @@ export function tripMatchSenderEmail(input: {
     body: late
       ? `Vous vouliez envoyer ${itemFr} de ${input.requestPickupCity} à ${input.tripArrivalCity} avant le ${reqDateFr}. Ce voyageur fait exactement ce trajet, ${n} jour${n > 1 ? 's' : ''} plus tard. Si votre envoi peut encore attendre un peu, mieux vaut tard que jamais !`
       : nearby
-      ? `Vous attendez quelqu’un pour envoyer ${itemFr} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Personne ne part de ${input.requestPickupCity} pour l’instant, mais ce voyageur part de ${input.tripDepartureCity}. Si vous pouvez faire parvenir votre colis à ${input.tripDepartureCity} avant son départ, il peut l’emporter.`
+      ? `Vous attendez quelqu’un pour envoyer ${itemFr} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Personne ne part de ${input.requestPickupCity} pour l’instant, mais ce voyageur part de ${input.tripDepartureCity}. Si vous pouvez faire parvenir votre colis à ${input.tripDepartureCity} avant son départ, il / elle peut l’emporter.`
       : `Vous attendez quelqu’un pour envoyer ${itemFr} de ${input.requestPickupCity} à ${input.tripArrivalCity}. Ce voyageur fait exactement ce trajet.`,
     ask: late ? 'Toujours intéressé(e) ? Réservez le trajet.' : nearby ? 'Ça vous intéresse ?' : 'Vous voulez lui confier votre colis ?',
     cta: 'Voir le trajet et réserver',
