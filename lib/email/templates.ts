@@ -1500,38 +1500,44 @@ export function unfinishedPaymentEmail(input: {
   travelerFirstName: string | null;
   /** ISO timestamp of the attempt. */
   attemptedAt: string;
-  /** Where "Reprendre ma réservation" leads, or null when the trip is gone. */
+  /** Where "Finaliser ma réservation" leads, or null when the trip is gone. */
   resumePath: string | null;
 }) {
   const hello = input.firstName ? `Bonjour ${input.firstName},` : 'Bonjour,';
-  const date = new Intl.DateTimeFormat('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'Europe/Paris',
-  }).format(new Date(input.attemptedAt));
   const route =
     input.pickupCity && input.destinationCity ? ` de ${input.pickupCity} à ${input.destinationCity}` : '';
   const withWho = input.travelerFirstName ? ` avec ${input.travelerFirstName}` : '';
 
-  const intro = `Le ${date}, vous avez commencé à réserver l’envoi d’un colis${route}${withWho}, mais le paiement n’est pas allé jusqu’au bout. Rassurez-vous : rien n’a été débité.`;
-  const found = 'Avez-vous déjà trouvé une solution pour votre colis ? Si c’est le cas, tant mieux : vous n’avez rien à faire.';
-  const problem =
-    'Sinon, si quelque chose vous a bloqué (un paiement refusé, une question sur le fonctionnement, un doute…), répondez simplement à cet e-mail ou écrivez-nous à contact@jibly.io. Nous vous aidons à finaliser votre envoi.';
-  const cta = input.resumePath ? 'Reprendre ma réservation' : 'Voir les trajets disponibles';
+  const intro = `Vous avez récemment commencé à réserver l’envoi de votre colis${route}${withWho}, mais votre réservation n’a pas encore été finalisée.`;
+  const lead = 'Avec Jibly, envoyez vos colis en toute sérénité.';
+  const why =
+    'Nous avons conçu notre plateforme pour rendre vos envois entre la France et le Maroc plus simples, plus accessibles et plus sécurisés :';
+  const points: [string, string][] = [
+    ['Identités vérifiées', 'pour savoir à qui vous confiez votre colis.'],
+    ['Paiement sécurisé', 'pour réserver en toute confiance.'],
+    ['Accompagnement personnalisé', 'notre équipe reste à votre disposition tout au long de votre envoi.'],
+  ];
+  const help =
+    'Une question, une hésitation ou un problème lors de votre réservation ? Envoyez un e-mail à contact@jibly.io.';
+  // When the trip is gone there is nothing left to finalise: show the trips.
+  const cta = input.resumePath ? 'Finaliser ma réservation' : 'Voir les trajets disponibles';
   const url = `${BASE_URL}${input.resumePath ?? '/'}`;
+  const bye = 'À très bientôt sur Jibly !';
 
   const p = (html: string) =>
     `<p style="margin:0 0 14px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">${html}</p>`;
 
   const content = `
-    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Votre réservation</p>
-    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">Votre réservation n’a pas été finalisée</h1>
     ${p(escapeHtml(hello))}
     ${p(escapeHtml(intro))}
-    ${p(escapeHtml(found))}
-    ${p(
-      `Sinon, si quelque chose vous a bloqué (un paiement refusé, une question sur le fonctionnement, un doute…), répondez simplement à cet e-mail ou écrivez-nous à <a href="mailto:contact@jibly.io" style="color:${BRAND.ink};font-weight:600;">contact@jibly.io</a>. Nous vous aidons à finaliser votre envoi.`
-    )}
+    ${p(`<strong style="color:${BRAND.ink};">${escapeHtml(lead)}</strong>`)}
+    ${p(escapeHtml(why))}
+    <ul style="margin:0 0 14px;padding-left:20px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
+      ${points
+        .map(([k, v]) => `<li style="margin:0 0 6px;"><strong style="color:${BRAND.ink};">${escapeHtml(k)}</strong> : ${escapeHtml(v)}</li>`)
+        .join('')}
+    </ul>
+    ${p(`Une question, une hésitation ou un problème lors de votre réservation ? Envoyez un e-mail à <a href="mailto:contact@jibly.io" style="color:${BRAND.ink};font-weight:600;">contact@jibly.io</a>.`)}
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px auto 24px;">
       <tr>
         <td style="background:${BRAND.ink};border-radius:999px;">
@@ -1539,12 +1545,15 @@ export function unfinishedPaymentEmail(input: {
         </td>
       </tr>
     </table>
-    <p style="margin:0;font-size:15px;color:${BRAND.inkSoft};">— L’équipe Jibly</p>
+    ${p(escapeHtml(bye))}
+    <p style="margin:0;font-size:15px;color:${BRAND.inkSoft};">L’équipe Jibly</p>
   `;
 
   return {
     subject: 'Votre réservation n’a pas été finalisée',
-    html: wrapHtml(content, 'Rien n’a été débité. Avez-vous trouvé une solution pour votre colis ?', 'fr'),
-    text: `${hello}\n\n${intro}\n\n${found}\n\n${problem}\n\n${cta} : ${url}\n\n— L’équipe Jibly`,
+    html: wrapHtml(content, lead, 'fr'),
+    text: `${hello}\n\n${intro}\n\n${lead}\n\n${why}\n\n${points
+      .map(([k, v]) => `- ${k} : ${v}`)
+      .join('\n')}\n\n${help}\n\n${cta} : ${url}\n\n${bye}\nL’équipe Jibly`,
   };
 }

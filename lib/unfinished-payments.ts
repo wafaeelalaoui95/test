@@ -183,7 +183,6 @@ export async function sendUnfinishedPaymentEmail(item: UnfinishedPayment): Promi
   const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: item.email,
-    replyTo: 'contact@jibly.io',
     subject: item.template.subject,
     html: item.template.html,
     text: item.template.text,

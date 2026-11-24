@@ -88,7 +88,7 @@ export function AdminUnfinishedPayments() {
       <p className="text-[13px] text-ink-400 leading-relaxed mb-4">
         Ces personnes ont commencé à payer une réservation ces 30 derniers jours sans aller au bout (lu
         directement dans Stripe). Rien ne leur a été débité. Un seul e-mail par personne, jamais deux
-        fois ; les réponses arrivent sur contact@jibly.io.
+        fois. Les questions arrivent sur contact@jibly.io.
       </p>
       {sentTo && <p className="text-[13px] text-mint-500 mb-3">E-mail envoyé à {sentTo}.</p>}
       {error && <p className="text-[13px] text-blush-500 mb-3">{error}</p>}
