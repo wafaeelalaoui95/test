@@ -38,12 +38,14 @@ import { userMessage } from '@/lib/user-error';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { browser } from '@/lib/supabase/queries';
 import type { AvailableSpace } from '@/lib/types';
+import type { TravelerTripRow } from '@/lib/supabase/types';
 import type { MatchingRequest } from '@/lib/supabase/queries';
 
 // Two modes mirroring /envoyer:
 //   - "choose" : search bar → existing shipping_requests → instant propose
 //   - "public" : full wizard to publish a regular trip
 type Mode = 'choose' | 'public';
+type Leg = 'out' | 'ret';
 
 // Persist the in-progress trip form so it survives the identity-verification
 // round-trip (a full redirect to Stripe and back). Expires after 24h so a
@@ -62,7 +64,7 @@ function loadVoyagerDraft(): any {
 }
 
 export default function VoyagerPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const gate = useIdentityGate();
@@ -81,6 +83,12 @@ export default function VoyagerPage() {
   const [toCountry, setToCountry] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+
+  // One way / round trip. A round trip is saved as two trips: the outbound
+  // one, and the return one (To → From) on returnDate.
+  const [roundTrip, setRoundTrip] = useState(false);
+  const [returnDate, setReturnDate] = useState('');
+  const hasReturn = roundTrip && !!returnDate;
 
   // "I can pick up / drop off in nearby cities" — extra cities around each end.
   const [nearbyEnabled, setNearbyEnabled] = useState(false);
@@ -104,10 +112,14 @@ export default function VoyagerPage() {
 
   // ---- Live preview ----
   const [previewRequests, setPreviewRequests] = useState<MatchingRequest[]>([]);
+  // Parcels on the return leg (To → From on returnDate), round trips only.
+  const [previewReturn, setPreviewReturn] = useState<MatchingRequest[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
 
   // ---- Instant-propose modal state ----
   const [requestToHelp, setRequestToHelp] = useState<MatchingRequest | null>(null);
+  // Which leg the request being answered is on.
+  const [requestLeg, setRequestLeg] = useState<Leg>('out');
   // Track which requests this user has already proposed help to in this
   // session. We use this to lock their cards visually so the traveler
   // can continue browsing and proposing to other requests on the same
@@ -116,7 +128,8 @@ export default function VoyagerPage() {
   // The first proposal of the session creates a minimal traveler_trip.
   // Subsequent proposals on the same flight reuse that trip's id, so we
   // don't end up with N duplicate draft trips in the DB for one flight.
-  const [createdTripId, setCreatedTripId] = useState<string | null>(null);
+  // One per leg: a return-leg proposal must not reuse the outbound trip.
+  const [createdTripIds, setCreatedTripIds] = useState<Record<Leg, string | null>>({ out: null, ret: null });
 
   // ---- Public wizard state ----
   const [step, setStep] = useState(0);
@@ -142,31 +155,36 @@ export default function VoyagerPage() {
     );
   }
 
-  // Live preview: as soon as route + date are filled, fetch matching requests.
+  // Live preview: as soon as route + date are filled, fetch matching requests
+  // — and, on a round trip with a return date, those on the way back too.
   // Flight number is gated separately at the propose-button level.
   useEffect(() => {
     if (mode !== 'choose') return;
     if (!fromCity || !toCity || !date) {
       setPreviewRequests([]);
+      setPreviewReturn([]);
       return;
     }
     let cancelled = false;
     setPreviewLoading(true);
     const handle = setTimeout(() => {
-      browser
-        .listMatchingRequestsForTrip(
-          [fromCity, ...fromCities],
-          [toCity, ...toCities],
-          date,
-          user?.id || null
-        )
-        .then((requests) => {
+      const me = user?.id || null;
+      const out = browser.listMatchingRequestsForTrip([fromCity, ...fromCities], [toCity, ...toCities], date, me);
+      const ret = hasReturn
+        ? browser.listMatchingRequestsForTrip([toCity, ...toCities], [fromCity, ...fromCities], returnDate, me)
+        : Promise.resolve([] as MatchingRequest[]);
+      Promise.all([out, ret])
+        .then(([o, r]) => {
           if (cancelled) return;
-          setPreviewRequests(requests);
+          setPreviewRequests(o);
+          setPreviewReturn(r);
         })
         .catch((e) => {
           console.warn('[voyager] preview failed:', e);
-          if (!cancelled) setPreviewRequests([]);
+          if (!cancelled) {
+            setPreviewRequests([]);
+            setPreviewReturn([]);
+          }
         })
         .finally(() => {
           if (!cancelled) setPreviewLoading(false);
@@ -177,7 +195,7 @@ export default function VoyagerPage() {
       clearTimeout(handle);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromCity, toCity, date, mode, fromCities.join('|'), toCities.join('|')]);
+  }, [fromCity, toCity, date, mode, fromCities.join('|'), toCities.join('|'), hasReturn, returnDate]);
 
   // Restore a draft saved before an identity-verification redirect. Done in
   // an effect (not in useState initialisers) to avoid an SSR/client hydration
@@ -192,6 +210,8 @@ export default function VoyagerPage() {
       setToCountry(d.toCountry ?? '');
       setDate(d.date ?? '');
       setTime(d.time ?? '');
+      setRoundTrip(d.roundTrip ?? false);
+      setReturnDate(d.returnDate ?? '');
       setNearbyEnabled(d.nearbyEnabled ?? false);
       setExtraFrom(d.extraFrom ?? []);
       setExtraTo(d.extraTo ?? []);
@@ -220,7 +240,7 @@ export default function VoyagerPage() {
         JSON.stringify({
           _ts: Date.now(),
           mode, step, fromCity, fromCountry, toCity, toCountry, date, time,
-          nearbyEnabled, extraFrom, extraTo,
+          nearbyEnabled, extraFrom, extraTo, roundTrip, returnDate,
           flightNumber, departureAirport, arrivalAirport, showAirportCodes,
           space, minComp, acceptedCategories, terms,
         })
@@ -229,12 +249,50 @@ export default function VoyagerPage() {
       /* ignore quota / private-mode errors */
     }
   }, [draftRestored, mode, step, fromCity, fromCountry, toCity, toCountry, date, time,
-      nearbyEnabled, extraFrom, extraTo,
+      nearbyEnabled, extraFrom, extraTo, roundTrip, returnDate,
       flightNumber, departureAirport, arrivalAirport, showAirportCodes,
       space, minComp, acceptedCategories, terms]);
 
+  // The route, date and flight fields of one leg, ready for createTrip. The
+  // return leg swaps every pair; the flight number and time typed on the page
+  // are the outbound flight's, so the return leg leaves them empty.
+  function legFields(leg: Leg) {
+    const outbound = {
+      departure_country: fromCountry,
+      departure_city: fromCity,
+      arrival_country: toCountry,
+      arrival_city: toCity,
+      departure_date: date,
+      flight_time: time || null,
+      flight_number: flightNumber.trim()
+        ? flightNumber.trim().toUpperCase().replace(/\s+/g, ' ')
+        : null,
+      departure_airport: departureAirport.trim().toUpperCase() || null,
+      arrival_airport: arrivalAirport.trim().toUpperCase() || null,
+      ...extraCityColumns,
+    };
+    if (leg === 'out') return outbound;
+    return {
+      departure_country: toCountry,
+      departure_city: toCity,
+      arrival_country: fromCountry,
+      arrival_city: fromCity,
+      departure_date: returnDate,
+      flight_time: null,
+      flight_number: null,
+      departure_airport: outbound.arrival_airport,
+      arrival_airport: outbound.departure_airport,
+      ...(toCities.length ? { extra_departure_cities: toCities } : {}),
+      ...(fromCities.length ? { extra_arrival_cities: fromCities } : {}),
+    };
+  }
+
   const canNext = () => {
-    if (step === 0) return fromCity && toCity && date && isValidFlightNumber(flightNumber);
+    if (step === 0)
+      return (
+        fromCity && toCity && date && isValidFlightNumber(flightNumber) &&
+        (!roundTrip || (!!returnDate && returnDate >= date))
+      );
     if (step === 1) return acceptedCategories.length > 0 && minComp >= MIN_COMPENSATION_EUR;
     if (step === 2) return terms;
     return false;
@@ -262,39 +320,31 @@ export default function VoyagerPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      const trip = await browser.createTrip({
-        user_id: user.id,
-        departure_country: fromCountry,
-        departure_city: fromCity,
-        arrival_country: toCountry,
-        arrival_city: toCity,
-        departure_date: date,
-        arrival_date: null,
-        compensation_min: minComp,
-        compensation_max: null,
-        available_weight_kg: null,
-        available_space: space ?? 'pochette',
-        flight_time: time || null,
-        flight_number: flightNumber.trim()
-          ? flightNumber.trim().toUpperCase().replace(/\s+/g, ' ')
-          : null,
-        departure_airport: departureAirport.trim().toUpperCase() || null,
-        arrival_airport: arrivalAirport.trim().toUpperCase() || null,
-        notes: JSON.stringify({ accepted_categories: acceptedCategories }),
-        accepted_categories: acceptedCategories,
-        ...extraCityColumns,
-        terms_agreed_at: new Date().toISOString(),
-        status: 'open',
-      });
-      // Queue "a traveller is on your route" alerts for senders waiting on this
-      // corridor. Nothing is emailed here — the operator reviews each one on
-      // /admin. Fire-and-forget: a failure must not undo a published trip.
-      if (trip?.id) {
-        fetch('/api/trip/announce', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tripId: trip.id }),
-        }).catch(() => {});
+      const legs: Leg[] = hasReturn ? ['out', 'ret'] : ['out'];
+      for (const leg of legs) {
+        const trip = await browser.createTrip({
+          user_id: user.id,
+          ...legFields(leg),
+          arrival_date: null,
+          compensation_min: minComp,
+          compensation_max: null,
+          available_weight_kg: null,
+          available_space: space ?? 'pochette',
+          notes: JSON.stringify({ accepted_categories: acceptedCategories }),
+          accepted_categories: acceptedCategories,
+          terms_agreed_at: new Date().toISOString(),
+          status: 'open',
+        });
+        // Queue "a traveller is on your route" alerts for senders waiting on
+        // this corridor. Nothing is emailed here — the operator reviews each
+        // one on /admin. Fire-and-forget: a failure must not undo a published trip.
+        if (trip?.id) {
+          fetch('/api/trip/announce', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tripId: trip.id }),
+          }).catch(() => {});
+        }
       }
       // Trip published — clear the saved draft so it doesn't resurface.
       try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
@@ -359,7 +409,7 @@ export default function VoyagerPage() {
   // =========================================================================
   if (mode === 'choose') {
     const hasRouteAndDate = fromCity && toCity && date;
-    const hasResults = previewRequests.length > 0;
+    const hasResults = previewRequests.length > 0 || previewReturn.length > 0;
 
     return (
       <div className="min-h-screen py-12 lg:py-20">
@@ -409,6 +459,8 @@ export default function VoyagerPage() {
               </Link>
             </motion.div>
           )}
+
+          <TripTypeToggle roundTrip={roundTrip} onChange={setRoundTrip} className="mb-3" />
 
           {/* Horizontal search bar */}
           <div className="bg-white rounded-3xl shadow-[0_8px_40px_-12px_rgba(24,20,16,0.10)] border border-ink-50/60 p-2">
@@ -463,6 +515,28 @@ export default function VoyagerPage() {
                   />
                 </div>
               </div>
+
+              {roundTrip && (
+                <>
+                  <div className="hidden md:block w-px bg-ink-50 my-3 flex-shrink-0" />
+                  <div className="relative px-5 py-3.5 rounded-2xl hover:bg-cream-50/60 transition-colors text-start flex-1 min-w-0">
+                    <label className="block text-[11px] font-semibold text-ink-500 tracking-[0.08em] uppercase mb-1.5">
+                      {t.voy_return_date_label}
+                    </label>
+                    <div className="relative">
+                      <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
+                      <input
+                        type="date"
+                        value={returnDate}
+                        onChange={(e) => setReturnDate(e.target.value)}
+                        onClick={openPickerOnClick}
+                        min={date || new Date().toISOString().slice(0, 10)}
+                        className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -581,35 +655,60 @@ export default function VoyagerPage() {
               </div>
             ) : hasResults ? (
               <div>
+                {(hasReturn
+                  ? ([['out', previewRequests], ['ret', previewReturn]] as const)
+                  : ([['out', previewRequests]] as const)
+                ).map(([leg, list]) => (
+                  <div key={leg} className={leg === 'ret' ? 'mt-8' : ''}>
+                    {hasReturn && (
+                      <div className="text-[11px] font-semibold text-ink-400 tracking-[0.08em] uppercase mb-2">
+                        {(leg === 'out' ? t.voy_leg_outbound : t.voy_leg_return)}
+                        {' · '}
+                        {leg === 'out'
+                          ? `${cityDisplayName(fromCity, locale)} → ${cityDisplayName(toCity, locale)}`
+                          : `${cityDisplayName(toCity, locale)} → ${cityDisplayName(fromCity, locale)}`}
+                      </div>
+                    )}
+                    {list.length === 0 ? (
+                      <p className="text-[13px] text-ink-400">{t.voy_leg_none}</p>
+                    ) : (
+                <>
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="w-4 h-4 text-lavender-500" />
                   <p className="text-[14px] font-semibold text-ink-600">
-                    {previewRequests.length === 1
+                    {list.length === 1
                       ? t.voy_senders_searching_one
-                      : t.voy_senders_searching_other.replace('{count}', String(previewRequests.length))}
+                      : t.voy_senders_searching_other.replace('{count}', String(list.length))}
                   </p>
                   <span className="text-[13px] text-ink-400">{t.voy_on_your_route}</span>
                 </div>
                 <div className="space-y-2.5">
-                  {previewRequests.slice(0, 8).map((req) => (
+                  {list.slice(0, 8).map((req) => (
                     <RequestHelpableCard
                       key={req.id}
                       request={req}
                       onPropose={() => {
                         // Identity is still required — that one is about who
                         // is carrying the parcel, not about getting paid.
-                        if (gate.ensureVerified()) setRequestToHelp(req);
+                        if (gate.ensureVerified()) {
+                          setRequestLeg(leg);
+                          setRequestToHelp(req);
+                        }
                       }}
                       flightNumberRequired={!isValidFlightNumber(flightNumber)}
                       alreadyProposed={proposedRequestIds.includes(req.id)}
                     />
                   ))}
-                  {previewRequests.length > 8 && (
+                  {list.length > 8 && (
                     <p className="text-[12px] text-ink-400 text-center pt-2">
-                      {t.voy_more_requests.replace('{count}', String(previewRequests.length - 8))}
+                      {t.voy_more_requests.replace('{count}', String(list.length - 8))}
                     </p>
                   )}
                 </div>
+                </>
+                    )}
+                  </div>
+                ))}
 
                 {/* Fallback: publish a full trip instead. */}
                 <div className="mt-6 pt-6 border-t border-ink-100">
@@ -651,19 +750,10 @@ export default function VoyagerPage() {
             <InstantProposeModal
               request={requestToHelp}
               travelerId={user.id}
-              fromCity={fromCity}
-              fromCountry={fromCountry}
-              toCity={toCity}
-              toCountry={toCountry}
-              date={date}
-              time={time}
-              flightNumber={flightNumber}
-              departureAirport={departureAirport}
-              arrivalAirport={arrivalAirport}
-              extraCityColumns={extraCityColumns}
-              // Reuse the same trip for all proposals on this flight, so
-              // we don't end up with N draft trips for the same journey.
-              existingTripId={createdTripId}
+              tripFields={legFields(requestLeg)}
+              // Reuse the same trip for all proposals on this leg, so we
+              // don't end up with N draft trips for the same journey.
+              existingTripId={createdTripIds[requestLeg]}
               onClose={() => setRequestToHelp(null)}
               onSuccess={(proposedId, tripId) => {
                 // Stay on the page so the traveler can keep proposing to
@@ -671,8 +761,8 @@ export default function VoyagerPage() {
                 setProposedRequestIds((prev) =>
                   prev.includes(proposedId) ? prev : [...prev, proposedId]
                 );
-                if (tripId && !createdTripId) {
-                  setCreatedTripId(tripId);
+                if (tripId && !createdTripIds[requestLeg]) {
+                  setCreatedTripIds((prev) => ({ ...prev, [requestLeg]: tripId }));
                 }
                 setRequestToHelp(null);
               }}
@@ -731,6 +821,7 @@ export default function VoyagerPage() {
               {step === 0 && (
                 <div className="space-y-5">
                   <h2 className="text-xl font-bold text-ink-600 tracking-[-0.015em]">{t.trip_route_title}</h2>
+                  <TripTypeToggle roundTrip={roundTrip} onChange={setRoundTrip} />
                   <div className="grid sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[13px] font-medium text-ink-500 mb-2">{t.send_label_from}</label>
@@ -782,6 +873,17 @@ export default function VoyagerPage() {
                       onChange={(e) => setTime(e.target.value)}
                     />
                   </div>
+                  {roundTrip && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        type="date"
+                        label={t.voy_return_date_label}
+                        value={returnDate}
+                        onChange={(e) => setReturnDate(e.target.value)}
+                        min={date || new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                  )}
 
                   <div className="pt-2">
                     <div className="text-[13px] font-semibold text-ink-500 mb-3 flex items-center gap-2">
@@ -1020,6 +1122,40 @@ export default function VoyagerPage() {
 }
 
 // =============================================================================
+// TripTypeToggle — "One way" / "Round trip", above the From / To fields.
+// =============================================================================
+function TripTypeToggle({
+  roundTrip,
+  onChange,
+  className = '',
+}: {
+  roundTrip: boolean;
+  onChange: (v: boolean) => void;
+  className?: string;
+}) {
+  const { t } = useI18n();
+  const opt = (value: boolean, label: string) => (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={roundTrip === value}
+      onClick={() => onChange(value)}
+      className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-colors ${
+        roundTrip === value ? 'bg-ink-500 text-cream-50' : 'text-ink-500 hover:text-ink-600'
+      }`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div role="radiogroup" className={`inline-flex items-center gap-1 p-1 rounded-full bg-white border border-ink-100 ${className}`}>
+      {opt(false, t.voy_one_way)}
+      {opt(true, t.voy_round_trip)}
+    </div>
+  );
+}
+
+// =============================================================================
 // RequestHelpableCard — clickable card in the search results.
 // Two visual states:
 //   - default     : actionable, shows sender info + "Proposer" button
@@ -1141,34 +1277,17 @@ function RequestHelpableCard({
 function InstantProposeModal({
   request,
   travelerId,
-  fromCity,
-  fromCountry,
-  toCity,
-  toCountry,
-  date,
-  time,
-  flightNumber,
-  departureAirport,
-  arrivalAirport,
-  extraCityColumns,
+  tripFields,
   existingTripId,
   onClose,
   onSuccess,
 }: {
   request: MatchingRequest;
   travelerId: string;
-  fromCity: string;
-  fromCountry: string;
-  toCity: string;
-  toCountry: string;
-  date: string;
-  time: string;
-  flightNumber: string;
-  departureAirport: string;
-  arrivalAirport: string;
-  extraCityColumns: { extra_departure_cities?: string[]; extra_arrival_cities?: string[] };
-  // If the user has already proposed once during this session, the trip
-  // already exists — we reuse it instead of creating a new draft.
+  // Route, date and flight fields of the leg this request is on (legFields).
+  tripFields: Partial<TravelerTripRow>;
+  // If the user has already proposed once during this session on this leg,
+  // the trip already exists — we reuse it instead of creating a new draft.
   existingTripId: string | null;
   onClose: () => void;
   // Called after the booking_intent is successfully created. Receives the
@@ -1198,24 +1317,17 @@ function InstantProposeModal({
       if (!tripId) {
         const trip = await browser.createTrip({
           user_id: travelerId,
-          departure_country: fromCountry,
-          departure_city: fromCity,
-          arrival_country: toCountry,
-          arrival_city: toCity,
-          departure_date: date,
+          ...(tripFields as Required<Pick<TravelerTripRow, 'departure_country' | 'departure_city' | 'arrival_country' | 'arrival_city' | 'departure_date'>>),
           arrival_date: null,
           compensation_min: request.budget,
           compensation_max: null,
           available_weight_kg: null,
           available_space: 'pochette',
-          flight_time: time || null,
-          flight_number: flightNumber.trim()
-          ? flightNumber.trim().toUpperCase().replace(/\s+/g, ' ')
-          : null,
-          departure_airport: departureAirport.trim().toUpperCase() || null,
-          arrival_airport: arrivalAirport.trim().toUpperCase() || null,
+          flight_time: tripFields.flight_time ?? null,
+          flight_number: tripFields.flight_number ?? null,
+          departure_airport: tripFields.departure_airport ?? null,
+          arrival_airport: tripFields.arrival_airport ?? null,
           notes: null,
-          ...extraCityColumns,
           status: 'draft',
         });
         tripId = trip?.id || null;

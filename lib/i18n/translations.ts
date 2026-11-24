@@ -222,6 +222,12 @@ export type Translations = {
   voy_airport_codes_hide: string;
   voy_airport_codes_add: string;
   voy_nearby_toggle: string;
+  voy_one_way: string;
+  voy_round_trip: string;
+  voy_return_date_label: string;
+  voy_leg_outbound: string;
+  voy_leg_return: string;
+  voy_leg_none: string;
   voy_nearby_hint: string;
   voy_nearby_pickup_label: string;
   voy_nearby_dropoff_label: string;
@@ -1610,6 +1616,12 @@ export const translations: Record<Locale, Translations> = {
     voy_time_optional: 'Heure (optionnel)',
     voy_airport_codes_hide: 'Masquer les codes aéroports',
     voy_airport_codes_add: 'Ajouter les codes aéroports',
+    voy_one_way: 'Aller simple',
+    voy_round_trip: 'Aller-retour',
+    voy_return_date_label: 'Date retour',
+    voy_leg_outbound: 'Aller',
+    voy_leg_return: 'Retour',
+    voy_leg_none: 'Aucun colis sur ce trajet pour le moment.',
     voy_nearby_toggle: 'Je peux récupérer / déposer dans des villes proches',
     voy_nearby_hint: 'Ajoutez les villes autour de votre départ et de votre arrivée : les expéditeurs de ces villes verront votre trajet.',
     voy_nearby_pickup_label: 'Je peux aussi récupérer à',
@@ -2989,6 +3001,12 @@ export const translations: Record<Locale, Translations> = {
     voy_time_optional: 'Time (optional)',
     voy_airport_codes_hide: 'Hide airport codes',
     voy_airport_codes_add: 'Add airport codes',
+    voy_one_way: 'One way',
+    voy_round_trip: 'Round trip',
+    voy_return_date_label: 'Return date',
+    voy_leg_outbound: 'Outbound',
+    voy_leg_return: 'Return',
+    voy_leg_none: 'No parcels on this leg yet.',
     voy_nearby_toggle: 'I can pick up / drop off in nearby cities',
     voy_nearby_hint: 'Add the cities around your departure and arrival: senders in those cities will see your trip.',
     voy_nearby_pickup_label: 'I can also pick up in',
