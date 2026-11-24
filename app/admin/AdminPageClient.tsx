@@ -12,6 +12,7 @@ import { AdminOfferReminders } from '@/components/AdminOfferReminders';
 import { AdminTransactions } from '@/components/AdminTransactions';
 import { AdminBroadcast } from '@/components/AdminBroadcast';
 import { AdminCampaigns } from '@/components/AdminCampaigns';
+import { AdminUnfinishedPayments } from '@/components/AdminUnfinishedPayments';
 
 /**
  * Operator console — only the tools that read and act on real data.
@@ -24,12 +25,13 @@ import { AdminCampaigns } from '@/components/AdminCampaigns';
  * The last section picked is remembered per browser, as a convenience only.
  */
 
-type SectionId = 'transactions' | 'alerts' | 'offers' | 'disputes' | 'chats' | 'users' | 'money' | 'refund' | 'broadcast' | 'campaigns';
+type SectionId = 'transactions' | 'alerts' | 'offers' | 'disputes' | 'chats' | 'users' | 'money' | 'refund' | 'broadcast' | 'campaigns' | 'unpaid';
 
 const SECTIONS: { id: SectionId; label: string; hint: string; Component: ComponentType }[] = [
   { id: 'transactions', label: 'Transactions', hint: 'Tout, photos et statut', Component: AdminTransactions },
   { id: 'alerts', label: 'Alertes trajet', hint: 'Alertes à valider', Component: AdminMatchAlerts },
   { id: 'offers', label: 'Offres sans réponse', hint: 'Date limite aujourd’hui', Component: AdminOfferReminders },
+  { id: 'unpaid', label: 'Paiements non finalisés', hint: 'Relancer par e-mail', Component: AdminUnfinishedPayments },
   { id: 'disputes', label: 'Signalements', hint: 'Litiges à trancher', Component: AdminDisputes },
   { id: 'chats', label: 'Conversations', hint: 'Lire les chats', Component: AdminChats },
   { id: 'users', label: 'Utilisateurs', hint: 'Tous les comptes', Component: AdminUsers },

@@ -1485,3 +1485,66 @@ export function tripReminderBroadcastEmail(input: {
     text: `${fr.hello}\n\n${fr.title}\n\n${fr.p1}\n\n${fr.p2}\n\n${fr.p3}\n\n${fr.cta} : ${url}\n\n— L’équipe Jibly\n\nSe désabonner de ces rappels : ${input.unsubscribeUrl}`,
   };
 }
+
+// =============================================================================
+// Sender: a booking whose payment was started but never finished
+// =============================================================================
+// Sent by hand from /admin → « Paiements non finalisés », once per person.
+// The person entered a booking, reached the card form and stopped. Nothing was
+// charged. The email asks, without pressure, whether they found another way,
+// and opens the door if something blocked them. French only, like the rest.
+export function unfinishedPaymentEmail(input: {
+  firstName: string | null;
+  pickupCity: string | null;
+  destinationCity: string | null;
+  travelerFirstName: string | null;
+  /** ISO timestamp of the attempt. */
+  attemptedAt: string;
+  /** Where "Reprendre ma réservation" leads, or null when the trip is gone. */
+  resumePath: string | null;
+}) {
+  const hello = input.firstName ? `Bonjour ${input.firstName},` : 'Bonjour,';
+  const date = new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'Europe/Paris',
+  }).format(new Date(input.attemptedAt));
+  const route =
+    input.pickupCity && input.destinationCity ? ` de ${input.pickupCity} à ${input.destinationCity}` : '';
+  const withWho = input.travelerFirstName ? ` avec ${input.travelerFirstName}` : '';
+
+  const intro = `Le ${date}, vous avez commencé à réserver l’envoi d’un colis${route}${withWho}, mais le paiement n’est pas allé jusqu’au bout. Rassurez-vous : rien n’a été débité.`;
+  const found = 'Avez-vous déjà trouvé une solution pour votre colis ? Si c’est le cas, tant mieux : vous n’avez rien à faire.';
+  const problem =
+    'Sinon, si quelque chose vous a bloqué (un paiement refusé, une question sur le fonctionnement, un doute…), répondez simplement à cet e-mail ou écrivez-nous à contact@jibly.io. Nous vous aidons à finaliser votre envoi.';
+  const cta = input.resumePath ? 'Reprendre ma réservation' : 'Voir les trajets disponibles';
+  const url = `${BASE_URL}${input.resumePath ?? '/'}`;
+
+  const p = (html: string) =>
+    `<p style="margin:0 0 14px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">${html}</p>`;
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.lavender};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Votre réservation</p>
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">Votre réservation n’a pas été finalisée</h1>
+    ${p(escapeHtml(hello))}
+    ${p(escapeHtml(intro))}
+    ${p(escapeHtml(found))}
+    ${p(
+      `Sinon, si quelque chose vous a bloqué (un paiement refusé, une question sur le fonctionnement, un doute…), répondez simplement à cet e-mail ou écrivez-nous à <a href="mailto:contact@jibly.io" style="color:${BRAND.ink};font-weight:600;">contact@jibly.io</a>. Nous vous aidons à finaliser votre envoi.`
+    )}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px auto 24px;">
+      <tr>
+        <td style="background:${BRAND.ink};border-radius:999px;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(cta)}</a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0;font-size:15px;color:${BRAND.inkSoft};">— L’équipe Jibly</p>
+  `;
+
+  return {
+    subject: 'Votre réservation n’a pas été finalisée',
+    html: wrapHtml(content, 'Rien n’a été débité. Avez-vous trouvé une solution pour votre colis ?', 'fr'),
+    text: `${hello}\n\n${intro}\n\n${found}\n\n${problem}\n\n${cta} : ${url}\n\n— L’équipe Jibly`,
+  };
+}
