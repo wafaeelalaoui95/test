@@ -85,6 +85,11 @@ export interface TravelerTripRow {
   // other insert paths don't need to set them.
   accepted_categories?: string[] | null;
   terms_agreed_at?: string | null;
+  // Nearby cities where the traveller also accepts to pick up / drop off.
+  // Optional: absent on rows read before the 2026-11-24 migration, and only
+  // sent on insert when non-empty.
+  extra_departure_cities?: string[] | null;
+  extra_arrival_cities?: string[] | null;
 }
 
 export interface ShippingRequestRow {

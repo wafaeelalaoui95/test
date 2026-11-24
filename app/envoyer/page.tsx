@@ -1072,7 +1072,8 @@ function TripBookableCard({
             </span>
           </div>
           <div className="text-[11px] text-ink-300 mt-0.5">
-            {trip.departure_city} → {trip.arrival_city}
+            {[trip.departure_city, ...(trip.extra_departure_cities ?? [])].join(', ')} →{' '}
+            {[trip.arrival_city, ...(trip.extra_arrival_cities ?? [])].join(', ')}
           </div>
         </div>
         <button

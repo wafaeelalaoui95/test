@@ -244,6 +244,8 @@ export type MatchingTrip = {
   compensation_min: number;
   flight_number: string | null;
   available_space: AvailableSpace;
+  extra_departure_cities?: string[] | null;
+  extra_arrival_cities?: string[] | null;
   user: {
     id: string;
     full_name: string | null;
@@ -331,9 +333,9 @@ export async function listMatchingTripsTiered(
 
   let query = supabase
     .from('traveler_trips')
-    .select(
-      'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
-    )
+    // '*' rather than a column list: it picks up extra_departure_cities /
+    // extra_arrival_cities without failing on a database that predates them.
+    .select('*')
     .eq('departure_country', pickupCountry)
     .eq('arrival_country', destinationCountry)
     .gte('departure_date', today)
@@ -378,12 +380,13 @@ export async function listMatchingTripsTiered(
 
   return trips
     .map((t: any): TieredMatchingTrip => {
-      const dep = norm(t.departure_city);
-      const arr = norm(t.arrival_city);
+      // A nearby city the traveller added counts as theirs: they offered it.
+      const depOk = [t.departure_city, ...(t.extra_departure_cities ?? [])].some((c: string) => norm(c) === pc);
+      const arrOk = [t.arrival_city, ...(t.extra_arrival_cities ?? [])].some((c: string) => norm(c) === dc);
       let tier: MatchTier;
-      if (dep === pc && arr === dc) tier = 'exact';
-      else if (arr === dc) tier = 'from_country';
-      else if (dep === pc) tier = 'to_country';
+      if (depOk && arrOk) tier = 'exact';
+      else if (arrOk) tier = 'from_country';
+      else if (depOk) tier = 'to_country';
       else tier = 'both_country';
       return {
         ...(t as MatchingTrip),
@@ -484,8 +487,9 @@ export type MatchingRequest = {
 
 export async function listMatchingRequestsForTrip(
   supabase: SB,
-  departureCity: string,
-  arrivalCity: string,
+  // Main city first, then any nearby cities the traveller also serves.
+  departureCities: string[],
+  arrivalCities: string[],
   departureDate: string,
   excludeUserId?: string | null
 ): Promise<MatchingRequest[]> {
@@ -494,8 +498,8 @@ export async function listMatchingRequestsForTrip(
     .select(
       'id, user_id, pickup_city, destination_city, desired_delivery_date, budget, item_category, item_description, photo_url, created_at'
     )
-    .eq('pickup_city', departureCity)
-    .eq('destination_city', arrivalCity)
+    .in('pickup_city', departureCities.filter(Boolean))
+    .in('destination_city', arrivalCities.filter(Boolean))
     .gte('desired_delivery_date', departureDate)
     .eq('status', 'pending')
     .order('desired_delivery_date', { ascending: true })
@@ -1939,15 +1943,15 @@ export const browser = {
       excludeUserId
     ),
   listMatchingRequestsForTrip: (
-    departureCity: string,
-    arrivalCity: string,
+    departureCities: string[],
+    arrivalCities: string[],
     departureDate: string,
     excludeUserId?: string | null
   ) =>
     listMatchingRequestsForTrip(
       getBrowserClient(),
-      departureCity,
-      arrivalCity,
+      departureCities,
+      arrivalCities,
       departureDate,
       excludeUserId
     ),

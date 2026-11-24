@@ -22,6 +22,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate } from '@/components/IdentityGate';
 import { PayoutReminder, PayoutCountriesNotice } from '@/components/PayoutSetup';
+import { NearbyCitiesOption } from '@/components/NearbyCitiesOption';
 import {
   ITEM_CATEGORIES,
   MIN_COMPENSATION_EUR,
@@ -81,6 +82,20 @@ export default function VoyagerPage() {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
 
+  // "I can pick up / drop off in nearby cities" — extra cities around each end.
+  const [nearbyEnabled, setNearbyEnabled] = useState(false);
+  const [extraFrom, setExtraFrom] = useState<string[]>([]);
+  const [extraTo, setExtraTo] = useState<string[]>([]);
+  // What is actually saved and searched: nothing when the box is unticked.
+  const fromCities = nearbyEnabled ? extraFrom : [];
+  const toCities = nearbyEnabled ? extraTo : [];
+  // Spread into createTrip. Only present when non-empty, so publishing keeps
+  // working on a database that has not run the 2026-11-24 migration yet.
+  const extraCityColumns = {
+    ...(fromCities.length ? { extra_departure_cities: fromCities } : {}),
+    ...(toCities.length ? { extra_arrival_cities: toCities } : {}),
+  };
+
   // Flight details — required for credibility in both modes.
   const [flightNumber, setFlightNumber] = useState('');
   const [departureAirport, setDepartureAirport] = useState('');
@@ -139,7 +154,12 @@ export default function VoyagerPage() {
     setPreviewLoading(true);
     const handle = setTimeout(() => {
       browser
-        .listMatchingRequestsForTrip(fromCity, toCity, date, user?.id || null)
+        .listMatchingRequestsForTrip(
+          [fromCity, ...fromCities],
+          [toCity, ...toCities],
+          date,
+          user?.id || null
+        )
         .then((requests) => {
           if (cancelled) return;
           setPreviewRequests(requests);
@@ -156,7 +176,8 @@ export default function VoyagerPage() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [fromCity, toCity, date, mode]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromCity, toCity, date, mode, fromCities.join('|'), toCities.join('|')]);
 
   // Restore a draft saved before an identity-verification redirect. Done in
   // an effect (not in useState initialisers) to avoid an SSR/client hydration
@@ -171,6 +192,9 @@ export default function VoyagerPage() {
       setToCountry(d.toCountry ?? '');
       setDate(d.date ?? '');
       setTime(d.time ?? '');
+      setNearbyEnabled(d.nearbyEnabled ?? false);
+      setExtraFrom(d.extraFrom ?? []);
+      setExtraTo(d.extraTo ?? []);
       setFlightNumber(d.flightNumber ?? '');
       setDepartureAirport(d.departureAirport ?? '');
       setArrivalAirport(d.arrivalAirport ?? '');
@@ -196,6 +220,7 @@ export default function VoyagerPage() {
         JSON.stringify({
           _ts: Date.now(),
           mode, step, fromCity, fromCountry, toCity, toCountry, date, time,
+          nearbyEnabled, extraFrom, extraTo,
           flightNumber, departureAirport, arrivalAirport, showAirportCodes,
           space, minComp, acceptedCategories, terms,
         })
@@ -204,6 +229,7 @@ export default function VoyagerPage() {
       /* ignore quota / private-mode errors */
     }
   }, [draftRestored, mode, step, fromCity, fromCountry, toCity, toCountry, date, time,
+      nearbyEnabled, extraFrom, extraTo,
       flightNumber, departureAirport, arrivalAirport, showAirportCodes,
       space, minComp, acceptedCategories, terms]);
 
@@ -256,6 +282,7 @@ export default function VoyagerPage() {
         arrival_airport: arrivalAirport.trim().toUpperCase() || null,
         notes: JSON.stringify({ accepted_categories: acceptedCategories }),
         accepted_categories: acceptedCategories,
+        ...extraCityColumns,
         terms_agreed_at: new Date().toISOString(),
         status: 'open',
       });
@@ -439,6 +466,19 @@ export default function VoyagerPage() {
             </div>
           </div>
 
+          <div className="mt-4 bg-white rounded-2xl px-5 py-4 border border-ink-50">
+            <NearbyCitiesOption
+              enabled={nearbyEnabled}
+              onEnabledChange={setNearbyEnabled}
+              fromCity={fromCity}
+              toCity={toCity}
+              extraFrom={extraFrom}
+              extraTo={extraTo}
+              onExtraFromChange={setExtraFrom}
+              onExtraToChange={setExtraTo}
+            />
+          </div>
+
           {/* Flight details — required to propose to a request. Collected
               here so it carries over if the user falls back to publishing
               a full trip. */}
@@ -620,6 +660,7 @@ export default function VoyagerPage() {
               flightNumber={flightNumber}
               departureAirport={departureAirport}
               arrivalAirport={arrivalAirport}
+              extraCityColumns={extraCityColumns}
               // Reuse the same trip for all proposals on this flight, so
               // we don't end up with N draft trips for the same journey.
               existingTripId={createdTripId}
@@ -716,6 +757,16 @@ export default function VoyagerPage() {
                       />
                     </div>
                   </div>
+                  <NearbyCitiesOption
+                    enabled={nearbyEnabled}
+                    onEnabledChange={setNearbyEnabled}
+                    fromCity={fromCity}
+                    toCity={toCity}
+                    extraFrom={extraFrom}
+                    extraTo={extraTo}
+                    onExtraFromChange={setExtraFrom}
+                    onExtraToChange={setExtraTo}
+                  />
                   <div className="grid grid-cols-2 gap-3">
                     <Input
                       type="date"
@@ -1099,6 +1150,7 @@ function InstantProposeModal({
   flightNumber,
   departureAirport,
   arrivalAirport,
+  extraCityColumns,
   existingTripId,
   onClose,
   onSuccess,
@@ -1114,6 +1166,7 @@ function InstantProposeModal({
   flightNumber: string;
   departureAirport: string;
   arrivalAirport: string;
+  extraCityColumns: { extra_departure_cities?: string[]; extra_arrival_cities?: string[] };
   // If the user has already proposed once during this session, the trip
   // already exists — we reuse it instead of creating a new draft.
   existingTripId: string | null;
@@ -1162,6 +1215,7 @@ function InstantProposeModal({
           departure_airport: departureAirport.trim().toUpperCase() || null,
           arrival_airport: arrivalAirport.trim().toUpperCase() || null,
           notes: null,
+          ...extraCityColumns,
           status: 'draft',
         });
         tripId = trip?.id || null;

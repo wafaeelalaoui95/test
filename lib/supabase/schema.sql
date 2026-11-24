@@ -99,6 +99,12 @@ create index if not exists idx_traveler_trips_user on public.traveler_trips(user
 create index if not exists idx_traveler_trips_status on public.traveler_trips(status);
 create index if not exists idx_traveler_trips_route on public.traveler_trips(departure_city, arrival_city);
 
+-- Nearby cities the traveller also accepts for pickup / drop-off
+-- (migrations/2026-11-24-trip-nearby-cities.sql).
+alter table public.traveler_trips
+  add column if not exists extra_departure_cities text[] not null default '{}',
+  add column if not exists extra_arrival_cities   text[] not null default '{}';
+
 
 -- ============================================================================
 -- SHIPPING REQUESTS

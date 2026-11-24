@@ -156,8 +156,11 @@ export function HomeClient({
     // A side matches if the exact city matches OR (broaden) the row is in the
     // searched country. So "Paris → Tunis" also surfaces other France→Tunisia
     // trips instead of only the exact city pair.
-    const depExact = (tv: TripWithProfile) => !activeFrom || cityHit(tv.departure_city, activeFrom);
-    const arrExact = (tv: TripWithProfile) => !activeTo || cityHit(tv.arrival_city, activeTo);
+    // Nearby cities the traveller added count as their own cities.
+    const depExact = (tv: TripWithProfile) =>
+      !activeFrom || [tv.departure_city, ...(tv.extra_departure_cities ?? [])].some((c) => cityHit(c, activeFrom));
+    const arrExact = (tv: TripWithProfile) =>
+      !activeTo || [tv.arrival_city, ...(tv.extra_arrival_cities ?? [])].some((c) => cityHit(c, activeTo));
     const out = trips.filter((tv) => {
       // Hide the user's own trips — they're not going to book themselves.
       // Anonymous users see everything (user is null).
