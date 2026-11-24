@@ -249,6 +249,13 @@ export function PayoutCountriesNotice({ className }: { className?: string }) {
   // thirty-two names long. Folded away by default so the one sentence that
   // matters to most people stays one sentence.
   const [open, setOpen] = useState(false);
+  // Someone who has already set up their payouts knows where the money lands:
+  // the notice is for those who have not. A bank on file or a finished
+  // onboarding counts too, while Stripe is still verifying the account.
+  const { profile } = useAuth();
+  const { payoutsEnabled, loading } = usePayoutStatus();
+  const payoutsSetUp =
+    payoutsEnabled || !!profile?.stripe_bank_fingerprint || !!profile?.stripe_onboarded_at;
 
   useEffect(() => {
     try {
@@ -260,7 +267,7 @@ export function PayoutCountriesNotice({ className }: { className?: string }) {
     }
   }, []);
 
-  if (dismissed) return null;
+  if (dismissed || payoutsSetUp || loading) return null;
 
   function close() {
     setDismissed(true);
