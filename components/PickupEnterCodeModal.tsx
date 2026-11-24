@@ -51,7 +51,8 @@ export function PickupEnterCodeModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  /** Receives the code that passed, for the 'delivery-check' flow. */
+  onSuccess: (code: string) => void;
   bookingId: string;
   // In `delivery` mode, this is actually the SENDER's id (passed under
   // the same name to keep the type signature compatible with existing
@@ -60,7 +61,10 @@ export function PickupEnterCodeModal({
   // In `delivery` mode this is the TRAVELER's name (the user typing is
   // the sender; the name shown is whose code they're entering).
   senderName: string;
-  mode?: 'pickup' | 'delivery';
+  // 'delivery-check': same screen as 'delivery', but only CHECKS the code
+  // (POST /api/delivery/check-code) — the first step of « J'ai livré », before
+  // the photo. The payment is released once the photo is up.
+  mode?: 'pickup' | 'delivery' | 'delivery-check';
 }) {
   const { t } = useI18n();
   const [code, setCode] = useState('');
@@ -68,7 +72,7 @@ export function PickupEnterCodeModal({
   const [error, setError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
 
-  const isDelivery = mode === 'delivery';
+  const isDelivery = mode !== 'pickup';
 
   const title = isDelivery ? t.pickup_enter_title_delivery : t.pickup_enter_title_pickup;
 
@@ -81,11 +85,20 @@ export function PickupEnterCodeModal({
     setBusy(true);
     setError(null);
     try {
-      const res = isDelivery
-        ? await browser.confirmDeliveryWithCode(bookingId, value, travelerId)
-        : await browser.confirmPickupWithCode(bookingId, value, travelerId);
+      const res =
+        mode === 'delivery-check'
+          ? await fetch('/api/delivery/check-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bookingIntentId: bookingId, code: value }),
+            })
+              .then((r) => r.json())
+              .catch(() => ({ ok: false, reason: 'unexpected' }))
+          : isDelivery
+            ? await browser.confirmDeliveryWithCode(bookingId, value, travelerId)
+            : await browser.confirmPickupWithCode(bookingId, value, travelerId);
       if (res.ok) {
-        onSuccess();
+        onSuccess(value);
         setCode('');
         setAttempts(0);
       } else {

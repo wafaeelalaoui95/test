@@ -680,11 +680,15 @@ export default function MyPage(
                   incomingIntents={incomingIntents}
                   myProposals={myProposals}
                   onUpdateIntent={handleUpdateIntent}
-                  onProofUploaded={(id, url, receiverName) => {
+                  onProofUploaded={(id, url, receiverName, received) => {
+                    const now = new Date().toISOString();
                     const patch = {
                       delivery_proof_url: url,
-                      delivery_proof_uploaded_at: new Date().toISOString(),
+                      delivery_proof_uploaded_at: now,
                       delivery_proof_receiver_name: receiverName || null,
+                      // The code was given before the photo: the payment is
+                      // already released, skip the "Confirm delivery" step.
+                      ...(received ? { received_confirmed_at: now, payment_status: 'captured' as const } : {}),
                     };
                     // The row lives in incomingIntents (sender-booked) OR
                     // myProposals (traveler-initiated, now accepted); patch by
@@ -1996,7 +2000,7 @@ function MatchesTab({
   intents: IncomingIntent[];
   myProposals: TravelerProposal[];
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
-  onProofUploaded: (id: string, url: string, receiverName: string) => void;
+  onProofUploaded: (id: string, url: string, receiverName: string, received?: boolean) => void;
   t: Translations;
 }) {
   // Three groups for incoming requests (initiated by senders):
@@ -2115,7 +2119,7 @@ function IntentCard({
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
-  onProofUploaded: (id: string, url: string, receiverName: string) => void;
+  onProofUploaded: (id: string, url: string, receiverName: string, received?: boolean) => void;
   onOpenChat?: (intent: IncomingIntent) => void;
   historic?: boolean;
   showDeliverButton?: boolean;
@@ -3692,7 +3696,7 @@ function TripsView({
   incomingIntents: IncomingIntent[];
   myProposals: TravelerProposal[];
   onUpdateIntent: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
-  onProofUploaded: (id: string, url: string, receiverName: string) => void;
+  onProofUploaded: (id: string, url: string, receiverName: string, received?: boolean) => void;
   onTripCancelled: (tripId: string) => void;
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
@@ -4094,7 +4098,7 @@ function TripDetailCard({
     | { kind: 'proposal'; row: TravelerProposal }
   >;
   onUpdateIntent: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
-  onProofUploaded: (id: string, url: string, receiverName: string) => void;
+  onProofUploaded: (id: string, url: string, receiverName: string, received?: boolean) => void;
   onTripCancelled: (tripId: string) => void;
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
@@ -4498,7 +4502,7 @@ function IntentCardInline({
 }: {
   intent: IncomingIntent;
   onUpdate: (id: string, status: 'confirmed' | 'cancelled') => Promise<void>;
-  onProofUploaded: (id: string, url: string, receiverName: string) => void;
+  onProofUploaded: (id: string, url: string, receiverName: string, received?: boolean) => void;
   onOpenChat: (intent: IncomingIntent) => void;
   onReportProblem: (intent: IncomingIntent) => void;
   onEnterPickupCode: (intent: IncomingIntent) => void;
@@ -4526,9 +4530,20 @@ function IntentCardInline({
 
   const today = new Date().toISOString().slice(0, 10);
   const isBeforeFlight = !!tripDepartureDate && today < tripDepartureDate;
-  // Clicking "I delivered": warn if the flight hasn't happened yet, else go
-  // straight to the proof upload.
+  // Clicking "I delivered": FIRST the recipient's code (checked, nothing
+  // released yet), THEN the early-delivery questions if the flight hasn't
+  // happened, THEN the photo. Once the photo is up, the same code is sent to
+  // /api/confirm-receipt and the payment is released — one flow, no second
+  // "Confirm delivery" step.
+  const [showCodeFirst, setShowCodeFirst] = useState(false);
+  const [verifiedCode, setVerifiedCode] = useState<string | null>(null);
   function startDeliver() {
+    setVerifiedCode(null);
+    setShowCodeFirst(true);
+  }
+  function afterCode(code: string) {
+    setVerifiedCode(code);
+    setShowCodeFirst(false);
     if (isBeforeFlight) {
       setEarlyAck(false);
       setEarlyToldSender(false);
@@ -4536,6 +4551,17 @@ function IntentCardInline({
     } else {
       setShowProofModal(true);
     }
+  }
+  async function afterProof(url: string) {
+    setShowProofModal(false);
+    let received = false;
+    if (verifiedCode) {
+      const res = await browser.confirmDeliveryWithCode(intent.id, verifiedCode, '').catch(() => ({ ok: false }));
+      received = !!res.ok;
+    }
+    // If the release failed (network…), the card falls back to the
+    // "Confirm delivery" button, which asks for the code again.
+    onProofUploaded(intent.id, url, '', received);
   }
   const senderName = shortName(intent.sender_profile?.full_name) || t.me2_role_sender;
   const senderInitial = nameInitial(intent.sender_profile?.full_name);
@@ -4824,13 +4850,21 @@ function IntentCardInline({
             earlyHandedOver={isBeforeFlight && earlyAck}
             earlySenderInformed={isBeforeFlight && earlyToldSender}
             onClose={() => setShowProofModal(false)}
-            onSuccess={(url) => {
-              onProofUploaded(intent.id, url, '');
-              setShowProofModal(false);
-            }}
+            onSuccess={afterProof}
           />
         )}
       </AnimatePresence>
+
+      {/* Step 1 of « J'ai livré »: the recipient's code. */}
+      <PickupEnterCodeModal
+        open={showCodeFirst}
+        bookingId={intent.id}
+        travelerId=""
+        senderName={senderName}
+        mode="delivery-check"
+        onClose={() => setShowCodeFirst(false)}
+        onSuccess={afterCode}
+      />
 
       {/* Safety acknowledgement before accepting a request. */}
       <AnimatePresence>
