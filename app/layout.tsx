@@ -9,6 +9,7 @@ import { I18nProvider } from '@/lib/i18n/context';
 import { AuthProvider } from '@/lib/supabase/auth-provider';
 import { getSiteUrl } from '@/lib/site-url';
 import { SHARE_IMAGE } from '@/lib/seo';
+import { UtmCapture } from '@/components/UtmCapture';
 
 const siteUrl = getSiteUrl();
 
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </AuthProvider>
         </I18nProvider>
         <Analytics />
+        <UtmCapture />
       </body>
     </html>
   );

@@ -105,6 +105,9 @@ export async function GET() {
       sentPaid: n?.sentPaid ?? 0,
       carriedPaid: n?.carriedPaid ?? 0,
       spentEur: Math.round((n?.spentCents ?? 0)) / 100,
+      // The campaign link they signed up from (lib/utm.ts), if any.
+      sourceCampaign: (a?.user_metadata?.signup_source?.campaign as string | undefined) ?? null,
+      sourceName: (a?.user_metadata?.signup_source?.source as string | undefined) ?? null,
     };
   });
 

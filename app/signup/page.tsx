@@ -11,6 +11,7 @@ import { withTimeout } from '@/lib/supabase/timeout';
 import { useI18n } from '@/lib/i18n/context';
 import { userMessage } from '@/lib/user-error';
 import { formatName } from '@/lib/utils';
+import { readUtm } from '@/lib/utm';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -39,7 +40,9 @@ export default function SignupPage() {
             // name AND is what Supabase substitutes into the confirmation
             // email, so "yassine" typed in a hurry would greet them as
             // "yassine" in the first message they ever get from Jibly.
-            data: { full_name: formatName(fullName) },
+            // signup_source: the campaign link they arrived by, if any
+            // (lib/utm.ts) — what the admin's "Campagnes" section counts.
+            data: { full_name: formatName(fullName), signup_source: readUtm() },
             emailRedirectTo: `${window.location.origin}/auth/callback?next=/me`,
           },
         }),

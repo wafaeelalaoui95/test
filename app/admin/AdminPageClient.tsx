@@ -11,6 +11,7 @@ import { AdminUsers } from '@/components/AdminUsers';
 import { AdminOfferReminders } from '@/components/AdminOfferReminders';
 import { AdminTransactions } from '@/components/AdminTransactions';
 import { AdminBroadcast } from '@/components/AdminBroadcast';
+import { AdminCampaigns } from '@/components/AdminCampaigns';
 
 /**
  * Operator console — only the tools that read and act on real data.
@@ -23,7 +24,7 @@ import { AdminBroadcast } from '@/components/AdminBroadcast';
  * The last section picked is remembered per browser, as a convenience only.
  */
 
-type SectionId = 'transactions' | 'alerts' | 'offers' | 'disputes' | 'chats' | 'users' | 'money' | 'refund' | 'broadcast';
+type SectionId = 'transactions' | 'alerts' | 'offers' | 'disputes' | 'chats' | 'users' | 'money' | 'refund' | 'broadcast' | 'campaigns';
 
 const SECTIONS: { id: SectionId; label: string; hint: string; Component: ComponentType }[] = [
   { id: 'transactions', label: 'Transactions', hint: 'Tout, photos et statut', Component: AdminTransactions },
@@ -32,6 +33,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string; Component: Compone
   { id: 'disputes', label: 'Signalements', hint: 'Litiges à trancher', Component: AdminDisputes },
   { id: 'chats', label: 'Conversations', hint: 'Lire les chats', Component: AdminChats },
   { id: 'users', label: 'Utilisateurs', hint: 'Tous les comptes', Component: AdminUsers },
+  { id: 'campaigns', label: 'Campagnes', hint: 'Liens influenceurs', Component: AdminCampaigns },
   { id: 'money', label: 'Argent & avis', hint: 'Fonds détenus, avis', Component: AdminOverview },
   { id: 'refund', label: 'Rembourser', hint: 'Une réservation', Component: AdminRefund },
   { id: 'broadcast', label: 'E-mail à tous', hint: 'Rappel : vos vols', Component: AdminBroadcast },
@@ -71,7 +73,7 @@ export function AdminPageClient() {
           </h1>
         </div>
 
-        <nav className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-2 mb-10">
+        <nav className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 mb-10">
           {SECTIONS.map((s) => {
             const on = s.id === active;
             return (
