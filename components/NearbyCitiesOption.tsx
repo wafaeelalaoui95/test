@@ -27,6 +27,7 @@ export function NearbyCitiesOption({
   extraTo,
   onExtraFromChange,
   onExtraToChange,
+  roundTrip = false,
 }: {
   enabled: boolean;
   onEnabledChange: (v: boolean) => void;
@@ -36,8 +37,14 @@ export function NearbyCitiesOption({
   extraTo: string[];
   onExtraFromChange: (v: string[]) => void;
   onExtraToChange: (v: string[]) => void;
+  // Round trip: the same lists serve both flights, swapped on the way back
+  // (picked up near X going out = dropped off near X coming back). Each list
+  // is named after its city and says what happens there on each flight.
+  roundTrip?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const title = (city: string, fallback: string) =>
+    city ? t.voy_nearby_around.replace('{city}', cityDisplayName(city, locale)) : fallback;
 
   return (
     <div>
@@ -56,13 +63,15 @@ export function NearbyCitiesOption({
       {enabled && (
         <div className="mt-4 grid sm:grid-cols-2 gap-4 ps-7">
           <CityList
-            title={t.voy_nearby_pickup_label}
+            title={title(fromCity, t.voy_nearby_pickup_label)}
+            note={roundTrip ? t.voy_nearby_note_from_rt : t.voy_nearby_note_from}
             mainCity={fromCity}
             cities={extraFrom}
             onChange={onExtraFromChange}
           />
           <CityList
-            title={t.voy_nearby_dropoff_label}
+            title={title(toCity, t.voy_nearby_dropoff_label)}
+            note={roundTrip ? t.voy_nearby_note_to_rt : t.voy_nearby_note_to}
             mainCity={toCity}
             cities={extraTo}
             onChange={onExtraToChange}
@@ -75,11 +84,13 @@ export function NearbyCitiesOption({
 
 function CityList({
   title,
+  note,
   mainCity,
   cities,
   onChange,
 }: {
   title: string;
+  note: string;
   mainCity: string;
   cities: string[];
   onChange: (v: string[]) => void;
@@ -95,7 +106,8 @@ function CityList({
 
   return (
     <div>
-      <div className="text-[12px] font-semibold text-ink-500 mb-2">{title}</div>
+      <div className="text-[12px] font-semibold text-ink-500">{title}</div>
+      <div className="text-[11px] text-ink-400 mb-2">{note}</div>
       <div className="flex flex-wrap items-center gap-2">
         {cities.map((c) => (
           <span

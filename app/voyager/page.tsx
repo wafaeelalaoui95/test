@@ -553,6 +553,7 @@ export default function VoyagerPage() {
               extraTo={extraTo}
               onExtraFromChange={setExtraFrom}
               onExtraToChange={setExtraTo}
+              roundTrip={roundTrip}
             />
           </div>
 
@@ -889,6 +890,7 @@ export default function VoyagerPage() {
                     extraTo={extraTo}
                     onExtraFromChange={setExtraFrom}
                     onExtraToChange={setExtraTo}
+              roundTrip={roundTrip}
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <Input

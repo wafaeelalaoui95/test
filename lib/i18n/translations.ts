@@ -232,6 +232,11 @@ export type Translations = {
   voy_nearby_pickup_label: string;
   voy_nearby_dropoff_label: string;
   voy_nearby_add: string;
+  voy_nearby_around: string;
+  voy_nearby_note_from: string;
+  voy_nearby_note_to: string;
+  voy_nearby_note_from_rt: string;
+  voy_nearby_note_to_rt: string;
   voy_nearby_remove: string;
   voy_optional_paren: string;
   voy_airport_departure: string;
@@ -1627,6 +1632,11 @@ export const translations: Record<Locale, Translations> = {
     voy_nearby_pickup_label: 'Je peux aussi récupérer à',
     voy_nearby_dropoff_label: 'Je peux aussi déposer à',
     voy_nearby_add: '+ Ajouter une ville',
+    voy_nearby_around: 'Autour de {city}',
+    voy_nearby_note_from: 'Récupération',
+    voy_nearby_note_to: 'Dépôt',
+    voy_nearby_note_from_rt: "Récupération à l'aller · dépôt au retour",
+    voy_nearby_note_to_rt: "Dépôt à l'aller · récupération au retour",
     voy_nearby_remove: 'Retirer {city}',
     voy_optional_paren: '(optionnel)',
     voy_airport_departure: 'Aéroport départ',
@@ -3012,6 +3022,11 @@ export const translations: Record<Locale, Translations> = {
     voy_nearby_pickup_label: 'I can also pick up in',
     voy_nearby_dropoff_label: 'I can also drop off in',
     voy_nearby_add: '+ Add a city',
+    voy_nearby_around: 'Around {city}',
+    voy_nearby_note_from: 'Pick-up',
+    voy_nearby_note_to: 'Drop-off',
+    voy_nearby_note_from_rt: 'Pick-up outbound · drop-off on return',
+    voy_nearby_note_to_rt: 'Drop-off outbound · pick-up on return',
     voy_nearby_remove: 'Remove {city}',
     voy_optional_paren: '(optional)',
     voy_airport_departure: 'Departure airport',
