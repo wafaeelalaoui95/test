@@ -8,6 +8,13 @@ import { getSiteUrl } from '@/lib/site-url';
 export const SITE_NAME = 'Jibly';
 
 /**
+ * Share preview (WhatsApp, Facebook, Instagram, X…): the Jibly logo. Repeated
+ * on every page that sets its own openGraph, because Next replaces the parent's
+ * openGraph object instead of merging it, which would drop the image.
+ */
+export const SHARE_IMAGE = { url: '/logo-mark.png', width: 662, height: 754, alt: 'Jibly' };
+
+/**
  * Metadata for a public, indexable page: own title, description and a
  * canonical URL without query parameters. Never put a canonical in the root
  * layout — every child page would inherit it and point at the home page.
@@ -17,7 +24,7 @@ export function pageMetadata(path: string, title: string, description: string): 
     title,
     description,
     alternates: { canonical: path },
-    openGraph: { title: `${title} | ${SITE_NAME}`, description, url: path, type: 'website', siteName: SITE_NAME, locale: 'fr_FR' },
+    openGraph: { title: `${title} | ${SITE_NAME}`, description, url: path, type: 'website', siteName: SITE_NAME, locale: 'fr_FR', images: [SHARE_IMAGE] },
   };
 }
 

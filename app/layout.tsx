@@ -8,6 +8,7 @@ import { MessagingProvider } from '@/components/GlobalMessaging';
 import { I18nProvider } from '@/lib/i18n/context';
 import { AuthProvider } from '@/lib/supabase/auth-provider';
 import { getSiteUrl } from '@/lib/site-url';
+import { SHARE_IMAGE } from '@/lib/seo';
 
 const siteUrl = getSiteUrl();
 
@@ -32,11 +33,14 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: 'Jibly',
     locale: 'fr_FR',
+    images: [SHARE_IMAGE],
   },
   twitter: {
-    card: 'summary_large_image',
+    // Square-ish logo: the small card shows it whole instead of cropping it.
+    card: 'summary',
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
+    images: [SHARE_IMAGE.url],
   },
 };
 
