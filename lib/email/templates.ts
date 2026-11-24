@@ -859,18 +859,9 @@ export function deliveryProvedEmail(input: {
       </tr>
     </table>
 
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.alertBg};border-left:4px solid ${BRAND.alert};border-radius:8px;margin:0 0 24px;">
-      <tr>
-        <td style="padding:16px 18px;">
-          <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${BRAND.alert};line-height:1.5;">
-            En cas de problème, prévenez-nous avant le ${escapeHtml(input.deadline)}
-          </p>
-          <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">
-            Colis jamais arrivé, abîmé, différent de ce que vous avez envoyé : signalez un problème depuis le colis dans votre espace, et rien ne sera versé pendant que nous examinons la situation.
-          </p>
-        </td>
-      </tr>
-    </table>
+    <p style="margin:0 0 24px;font-size:15px;font-weight:700;color:${BRAND.alert};line-height:1.5;">
+      En cas de problème, prévenez-nous avant le ${escapeHtml(input.deadline)}
+    </p>
 
     <a href="${url}" style="display:inline-block;background:${BRAND.ink};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:15px;font-weight:600;">Voir la photo</a>
 
@@ -884,7 +875,7 @@ export function deliveryProvedEmail(input: {
     html: wrapHtml(content, `Une photo de votre colis, et ce qui se passe d’ici le ${input.deadline}`),
     text: `${hello}\n\n${travelerName} a envoyé une photo de votre colis ${route}${
       input.receiverName ? ` et indique l’avoir remis à ${input.receiverName}` : ''
-    }.\n\nSI LE COLIS EST BIEN ARRIVÉ : vous n’avez rien à faire. La livraison se clôturera automatiquement le ${input.deadline}, et ${travelerMid} recevra alors son paiement. Vous pouvez aussi la clôturer dès maintenant depuis votre espace.\n\nEN CAS DE PROBLÈME : signalez-le avant le ${input.deadline}, depuis le colis dans votre espace. Rien ne sera versé pendant que nous examinons la situation.\n\nVoir la photo : ${url}\n\nCe délai de ${input.days} jours vous laisse le temps de vérifier que tout s’est bien passé.\n\n— L’équipe Jibly`,
+    }.\n\nSI LE COLIS EST BIEN ARRIVÉ : vous n’avez rien à faire. La livraison se clôturera automatiquement le ${input.deadline}, et ${travelerMid} recevra alors son paiement. Vous pouvez aussi la clôturer dès maintenant depuis votre espace.\n\nEn cas de problème, prévenez-nous avant le ${input.deadline}.\n\nVoir la photo : ${url}\n\nCe délai de ${input.days} jours vous laisse le temps de vérifier que tout s’est bien passé.\n\n— L’équipe Jibly`,
   };
 }
 
