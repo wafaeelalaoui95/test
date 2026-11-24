@@ -88,6 +88,8 @@ export default function VoyagerPage() {
   // one, and the return one (To → From) on returnDate.
   const [roundTrip, setRoundTrip] = useState(false);
   const [returnDate, setReturnDate] = useState('');
+  const [returnFlightNumber, setReturnFlightNumber] = useState('');
+  const [returnTime, setReturnTime] = useState('');
   const hasReturn = roundTrip && !!returnDate;
 
   // "I can pick up / drop off in nearby cities" — extra cities around each end.
@@ -212,6 +214,8 @@ export default function VoyagerPage() {
       setTime(d.time ?? '');
       setRoundTrip(d.roundTrip ?? false);
       setReturnDate(d.returnDate ?? '');
+      setReturnFlightNumber(d.returnFlightNumber ?? '');
+      setReturnTime(d.returnTime ?? '');
       setNearbyEnabled(d.nearbyEnabled ?? false);
       setExtraFrom(d.extraFrom ?? []);
       setExtraTo(d.extraTo ?? []);
@@ -240,7 +244,7 @@ export default function VoyagerPage() {
         JSON.stringify({
           _ts: Date.now(),
           mode, step, fromCity, fromCountry, toCity, toCountry, date, time,
-          nearbyEnabled, extraFrom, extraTo, roundTrip, returnDate,
+          nearbyEnabled, extraFrom, extraTo, roundTrip, returnDate, returnFlightNumber, returnTime,
           flightNumber, departureAirport, arrivalAirport, showAirportCodes,
           space, minComp, acceptedCategories, terms,
         })
@@ -249,13 +253,14 @@ export default function VoyagerPage() {
       /* ignore quota / private-mode errors */
     }
   }, [draftRestored, mode, step, fromCity, fromCountry, toCity, toCountry, date, time,
-      nearbyEnabled, extraFrom, extraTo, roundTrip, returnDate,
+      nearbyEnabled, extraFrom, extraTo, roundTrip, returnDate, returnFlightNumber, returnTime,
       flightNumber, departureAirport, arrivalAirport, showAirportCodes,
       space, minComp, acceptedCategories, terms]);
 
+  const normFlight = (s: string) => (s.trim() ? s.trim().toUpperCase().replace(/\s+/g, ' ') : null);
+
   // The route, date and flight fields of one leg, ready for createTrip. The
-  // return leg swaps every pair; the flight number and time typed on the page
-  // are the outbound flight's, so the return leg leaves them empty.
+  // return leg swaps every pair and takes the return flight number and time.
   function legFields(leg: Leg) {
     const outbound = {
       departure_country: fromCountry,
@@ -264,9 +269,7 @@ export default function VoyagerPage() {
       arrival_city: toCity,
       departure_date: date,
       flight_time: time || null,
-      flight_number: flightNumber.trim()
-        ? flightNumber.trim().toUpperCase().replace(/\s+/g, ' ')
-        : null,
+      flight_number: normFlight(flightNumber),
       departure_airport: departureAirport.trim().toUpperCase() || null,
       arrival_airport: arrivalAirport.trim().toUpperCase() || null,
       ...extraCityColumns,
@@ -278,8 +281,8 @@ export default function VoyagerPage() {
       arrival_country: fromCountry,
       arrival_city: fromCity,
       departure_date: returnDate,
-      flight_time: null,
-      flight_number: null,
+      flight_time: returnTime || null,
+      flight_number: normFlight(returnFlightNumber),
       departure_airport: outbound.arrival_airport,
       arrival_airport: outbound.departure_airport,
       ...(toCities.length ? { extra_departure_cities: toCities } : {}),
@@ -291,7 +294,7 @@ export default function VoyagerPage() {
     if (step === 0)
       return (
         fromCity && toCity && date && isValidFlightNumber(flightNumber) &&
-        (!roundTrip || (!!returnDate && returnDate >= date))
+        (!roundTrip || (!!returnDate && returnDate >= date && isValidFlightNumber(returnFlightNumber)))
       );
     if (step === 1) return acceptedCategories.length > 0 && minComp >= MIN_COMPENSATION_EUR;
     if (step === 2) return terms;
@@ -361,7 +364,7 @@ export default function VoyagerPage() {
     // If they already have a valid flight number, skip the route step
     // (they've filled everything we need there). Otherwise stay on step 0
     // to collect it.
-    setStep(isValidFlightNumber(flightNumber) ? 1 : 0);
+    setStep(isValidFlightNumber(flightNumber) && (!roundTrip || (!!returnDate && isValidFlightNumber(returnFlightNumber))) ? 1 : 0);
   }
 
   // =========================================================================
@@ -561,6 +564,9 @@ export default function VoyagerPage() {
               <span>{t.voy_flight_details}</span>
               <span className="text-[11px] text-ink-300 font-normal">{t.voy_flight_details_required_propose}</span>
             </div>
+            {roundTrip && (
+              <div className="text-[11px] font-semibold text-ink-400 tracking-[0.08em] uppercase mb-2">{t.voy_leg_outbound}</div>
+            )}
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <Input
@@ -584,6 +590,32 @@ export default function VoyagerPage() {
                 onChange={(e) => setTime(e.target.value)}
               />
             </div>
+            {roundTrip && (
+              <>
+                <div className="text-[11px] font-semibold text-ink-400 tracking-[0.08em] uppercase mt-5 mb-2">{t.voy_leg_return}</div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <Input
+                      type="text"
+                      label={t.voy_flight_number_label}
+                      placeholder="AF1235, RAM 452…"
+                      value={returnFlightNumber}
+                      onChange={(e) => setReturnFlightNumber(e.target.value.toUpperCase())}
+                      maxLength={12}
+                    />
+                    {returnFlightNumber && !isValidFlightNumber(returnFlightNumber) && (
+                      <p className="mt-1.5 text-[11px] text-blush-500">{t.voy_flight_number_invalid}</p>
+                    )}
+                  </div>
+                  <Input
+                    type="time"
+                    label={t.voy_time_optional}
+                    value={returnTime}
+                    onChange={(e) => setReturnTime(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
 
             <button
               type="button"
@@ -695,7 +727,7 @@ export default function VoyagerPage() {
                           setRequestToHelp(req);
                         }
                       }}
-                      flightNumberRequired={!isValidFlightNumber(flightNumber)}
+                      flightNumberRequired={!isValidFlightNumber(leg === 'ret' ? returnFlightNumber : flightNumber)}
                       alreadyProposed={proposedRequestIds.includes(req.id)}
                     />
                   ))}
@@ -882,6 +914,12 @@ export default function VoyagerPage() {
                         onChange={(e) => setReturnDate(e.target.value)}
                         min={date || new Date().toISOString().split('T')[0]}
                       />
+                      <Input
+                        type="time"
+                        label={t.trip_label_time}
+                        value={returnTime}
+                        onChange={(e) => setReturnTime(e.target.value)}
+                      />
                     </div>
                   )}
 
@@ -906,6 +944,24 @@ export default function VoyagerPage() {
                           </p>
                         )}
                       </div>
+
+                      {roundTrip && (
+                        <div>
+                          <Input
+                            type="text"
+                            label={`${t.voy_flight_number_label} · ${t.voy_leg_return}`}
+                            placeholder="AF1235, RAM 452…"
+                            value={returnFlightNumber}
+                            onChange={(e) => setReturnFlightNumber(e.target.value.toUpperCase())}
+                            maxLength={12}
+                          />
+                          {returnFlightNumber && !isValidFlightNumber(returnFlightNumber) && (
+                            <p className="mt-1.5 text-[11px] text-blush-500">
+                              {t.voy_flight_number_invalid_to}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       <button
                         type="button"
