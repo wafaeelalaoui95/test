@@ -4,6 +4,7 @@ import { getResend, FROM_EMAIL } from '@/lib/email/resend';
 import { deliveryProvedEmail } from '@/lib/email/templates';
 import { AUTO_RELEASE_DAYS } from '@/lib/constants';
 import { formatName } from '@/lib/utils';
+import { closeTripAfterDelivery } from '@/lib/trip-close';
 
 const STORAGE_BUCKET = 'delivery-proofs';
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
@@ -131,6 +132,12 @@ export async function POST(req: NextRequest) {
       );
     }
   }
+
+  // A traveller who has delivered has made the journey: the trip is behind
+  // them, so it leaves the search results and can take no new bookings.
+  // Every listing of trips filters on status = 'open'; other bookings already
+  // on this trip carry on as before. Non-fatal: the delivery is recorded.
+  await closeTripAfterDelivery(intent.traveler_trip_id, 'upload-proof');
 
   // Start the sender's clock out loud.
   //

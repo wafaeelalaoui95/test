@@ -4,6 +4,7 @@ import { getStripe } from '@/lib/stripe/server';
 import { transferToTraveler } from '@/lib/stripe/payout';
 import { paymentIntentMismatch } from '@/lib/stripe/verify-intent';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
+import { closeTripAfterDelivery } from '@/lib/trip-close';
 
 /**
  * POST /api/confirm-receipt
@@ -115,6 +116,10 @@ export async function POST(req: NextRequest) {
       );
     }
   }
+
+  // Delivered → the trip is behind the traveller: out of search results.
+  // Usually already done at proof upload; this catches older proofs.
+  await closeTripAfterDelivery(intent.traveler_trip_id, 'confirm-receipt');
 
   // ===== STEP 2: capture the Stripe payment =====
   // Skip if there's no payment_intent_id (some legacy bookings) or if
