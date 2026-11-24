@@ -1511,7 +1511,7 @@ export function unfinishedPaymentEmail(input: {
   const intro = `Vous avez récemment commencé à réserver l’envoi de votre colis${route}${withWho}, mais votre réservation n’a pas encore été finalisée.`;
   const lead = 'Avec Jibly, envoyez vos colis en toute sérénité.';
   const why =
-    'Nous avons conçu notre plateforme pour rendre vos envois entre la France et le Maroc plus simples, plus accessibles et plus sécurisés :';
+    'Nous avons conçu notre plateforme pour rendre vos envois entre particuliers plus simples, plus accessibles et plus sécurisés :';
   const points: [string, string][] = [
     ['Identités vérifiées', 'pour savoir à qui vous confiez votre colis.'],
     ['Paiement sécurisé', 'pour réserver en toute confiance.'],
