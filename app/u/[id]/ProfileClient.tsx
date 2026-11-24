@@ -410,6 +410,22 @@ export function ProfileClient({
                       <Plane className="inline w-4 h-4 mx-2 text-ink-400" />
                       {cityDisplayName(tr.arrival_city, locale)}
                     </div>
+                    {(tr.extra_departure_cities?.length || tr.extra_arrival_cities?.length) ? (
+                      <div className="mb-2 space-y-0.5 text-[12px] text-ink-500">
+                        {!!tr.extra_departure_cities?.length && (
+                          <div>
+                            <span className="text-ink-400">{t.trip_nearby_pickup} </span>
+                            {tr.extra_departure_cities.map((c) => cityDisplayName(c, locale)).join(', ')}
+                          </div>
+                        )}
+                        {!!tr.extra_arrival_cities?.length && (
+                          <div>
+                            <span className="text-ink-400">{t.trip_nearby_dropoff} </span>
+                            {tr.extra_arrival_cities.map((c) => cityDisplayName(c, locale)).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-1.5 text-[13px] text-ink-400">
                       <Clock className="w-3.5 h-3.5" />
                       {formatShortDate(tr.departure_date)}

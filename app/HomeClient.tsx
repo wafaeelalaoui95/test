@@ -866,6 +866,15 @@ export function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: num
             <span className="truncate">{cityDisplayName(trip.arrival_city, locale)}</span>
           </div>
 
+          {/* The nearby cities themselves are on the profile, where the card
+              leads: here, only that there are some. */}
+          {((trip.extra_departure_cities?.length ?? 0) > 0 || (trip.extra_arrival_cities?.length ?? 0) > 0) && (
+            <div className="-mt-1.5 mb-3 inline-flex items-center gap-1 text-[12px] font-medium text-lavender-600">
+              <MapPin className="w-3 h-3" />
+              {t.trip_nearby_badge}
+            </div>
+          )}
+
           {/* Who — secondary, pinned to the bottom of the body. */}
           <div className="flex items-center gap-2 mt-auto">
             <div className="w-8 h-8 rounded-full bg-lavender-100 flex items-center justify-center font-bold text-[12px] text-lavender-700 flex-shrink-0">
