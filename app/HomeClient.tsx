@@ -910,7 +910,7 @@ export function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: num
             </div>
             <div className="text-[11px] text-ink-400 whitespace-nowrap">{t.disc_protection_included}</div>
           </div>
-          <span className="flex-shrink-0 inline-flex items-center gap-1 px-3 sm:px-3.5 py-2 rounded-full bg-ink-500 group-hover:bg-ink-600 text-cream-50 text-[12px] sm:text-[13px] font-semibold transition-colors">
+          <span className="flex-shrink-0 inline-flex items-center gap-1 px-3 sm:px-3.5 py-2 rounded-full bg-lavender-600 group-hover:bg-lavender-700 text-cream-50 text-[12px] sm:text-[13px] font-semibold transition-colors">
             {t.disc_book_trip}
             <ArrowRight className="w-3.5 h-3.5" />
           </span>
