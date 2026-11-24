@@ -88,6 +88,21 @@ export const COUNTRIES: Country[] = [
     cities: ['Londres', 'Manchester', 'Birmingham', 'Édimbourg'],
     lat: 54.0, lng: -2.0,
   },
+  { code: 'PT', name_fr: 'Portugal', name_en: 'Portugal', flag: '🇵🇹', cities: ['Lisbonne'], lat: 39.6, lng: -8.0 },
+  { code: 'IE', name_fr: 'Irlande', name_en: 'Ireland', flag: '🇮🇪', cities: ['Dublin'], lat: 53.2, lng: -8.0 },
+  { code: 'GR', name_fr: 'Grèce', name_en: 'Greece', flag: '🇬🇷', cities: ['Athènes'], lat: 39.1, lng: 22.0 },
+  { code: 'AT', name_fr: 'Autriche', name_en: 'Austria', flag: '🇦🇹', cities: ['Vienne'], lat: 47.6, lng: 14.1 },
+  { code: 'DK', name_fr: 'Danemark', name_en: 'Denmark', flag: '🇩🇰', cities: ['Copenhague'], lat: 56.0, lng: 10.0 },
+  { code: 'NO', name_fr: 'Norvège', name_en: 'Norway', flag: '🇳🇴', cities: ['Oslo'], lat: 61.0, lng: 9.0 },
+  { code: 'SE', name_fr: 'Suède', name_en: 'Sweden', flag: '🇸🇪', cities: ['Stockholm'], lat: 62.0, lng: 15.0 },
+  { code: 'PL', name_fr: 'Pologne', name_en: 'Poland', flag: '🇵🇱', cities: ['Varsovie'], lat: 52.0, lng: 19.4 },
+  { code: 'HU', name_fr: 'Hongrie', name_en: 'Hungary', flag: '🇭🇺', cities: ['Budapest'], lat: 47.2, lng: 19.5 },
+  { code: 'FI', name_fr: 'Finlande', name_en: 'Finland', flag: '🇫🇮', cities: ['Helsinki'], lat: 64.0, lng: 26.0 },
+  { code: 'RO', name_fr: 'Roumanie', name_en: 'Romania', flag: '🇷🇴', cities: ['Bucarest'], lat: 45.9, lng: 25.0 },
+  { code: 'CZ', name_fr: 'République tchèque', name_en: 'Czech Republic', flag: '🇨🇿', cities: ['Prague'], lat: 49.8, lng: 15.5 },
+  { code: 'BG', name_fr: 'Bulgarie', name_en: 'Bulgaria', flag: '🇧🇬', cities: ['Sofia'], lat: 42.7, lng: 25.5 },
+  { code: 'HR', name_fr: 'Croatie', name_en: 'Croatia', flag: '🇭🇷', cities: ['Zagreb'], lat: 45.1, lng: 15.2 },
+  { code: 'LU', name_fr: 'Luxembourg', name_en: 'Luxembourg', flag: '🇱🇺', cities: ['Luxembourg'], lat: 49.8, lng: 6.1 },
   {
     code: 'CA',
     name_fr: 'Canada',
@@ -224,6 +239,9 @@ const CITY_EN: Record<string, string> = {
   Hambourg: 'Hamburg', Francfort: 'Frankfurt',
   // Royaume-Uni
   Londres: 'London', 'Édimbourg': 'Edinburgh',
+  // Autres capitales européennes
+  Lisbonne: 'Lisbon', 'Athènes': 'Athens', Vienne: 'Vienna', Copenhague: 'Copenhagen',
+  Varsovie: 'Warsaw', Bucarest: 'Bucharest',
   // Canada
   'Montréal': 'Montreal',
   // Algérie
@@ -313,6 +331,15 @@ export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   // Royaume-Uni
   Londres: { lat: 51.5, lng: -0.1 }, Manchester: { lat: 53.5, lng: -2.2 },
   Birmingham: { lat: 52.5, lng: -1.9 }, 'Édimbourg': { lat: 55.9, lng: -3.2 },
+  // Autres capitales européennes
+  Lisbonne: { lat: 38.7, lng: -9.1 }, Dublin: { lat: 53.3, lng: -6.3 },
+  'Athènes': { lat: 38.0, lng: 23.7 }, Vienne: { lat: 48.2, lng: 16.4 },
+  Copenhague: { lat: 55.7, lng: 12.6 }, Oslo: { lat: 59.9, lng: 10.8 },
+  Stockholm: { lat: 59.3, lng: 18.1 }, Varsovie: { lat: 52.2, lng: 21.0 },
+  Budapest: { lat: 47.5, lng: 19.0 }, Helsinki: { lat: 60.2, lng: 24.9 },
+  Bucarest: { lat: 44.4, lng: 26.1 }, Prague: { lat: 50.1, lng: 14.4 },
+  Sofia: { lat: 42.7, lng: 23.3 }, Zagreb: { lat: 45.8, lng: 16.0 },
+  Luxembourg: { lat: 49.6, lng: 6.1 },
   // Canada
   'Montréal': { lat: 45.5, lng: -73.6 }, Toronto: { lat: 43.7, lng: -79.4 },
   Vancouver: { lat: 49.3, lng: -123.1 }, Calgary: { lat: 51.0, lng: -114.1 },
