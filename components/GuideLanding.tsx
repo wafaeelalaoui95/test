@@ -33,7 +33,7 @@ export async function GuideLanding({ path }: { path: string }) {
 
   return (
     <div>
-      <JsonLd data={breadcrumbJsonLd([{ name: 'Accueil', path: '/' }, { name: g.label, path: g.path }])} />
+      <JsonLd data={breadcrumbJsonLd([{ name: 'Accueil', path: '/' }, { name: 'Guides', path: '/guides' }, { name: g.label, path: g.path }])} />
       <JsonLd
         data={{
           '@context': 'https://schema.org',
@@ -65,6 +65,8 @@ export async function GuideLanding({ path }: { path: string }) {
         <div className="relative mx-auto max-w-4xl px-5 sm:px-8 lg:px-12 py-14 sm:py-20">
           <nav aria-label="Fil d’Ariane" className="text-[13px] text-ink-400 mb-6">
             <Link href="/" className="hover:text-ink-600">Accueil</Link>
+            <span className="mx-1.5">/</span>
+            <Link href="/guides" className="hover:text-ink-600">Guides</Link>
             <span className="mx-1.5">/</span>
             <span className="text-ink-500">{g.label}</span>
           </nav>
@@ -217,6 +219,7 @@ export async function GuideLanding({ path }: { path: string }) {
                 <Link href={p} className="underline underline-offset-2 hover:text-ink-600">{labelFor(p)}</Link>
               </span>
             ))}
+            {' '}· <Link href="/guides" className="underline underline-offset-2 hover:text-ink-600">tous les guides</Link>
           </div>
         </div>
       </section>

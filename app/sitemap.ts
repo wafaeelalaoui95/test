@@ -8,7 +8,7 @@ const siteUrl = getSiteUrl();
 // Public, indexable routes only. Authenticated areas (/me, /wallet, …) are
 // excluded here and in robots.ts.
 // /login and /signup are noindex, so they are not listed.
-const routes = ['', '/envoyer', '/voyager', '/trust', '/objets-autorises', '/securite', '/cgu', '/confidentialite', '/annulation-remboursement', ...ROUTE_PAGES.map((p) => p.path), ...GUIDES.map((g) => g.path)];
+const routes = ['', '/envoyer', '/voyager', '/trust', '/objets-autorises', '/securite', '/cgu', '/confidentialite', '/annulation-remboursement', ...ROUTE_PAGES.map((p) => p.path), '/guides', ...GUIDES.map((g) => g.path)];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return routes.map((path) => ({

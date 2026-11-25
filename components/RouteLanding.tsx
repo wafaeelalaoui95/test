@@ -22,7 +22,14 @@ const same = (a: string | null | undefined, b: string) => (a ?? '').trim().toLow
 // Trips store the country by its French name ("France", "Maroc"), while route
 // pages use ISO codes. Match the code, either name, or — for older rows saved
 // without a country — "this city belongs to that country".
-function inCountry(country: string | null | undefined, city: string, code: string) {
+// Country groups a page can match on, e.g. "every trip to Europe".
+const GROUPS: Record<string, string[]> = {
+  EUROPE: ['FR', 'BE', 'ES', 'NL', 'IT', 'DE', 'GB', 'PT', 'IE', 'GR', 'AT', 'DK', 'NO', 'SE', 'PL', 'HU', 'FI', 'RO', 'CZ', 'BG', 'HR', 'LU'],
+};
+
+function inCountry(country: string | null | undefined, city: string, code: string): boolean {
+  const group = GROUPS[code];
+  if (group) return group.some((g) => inCountry(country, city, g));
   const c = findCountry(code);
   if (!c) return same(country, code);
   return (
@@ -156,12 +163,13 @@ export async function RouteLanding({ path }: { path: string }) {
             {' '}· Jibly fonctionne aussi <Link href="/" className="underline underline-offset-2 hover:text-ink-600">partout ailleurs</Link>.
             <br />
             Guides :{' '}
-            {GUIDES.map((g, i) => (
+            {GUIDES.filter((g) => g.featured).map((g, i) => (
               <span key={g.path}>
                 {i > 0 && ' · '}
                 <Link href={g.path} className="underline underline-offset-2 hover:text-ink-600">{g.label}</Link>
               </span>
             ))}
+            {' '}· <Link href="/guides" className="underline underline-offset-2 hover:text-ink-600">tous les guides</Link>
           </div>
         </div>
       </section>

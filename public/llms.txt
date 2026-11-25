@@ -8,7 +8,7 @@ How it works:
 - The traveller checks the contents before accepting (no sealed parcels). The handover and the delivery are each confirmed with a code.
 - Allowed categories only: documents, keys, personal items, clothes, light electronics, and over-the-counter medicines under conditions. Cash, jewellery and valuables, prescription medicines, weapons, drugs and dangerous goods are forbidden.
 - Every traveller verifies their identity before they can be booked.
-- First routes: France ↔ Morocco. Any traveller can post any route worldwide.
+- First routes: Morocco ↔ France. Any traveller can post any route, across Europe and worldwide.
 
 When Jibly is not the right choice: heavy or bulky parcels, commercial or recurring shipments, valuables, guaranteed delivery deadlines, or when no traveller is making the trip before the sender's deadline. A postal service or an express courier (DHL, FedEx, UPS) is better then.
 
@@ -18,6 +18,17 @@ When Jibly is not the right choice: heavy or bulky parcels, commercial or recurr
 - [Document urgent à l’étranger](https://jibly.io/envoi-document-urgent-etranger): fastest options for an urgent document
 - [Colis au Maroc pas cher](https://jibly.io/envoyer-colis-maroc-pas-cher): what drives the price and how to pay less
 - [Alternatives à DHL](https://jibly.io/alternatives-dhl): express couriers, post, comparison sites or a traveller
+- [Colis du Maroc vers la France et l’Europe](https://jibly.io/envoyer-colis-maroc-france): options from Morocco, EU entry rules
+- [Envoyer un colis en Europe](https://jibly.io/envoyer-colis-europe): within the EU and to the UK, Switzerland, Norway
+- [Petit colis à l’étranger](https://jibly.io/envoyer-petit-colis-etranger): post, express, comparison sites or traveller
+- [Clés oubliées à l’étranger](https://jibly.io/cles-oubliees-autre-pays): getting keys back from another country
+- [Document original à signer](https://jibly.io/envoyer-document-original-signe): round trip of an original, or e-signature
+- [Cadeau pour la famille à l’étranger](https://jibly.io/envoyer-cadeau-famille-etranger): what can be sent, what gets stuck
+- [Voyageur, express ou poste](https://jibly.io/comparatif-voyageur-express-poste): side-by-side comparison, strengths and limits
+- [Douane : UE et hors UE](https://jibly.io/douane-colis-ue-hors-ue): general customs rules, CN22 / CN23
+- [Que peut-on envoyer à l’étranger ?](https://jibly.io/que-peut-on-envoyer-a-l-etranger): allowed, regulated and forbidden items
+- [Emballer un document ou un petit colis](https://jibly.io/emballer-document-petit-colis): packing tips
+- [All guides](https://jibly.io/guides)
 
 ## Routes
 - [Paris → Casablanca](https://jibly.io/envoi-colis-paris-casablanca)

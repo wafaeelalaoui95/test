@@ -17,7 +17,7 @@ export function HomeGuides() {
           {en ? 'What do you need to send?' : 'Que voulez-vous envoyer ?'}
         </h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {GUIDES.map((g) => {
+          {GUIDES.filter((g) => g.featured).map((g) => {
             const c = en ? g.card.en : g.card.fr;
             return (
               <Link
@@ -33,6 +33,11 @@ export function HomeGuides() {
               </Link>
             );
           })}
+        </div>
+        <div className="text-center mt-6">
+          <Link href="/guides" className="text-[14px] font-semibold text-lavender-600 hover:text-lavender-700">
+            {en ? 'All our guides →' : 'Tous nos guides →'}
+          </Link>
         </div>
       </div>
     </section>

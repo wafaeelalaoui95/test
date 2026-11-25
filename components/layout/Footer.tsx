@@ -38,9 +38,10 @@ export function Footer() {
             </ul>
             {/* Shipping guides (French for now). */}
             <ul className="mt-6 space-y-3 text-[14px] text-ink-400">
-              {GUIDES.map((g) => (
+              {GUIDES.filter((g) => g.featured).map((g) => (
                 <li key={g.path}><Link href={g.path} className="hover:text-ink-600 transition-colors">{g.label}</Link></li>
               ))}
+              <li><Link href="/guides" className="hover:text-ink-600 transition-colors">{t.footer_all_guides}</Link></li>
             </ul>
           </div>
 

@@ -68,6 +68,7 @@ export type Translations = {
   sec_wallet_withdraw_subject: string;
   footer_allowed_items: string;
   footer_route_prefix: string;
+  footer_all_guides: string;
   footer_terms: string;
   footer_privacy: string;
   footer_refund: string;
@@ -1472,6 +1473,7 @@ export const translations: Record<Locale, Translations> = {
     sec_wallet_withdraw_subject: 'Retrait de mes gains',
     footer_allowed_items: 'Objets autorisés',
     footer_route_prefix: 'Colis',
+    footer_all_guides: 'Tous les guides',
     footer_terms: 'CGU',
     footer_privacy: 'Confidentialité',
     footer_refund: 'Annulation et remboursement',
@@ -2865,6 +2867,7 @@ export const translations: Record<Locale, Translations> = {
     sec_wallet_withdraw_subject: 'Withdrawal of my earnings',
     footer_allowed_items: 'Allowed items',
     footer_route_prefix: 'Parcels',
+    footer_all_guides: 'All guides',
     footer_terms: 'Terms',
     footer_privacy: 'Privacy',
     footer_refund: 'Cancellations & refunds',
