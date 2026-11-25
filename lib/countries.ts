@@ -103,6 +103,7 @@ export const COUNTRIES: Country[] = [
   { code: 'BG', name_fr: 'Bulgarie', name_en: 'Bulgaria', flag: '🇧🇬', cities: ['Sofia'], lat: 42.7, lng: 25.5 },
   { code: 'HR', name_fr: 'Croatie', name_en: 'Croatia', flag: '🇭🇷', cities: ['Zagreb'], lat: 45.1, lng: 15.2 },
   { code: 'LU', name_fr: 'Luxembourg', name_en: 'Luxembourg', flag: '🇱🇺', cities: ['Luxembourg'], lat: 49.8, lng: 6.1 },
+  { code: 'CH', name_fr: 'Suisse', name_en: 'Switzerland', flag: '🇨🇭', cities: ['Genève', 'Zurich', 'Bâle'], lat: 46.8, lng: 8.2 },
   {
     code: 'CA',
     name_fr: 'Canada',
@@ -242,6 +243,8 @@ const CITY_EN: Record<string, string> = {
   // Autres capitales européennes
   Lisbonne: 'Lisbon', 'Athènes': 'Athens', Vienne: 'Vienna', Copenhague: 'Copenhagen',
   Varsovie: 'Warsaw', Bucarest: 'Bucharest',
+  // Suisse
+  'Genève': 'Geneva', 'Bâle': 'Basel',
   // Canada
   'Montréal': 'Montreal',
   // Algérie
@@ -340,6 +343,9 @@ export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   Bucarest: { lat: 44.4, lng: 26.1 }, Prague: { lat: 50.1, lng: 14.4 },
   Sofia: { lat: 42.7, lng: 23.3 }, Zagreb: { lat: 45.8, lng: 16.0 },
   Luxembourg: { lat: 49.6, lng: 6.1 },
+  // Suisse
+  'Genève': { lat: 46.2, lng: 6.1 }, Zurich: { lat: 47.4, lng: 8.5 },
+  'Bâle': { lat: 47.6, lng: 7.6 },
   // Canada
   'Montréal': { lat: 45.5, lng: -73.6 }, Toronto: { lat: 43.7, lng: -79.4 },
   Vancouver: { lat: 49.3, lng: -123.1 }, Calgary: { lat: 51.0, lng: -114.1 },
