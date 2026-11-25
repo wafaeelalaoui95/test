@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     // Fetch both profiles + auth.users emails in one go
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, identity_verified_at')
       .in('id', [booking.sender_id, travelerId]);
 
     const senderProfile = profiles?.find((p) => p.id === booking.sender_id);
@@ -147,6 +147,8 @@ export async function POST(req: Request) {
         travelerReceives: travelerNetFromTotal(booking.proposed_price),
         itemDescription: booking.item_description,
         bookingId: booking.id,
+        // Trips can be published before the identity check; accepting can't.
+        identityRequired: !travelerProfile?.identity_verified_at,
       });
     } else if (body.event === 'booking-confirmed-sender') {
       // No code goes out here any more. The sender's DELIVERY code is held

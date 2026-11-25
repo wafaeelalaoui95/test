@@ -161,6 +161,29 @@ export function senderGotProposalEmail(input: {
 }
 
 // =============================================================================
+// Identity notice — a traveller who published before verifying
+// =============================================================================
+// Trips can go online before the Stripe Identity check; accepting a booking
+// cannot. When a booking (or a price offer) reaches a traveller who isn't
+// verified yet, the email says so plainly, so the first click goes to the
+// right place instead of hitting a wall on the Accept button.
+// Warm yellow rather than BRAND.alert: it's a step to take, not a danger.
+const IDENTITY_NOTICE_TEXT =
+  'Avant de pouvoir accepter, vous devez vérifier votre identité avec Stripe : pièce d’identité + selfie, environ 2 minutes, gratuit et chiffré. Le bouton ci-dessous vous y emmène.';
+
+function identityNoticeBlock(): string {
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FFF4D6;border:1px solid #F3DE9C;border-radius:12px;margin-bottom:24px;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:${BRAND.ink};">Une étape avant d’accepter : vérifier votre identité</p>
+          <p style="margin:0;font-size:14px;color:${BRAND.inkSoft};line-height:1.6;">${escapeHtml(IDENTITY_NOTICE_TEXT)}</p>
+        </td>
+      </tr>
+    </table>`;
+}
+
+// =============================================================================
 // 2. Traveller receives a booking from a sender
 // =============================================================================
 // Triggered when a sender books a traveller's trip (instant book, payment
@@ -175,12 +198,16 @@ export function travelerGotBookingEmail(input: {
   travelerReceives: number;
   itemDescription: string | null;
   bookingId: string;
+  /** Traveller hasn't passed Stripe Identity yet — they can't accept until they do. */
+  identityRequired?: boolean;
 }) {
   const hello = greet(input.travelerFirstName);
   const senderName = input.senderFirstName || 'Un expéditeur';
   const senderMid = input.senderFirstName || 'l’expéditeur';
   const route = `${input.pickupCity} → ${input.destinationCity}`;
-  const url = `${BASE_URL}/me`;
+  const idReq = !!input.identityRequired;
+  // Deep link: opens this booking on /me; Accept there starts the identity check.
+  const url = idReq ? `${BASE_URL}/me?booking=${input.bookingId}` : `${BASE_URL}/me`;
 
   const itemBlock = input.itemDescription
     ? `<p style="margin:0 0 6px;font-size:13px;color:${BRAND.inkSoft};">Contenu</p>
@@ -190,9 +217,9 @@ export function travelerGotBookingEmail(input: {
   const priceMarginBottom = input.itemDescription ? '14px' : '0';
 
   const content = `
-    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Nouvelle réservation</p>
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mint};font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">${idReq ? 'Bonne nouvelle' : 'Nouvelle réservation'}</p>
     <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:${BRAND.ink};letter-spacing:-0.01em;line-height:1.3;">
-      ${senderName} a réservé votre trajet
+      ${idReq ? `${senderName} souhaite réserver votre trajet` : `${senderName} a réservé votre trajet`}
     </h1>
     <p style="margin:0 0 24px;font-size:15px;color:${BRAND.inkSoft};line-height:1.6;">
       ${hello}<br>
@@ -210,11 +237,12 @@ export function travelerGotBookingEmail(input: {
         </td>
       </tr>
     </table>
+    ${idReq ? identityNoticeBlock() : ''}
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
       <tr>
         <td style="background:${BRAND.ink};border-radius:999px;">
           <a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
-            Voir la réservation
+            ${idReq ? 'Vérifier mon identité et accepter' : 'Voir la réservation'}
           </a>
         </td>
       </tr>
@@ -225,9 +253,18 @@ export function travelerGotBookingEmail(input: {
   `;
 
   return {
-    subject: `${senderName} a réservé votre trajet · ${route}`,
-    html: wrapHtml(content, `Nouvelle réservation sur votre trajet ${route}`),
-    text: `${hello}\n\n${senderName} a réservé votre trajet ${route}. Vous recevrez ${eur(input.travelerReceives)}.\n\nVoir la réservation : ${url}\n\n— L’équipe Jibly`,
+    subject: idReq
+      ? `Bonne nouvelle : ${senderName} souhaite réserver votre trajet · ${route}`
+      : `${senderName} a réservé votre trajet · ${route}`,
+    html: wrapHtml(
+      content,
+      idReq
+        ? `Vérifiez votre identité pour accepter la réservation sur ${route}`
+        : `Nouvelle réservation sur votre trajet ${route}`
+    ),
+    text: idReq
+      ? `${hello}\n\nBonne nouvelle : ${senderName} souhaite réserver votre trajet ${route}. Vous recevrez ${eur(input.travelerReceives)}.\n\n${IDENTITY_NOTICE_TEXT}\n\nVérifier mon identité et accepter : ${url}\n\n— L’équipe Jibly`
+      : `${hello}\n\n${senderName} a réservé votre trajet ${route}. Vous recevrez ${eur(input.travelerReceives)}.\n\nVoir la réservation : ${url}\n\n— L’équipe Jibly`,
   };
 }
 
@@ -1359,7 +1396,10 @@ export function priceNegotiationEmail(input: {
   canCounter: boolean;
   /** Where the recipient answers. */
   path: string;
+  /** offer_to_traveler only: traveller not verified yet, must do it to accept. */
+  identityRequired?: boolean;
 }) {
+  const idReq = input.kind === 'offer_to_traveler' && !!input.identityRequired;
   const url = `${BASE_URL}${input.path}`;
   const route = `${input.pickupCity} → ${input.destinationCity}`;
   const other = input.otherFirstName;
@@ -1419,6 +1459,7 @@ export function priceNegotiationEmail(input: {
       </tr>
     </table>
     ${p(escapeHtml(frNext))}
+    ${idReq ? identityNoticeBlock() : ''}
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px auto 24px;">
       <tr>
         <td style="background:${BRAND.ink};border-radius:999px;">
@@ -1430,9 +1471,9 @@ export function priceNegotiationEmail(input: {
   `;
 
   return {
-    subject: `${title} · ${route}`,
+    subject: idReq ? `Bonne nouvelle : ${title} · ${route}` : `${title} · ${route}`,
     html: wrapHtml(content, fr, 'fr'),
-    text: `${hello}\n\n${fr}\n\n${amountLabel} : ${amount}\n\n${frNext}\n\n${cta} : ${url}\n\n— L’équipe Jibly`,
+    text: `${hello}\n\n${fr}\n\n${amountLabel} : ${amount}\n\n${frNext}\n\n${idReq ? `${IDENTITY_NOTICE_TEXT}\n\n` : ''}${cta} : ${url}\n\n— L’équipe Jibly`,
   };
 }
 

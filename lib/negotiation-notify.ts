@@ -33,8 +33,10 @@ export async function notifyNegotiation(
 
     const { data: people } = await admin
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, identity_verified_at')
       .in('id', [recipientId, otherId]);
+    const recipientVerified = !!(people ?? []).find((p: any) => p.id === recipientId)
+      ?.identity_verified_at;
     const first = (id: string) => {
       const full = (people ?? []).find((p: any) => p.id === id)?.full_name;
       return full ? formatName(full).split(' ')[0] : null;
@@ -60,6 +62,8 @@ export async function notifyNegotiation(
             ? canSenderCounter(b as any)
             : false,
       path: toTraveler ? `/me?booking=${b.id}` : '/me?tab=sends',
+      // Trips can be published before the identity check; accepting can't.
+      identityRequired: toTraveler && !recipientVerified,
     });
 
     await getResend().emails.send({
