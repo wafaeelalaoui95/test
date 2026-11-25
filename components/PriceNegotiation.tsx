@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, CheckCircle2 } from 'lucide-react';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
-import { useIdentityGate } from '@/components/IdentityGate';
+import { useIdentityGate, VerifyToAccept } from '@/components/IdentityGate';
 import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
 import { attestationStatement } from '@/lib/attestations';
@@ -157,6 +157,10 @@ export function TravelerPriceDecision({
       setBusy(null);
     }
   }
+
+  // Unverified traveller: no Accept / Refuse / Counter, only the identity
+  // check. Trips can be published before it; answering a booking can't.
+  if (!gate.verified) return <VerifyToAccept />;
 
   return (
     <div>

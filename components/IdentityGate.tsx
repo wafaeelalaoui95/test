@@ -238,3 +238,26 @@ export function IdentityReminder({
     </div>
   );
 }
+
+// =============================================================================
+// VerifyToAccept — what an unverified traveller sees instead of Accept/Refuse.
+// =============================================================================
+// Trips can be published before the identity check; answering a booking
+// cannot. Rather than show Accept and then block it, the booking popups show
+// only this: why, and the one button that moves things forward. Stripe sends
+// the user back to the same page, where the normal buttons then appear.
+export function VerifyToAccept({ className }: { className?: string }) {
+  const { t } = useI18n();
+  return (
+    <div className={`rounded-2xl bg-butter-50 border border-butter-200 px-4 py-4 ${className ?? ''}`}>
+      <div className="flex items-start gap-3 mb-4">
+        <ShieldCheck className="w-5 h-5 text-ink-500 mt-0.5 shrink-0" strokeWidth={2} />
+        <div className="text-[13px] text-ink-500 leading-relaxed">
+          <p className="font-semibold text-[14px] text-ink-600">{t.verify_to_accept_title}</p>
+          <p className="mt-1">{t.gate_identity_accept}</p>
+        </div>
+      </div>
+      <VerifyIdentityButton />
+    </div>
+  );
+}

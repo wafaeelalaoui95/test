@@ -517,6 +517,7 @@ export type Translations = {
   common_close: string;
   gate_identity_required: string;
   gate_identity_accept: string;
+  verify_to_accept_title: string;
   identity_reminder_title: string;
   identity_reminder_body: string;
   identity_reminder_cta: string;
@@ -1914,6 +1915,7 @@ export const translations: Record<Locale, Translations> = {
     common_close: 'Fermer',
     gate_identity_required:
       'Vérifiez votre identité pour continuer. Obligatoire avant de réserver, de proposer votre aide ou d’accepter une demande. Pièce d’identité + selfie, gratuit et chiffré par Stripe.',
+    verify_to_accept_title: 'Vérifiez votre identité pour continuer',
     gate_identity_accept:
       'Quelqu’un veut vous confier un envoi. Pour accepter, vérifiez d’abord votre identité : pièce d’identité + selfie, en 2 minutes avec Stripe. Gratuit et chiffré.',
     identity_reminder_title: 'Votre trajet sera publié tout de suite',
@@ -3314,6 +3316,7 @@ export const translations: Record<Locale, Translations> = {
     common_close: 'Close',
     gate_identity_required:
       'Verify your identity to continue. Required before booking, offering help or accepting a request. ID document + selfie, free and encrypted by Stripe.',
+    verify_to_accept_title: 'Verify your identity to continue',
     gate_identity_accept:
       'Someone wants you to carry their parcel. To accept, first verify your identity: ID document + selfie, 2 minutes with Stripe. Free and encrypted.',
     identity_reminder_title: 'Your trip goes live right away',

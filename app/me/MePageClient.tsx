@@ -40,7 +40,7 @@ import { Input } from '@/components/ui/Form';
 import { DisputeModal } from '@/components/DisputeModal';
 import { CancelBookingModal } from '@/components/CancelBookingModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
-import { VerifyIdentityButton, useIdentityGate } from '@/components/IdentityGate';
+import { VerifyIdentityButton, useIdentityGate, VerifyToAccept } from '@/components/IdentityGate';
 import { PayoutStatusCard } from '@/components/PayoutSetup';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
 import { ViewProofButton } from '@/components/ImageLightbox';
@@ -4349,6 +4349,8 @@ function RequestDetailsModal({
   onDecline: () => void | Promise<void>;
 }) {
   const { t, locale } = useI18n();
+  const { profile: me } = useAuth();
+  const meVerified = !!me?.identity_verified_at;
   const [ack, setAck] = useState(false);
   const senderName = shortName(intent.sender_profile?.full_name) || t.me2_role_sender;
   const verified =
@@ -4453,6 +4455,12 @@ function RequestDetailsModal({
           </div>
         </div>
 
+        {/* Unverified traveller: no Accept / Refuse, only the identity check
+            (trips can be published before it, answering a booking can't). */}
+        {!meVerified && intent.status === 'pending' && intent.price_pending_by !== 'traveler' ? (
+          <VerifyToAccept />
+        ) : (
+        <>
         <div className="rounded-xl bg-ink-500 text-cream-50 px-4 py-2.5 mb-4 text-[13px] font-semibold">
           {t.me2_accept_doubt}
         </div>
@@ -4486,6 +4494,8 @@ function RequestDetailsModal({
             {t.me2_accept_confirm}
           </button>
         </div>
+        </>
+        )}
         </>
         )}
       </motion.div>
@@ -4526,6 +4536,8 @@ function IntentCardInline({
   // inspect the item and refuse without penalty.
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [acceptAck, setAcceptAck] = useState(false);
+  const { profile: me } = useAuth();
+  const meVerified = !!me?.identity_verified_at;
   // Delivery-before-flight confirmation.
   const [showEarlyModal, setShowEarlyModal] = useState(false);
   const [earlyAck, setEarlyAck] = useState(false);
@@ -4947,6 +4959,11 @@ function IntentCardInline({
                 </div>
               </div>
 
+              {/* Unverified traveller: only the identity check, no buttons. */}
+              {!meVerified ? (
+                <VerifyToAccept />
+              ) : (
+              <>
               <div className="rounded-xl bg-ink-500 text-cream-50 px-4 py-2.5 mb-4 text-[13px] font-semibold">
                 {t.me2_accept_doubt}
               </div>
@@ -4988,6 +5005,8 @@ function IntentCardInline({
                   {t.me2_accept_confirm}
                 </button>
               </div>
+              </>
+              )}
               </>
               )}
             </motion.div>
