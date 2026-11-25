@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- . ':(exclude)scripts' ':(exclude)marketing' ':(exclude)*.md'",
   "crons": [
     {
       "path": "/api/cron/settle-payouts",
