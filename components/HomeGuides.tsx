@@ -1,7 +1,7 @@
 'use client';
 
-// "Que voulez-vous envoyer ?" on the home page: one card per shipping guide
-// (lib/guides.ts). The guides themselves are in French for now.
+// "Que voulez-vous envoyer ?" on the home page: one card per featured guide
+// (lib/guides.ts). In English, each card opens the English version of the guide.
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { GUIDES } from '@/lib/guides';
@@ -22,7 +22,7 @@ export function HomeGuides() {
             return (
               <Link
                 key={g.path}
-                href={g.path}
+                href={en && g.alt ? g.alt : g.path}
                 className="group bg-white rounded-2xl border border-ink-50 hover:border-ink-200 p-5 transition-colors"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -35,7 +35,7 @@ export function HomeGuides() {
           })}
         </div>
         <div className="text-center mt-6">
-          <Link href="/guides" className="text-[14px] font-semibold text-lavender-600 hover:text-lavender-700">
+          <Link href={en ? '/en/guides' : '/guides'} className="text-[14px] font-semibold text-lavender-600 hover:text-lavender-700">
             {en ? 'All our guides →' : 'Tous nos guides →'}
           </Link>
         </div>

@@ -14,6 +14,7 @@
 // - French copy says "il / elle" for any person.
 
 import type { RouteMatch } from '@/lib/route-pages';
+import { GUIDES_EN } from '@/lib/guides-en';
 
 /** Shown on every guide and used as dateModified in the structured data. */
 export const GUIDES_UPDATED = '2026-11-25';
@@ -30,16 +31,21 @@ export type GuideOption = {
 };
 
 export type GuideGroup = 'besoin' | 'destination' | 'objet' | 'regles';
+export type GuideLang = 'fr' | 'en';
 
-export const GUIDE_GROUPS: { id: GuideGroup; title: string }[] = [
-  { id: 'besoin', title: 'Selon votre besoin' },
-  { id: 'destination', title: 'Selon la destination' },
-  { id: 'objet', title: 'Selon ce que vous envoyez' },
-  { id: 'regles', title: 'Comparatifs et règles' },
+export const GUIDE_GROUPS: { id: GuideGroup; title: string; titleEn: string }[] = [
+  { id: 'besoin', title: 'Selon votre besoin', titleEn: 'By need' },
+  { id: 'destination', title: 'Selon la destination', titleEn: 'By destination' },
+  { id: 'objet', title: 'Selon ce que vous envoyez', titleEn: 'By item' },
+  { id: 'regles', title: 'Comparatifs et règles', titleEn: 'Comparisons and rules' },
 ];
 
 export type Guide = {
   path: string;
+  /** Page language; French when absent. English guides live in lib/guides-en.ts. */
+  lang?: GuideLang;
+  /** The same guide in the other language (hreflang + "Read in English" link). */
+  alt?: string;
   /** Short label for breadcrumbs, the footer and cross-links. */
   label: string;
   title: string;
@@ -106,9 +112,10 @@ const NOT_JIBLY_BASE = [
   'Aucun voyageur n’a annoncé le trajet avant votre date limite : un transporteur sera plus sûr.',
 ];
 
-export const GUIDES: Guide[] = [
+const GUIDES_FR: Guide[] = [
   {
     path: '/envoyer-colis-maroc',
+    alt: '/en/send-parcel-to-morocco',
     label: 'Envoyer un colis au Maroc',
     title: 'Envoyer un colis au Maroc : poste, express ou voyageur',
     description:
@@ -230,6 +237,7 @@ export const GUIDES: Guide[] = [
 
   {
     path: '/envoi-document-urgent-etranger',
+    alt: '/en/send-urgent-document-abroad',
     label: 'Document urgent à l’étranger',
     title: 'Envoyer un document en urgence à l’étranger',
     description:
@@ -357,6 +365,7 @@ export const GUIDES: Guide[] = [
 
   {
     path: '/alternatives-dhl',
+    alt: '/en/dhl-alternatives',
     label: 'Alternatives à DHL',
     title: 'Alternatives à DHL pour un document ou un petit colis',
     description:
@@ -416,6 +425,7 @@ export const GUIDES: Guide[] = [
 
   {
     path: '/envoyer-colis-maroc-france',
+    alt: '/en/send-parcel-from-morocco-to-europe',
     label: 'Colis du Maroc vers la France',
     title: 'Envoyer un colis du Maroc vers la France et l’Europe',
     description:
@@ -476,6 +486,7 @@ export const GUIDES: Guide[] = [
 
   {
     path: '/envoyer-colis-europe',
+    alt: '/en/send-parcel-within-europe',
     label: 'Envoyer un colis en Europe',
     title: 'Envoyer un colis en Europe : poste, express ou voyageur',
     description:
@@ -532,6 +543,7 @@ export const GUIDES: Guide[] = [
 
   {
     path: '/envoyer-petit-colis-etranger',
+    alt: '/en/send-small-parcel-abroad',
     label: 'Petit colis à l’étranger',
     title: 'Envoyer un petit colis à l’étranger : les options',
     description:
@@ -586,6 +598,7 @@ export const GUIDES: Guide[] = [
 
   {
     path: '/cles-oubliees-autre-pays',
+    alt: '/en/forgotten-keys-abroad',
     label: 'Clés oubliées à l’étranger',
     title: 'Clés oubliées dans un autre pays : comment les récupérer',
     description:
@@ -740,6 +753,7 @@ export const GUIDES: Guide[] = [
 
   {
     path: '/comparatif-voyageur-express-poste',
+    alt: '/en/traveller-vs-courier-vs-post',
     label: 'Voyageur, express ou poste',
     title: 'Voyageur, express ou poste : comparatif pour envoyer à l’étranger',
     description:
@@ -957,6 +971,13 @@ export const GUIDES: Guide[] = [
     },
   },
 ];
+
+/** Every guide, French then English. */
+export const GUIDES: Guide[] = [...GUIDES_FR, ...GUIDES_EN];
+
+export function guideLang(g: Guide): GuideLang {
+  return g.lang ?? 'fr';
+}
 
 /** Label for any guide or route page path (for cross-links). */
 export function guideLabel(path: string): string | undefined {

@@ -30,6 +30,17 @@ When Jibly is not the right choice: heavy or bulky parcels, commercial or recurr
 - [Emballer un document ou un petit colis](https://jibly.io/emballer-document-petit-colis): packing tips
 - [All guides](https://jibly.io/guides)
 
+## Shipping guides (English)
+- [How to send a small parcel abroad](https://jibly.io/en/send-small-parcel-abroad): post, express courier, comparison sites or a traveller
+- [How to send a document abroad urgently](https://jibly.io/en/send-urgent-document-abroad): fastest options and a checklist
+- [Alternatives to DHL](https://jibly.io/en/dhl-alternatives): FedEx, UPS, post, comparison sites or a traveller
+- [Forgotten keys abroad](https://jibly.io/en/forgotten-keys-abroad): getting keys back from another country
+- [Sending a parcel to Morocco](https://jibly.io/en/send-parcel-to-morocco): options and how to choose
+- [From Morocco to France and Europe](https://jibly.io/en/send-parcel-from-morocco-to-europe): options and EU entry rules
+- [Sending a parcel within Europe](https://jibly.io/en/send-parcel-within-europe): inside and outside the EU
+- [Traveller, courier or post](https://jibly.io/en/traveller-vs-courier-vs-post): side-by-side comparison
+- [All English guides](https://jibly.io/en/guides)
+
 ## Routes
 - [Paris → Casablanca](https://jibly.io/envoi-colis-paris-casablanca)
 - [Casablanca → Paris](https://jibly.io/envoi-colis-casablanca-paris)
