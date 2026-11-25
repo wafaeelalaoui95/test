@@ -2,7 +2,7 @@
 
 // Live trips on a route landing page, rendered with the home page's card so
 // both look identical and follow the visitor's language.
-import { TripCard, type TripWithProfile } from '@/app/HomeClient';
+import { TripCard, type TripWithProfile } from '@/components/TripCard';
 import { useI18n } from '@/lib/i18n/context';
 
 export function RouteTrips({ trips }: { trips: TripWithProfile[] }) {

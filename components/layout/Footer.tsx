@@ -5,6 +5,7 @@ import { Instagram } from 'lucide-react';
 import { Logo } from '@/components/illustrations/Logo';
 import { useI18n } from '@/lib/i18n/context';
 import { ROUTE_PAGES } from '@/lib/route-pages';
+import { GUIDES } from '@/lib/guides';
 
 export function Footer() {
   const { t } = useI18n();
@@ -33,6 +34,12 @@ export function Footer() {
             <ul className="mt-6 space-y-3 text-[14px] text-ink-400">
               {ROUTE_PAGES.map((r) => (
                 <li key={r.path}><Link href={r.path} className="hover:text-ink-600 transition-colors">{t.footer_route_prefix} {r.label}</Link></li>
+              ))}
+            </ul>
+            {/* Shipping guides (French for now). */}
+            <ul className="mt-6 space-y-3 text-[14px] text-ink-400">
+              {GUIDES.map((g) => (
+                <li key={g.path}><Link href={g.path} className="hover:text-ink-600 transition-colors">{g.label}</Link></li>
               ))}
             </ul>
           </div>

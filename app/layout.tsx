@@ -16,9 +16,11 @@ const siteUrl = getSiteUrl();
 // Self-hosted by Next at build time: no render-blocking Google Fonts @import.
 const manrope = Manrope({ subsets: ['latin'], display: 'swap', variable: '--font-manrope' });
 
-const DEFAULT_TITLE = 'Envoi de colis entre particuliers | Jibly';
+// Leads with the need (send something abroad), not the mechanism, so Jibly
+// shows up for generic shipping searches too.
+const DEFAULT_TITLE = 'Envoyer un document ou un petit colis à l’étranger | Jibly';
 const DEFAULT_DESCRIPTION =
-  'Envoi de colis entre particuliers : envoyez documents, clés ou petits colis avec un voyageur vérifié qui fait déjà le trajet. Prix fixé entre vous, réservation sécurisée.';
+  'Document urgent, clés, petit colis : envoyez-les à l’étranger avec un voyageur vérifié qui fait déjà le trajet, au prix fixé entre vous. Envoi de colis entre particuliers.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

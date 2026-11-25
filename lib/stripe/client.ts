@@ -1,4 +1,7 @@
-import { loadStripe, type Stripe } from '@stripe/stripe-js';
+// '/pure' so importing this file never injects Stripe.js on its own — it only
+// loads when getStripeClient() is called (payment / payout screens).
+import { loadStripe } from '@stripe/stripe-js/pure';
+import type { Stripe } from '@stripe/stripe-js';
 
 /**
  * Browser-side Stripe client (used by Stripe Elements). The publishable key

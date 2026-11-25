@@ -1,0 +1,31 @@
+# Jibly
+
+> Jibly (jibly.io) is a marketplace that connects people who need to send a document or a small parcel abroad with verified travellers who are already making the trip. The traveller carries the item in their luggage and hands it over in person. Jibly is not a courier: it does not transport anything itself and does not guarantee delivery times.
+
+How it works:
+- A traveller posts a trip (route and date). A sender books the trip, or posts a request and travellers offer to carry it.
+- The traveller sets a price; the sender can offer less. Jibly's service fee is shown before payment, and payment goes through Jibly.
+- The traveller checks the contents before accepting (no sealed parcels). The handover and the delivery are each confirmed with a code.
+- Allowed categories only: documents, keys, personal items, clothes, light electronics, and over-the-counter medicines under conditions. Cash, jewellery and valuables, prescription medicines, weapons, drugs and dangerous goods are forbidden.
+- Every traveller verifies their identity before they can be booked.
+- First routes: France ↔ Morocco. Any traveller can post any route worldwide.
+
+When Jibly is not the right choice: heavy or bulky parcels, commercial or recurring shipments, valuables, guaranteed delivery deadlines, or when no traveller is making the trip before the sender's deadline. A postal service or an express courier (DHL, FedEx, UPS) is better then.
+
+## Shipping guides (French)
+- [Envoyer un colis au Maroc](https://jibly.io/envoyer-colis-maroc): post, express courier or traveller, and how to choose
+- [Envoyer un document au Maroc](https://jibly.io/envoyer-document-maroc): registered letter, express documents or hand delivery
+- [Document urgent à l’étranger](https://jibly.io/envoi-document-urgent-etranger): fastest options for an urgent document
+- [Colis au Maroc pas cher](https://jibly.io/envoyer-colis-maroc-pas-cher): what drives the price and how to pay less
+- [Alternatives à DHL](https://jibly.io/alternatives-dhl): express couriers, post, comparison sites or a traveller
+
+## Routes
+- [Paris → Casablanca](https://jibly.io/envoi-colis-paris-casablanca)
+- [Casablanca → Paris](https://jibly.io/envoi-colis-casablanca-paris)
+- [France → Maroc](https://jibly.io/envoi-colis-france-maroc)
+
+## Reference
+- [How Jibly works and trust](https://jibly.io/trust)
+- [Allowed and forbidden items](https://jibly.io/objets-autorises)
+- [Safety rules](https://jibly.io/securite)
+- [Terms](https://jibly.io/cgu)

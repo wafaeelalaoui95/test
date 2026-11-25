@@ -5,11 +5,12 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getServerClient } from '@/lib/supabase/server';
 import { listOpenTrips } from '@/lib/supabase/queries';
-import { getCitiesForCountry } from '@/lib/countries';
+import { findCountry } from '@/lib/countries';
 import { pageMetadata, breadcrumbJsonLd, JsonLd } from '@/lib/seo';
 import { ROUTE_PAGES, type RoutePage, type RouteMatch } from '@/lib/route-pages';
 import { RouteTrips } from '@/components/RouteTrips';
-import type { TripWithProfile } from '@/app/HomeClient';
+import { GUIDES } from '@/lib/guides';
+import type { TripWithProfile } from '@/components/TripCard';
 
 export function routeMetadata(path: string): Metadata {
   const page = ROUTE_PAGES.find((p) => p.path === path)!;
@@ -18,25 +19,39 @@ export function routeMetadata(path: string): Metadata {
 
 const same = (a: string | null | undefined, b: string) => (a ?? '').trim().toLowerCase() === b.toLowerCase();
 
-// Same rule as the home page filter: match the stored country, or fall back to
-// "this city belongs to that country" for older rows saved without a country.
+// Trips store the country by its French name ("France", "Maroc"), while route
+// pages use ISO codes. Match the code, either name, or — for older rows saved
+// without a country — "this city belongs to that country".
 function inCountry(country: string | null | undefined, city: string, code: string) {
-  return same(country, code) || getCitiesForCountry(code).some((c) => same(city, c));
+  const c = findCountry(code);
+  if (!c) return same(country, code);
+  return (
+    same(country, code) ||
+    same(country, c.name_fr) ||
+    same(country, c.name_en) ||
+    c.cities.some((name) => same(city, name))
+  );
 }
 
+// '*' as a country means "from / to anywhere" (e.g. every trip to Morocco).
 function matches(trip: TripWithProfile, m: RouteMatch) {
   if (m.kind === 'city') return same(trip.departure_city, m.from) && same(trip.arrival_city, m.to);
   return (
-    inCountry(trip.departure_country, trip.departure_city, m.from) &&
-    inCountry(trip.arrival_country, trip.arrival_city, m.to)
+    (m.from === '*' || inCountry(trip.departure_country, trip.departure_city, m.from)) &&
+    (m.to === '*' || inCountry(trip.arrival_country, trip.arrival_city, m.to))
   );
+}
+
+/** Open trips on a route, for the route and guide pages (max 12). */
+export async function findTrips(match: RouteMatch): Promise<TripWithProfile[]> {
+  const all = (await listOpenTrips(getServerClient(), { limit: 200 }).catch(() => [])) as TripWithProfile[];
+  return all.filter((t) => matches(t, match)).slice(0, 12);
 }
 
 export async function RouteLanding({ path }: { path: string }) {
   const page = ROUTE_PAGES.find((p) => p.path === path) as RoutePage;
 
-  const all = (await listOpenTrips(getServerClient(), { limit: 200 }).catch(() => [])) as TripWithProfile[];
-  const trips = all.filter((t) => matches(t, page.match)).slice(0, 12);
+  const trips = await findTrips(page.match);
   const others = ROUTE_PAGES.filter((p) => p.path !== page.path);
 
   return (
@@ -139,6 +154,14 @@ export async function RouteLanding({ path }: { path: string }) {
               </span>
             ))}
             {' '}· Jibly fonctionne aussi <Link href="/" className="underline underline-offset-2 hover:text-ink-600">partout ailleurs</Link>.
+            <br />
+            Guides :{' '}
+            {GUIDES.map((g, i) => (
+              <span key={g.path}>
+                {i > 0 && ' · '}
+                <Link href={g.path} className="underline underline-offset-2 hover:text-ink-600">{g.label}</Link>
+              </span>
+            ))}
           </div>
         </div>
       </section>

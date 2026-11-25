@@ -18,6 +18,8 @@ const STRUCTURED_DATA = [
     url: siteUrl,
     logo: `${siteUrl}/logo-mark.png`,
     email: 'contact@jibly.io',
+    description:
+      'Plateforme qui met en relation des expéditeurs avec des voyageurs vérifiés pour envoyer des documents et petits colis à l’étranger. Jibly n’est pas un transporteur.',
     sameAs: ['https://instagram.com/thejiblyapp'],
   },
   {
