@@ -25,6 +25,7 @@ import { ITEM_CATEGORIES } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import type { TravelerTripRow, Profile, ShippingRequestRow } from '@/lib/supabase/types';
 import { useAuth } from '@/lib/supabase/auth-provider';
+import { useIdentityGate } from '@/components/IdentityGate';
 import { RespondToRequestModal } from '@/components/RespondToRequestModal';
 import { TripCard, type TripWithProfile } from '@/components/TripCard';
 import { HomeGuides } from '@/components/HomeGuides';
@@ -71,6 +72,14 @@ export function HomeClient({
 
   // Modal state for "respond to a request"
   const [respondingTo, setRespondingTo] = useState<RequestWithProfile | null>(null);
+  // Proposing to carry a parcel needs a verified identity (ID + selfie),
+  // like on /voyager. Logged-out visitors go on to the modal, which sends
+  // them to sign in. The DB trigger enforces the same on insert.
+  const gate = useIdentityGate();
+  function openRespond(r: RequestWithProfile) {
+    if (user && !gate.ensureVerified()) return;
+    setRespondingTo(r);
+  }
 
   // Search box state (uncontrolled until user clicks search)
   const [searchFrom, setSearchFrom] = useState('');
@@ -674,7 +683,7 @@ export function HomeClient({
                           request={r}
                           delay={(i % 6) * 0.04}
                           t={t}
-                          onRespond={() => setRespondingTo(r)}
+                          onRespond={() => openRespond(r)}
                         />
                       </div>
                     ))}
@@ -690,7 +699,7 @@ export function HomeClient({
                             request={r}
                             delay={(i % 6) * 0.04}
                             t={t}
-                            onRespond={() => setRespondingTo(r)}
+                            onRespond={() => openRespond(r)}
                           />
                         </div>
                       ))}
@@ -702,6 +711,8 @@ export function HomeClient({
           )}
         </div>
       </section>
+
+      {gate.modal}
 
       {/* Respond-to-request modal */}
       <AnimatePresence>
