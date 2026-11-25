@@ -336,6 +336,13 @@ export async function POST(req: NextRequest) {
   // ===========================================================================
   // TRAVELLER: accept — confirmed, then captured (the second party committing)
   // ===========================================================================
+  // Trips can be published before the identity check; accepting cannot.
+  const { data: me } = await admin
+    .from('profiles')
+    .select('identity_verified_at')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (!me?.identity_verified_at) return fail('identity_required', 403);
   if (b.payment_status !== 'authorized' || !b.payment_intent_id) return fail('not_payable', 409);
   let pi;
   try {

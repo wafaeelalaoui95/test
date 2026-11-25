@@ -18,8 +18,11 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 export function VerifyIdentityButton({
   label,
   onAlreadyVerified,
+  returnTo: returnToProp,
 }: {
   label?: string;
+  // Where Stripe sends the user back. Defaults to the current page.
+  returnTo?: string;
   // Called when the server reports the user is already verified — instead of
   // showing an error, we refresh the profile and let the caller move on.
   onAlreadyVerified?: () => void;
@@ -44,9 +47,10 @@ export function VerifyIdentityButton({
       // they're on right now (e.g. /voyager) so their in-progress form is
       // restored instead of landing them on /me.
       const returnTo =
-        typeof window !== 'undefined'
+        returnToProp ??
+        (typeof window !== 'undefined'
           ? window.location.pathname + window.location.search
-          : undefined;
+          : undefined);
       const res = await fetch('/api/identity/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,7 +109,7 @@ export function VerifyIdentityButton({
 // proceed. Otherwise it opens the gate modal and returns false. While the
 // profile is still loading we default to NOT verified (safer: never let an
 // unconfirmed user through).
-export function useIdentityGate(): {
+export function useIdentityGate(message?: string): {
   verified: boolean;
   ensureVerified: () => boolean;
   modal: ReactNode;
@@ -123,7 +127,7 @@ export function useIdentityGate(): {
 
   const modal = (
     <AnimatePresence>
-      {open && <IdentityGateModal onClose={() => setOpen(false)} />}
+      {open && <IdentityGateModal message={message} onClose={() => setOpen(false)} />}
     </AnimatePresence>
   );
 
@@ -132,7 +136,7 @@ export function useIdentityGate(): {
 
 // Block screen shown when an unverified user attempts a gated action. Mirrors
 // the framer-motion backdrop/card styling of the propose/book modals.
-function IdentityGateModal({ onClose }: { onClose: () => void }) {
+function IdentityGateModal({ onClose, message }: { onClose: () => void; message?: string }) {
   const { t } = useI18n();
   const { profile, refreshProfile } = useAuth();
 
@@ -183,7 +187,7 @@ function IdentityGateModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <p className="text-[14px] text-ink-500 leading-relaxed mb-5">
-          {t.gate_identity_required}
+          {message ?? t.gate_identity_required}
         </p>
 
         <ul className="space-y-3 mb-6">
@@ -198,5 +202,39 @@ function IdentityGateModal({ onClose }: { onClose: () => void }) {
         <VerifyIdentityButton onAlreadyVerified={onClose} />
       </motion.div>
     </motion.div>
+  );
+}
+
+// =============================================================================
+// IdentityReminder — publishing a trip is open to unverified travellers.
+// =============================================================================
+// A trip goes online before the identity check so we don't lose people at the
+// first step. What stays gated is the match itself: accepting a booking or
+// proposing to carry a parcel. This box says so up front, recommends doing it
+// now, and offers the button. Renders nothing once the user is verified.
+export function IdentityReminder({
+  className,
+  returnTo,
+}: {
+  className?: string;
+  returnTo?: string;
+}) {
+  const { t } = useI18n();
+  const { user, profile } = useAuth();
+  if (!user || !profile || profile.identity_verified_at) return null;
+
+  return (
+    <div
+      className={`rounded-2xl bg-butter-50 border border-butter-200 px-4 py-3.5 text-start ${className ?? ''}`}
+    >
+      <div className="flex items-start gap-3 mb-3">
+        <ShieldCheck className="w-4 h-4 text-ink-500 mt-0.5 shrink-0" strokeWidth={2} />
+        <div className="text-[13px] text-ink-500 leading-relaxed">
+          <p className="font-semibold text-ink-600">{t.identity_reminder_title}</p>
+          <p className="mt-1">{t.identity_reminder_body}</p>
+        </div>
+      </div>
+      <VerifyIdentityButton label={t.identity_reminder_cta} returnTo={returnTo} />
+    </div>
   );
 }

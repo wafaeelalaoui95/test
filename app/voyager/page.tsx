@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { Textarea, Checkbox, Input, openPickerOnClick } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
-import { useIdentityGate } from '@/components/IdentityGate';
+import { useIdentityGate, IdentityReminder } from '@/components/IdentityGate';
 import { PayoutReminder, PayoutCountriesNotice } from '@/components/PayoutSetup';
 import { NearbyCitiesOption } from '@/components/NearbyCitiesOption';
 import {
@@ -307,8 +307,11 @@ export default function VoyagerPage() {
       router.push('/login?next=/voyager');
       return;
     }
-    // Identity must be verified before a trip can be published.
-    if (!gate.ensureVerified()) return;
+    // No identity gate here on purpose: a trip can go online before the
+    // Stripe Identity check so we don't lose travellers at the first step.
+    // The check is required at the match instead — accepting a booking
+    // (/me, enforced by a DB trigger) or proposing on a request (below).
+    // IdentityReminder in step 3 and on the success screen says so.
     // No payout gate anywhere in this flow — see PayoutReminder. Travelers
     // publish and propose freely; unpaid-out money waits safely in the platform
     // balance until they finish setup, and the webhook releases it then.
@@ -385,6 +388,10 @@ export default function VoyagerPage() {
             {t.trip_success_title}
           </h1>
           <p className="text-[16px] text-ink-400 mb-7 leading-relaxed">{t.trip_success_text}</p>
+
+          {/* Published without the identity check: say once more that a match
+              will need it, and offer to do it now. Nothing once verified. */}
+          <IdentityReminder className="mb-4" returnTo="/me" />
 
           {/* The moment a traveler is most likely to leave, and the last one
               where telling them costs nothing. The reminder inside the wizard
@@ -1138,7 +1145,8 @@ export default function VoyagerPage() {
                   </div>
 
                   {/* Informative, never blocking: publishing goes ahead either
-                      way. Renders nothing once payouts are set up. */}
+                      way. Each renders nothing once done. */}
+                  <IdentityReminder />
                   <PayoutReminder />
                 </div>
               )}

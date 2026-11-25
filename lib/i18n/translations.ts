@@ -516,6 +516,10 @@ export type Translations = {
   common_cancel: string;
   common_close: string;
   gate_identity_required: string;
+  gate_identity_accept: string;
+  identity_reminder_title: string;
+  identity_reminder_body: string;
+  identity_reminder_cta: string;
   common_save: string;
   common_loading: string;
   common_optional: string;
@@ -1909,7 +1913,13 @@ export const translations: Record<Locale, Translations> = {
     common_cancel: 'Annuler',
     common_close: 'Fermer',
     gate_identity_required:
-      'Vérifiez votre identité pour continuer. Obligatoire avant de publier un trajet, réserver ou proposer votre aide. Vérification gratuite et chiffrée par Stripe.',
+      'Vérifiez votre identité pour continuer. Obligatoire avant de réserver, de proposer votre aide ou d’accepter une demande. Pièce d’identité + selfie, gratuit et chiffré par Stripe.',
+    gate_identity_accept:
+      'Quelqu’un veut vous confier un envoi. Pour accepter, vérifiez d’abord votre identité : pièce d’identité + selfie, en 2 minutes avec Stripe. Gratuit et chiffré.',
+    identity_reminder_title: 'Votre trajet sera publié tout de suite',
+    identity_reminder_body:
+      'Mais dès qu’un expéditeur voudra vous confier un envoi, il faudra vérifier votre identité avec Stripe (pièce d’identité + selfie) avant de pouvoir accepter. Nous vous conseillons de le faire maintenant : 2 minutes, et votre profil inspire plus confiance.',
+    identity_reminder_cta: 'Vérifier mon identité maintenant',
     common_save: 'Enregistrer',
     common_loading: 'Chargement...',
     common_optional: 'optionnel',
@@ -3303,7 +3313,13 @@ export const translations: Record<Locale, Translations> = {
     common_cancel: 'Cancel',
     common_close: 'Close',
     gate_identity_required:
-      'Verify your identity to continue. Required before publishing a trip, booking, or proposing help. Verification is free and encrypted by Stripe.',
+      'Verify your identity to continue. Required before booking, offering help or accepting a request. ID document + selfie, free and encrypted by Stripe.',
+    gate_identity_accept:
+      'Someone wants you to carry their parcel. To accept, first verify your identity: ID document + selfie, 2 minutes with Stripe. Free and encrypted.',
+    identity_reminder_title: 'Your trip goes live right away',
+    identity_reminder_body:
+      'But as soon as a sender wants you to carry something, you will need to verify your identity with Stripe (ID document + selfie) before you can accept. We recommend doing it now: it takes 2 minutes and makes your profile more trustworthy.',
+    identity_reminder_cta: 'Verify my identity now',
     common_save: 'Save',
     common_loading: 'Loading...',
     common_optional: 'optional',

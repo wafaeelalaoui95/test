@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, CheckCircle2 } from 'lucide-react';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
+import { useIdentityGate } from '@/components/IdentityGate';
 import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
 import { attestationStatement } from '@/lib/attestations';
@@ -79,6 +80,7 @@ export function TravelerPriceDecision({
   const [err, setErr] = useState<string | null>(null);
   const [countering, setCountering] = useState(false);
   const [netInput, setNetInput] = useState('');
+  const gate = useIdentityGate(t.gate_identity_accept);
 
   const total = Number(booking.proposed_price);
   const original = booking.original_price != null ? Number(booking.original_price) : null;
@@ -107,6 +109,9 @@ export function TravelerPriceDecision({
   }
 
   async function run(kind: 'accept' | 'refuse' | 'counter') {
+    // A trip can be published before the identity check; accepting a
+    // booking cannot. /api/booking/negotiate enforces it too.
+    if (kind === 'accept' && !gate.ensureVerified()) return;
     setBusy(kind);
     setErr(null);
     try {
@@ -155,6 +160,7 @@ export function TravelerPriceDecision({
 
   return (
     <div>
+      {gate.modal}
       <div className="rounded-2xl bg-lavender-50 border border-lavender-200/70 p-4 mb-4">
         <div className="text-[12px] font-semibold text-lavender-700 mb-2">
           {t.neg_sender_proposes.replace('{name}', senderName)}

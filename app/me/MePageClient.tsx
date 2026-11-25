@@ -40,7 +40,7 @@ import { Input } from '@/components/ui/Form';
 import { DisputeModal } from '@/components/DisputeModal';
 import { CancelBookingModal } from '@/components/CancelBookingModal';
 import { PickupShowCodeModal } from '@/components/PickupShowCodeModal';
-import { VerifyIdentityButton } from '@/components/IdentityGate';
+import { VerifyIdentityButton, useIdentityGate } from '@/components/IdentityGate';
 import { PayoutStatusCard } from '@/components/PayoutSetup';
 import { PickupEnterCodeModal } from '@/components/PickupEnterCodeModal';
 import { ViewProofButton } from '@/components/ImageLightbox';
@@ -237,11 +237,15 @@ export default function MyPage(
   // Incoming request whose details popup is open (opened from the card's
   // "Voir la demande" button OR deep-linked from a notification via ?booking=).
   const [detailsFor, setDetailsFor] = useState<IncomingIntent | null>(null);
+  const acceptGate = useIdentityGate(t.gate_identity_accept);
 
   // Accept/decline an incoming request: update status, capture/cancel the
   // Stripe hold, reflect locally. Shared by the trips list and the details
   // popup (from a notification).
   async function handleUpdateIntent(id: string, status: 'confirmed' | 'cancelled') {
+    // A trip can be published before the identity check, but accepting a
+    // booking needs it (a DB trigger enforces the same). Declining is free.
+    if (status === 'confirmed' && !acceptGate.ensureVerified()) return;
     await browser.updateBookingIntentStatus(id, status);
     const intent = incomingIntents.find((i) => i.id === id);
     if (intent?.payment_intent_id) {
@@ -1042,6 +1046,8 @@ export default function MyPage(
           />
         )}
       </AnimatePresence>
+
+      {acceptGate.modal}
 
       {/* Incoming request details popup (from a card or a notification). */}
       {detailsFor && (
