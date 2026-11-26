@@ -66,6 +66,17 @@ export function getStripe(platform: StripePlatform = 'gb'): Stripe {
   if (!key) {
     throw new Error(`${envName} is not set. Add it to your Vercel environment variables.`);
   }
+  // A test secret key with a live publishable key (or the reverse) fails in
+  // confusing ways: nothing reaches either mode's logs. Say so loudly.
+  const publishable =
+    platform === 'ae'
+      ? process.env.NEXT_PUBLIC_STRIPE_UAE_PUBLISHABLE_KEY
+      : process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  if (publishable && key.includes('_test_') !== publishable.includes('_test_')) {
+    console.error(
+      `[stripe] ${platform}: secret key and publishable key are from different modes (test vs live)`
+    );
+  }
   const client = new Stripe(key, {
     apiVersion: '2025-02-24.acacia',
     typescript: true,
