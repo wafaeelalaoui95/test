@@ -96,7 +96,9 @@ begin
     or new.stripe_charges_enabled is distinct from old.stripe_charges_enabled
     or new.stripe_payouts_enabled is distinct from old.stripe_payouts_enabled
     or new.stripe_onboarded_at    is distinct from old.stripe_onboarded_at
-    or new.stripe_bank_fingerprint is distinct from old.stripe_bank_fingerprint
+    -- NOT stripe_bank_fingerprint: 2026-09-04-bank-fingerprint.sql was never
+    -- applied in production, and naming a missing column here made EVERY
+    -- profile update fail (fixed in prod 2026-11-26).
   ) then
     raise exception 'Stripe columns are managed by the server'
       using errcode = '42501';
