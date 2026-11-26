@@ -29,7 +29,10 @@ export const PAYOUT_COUNTRIES = [
 /**
  * The UAE, paid from the SECOND Stripe platform (WEF Technologies FZE LLC — see
  * lib/stripe/server.ts). Offered only while NEXT_PUBLIC_UAE_PAYOUTS is '1', so
- * it can be switched off without a code change. The server also refuses it
+ * it can be switched off without a code change — but NEXT_PUBLIC_ values are
+ * baked in at BUILD time, and vercel.json's ignoreCommand cancels a dashboard
+ * "Redeploy" of an unchanged commit. So flipping it needs a new commit pushed,
+ * or a redeploy with that check bypassed. The server also refuses it
  * without the UAE key (platformChangeBlocked in lib/stripe/platform.ts).
  */
 export const UAE_PAYOUT_COUNTRY = 'AE';
