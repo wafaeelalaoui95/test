@@ -20,6 +20,11 @@ import Stripe from 'stripe';
  *
  * Identity verification (Stripe Identity) is not money and stays on 'gb'.
  *
+ * UAE env vars (Vercel, Production): STRIPE_UAE_SECRET_KEY,
+ * NEXT_PUBLIC_STRIPE_UAE_PUBLISHABLE_KEY, STRIPE_UAE_WEBHOOK_SECRET,
+ * STRIPE_UAE_CONNECT_WEBHOOK_SECRET, NEXT_PUBLIC_UAE_PAYOUTS=1. Changing any of
+ * them needs a fresh build (see lib/stripe/payout-countries.ts).
+ *
  * Pinning the API version avoids surprise behaviour changes when Stripe ships
  * a new release.
  */
