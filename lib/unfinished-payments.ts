@@ -1,6 +1,6 @@
 import type Stripe from 'stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getStripe } from '@/lib/stripe/server';
+import { getStripe, configuredPlatforms } from '@/lib/stripe/server';
 import { getResend, FROM_EMAIL } from '@/lib/email/resend';
 import { unfinishedPaymentEmail } from '@/lib/email/templates';
 import { formatName } from '@/lib/utils';
@@ -46,13 +46,16 @@ export type UnfinishedPayment = {
 const firstName = (full: string | null | undefined) => formatName(full ?? '').split(' ')[0] || null;
 
 export async function findUnfinishedPayments(admin: SupabaseClient, onlyUserId?: string): Promise<UnfinishedPayment[]> {
-  const stripe = getStripe();
   const since = Math.floor(Date.now() / 1000) - LOOKBACK_DAYS * 86400;
 
+  // Both Stripe platforms: a sender who gave up paying a UAE-paid traveller
+  // is on the UAE one.
   const intents: Stripe.PaymentIntent[] = [];
-  for await (const pi of stripe.paymentIntents.list({ created: { gte: since }, limit: 100 })) {
-    intents.push(pi);
-    if (intents.length >= MAX_INTENTS) break;
+  sweep: for (const platform of configuredPlatforms()) {
+    for await (const pi of getStripe(platform).paymentIntents.list({ created: { gte: since }, limit: 100 })) {
+      intents.push(pi);
+      if (intents.length >= MAX_INTENTS) break sweep;
+    }
   }
 
   // Group by the Jibly user who started each payment.
@@ -166,13 +169,15 @@ export async function sendUnfinishedPaymentEmail(item: UnfinishedPayment): Promi
   if (item.followupSentAt) return { ok: false, reason: 'Déjà envoyé' };
   if (!item.email) return { ok: false, reason: 'Pas d’e-mail' };
 
-  const stripe = getStripe();
   const since = Math.floor(Date.now() / 1000) - LOOKBACK_DAYS * 86400;
   const now = new Date().toISOString();
   try {
-    for await (const pi of stripe.paymentIntents.list({ created: { gte: since }, limit: 100 })) {
-      if (pi.metadata?.userId === item.userId && ABANDONED.includes(pi.status)) {
-        await stripe.paymentIntents.update(pi.id, { metadata: { followupSentAt: now } });
+    for (const platform of configuredPlatforms()) {
+      const stripe = getStripe(platform);
+      for await (const pi of stripe.paymentIntents.list({ created: { gte: since }, limit: 100 })) {
+        if (pi.metadata?.userId === item.userId && ABANDONED.includes(pi.status)) {
+          await stripe.paymentIntents.update(pi.id, { metadata: { followupSentAt: now } });
+        }
       }
     }
   } catch (e: any) {

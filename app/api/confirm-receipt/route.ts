@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getStripe } from '@/lib/stripe/server';
+import { getStripe, asPlatform } from '@/lib/stripe/server';
 import { transferToTraveler } from '@/lib/stripe/payout';
 import { paymentIntentMismatch } from '@/lib/stripe/verify-intent';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
     .select(
-      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, payment_amount, transfer_id, received_confirmed_at, delivery_proof_url, delivery_code'
+      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, payment_amount, transfer_id, received_confirmed_at, delivery_proof_url, delivery_code, stripe_platform'
     )
     .eq('id', body.bookingIntentId)
     .maybeSingle();
@@ -129,7 +129,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, captured: false, reason: 'no_payment_intent' });
   }
 
-  const stripe = getStripe();
+  // The booking's own platform — its money is there and nowhere else.
+  const stripe = getStripe(asPlatform(intent.stripe_platform));
 
   // Release the traveler's share. THIS is the moment the escrow opens: the
   // money has been sitting in the Jibly balance since the traveler accepted,
@@ -142,6 +143,7 @@ export async function POST(req: NextRequest) {
       existingTransferId: intent.transfer_id,
       amountCents,
       chargeId,
+      platform: intent.stripe_platform,
     });
 
   // Already captured — the normal case, since capture happens at acceptance.

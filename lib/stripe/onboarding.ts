@@ -1,9 +1,10 @@
 import type Stripe from 'stripe';
-import { getStripe } from './server';
+import { getStripe, type StripePlatform } from './server';
+import { platformForCountry, platformChangeBlocked, travelerPlatform } from './platform';
 import { getServerClient } from '@/lib/supabase/server';
 import {
   getOrCreateConnectAccount,
-  getStoredConnectAccountId,
+  getStoredConnectAccount,
   clearConnectAccount,
   isMissingAccountError,
   isAccountPayable,
@@ -28,6 +29,8 @@ export type OnboardingActor = {
   userId: string;
   email: string | undefined;
   accountId: string;
+  /** Where accountId lives. Every Stripe call about it must use this. */
+  platform: StripePlatform;
 };
 
 /**
@@ -61,10 +64,15 @@ export async function resolveOnboardingActor(
   }
 
   if (!country) {
-    const existing = await getStoredConnectAccountId(user.id);
+    const existing = await getStoredConnectAccount(user.id);
     if (!existing) return { error: { code: 'no_account', status: 409 } };
     return {
-      actor: { userId: user.id, email: user.email, accountId: existing },
+      actor: {
+        userId: user.id,
+        email: user.email,
+        accountId: existing.accountId,
+        platform: existing.platform,
+      },
     };
   }
 
@@ -72,16 +80,30 @@ export async function resolveOnboardingActor(
     return { error: { code: 'country_required', status: 400 } };
   }
 
-  const stripe = getStripe();
+  const platform = platformForCountry(country);
 
   // The country is immutable on a Stripe account, so an account already on
   // file in the WRONG country cannot be reused — the traveler's choice would
   // be silently ignored. Unfinished → replace. Finished → refuse, because
   // recreating throws away completed KYC.
-  const existingId = await getStoredConnectAccountId(user.id);
-  if (existingId) {
+  const stored = await getStoredConnectAccount(user.id);
+  const existingId = stored?.accountId ?? null;
+
+  // Moving to the other platform strands any money still held for them on the
+  // current one (a traveller with no account yet is on 'gb'). Refuse until it
+  // has been paid out or released.
+  // From the profile, not the account: a cleared account leaves its platform
+  // (and the bookings charged there) behind.
+  if (platform !== (await travelerPlatform(user.id))) {
+    const blocked = await platformChangeBlocked(user.id, platform);
+    if (blocked) return { error: { code: blocked, status: 409 } };
+  }
+
+  if (stored) {
     try {
-      const existing = await stripe.accounts.retrieve(existingId);
+      // Read it where it lives — asking the other platform answers "no such
+      // account", which the catch below would take as dead and clear.
+      const existing = await getStripe(stored.platform).accounts.retrieve(stored.accountId);
       if (existing.country && existing.country.toUpperCase() !== country) {
         if (isAccountPayable(existing)) {
           return { error: { code: 'country_locked', status: 409 } };
@@ -91,7 +113,7 @@ export async function resolveOnboardingActor(
         );
         await clearConnectAccount(user.id);
       } else {
-        await ensureBusinessProfile(existing);
+        await ensureBusinessProfile(existing, stored.platform);
       }
     } catch (e: any) {
       if (!isMissingAccountError(e)) throw e;
@@ -119,7 +141,7 @@ export async function resolveOnboardingActor(
     true
   );
 
-  return { actor: { userId: user.id, email: user.email, accountId } };
+  return { actor: { userId: user.id, email: user.email, accountId, platform } };
 }
 
 /**

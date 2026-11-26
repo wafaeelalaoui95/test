@@ -27,6 +27,23 @@ export const PAYOUT_COUNTRIES = [
 ] as const;
 
 /**
+ * The UAE, paid from the SECOND Stripe platform (WEF Technologies FZE LLC — see
+ * lib/stripe/server.ts). Offered only while NEXT_PUBLIC_UAE_PAYOUTS is '1', so
+ * it can be switched off without a code change. The server also refuses it
+ * without the UAE key (platformChangeBlocked in lib/stripe/platform.ts).
+ */
+export const UAE_PAYOUT_COUNTRY = 'AE';
+
+export function uaePayoutsOffered(): boolean {
+  return process.env.NEXT_PUBLIC_UAE_PAYOUTS === '1';
+}
+
+/** Every country a traveller can pick right now. */
+export function offeredPayoutCountries(): string[] {
+  return uaePayoutsOffered() ? [...PAYOUT_COUNTRIES, UAE_PAYOUT_COUNTRY] : [...PAYOUT_COUNTRIES];
+}
+
+/**
  * Is this country one we can pay into? Returns null — not false — when the
  * country is unknown or unmappable, so callers can tell "we know this won't
  * work" apart from "we have no idea", and only hard-block on the former.
@@ -35,7 +52,7 @@ export function isPayoutCountry(code: string | null | undefined): boolean | null
   if (!code) return null;
   const upper = code.trim().toUpperCase();
   if (!/^[A-Z]{2}$/.test(upper)) return null;
-  return (PAYOUT_COUNTRIES as readonly string[]).includes(upper);
+  return offeredPayoutCountries().includes(upper);
 }
 
 /**
@@ -52,7 +69,7 @@ export function payoutCountryOptions(
   } catch {
     display = null;
   }
-  return PAYOUT_COUNTRIES.map((code) => ({
+  return offeredPayoutCountries().map((code) => ({
     code,
     name: display?.of(code) ?? code,
   })).sort((a, b) => a.name.localeCompare(b.name, locale));
@@ -64,9 +81,9 @@ export function payoutCountryNames(locale: string): string[] {
     display = new Intl.DisplayNames([locale], { type: 'region' });
   } catch {
     // Unsupported locale: fall back to raw codes rather than rendering nothing.
-    return [...PAYOUT_COUNTRIES];
+    return offeredPayoutCountries();
   }
-  return PAYOUT_COUNTRIES.map((c) => display!.of(c) ?? c).sort((a, b) =>
+  return offeredPayoutCountries().map((c) => display!.of(c) ?? c).sort((a, b) =>
     a.localeCompare(b, locale)
   );
 }

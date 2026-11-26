@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const account = await getStripe().accounts.update(
+    const account = await getStripe(resolved.actor.platform).accounts.update(
       resolved.actor.accountId,
       {
         tos_acceptance: {
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     // Accepting the terms is usually the step that flips the account payable,
     // so mirror the result immediately rather than waiting on the webhook —
     // the traveler is looking at the screen right now.
-    await syncConnectAccount(account);
+    await syncConnectAccount(account, resolved.actor.platform);
 
     return NextResponse.json({
       ok: true,

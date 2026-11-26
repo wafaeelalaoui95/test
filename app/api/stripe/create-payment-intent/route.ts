@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getStripe } from '@/lib/stripe/server';
+import { getStripe, type StripePlatform } from '@/lib/stripe/server';
+import { travelerPlatform, bookingTravelerId, recordPaymentIntentPlatform } from '@/lib/stripe/platform';
 import { getServerClient } from '@/lib/supabase/server';
 import { ensureCustomer, forgetCustomer } from '@/lib/stripe/customer';
 import { priceBreakdown } from '@/lib/utils';
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
   // server.
   const { data: senderProfile } = await supabase
     .from('profiles')
-    .select('identity_verified_at, full_name, stripe_customer_id')
+    .select('identity_verified_at, full_name, stripe_customer_id, stripe_customer_id_ae')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -88,6 +89,11 @@ export async function POST(req: NextRequest) {
   // ===== Price, from the database =====
   let amountCents: number;
   const pricedFor: Record<string, string> = {};
+  // Where the money will live: the traveller's platform (see
+  // lib/stripe/server.ts). The booking is pinned to the same one when this
+  // PaymentIntent is attached to it.
+  let platform: StripePlatform = 'gb';
+  let travelerId: string | null = null;
 
   if ('tripId' in body) {
     const { data: trip } = await supabase
@@ -118,10 +124,12 @@ export async function POST(req: NextRequest) {
       amountCents = toCents(listed);
     }
     pricedFor.tripId = trip.id;
+    travelerId = trip.user_id;
+    platform = await travelerPlatform(travelerId);
   } else {
     const { data: booking } = await supabase
       .from('booking_intents')
-      .select('id, sender_id, status, initiated_by, payment_status, proposed_price, original_price, price_pending_by, sender_countered, traveler_countered')
+      .select('id, sender_id, traveler_user_id, traveler_trip_id, status, initiated_by, payment_status, proposed_price, original_price, price_pending_by, sender_countered, traveler_countered')
       .eq('id', body.bookingIntentId)
       .maybeSingle();
     if (!booking) {
@@ -152,6 +160,8 @@ export async function POST(req: NextRequest) {
       amountCents = toCents(Number(booking.proposed_price));
     }
     pricedFor.bookingIntentId = booking.id;
+    travelerId = await bookingTravelerId(booking);
+    platform = await travelerPlatform(travelerId);
   }
 
   // Stripe's own floor is 0,50 €; anything at or below it means bad data,
@@ -161,14 +171,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_price' }, { status: 400 });
   }
 
-  const stripe = getStripe();
+  const stripe = getStripe(platform);
 
   // Who is paying, in Stripe's own terms. Best-effort: null just means the
   // payment is attached to a guest customer, exactly as before.
+  // Customers do not cross platforms: one per platform per sender.
   let customerId = await ensureCustomer(
     user,
     senderProfile?.full_name,
-    senderProfile?.stripe_customer_id
+    platform === 'ae' ? senderProfile?.stripe_customer_id_ae : senderProfile?.stripe_customer_id,
+    platform
   );
 
   const create = (customer?: string) =>
@@ -193,6 +205,8 @@ export async function POST(req: NextRequest) {
         // intent; record-authorization refuses it (its amount is below the
         // price on the table) and the capture check requires an exact match.
         offer: pricedFor.offer ?? '',
+        // Checked when the intent is attached to a booking.
+        platform,
       },
     });
 
@@ -205,18 +219,29 @@ export async function POST(req: NextRequest) {
       // deleted from the dashboard, or belonging to the other mode's keys.
       // Drop it, mint a new one, and let the payment through.
       if (e?.code === 'resource_missing' && customerId) {
-        await forgetCustomer(user.id);
-        customerId = await ensureCustomer(user, senderProfile?.full_name, null);
+        await forgetCustomer(user.id, platform);
+        customerId = await ensureCustomer(user, senderProfile?.full_name, null, platform);
         intent = await create(customerId ?? undefined);
       } else {
         throw e;
       }
     }
 
+    // Before the browser can confirm it: whatever booking this ends up on is
+    // pinned to the platform it was made on.
+    // Unrecorded, the booking could later be pinned to the wrong platform, so
+    // this payment does not go ahead: release it and fail like a failed create.
+    if (!(await recordPaymentIntentPlatform(intent.id, platform, travelerId))) {
+      await stripe.paymentIntents.cancel(intent.id).catch(() => {});
+      return NextResponse.json({ error: 'payment_setup_failed' }, { status: 500 });
+    }
+
     return NextResponse.json({
       clientSecret: intent.client_secret,
       paymentIntentId: intent.id,
       amountCents,
+      // The browser must confirm it with this platform's publishable key.
+      platform,
     });
   } catch (e: any) {
     console.error('Stripe create intent error:', e?.message);

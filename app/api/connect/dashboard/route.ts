@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getStripe } from '@/lib/stripe/server';
+import { getStripe, asPlatform } from '@/lib/stripe/server';
 import { getServerClient } from '@/lib/supabase/server';
 
 /**
@@ -26,7 +26,7 @@ export async function POST() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('stripe_account_id')
+    .select('stripe_account_id, stripe_platform')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -36,7 +36,7 @@ export async function POST() {
   }
 
   try {
-    const link = await getStripe().accounts.createLoginLink(
+    const link = await getStripe(asPlatform(profile.stripe_platform)).accounts.createLoginLink(
       profile.stripe_account_id
     );
     return NextResponse.json({ url: link.url });

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getStripe } from '@/lib/stripe/server';
+import { getStripe, asPlatform } from '@/lib/stripe/server';
 import {
   syncConnectAccount,
   isAccountPayable,
@@ -37,7 +37,7 @@ export async function GET() {
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'stripe_account_id, stripe_payouts_enabled, stripe_charges_enabled, stripe_onboarded_at, identity_verified_at'
+      'stripe_account_id, stripe_platform, stripe_payouts_enabled, stripe_charges_enabled, stripe_onboarded_at, identity_verified_at'
     )
     .eq('id', user.id)
     .maybeSingle();
@@ -76,10 +76,11 @@ export async function GET() {
   let accountMissing = false;
 
   try {
-    const account = await getStripe().accounts.retrieve(
+    const platform = asPlatform(profile.stripe_platform);
+    const account = await getStripe(platform).accounts.retrieve(
       profile.stripe_account_id
     );
-    const syncedUserId = await syncConnectAccount(account);
+    const syncedUserId = await syncConnectAccount(account, platform);
     country = account.country ?? null;
     // isAccountPayable, not account.payouts_enabled: Stripe sets that flag
     // while requirements are still outstanding, so trusting it tells a

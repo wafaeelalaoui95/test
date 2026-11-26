@@ -1,4 +1,5 @@
-import { getStripe } from './server';
+import type Stripe from 'stripe';
+import { getStripe, asPlatform, type StripePlatform } from './server';
 import { splitAmount, ensurePayoutDescriptorById } from './connect';
 import { getAdminClient } from '@/lib/supabase/server';
 import { DISPUTE_SETTLED_FILTER } from '@/lib/disputes';
@@ -26,9 +27,12 @@ export async function transferToTraveler(params: {
   existingTransferId: string | null;
   amountCents: number;
   chargeId: string | null;
+  /** booking_intents.stripe_platform — where the charge, and so the transfer, is. */
+  platform?: string | null;
 }): Promise<PayoutResult> {
   const { bookingIntentId, travelerUserId, existingTransferId, amountCents, chargeId } =
     params;
+  const platform: StripePlatform = asPlatform(params.platform);
 
   // Idempotency: never pay the same booking twice. This is the single most
   // expensive bug available in this file, so it is the first check.
@@ -90,9 +94,20 @@ export async function transferToTraveler(params: {
 
   const { data: traveler } = await admin
     .from('profiles')
-    .select('stripe_account_id, stripe_payouts_enabled')
+    .select('stripe_account_id, stripe_payouts_enabled, stripe_platform')
     .eq('id', travelerUserId)
     .maybeSingle();
+
+  // A transfer can only go from the platform holding the charge to an account
+  // on that same platform. A traveller whose account is on the other one is
+  // not payable for this booking — platformChangeBlocked exists to stop this
+  // arising, so it is logged loudly and the money waits.
+  if (traveler?.stripe_account_id && asPlatform(traveler.stripe_platform) !== platform) {
+    console.error(
+      `[payout] booking ${bookingIntentId} is on ${platform} but traveler ${travelerUserId} is on ${asPlatform(traveler.stripe_platform)}, holding`
+    );
+    return { status: 'skipped', reason: 'not_onboarded' };
+  }
 
   if (!traveler?.stripe_account_id || !traveler.stripe_payouts_enabled) {
     // Expected, not exceptional: the traveler can finish onboarding later and
@@ -108,19 +123,49 @@ export async function transferToTraveler(params: {
   // Make sure the payout this transfer leads to reads "JIBLY" on the
   // traveler's bank statement, even on an account no webhook has touched since
   // the descriptor was introduced. Never throws.
-  await ensurePayoutDescriptorById(traveler.stripe_account_id);
+  await ensurePayoutDescriptorById(traveler.stripe_account_id, platform);
+
+  const stripe = getStripe(platform);
 
   try {
-    const transfer = await getStripe().transfers.create(
+    // The transfer is made in the currency the charge settled in. On the UK
+    // platform that is the euro, as it always was. The UAE platform settles in
+    // dirhams: the sender's euros were converted when the charge settled, and
+    // a transfer tied to that charge (source_transaction) must be in dirhams
+    // too — so the traveller's euro share is converted at the SAME rate. The
+    // conversion fee is Jibly's to absorb, not the traveller's.
+    let transferAmount = travelerCents;
+    let transferCurrency = 'eur';
+    if (platform === 'ae') {
+      const charge = await stripe.charges.retrieve(chargeId, {
+        expand: ['balance_transaction'],
+      });
+      const bt = charge.balance_transaction as Stripe.BalanceTransaction | null;
+      if (!bt || typeof bt !== 'object') {
+        // Not settled into the balance yet; the next sweep tries again.
+        return { status: 'failed', reason: 'charge_not_settled' };
+      }
+      if (bt.currency !== 'eur') {
+        if (!bt.exchange_rate) {
+          return { status: 'failed', reason: 'no_exchange_rate' };
+        }
+        transferAmount = Math.floor(travelerCents * bt.exchange_rate);
+        transferCurrency = bt.currency;
+      }
+    }
+
+    const transfer = await stripe.transfers.create(
       {
-        amount: travelerCents,
-        currency: 'eur',
+        amount: transferAmount,
+        currency: transferCurrency,
         destination: traveler.stripe_account_id,
         // Ties the transfer to the specific charge, so Stripe releases it as
         // those funds settle rather than drawing on our floating balance.
         source_transaction: chargeId,
         description: `Jibly payout · booking ${bookingIntentId}`,
-        metadata: { bookingIntentId, travelerUserId },
+        // travelerEurCents: the traveller's share in euros, which is what
+        // transfer_amount records whatever the transfer's own currency.
+        metadata: { bookingIntentId, travelerUserId, travelerEurCents: String(travelerCents) },
       },
       {
         // Belt-and-braces against a double capture racing this function: Stripe
@@ -189,7 +234,7 @@ export async function retryPendingPayouts(
   const admin = getAdminClient();
   const { data: pending } = await admin
     .from('booking_intents')
-    .select('id, traveler_user_id, payment_intent_id, payment_amount, transfer_id')
+    .select('id, traveler_user_id, payment_intent_id, payment_amount, transfer_id, stripe_platform')
     .eq('traveler_user_id', travelerUserId)
     .eq('payment_status', 'captured')
     .is('transfer_id', null)
@@ -215,7 +260,6 @@ export async function retryPendingPayouts(
 
   console.log(`[payout] retrying ${pending.length} payout(s) for ${travelerUserId}`);
 
-  const stripe = getStripe();
   for (const booking of pending) {
     if (!booking.payment_intent_id || !booking.payment_amount) {
       tally.skipped++;
@@ -224,7 +268,9 @@ export async function retryPendingPayouts(
     tally.attempted++;
     // We need the charge id for source_transaction, and it isn't stored on the
     // booking — re-read the PaymentIntent to get it.
-    const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id);
+    const pi = await getStripe(asPlatform(booking.stripe_platform)).paymentIntents.retrieve(
+      booking.payment_intent_id
+    );
     // transferToTraveler reports every failure as a RETURN VALUE, never a
     // throw — so a caller that only counts exceptions reports success while
     // the traveler goes unpaid. That is exactly what happened: the sweep said
@@ -234,6 +280,7 @@ export async function retryPendingPayouts(
       travelerUserId,
       existingTransferId: booking.transfer_id,
       amountCents: booking.payment_amount,
+      platform: booking.stripe_platform,
       chargeId:
         typeof pi.latest_charge === 'string'
           ? pi.latest_charge

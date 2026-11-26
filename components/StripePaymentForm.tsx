@@ -54,6 +54,8 @@ export function StripePaymentForm({
 }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  // Which Stripe account the server made the PaymentIntent on.
+  const [platform, setPlatform] = useState<'gb' | 'ae'>('gb');
   const [initError, setInitError] = useState<string | null>(null);
   const { t: tr, locale } = useI18n();
   // A stable key so a re-render with an equal object doesn't mint a second
@@ -74,8 +76,9 @@ export function StripePaymentForm({
         if (!r.ok) throw Object.assign(new Error('payment_setup'), { code: data.error, status: r.status });
         return data;
       })
-      .then(({ clientSecret, paymentIntentId }) => {
+      .then(({ clientSecret, paymentIntentId, platform }) => {
         if (cancelled) return;
+        setPlatform(platform === 'ae' ? 'ae' : 'gb');
         setClientSecret(clientSecret);
         setPaymentIntentId(paymentIntentId);
       })
@@ -125,7 +128,7 @@ export function StripePaymentForm({
   };
 
   return (
-    <Elements stripe={getStripeClient()} options={options}>
+    <Elements key={platform} stripe={getStripeClient(platform)} options={options}>
       <InnerForm
         paymentIntentId={paymentIntentId}
         onAuthorized={onAuthorized}

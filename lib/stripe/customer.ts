@@ -1,4 +1,4 @@
-import { getStripe } from '@/lib/stripe/server';
+import { getStripe, type StripePlatform } from '@/lib/stripe/server';
 import { getAdminClient } from '@/lib/supabase/server';
 import { formatName } from '@/lib/utils';
 
@@ -20,7 +20,9 @@ import { formatName } from '@/lib/utils';
 export async function ensureCustomer(
   user: { id: string; email?: string | null },
   fullName?: string | null,
-  existingId?: string | null
+  existingId?: string | null,
+  // Customers live on one platform; the UAE one is a separate column.
+  platform: StripePlatform = 'gb'
 ): Promise<string | null> {
   // Trust the stored id without a round-trip. The one case where it goes stale
   // is a customer deleted in the dashboard, which surfaces as resource_missing
@@ -28,7 +30,7 @@ export async function ensureCustomer(
   if (existingId) return existingId;
 
   try {
-    const stripe = getStripe();
+    const stripe = getStripe(platform);
     const customer = await stripe.customers.create({
       // Title-cased for the same reason as everywhere else: this name appears
       // in Stripe's UI, on receipts, and in dispute paperwork.
@@ -42,7 +44,7 @@ export async function ensureCustomer(
     // is the behaviour we had before and not worth failing over.
     const { error } = await getAdminClient()
       .from('profiles')
-      .update({ stripe_customer_id: customer.id })
+      .update(platform === 'ae' ? { stripe_customer_id_ae: customer.id } : { stripe_customer_id: customer.id })
       .eq('id', user.id);
     if (error) {
       console.warn('[stripe/customer] could not store customer id:', error.message);
@@ -57,11 +59,14 @@ export async function ensureCustomer(
 
 // Clear a customer id we know Stripe no longer has, so the next attempt makes
 // a new one instead of failing forever on the same missing reference.
-export async function forgetCustomer(userId: string): Promise<void> {
+export async function forgetCustomer(
+  userId: string,
+  platform: StripePlatform = 'gb'
+): Promise<void> {
   try {
     await getAdminClient()
       .from('profiles')
-      .update({ stripe_customer_id: null })
+      .update(platform === 'ae' ? { stripe_customer_id_ae: null } : { stripe_customer_id: null })
       .eq('id', userId);
   } catch (e: any) {
     console.warn('[stripe/customer] could not clear customer id:', e?.message);

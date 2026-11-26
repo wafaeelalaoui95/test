@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const account = await getStripe().accounts.createExternalAccount(
+    const account = await getStripe(resolved.actor.platform).accounts.createExternalAccount(
       resolved.actor.accountId,
       {
         external_account: body.token,
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (clash) {
-        await getStripe()
+        await getStripe(resolved.actor.platform)
           .accounts.deleteExternalAccount(resolved.actor.accountId, account.id)
           .catch((err) =>
             console.error('[connect/bank] could not detach duplicate:', err?.message)

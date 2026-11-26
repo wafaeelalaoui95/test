@@ -1,5 +1,6 @@
 import type Stripe from 'stripe';
-import { getStripe } from './server';
+import { getStripe, type StripePlatform } from './server';
+import { platformForCountry } from './platform';
 import { getAdminClient } from '@/lib/supabase/server';
 import { PAYOUT_COUNTRIES } from './payout-countries';
 import { PLATFORM_FEE_BPS, PLATFORM_FEE_FIXED_CENTS } from '@/lib/constants';
@@ -88,7 +89,9 @@ export async function getOrCreateConnectAccount(
 
   const { error } = await admin
     .from('profiles')
-    .update({ stripe_account_id: accountId })
+    // The platform goes with the account: every later call about this
+    // account, and every new booking with this traveller, is made there.
+    .update({ stripe_account_id: accountId, stripe_platform: platformForCountry(country) })
     .eq('id', userId);
 
   if (error) {
@@ -119,6 +122,22 @@ export async function getStoredConnectAccountId(
     .eq('id', userId)
     .maybeSingle();
   return data?.stripe_account_id ?? null;
+}
+
+/** The account on file and the platform it lives on. */
+export async function getStoredConnectAccount(
+  userId: string
+): Promise<{ accountId: string; platform: StripePlatform } | null> {
+  const { data } = await getAdminClient()
+    .from('profiles')
+    .select('stripe_account_id, stripe_platform')
+    .eq('id', userId)
+    .maybeSingle();
+  if (!data?.stripe_account_id) return null;
+  return {
+    accountId: data.stripe_account_id,
+    platform: data.stripe_platform === 'ae' ? 'ae' : 'gb',
+  };
 }
 
 /**
@@ -173,6 +192,8 @@ export function isMissingAccountError(e: any): boolean {
  * where the recipient service agreement applies.
  */
 function isCrossBorder(country: string): boolean {
+  // The UAE is paid from the UAE platform, where it is domestic.
+  if (platformForCountry(country) === 'ae') return false;
   return !(PAYOUT_COUNTRIES as readonly string[]).includes(
     country.toUpperCase()
   );
@@ -235,7 +256,8 @@ function isOurProfileUrl(url: string | null | undefined): boolean {
  * not stop a traveler from being paid.
  */
 export async function ensureBusinessProfile(
-  account: Stripe.Account
+  account: Stripe.Account,
+  platform: StripePlatform = 'gb'
 ): Promise<void> {
   const bp = account.business_profile;
   const wanted = travelerBusinessProfile();
@@ -252,7 +274,7 @@ export async function ensureBusinessProfile(
   if (!Object.keys(patch).length) return;
 
   try {
-    await getStripe().accounts.update(account.id, {
+    await getStripe(platform).accounts.update(account.id, {
       business_profile: patch,
     });
   } catch (e: any) {
@@ -279,10 +301,13 @@ export const PAYOUT_STATEMENT_DESCRIPTOR = 'JIBLY';
  *
  * Never throws: a missing label must not stop a traveler from being paid.
  */
-export async function ensurePayoutDescriptor(account: Stripe.Account): Promise<void> {
+export async function ensurePayoutDescriptor(
+  account: Stripe.Account,
+  platform: StripePlatform = 'gb'
+): Promise<void> {
   if (account.settings?.payouts?.statement_descriptor === PAYOUT_STATEMENT_DESCRIPTOR) return;
   try {
-    await getStripe().accounts.update(account.id, {
+    await getStripe(platform).accounts.update(account.id, {
       settings: { payouts: { statement_descriptor: PAYOUT_STATEMENT_DESCRIPTOR } },
     });
   } catch (e: any) {
@@ -291,10 +316,13 @@ export async function ensurePayoutDescriptor(account: Stripe.Account): Promise<v
 }
 
 /** Same, from an account id — for callers that do not hold the account. */
-export async function ensurePayoutDescriptorById(accountId: string): Promise<void> {
+export async function ensurePayoutDescriptorById(
+  accountId: string,
+  platform: StripePlatform = 'gb'
+): Promise<void> {
   try {
-    const account = await getStripe().accounts.retrieve(accountId);
-    await ensurePayoutDescriptor(account);
+    const account = await getStripe(platform).accounts.retrieve(accountId);
+    await ensurePayoutDescriptor(account, platform);
   } catch (e: any) {
     console.warn(`[connect] could not read ${accountId} for payout descriptor:`, e?.message);
   }
@@ -333,7 +361,7 @@ async function createRecipientAccount(
   const bucket = recreate ? Date.now() : Math.floor(Date.now() / 60_000);
 
   try {
-    const account = await getStripe().accounts.create(
+    const account = await getStripe(platformForCountry(country)).accounts.create(
       {
         type: 'custom',
         // Immutable after creation. The traveler picks it from a dropdown for
@@ -426,14 +454,16 @@ export function isAccountPayable(account: Stripe.Account): boolean {
  * stale — see below.
  */
 export async function syncConnectAccount(
-  account: Stripe.Account
+  account: Stripe.Account,
+  // The platform this account object was read from.
+  platform: StripePlatform = 'gb'
 ): Promise<string | null> {
   const admin = getAdminClient();
   const payable = isAccountPayable(account);
 
   // Every account passes through here (webhook, /wallet, terms), which makes
   // it the place where accounts created before the descriptor existed get it.
-  await ensurePayoutDescriptor(account);
+  await ensurePayoutDescriptor(account, platform);
 
   // Normally metadata.userId, written at account creation. But an account that
   // lost it — or never had it — used to make this function return silently,
@@ -461,6 +491,10 @@ export async function syncConnectAccount(
       .from('profiles')
       .update(patch)
       .eq('id', metadataUserId)
+      // Only the account they hold NOW. A replaced account (another country,
+      // or the other platform) keeps sending events, and must not overwrite
+      // the current account's flags.
+      .eq('stripe_account_id', account.id)
       .select('id');
     if (error) console.error('[connect] syncConnectAccount failed:', error);
     if (data?.length) return metadataUserId;
