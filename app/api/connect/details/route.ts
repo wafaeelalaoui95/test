@@ -32,9 +32,7 @@ const schema = z.object({
   line1: z.string().trim().min(1).max(200),
   line2: z.string().trim().max(200).optional(),
   city: z.string().trim().min(1).max(100),
-  // Optional: most UAE addresses have none. Stripe still asks for it, through
-  // requirements, wherever it is actually required.
-  postalCode: z.string().trim().max(20).optional(),
+  postalCode: z.string().trim().min(1).max(20),
   state: z.string().trim().max(100).optional(),
 });
 
@@ -63,7 +61,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await getStripe(resolved.actor.platform).accounts.update(resolved.actor.accountId, {
+    await getStripe().accounts.update(resolved.actor.accountId, {
       individual: {
         first_name: body.firstName,
         last_name: body.lastName,
@@ -72,7 +70,7 @@ export async function POST(req: NextRequest) {
           line1: body.line1,
           ...(body.line2 ? { line2: body.line2 } : {}),
           city: body.city,
-          ...(body.postalCode ? { postal_code: body.postalCode } : {}),
+          postal_code: body.postalCode,
           ...(body.state ? { state: body.state } : {}),
           // No country: it is fixed by the account and Stripe rejects a
           // mismatch. The traveler already chose it at step one.

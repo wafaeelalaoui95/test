@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getStripe, asPlatform } from '@/lib/stripe/server';
+import { getStripe } from '@/lib/stripe/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 import { syncRequestVisibility } from '@/lib/listings';
 import { paymentIntentMismatch } from '@/lib/stripe/verify-intent';
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
     .select(
-      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, received_confirmed_at, stripe_platform'
+      'id, sender_id, traveler_user_id, traveler_trip_id, payment_intent_id, payment_status, received_confirmed_at'
     )
     .eq('id', body.bookingIntentId)
     .maybeSingle();
@@ -94,8 +94,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, alreadyCaptured: true });
   }
 
-  // The booking's own platform — its money is there and nowhere else.
-  const stripe = getStripe(asPlatform(intent.stripe_platform));
+  const stripe = getStripe();
 
   // ===== Is this PaymentIntent really for this booking? =====
   // The booking row (and its payment_intent_id) is inserted by the browser, so

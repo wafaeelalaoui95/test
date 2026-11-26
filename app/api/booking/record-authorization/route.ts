@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
-import { travelerPlatform, bookingTravelerId, paymentIntentPlatform } from '@/lib/stripe/platform';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 import { syncRequestVisibility } from '@/lib/listings';
 
@@ -57,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   const { data: intent, error: intentErr } = await supabase
     .from('booking_intents')
-    .select('id, sender_id, traveler_user_id, traveler_trip_id, payment_status, proposed_price, status, price_pending_by')
+    .select('id, sender_id, payment_status, proposed_price, status, price_pending_by')
     .eq('id', body.bookingIntentId)
     .maybeSingle();
   if (intentErr || !intent) {
@@ -71,13 +70,7 @@ export async function POST(req: NextRequest) {
 
   // Verify the PaymentIntent with Stripe — the source of truth for both the
   // authorised state and the amount.
-  // The PaymentIntent was made on the traveller's platform
-  // (/api/stripe/create-payment-intent), and attaching it below makes that the
-  // booking's platform too (trigger in 2026-11-26-two-stripe-platforms.sql).
-  const platform =
-    (await paymentIntentPlatform(body.paymentIntentId)) ??
-    (await travelerPlatform(await bookingTravelerId(intent)));
-  const stripe = getStripe(platform);
+  const stripe = getStripe();
   let pi;
   try {
     pi = await stripe.paymentIntents.retrieve(body.paymentIntentId);
@@ -106,8 +99,6 @@ export async function POST(req: NextRequest) {
       ? 'paid by someone else'
       : md.pricedBy === 'server' && md.bookingIntentId !== body.bookingIntentId
         ? 'priced for another booking'
-        : md.platform && md.platform !== platform
-        ? 'made on the other platform'
         : pi.amount < expectedCents
           ? `amount ${pi.amount} below price ${expectedCents}`
           : null;
@@ -133,8 +124,6 @@ export async function POST(req: NextRequest) {
       // Paying a traveller's counter settles the negotiation.
       price_pending_by: null,
       payment_intent_id: pi.id,
-      // Where this PaymentIntent lives — set explicitly, not re-derived.
-      stripe_platform: platform,
       payment_status: 'authorized',
       payment_amount: pi.amount, // from Stripe, not the client
     })
@@ -152,7 +141,7 @@ export async function POST(req: NextRequest) {
 
   // Take the money now — see the note at the top of this file.
   try {
-    const captured = await stripe.paymentIntents.capture(pi.id);
+    const captured = await getStripe().paymentIntents.capture(pi.id);
     const { error: capErr } = await getAdminClient()
       .from('booking_intents')
       .update({ payment_status: 'captured', payment_amount: captured.amount })

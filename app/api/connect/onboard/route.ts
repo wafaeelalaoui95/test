@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import {
   getOrCreateConnectAccount,
-  getStoredConnectAccount,
+  getStoredConnectAccountId,
   clearConnectAccount,
   isMissingAccountError,
   isAccountPayable,
@@ -11,7 +11,6 @@ import {
 } from '@/lib/stripe/connect';
 import { findCountryByName } from '@/lib/countries';
 import { isPayoutCountry } from '@/lib/stripe/payout-countries';
-import { platformForCountry, platformChangeBlocked, travelerPlatform } from '@/lib/stripe/platform';
 import { getSiteUrl } from '@/lib/site-url';
 import { getServerClient } from '@/lib/supabase/server';
 
@@ -123,9 +122,7 @@ export async function POST(req: NextRequest) {
     }
 
     const stripeLocale = STRIPE_LOCALES[body.locale ?? 'fr'] ?? 'fr-FR';
-    // The account (and so the link) lives on the platform of its country.
-    const platform = platformForCountry(country);
-    const stripe = getStripe(platform);
+    const stripe = getStripe();
 
     const makeLink = (account: string) =>
       stripe.accountLinks.create({
@@ -162,23 +159,10 @@ export async function POST(req: NextRequest) {
     //
     // Unfinished account → replace it with one in the right country. Finished
     // account → refuse, because recreating would throw away completed KYC.
-    const stored = await getStoredConnectAccount(user.id);
-    // Moving platform strands money held on the current one — see
-    // platformChangeBlocked.
-    if (platform !== (await travelerPlatform(user.id))) {
-      const blocked = await platformChangeBlocked(user.id, platform);
-      if (blocked) {
-        return NextResponse.json(
-          { error: 'payout_setup_failed', code: blocked },
-          { status: 409 }
-        );
-      }
-    }
-    if (stored) {
+    const existingId = await getStoredConnectAccountId(user.id);
+    if (existingId) {
       try {
-        // Read where it lives: the other platform would answer "no such
-        // account" and the catch below would treat it as dead.
-        const existing = await getStripe(stored.platform).accounts.retrieve(stored.accountId);
+        const existing = await stripe.accounts.retrieve(existingId);
         if (existing.country && existing.country.toUpperCase() !== country) {
           if (isAccountPayable(existing)) {
             return NextResponse.json(
@@ -194,7 +178,7 @@ export async function POST(req: NextRequest) {
           // Keeping this account. If it was opened before we started
           // prefilling, Stripe would still ask its owner to describe a
           // business — so fill it in now, on the way to the form.
-          await ensureBusinessProfile(existing, stored.platform);
+          await ensureBusinessProfile(existing);
         }
       } catch (e: any) {
         // Missing account: leave it to the recovery path below.

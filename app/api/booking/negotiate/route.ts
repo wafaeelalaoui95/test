@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getStripe, asPlatform } from '@/lib/stripe/server';
-import { travelerPlatform, bookingTravelerId, paymentIntentPlatform } from '@/lib/stripe/platform';
+import { getStripe } from '@/lib/stripe/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 import { syncRequestVisibility } from '@/lib/listings';
 import { priceBreakdown } from '@/lib/utils';
@@ -69,7 +68,7 @@ const schema = z.discriminatedUnion('action', [
 ]);
 
 const BOOKING_COLUMNS =
-  'id, sender_id, traveler_user_id, traveler_trip_id, shipping_request_id, status, initiated_by, proposed_price, original_price, price_pending_by, sender_countered, traveler_countered, payment_status, payment_intent_id, payment_amount, stripe_platform';
+  'id, sender_id, traveler_user_id, traveler_trip_id, shipping_request_id, status, initiated_by, proposed_price, original_price, price_pending_by, sender_countered, traveler_countered, payment_status, payment_intent_id, payment_amount';
 
 /** Same 4-digit handover codes as lib/supabase/queries.ts (kept here so this route does not pull the browser client in). */
 function confirmationCode(): string {
@@ -95,6 +94,7 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = getAdminClient();
+  const stripe = getStripe();
   const now = new Date().toISOString();
 
   // ===========================================================================
@@ -109,18 +109,6 @@ export async function POST(req: NextRequest) {
       .eq('payment_intent_id', body.paymentIntentId)
       .maybeSingle();
     if (existing) return NextResponse.json({ ok: true, bookingIntentId: existing.id });
-
-    // The offer was authorised on the trip owner's platform
-    // (/api/stripe/create-payment-intent), so it is read and released there.
-    const { data: owner } = await admin
-      .from('traveler_trips')
-      .select('user_id')
-      .eq('id', body.tripId)
-      .maybeSingle();
-    const offerPlatform =
-      (await paymentIntentPlatform(body.paymentIntentId)) ??
-      (await travelerPlatform(owner?.user_id));
-    const stripe = getStripe(offerPlatform);
 
     let pi;
     try {
@@ -174,7 +162,6 @@ export async function POST(req: NextRequest) {
         sender_countered: true,
         price_updated_at: now,
         payment_intent_id: pi.id,
-        stripe_platform: offerPlatform,
         payment_status: 'authorized',
         payment_amount: pi.amount,
         pickup_code: confirmationCode(),
@@ -218,20 +205,11 @@ export async function POST(req: NextRequest) {
     isTraveler = trip?.user_id === user.id;
   }
 
-  // The payment already on this booking lives on the booking's platform.
-  const stripe = getStripe(asPlatform(b.stripe_platform));
-
   // ===========================================================================
   // SENDER: a lower price in answer to a traveller's — authorised, not captured
   // ===========================================================================
   if (body.action === 'sender-counter') {
     if (!isSender) return fail('Forbidden', 403);
-    // A NEW authorisation, made on the traveller's platform; attaching it
-    // makes that the booking's platform (2026-11-26-two-stripe-platforms.sql).
-    const counterPlatform =
-      (await paymentIntentPlatform(body.paymentIntentId)) ??
-      (await travelerPlatform(await bookingTravelerId(b)));
-    const stripe = getStripe(counterPlatform);
     let pi;
     try {
       pi = await stripe.paymentIntents.retrieve(body.paymentIntentId);
@@ -259,7 +237,6 @@ export async function POST(req: NextRequest) {
         sender_countered: true,
         price_updated_at: now,
         payment_intent_id: pi.id,
-        stripe_platform: counterPlatform,
         payment_status: 'authorized',
         payment_amount: pi.amount,
       })

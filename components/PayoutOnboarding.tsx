@@ -75,10 +75,6 @@ const COPY = {
     invalid_bank_account_iban: 'Ta banque a refusé cet IBAN.',
     bank_already_used:
       'Ce compte bancaire est déjà utilisé par un autre voyageur. Chacun doit recevoir ses paiements sur son propre compte.',
-    money_on_other_platform:
-      'Tu as encore un paiement en cours sur ton compte actuel. Tu pourras changer de pays une fois ce paiement versé.',
-    uae_disabled: 'Les paiements aux Émirats ne sont pas encore ouverts.',
-    uaeIbanHint: 'IBAN émirati, il commence par AE (23 caractères).',
     account_number_invalid: 'Ce numéro de compte n’est pas valide.',
     routing_number_invalid: 'Ce sort code n’est pas valide.',
     invalid_dob: 'Cette date de naissance n’est pas valide.',
@@ -129,20 +125,11 @@ const COPY = {
     invalid_bank_account_iban: 'Your bank rejected this IBAN.',
     bank_already_used:
       'This bank account is already used by another traveller. Everyone must be paid into their own account.',
-    money_on_other_platform:
-      'You still have a payment in progress on your current account. You can change country once it has been paid out.',
-    uae_disabled: 'Payouts to the UAE are not open yet.',
-    uaeIbanHint: 'UAE IBAN, it starts with AE (23 characters).',
     account_number_invalid: 'This account number isn’t valid.',
     routing_number_invalid: 'This sort code isn’t valid.',
     invalid_dob: 'This date of birth isn’t valid.',
   },
 } as const;
-
-/** The UAE: an IBAN too, but not SEPA, and on the UAE Stripe account. */
-function isUae(country: string): boolean {
-  return country.toUpperCase() === 'AE';
-}
 
 /** SEPA countries take an IBAN; GB and Gibraltar take sort code + number. */
 function usesIban(country: string): boolean {
@@ -247,7 +234,6 @@ function Flow({
   const [holder, setHolder] = useState('');
   const [sortCode, setSortCode] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
-  const [uaeIban, setUaeIban] = useState('');
 
   // Collecting the fields ourselves means Stripe's validation errors are now
   // ours to explain. "Something went wrong" is a lie when Stripe said exactly
@@ -383,7 +369,7 @@ function Flow({
         line1: line1.trim(),
         ...(line2.trim() ? { line2: line2.trim() } : {}),
         city: city.trim(),
-        ...(postalCode.trim() ? { postalCode: postalCode.trim() } : {}),
+        postalCode: postalCode.trim(),
       });
       if (!holder) setHolder(`${firstName.trim()} ${lastName.trim()}`.trim());
       try {
@@ -410,22 +396,7 @@ function Flow({
       // never enters this page at all; on the GB path it lives in this
       // component's memory and goes straight to Stripe.
       let token;
-      if (isUae(country)) {
-        // Tokenised with the UAE account's key: the bank account is attached
-        // to a connected account on that platform, and a token from the UK
-        // key does not exist there. The IbanElement only takes SEPA IBANs.
-        const uaeStripe = await getStripeClient('ae');
-        if (!uaeStripe) throw new Error('stripe_unavailable');
-        const r = await uaeStripe.createToken('bank_account', {
-          country: 'AE',
-          currency: 'aed',
-          account_number: uaeIban.replace(/\s/g, '').toUpperCase(),
-          account_holder_name: holder.trim(),
-          account_holder_type: 'individual',
-        });
-        if (r.error) throw Object.assign(new Error('token'), { code: r.error.code });
-        token = r.token;
-      } else if (usesIban(country)) {
+      if (usesIban(country)) {
         const el = elements?.getElement(IbanElement);
         if (!el) throw new Error('iban_element_missing');
         const r = await stripe.createToken(el, {
@@ -505,12 +476,9 @@ function Flow({
     dobYear.length === 4 &&
     line1.trim() &&
     city.trim() &&
-    // Most UAE addresses have no postcode.
-    (isUae(country) || postalCode.trim());
+    postalCode.trim();
 
-  const bankReady = isUae(country)
-    ? holder.trim().length > 1 && /^AE\d{21}$/.test(uaeIban.replace(/\s/g, '').toUpperCase())
-    : usesIban(country)
+  const bankReady = usesIban(country)
     ? holder.trim().length > 1
     : holder.trim().length > 1 && sortCode.trim() && accountNumber.trim();
 
@@ -607,19 +575,7 @@ function Flow({
             <input value={holder} onChange={(e) => setHolder(e.target.value)} className={input} />
           </label>
 
-          {isUae(country) ? (
-            <label className="block mb-4">
-              <span className={label}>IBAN</span>
-              <input
-                value={uaeIban}
-                onChange={(e) => setUaeIban(e.target.value)}
-                placeholder="AE07 0331 2345 6789 0123 456"
-                autoComplete="off"
-                className={input}
-              />
-              <span className="block mt-1 text-[12px] text-ink-400">{c.uaeIbanHint}</span>
-            </label>
-          ) : usesIban(country) ? (
+          {usesIban(country) ? (
             <div className="mb-4">
               <span className={label}>IBAN</span>
               <div className="rounded-xl border border-ink-100 bg-white px-3.5 py-3">

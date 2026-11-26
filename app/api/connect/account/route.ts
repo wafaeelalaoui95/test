@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const account = await getStripe(resolved.actor.platform).accounts.retrieve(
+    const account = await getStripe().accounts.retrieve(
       resolved.actor.accountId
     );
     const unsupported = unsupportedRequirements(account);

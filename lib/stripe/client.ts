@@ -7,30 +7,19 @@ import type { Stripe } from '@stripe/stripe-js';
  * Browser-side Stripe client (used by Stripe Elements). The publishable key
  * is fine to expose — it can only initiate payments, not capture them.
  *
- * One per platform (see lib/stripe/server.ts): a PaymentIntent or a bank token
- * made with one platform's key does not exist on the other. The server tells
- * the payment form which platform its PaymentIntent is on.
- *
- * loadStripe() is called once per key and cached because it injects a <script>
- * tag for Stripe.js that we don't want repeated.
+ * loadStripe() is called once and cached because it injects a <script> tag
+ * for Stripe.js that we don't want repeated.
  */
-type Platform = 'gb' | 'ae';
-const promises: Partial<Record<Platform, Promise<Stripe | null>>> = {};
+let _stripePromise: Promise<Stripe | null> | null = null;
 
-export function getStripeClient(platform: Platform = 'gb'): Promise<Stripe | null> {
-  const cached = promises[platform];
-  if (cached) return cached;
-  const key =
-    platform === 'ae'
-      ? process.env.NEXT_PUBLIC_STRIPE_UAE_PUBLISHABLE_KEY
-      : process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-  let promise: Promise<Stripe | null>;
+export function getStripeClient(): Promise<Stripe | null> {
+  if (_stripePromise) return _stripePromise;
+  const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   if (!key) {
-    console.error(`Stripe publishable key for ${platform} is not set`);
-    promise = Promise.resolve(null);
-  } else {
-    promise = loadStripe(key);
+    console.error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set');
+    _stripePromise = Promise.resolve(null);
+    return _stripePromise;
   }
-  promises[platform] = promise;
-  return promise;
+  _stripePromise = loadStripe(key);
+  return _stripePromise;
 }

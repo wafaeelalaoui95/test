@@ -1,4 +1,4 @@
-import { getStripe, asPlatform } from '@/lib/stripe/server';
+import { getStripe } from '@/lib/stripe/server';
 import { getAdminClient } from '@/lib/supabase/server';
 
 // =============================================================================
@@ -24,12 +24,10 @@ export type ReleasableBooking = {
   transfer_id: string | null;
   transfer_amount: number | null;
   refunded_amount: number | null;
-  /** Where the money is ('gb' | 'ae'). Missing means 'gb'. */
-  stripe_platform?: string | null;
 };
 
 export const RELEASE_COLUMNS =
-  'id, payment_intent_id, payment_status, payment_amount, transfer_id, transfer_amount, refunded_amount, stripe_platform';
+  'id, payment_intent_id, payment_status, payment_amount, transfer_id, transfer_amount, refunded_amount';
 
 export type ReleaseResult =
   /** No payment ever existed, or it was already voided/refunded. */
@@ -71,9 +69,7 @@ export async function releaseAuthorization(
     return { kind: 'nothing_owed', detail: 'no_payment_intent' };
   }
   try {
-    await getStripe(asPlatform(booking.stripe_platform)).paymentIntents.cancel(
-      booking.payment_intent_id
-    );
+    await getStripe().paymentIntents.cancel(booking.payment_intent_id);
   } catch (e: any) {
     // Already cancelled on Stripe's side is the outcome we wanted, not a
     // failure — it happens when a retry follows a request that in fact
@@ -133,8 +129,7 @@ export async function refundBooking(
     };
   }
 
-  const platform = asPlatform(booking.stripe_platform);
-  const stripe = getStripe(platform);
+  const stripe = getStripe();
   try {
     // Reverse the traveller's cut FIRST. If this fails we want to know before
     // the sender is made whole, rather than after — a refund we cannot claw
@@ -143,14 +138,9 @@ export async function refundBooking(
     if (booking.transfer_id && booking.transfer_amount) {
       // Proportional: a 50% refund reverses 50% of the traveller's share, so a
       // partial refund doesn't take the whole payout back.
-      // transfer_amount is in euros. On the UAE platform the transfer itself
-      // was made in dirhams, and a reversal is expressed in the transfer's own
-      // currency — so take the same share of what was actually sent.
-      const transferred =
-        platform === 'ae'
-          ? (await stripe.transfers.retrieve(booking.transfer_id)).amount
-          : booking.transfer_amount;
-      const reverseAmount = Math.floor((transferred * amount) / booking.payment_amount);
+      const reverseAmount = Math.floor(
+        (booking.transfer_amount * amount) / booking.payment_amount
+      );
       if (reverseAmount > 0) {
         const reversal = await stripe.transfers.createReversal(
           booking.transfer_id,

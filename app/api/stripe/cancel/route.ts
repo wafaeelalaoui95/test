@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getStripe, asPlatform } from '@/lib/stripe/server';
+import { getStripe } from '@/lib/stripe/server';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 import { syncRequestVisibility } from '@/lib/listings';
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   const { data: intent } = await supabase
     .from('booking_intents')
-    .select('id, sender_id, traveler_trip_id, payment_intent_id, payment_status, stripe_platform')
+    .select('id, sender_id, traveler_trip_id, payment_intent_id, payment_status')
     .eq('id', body.bookingIntentId)
     .maybeSingle();
   if (!intent) {
@@ -76,8 +76,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // The booking's own platform — its money is there and nowhere else.
-  const stripe = getStripe(asPlatform(intent.stripe_platform));
+  const stripe = getStripe();
   try {
     await stripe.paymentIntents.cancel(body.paymentIntentId);
     // Money column → service-role write (not client-writable under RLS).
