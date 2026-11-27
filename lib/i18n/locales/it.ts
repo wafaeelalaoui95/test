@@ -19,7 +19,7 @@ export const it: Translations = {
   hero_badge: "Community di viaggiatori verificati",
   hero_title_1: "Qualcuno sta già viaggiando",
   hero_title_2: "nella Sua direzione.",
-  hero_title_keyword: "Spedire un documento o un piccolo pacco all’estero, con un viaggiatore verificato",
+  hero_title_keyword: "Spedizione sicura di pacchi tra privati",
   hero_subtitle: "Deve spedire un documento, delle chiavi o un piccolo pacco? Trovi una persona che fa già il tragitto, scelga il Suo prezzo e prenoti in tutta sicurezza con Jibly.",
   hero_search_from: "Città di partenza",
   hero_search_to: "Città di arrivo",

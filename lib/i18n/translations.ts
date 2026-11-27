@@ -14,6 +14,8 @@ import { it } from './locales/it';
 import { pt } from './locales/pt';
 import { ar } from './locales/ar';
 
+// Arabic (ar) is translated but not offered yet: it is left out of LOCALES,
+// so it cannot be picked and isLocale() rejects a stored or browser "ar".
 export type Locale = 'fr' | 'en' | 'es' | 'de' | 'nl' | 'it' | 'pt' | 'ar';
 
 export const LOCALES: { code: Locale; label: string; flag: string; rtl: boolean }[] = [
@@ -24,7 +26,6 @@ export const LOCALES: { code: Locale; label: string; flag: string; rtl: boolean 
   { code: 'nl', label: 'Nederlands', flag: '🇳🇱', rtl: false },
   { code: 'it', label: 'Italiano', flag: '🇮🇹', rtl: false },
   { code: 'pt', label: 'Português', flag: '🇵🇹', rtl: false },
-  { code: 'ar', label: 'العربية', flag: '🇲🇦', rtl: true },
 ];
 
 export function isLocale(v: unknown): v is Locale {
