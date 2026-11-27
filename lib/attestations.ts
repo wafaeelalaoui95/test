@@ -81,6 +81,11 @@ export type AttestationKind =
   | 'sender_immediate_performance';
 export type AttestationLocale = 'fr' | 'en';
 
+/** The language a declaration is shown and stored in for a given UI locale. */
+export function attestationLocale(uiLocale: string): AttestationLocale {
+  return uiLocale === 'fr' ? 'fr' : 'en';
+}
+
 /**
  * The exact sentences. FROZEN.
  *
@@ -180,9 +185,12 @@ export const SUPERSEDED_STATEMENT_COUNT = SUPERSEDED_STATEMENTS.length;
  */
 export function attestationStatement(
   kind: AttestationKind,
-  locale: AttestationLocale,
+  uiLocale: string,
   itemLabel?: string | null
 ): string {
+  // The declarations exist in French and English only: a translated sworn
+  // statement needs legal review first. Other UI languages read the English.
+  const locale = attestationLocale(uiLocale);
   const template = STATEMENTS[kind][locale] ?? STATEMENTS[kind].en;
   const item = (itemLabel ?? '').trim();
   return template.replace(

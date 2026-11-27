@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { translations, type Locale, type Translations, LOCALES } from './translations';
+import { translations, type Locale, type Translations, LOCALES, isLocale } from './translations';
 
 const STORAGE_KEY = 'jibly-locale';
 
@@ -15,18 +15,19 @@ type I18nContextValue = {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 // Resolve the preferred locale on the client: an explicit stored choice
-// wins, otherwise we fall back to the browser language (en → English,
-// everything else → French).
+// wins, otherwise we fall back to the browser language when we support it
+// (en, es, de, nl), and to French for everything else.
 function detectLocale(): Locale {
   if (typeof window === 'undefined') return 'fr';
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === 'fr' || stored === 'en') return stored;
+    if (isLocale(stored)) return stored;
   } catch {
     /* ignore — private mode etc. */
   }
   const nav = window.navigator.language?.toLowerCase() ?? '';
-  return nav.startsWith('en') ? 'en' : 'fr';
+  const base = nav.split('-')[0];
+  return isLocale(base) ? base : 'fr';
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {

@@ -785,7 +785,7 @@ export default function EnvoyerPage() {
                       {t.send_forbidden_title}
                     </p>
                     <p className="text-[14px] text-ink-500 leading-relaxed">
-                      {FORBIDDEN_CATEGORIES[locale === 'en' ? 'en' : 'fr'].join(' · ')}
+                      {FORBIDDEN_CATEGORIES[locale].join(' · ')}
                     </p>
                   </div>
                 </div>
@@ -847,7 +847,7 @@ export default function EnvoyerPage() {
                         first appeared at the payment screen. */}
                     <div className="mt-4 rounded-xl bg-cream-100 border border-ink-50 px-4 py-3 space-y-1.5">
                       <div className="flex justify-between text-[13px] text-ink-500">
-                        <span>{locale === 'en' ? 'The traveller receives' : 'Le voyageur reçoit'}</span>
+                        <span>{t.send_traveller_receives}</span>
                         <span className="num-display">{formatEuros(budget)}</span>
                       </div>
                       <div className="flex justify-between text-[13px] text-ink-500">
@@ -855,7 +855,7 @@ export default function EnvoyerPage() {
                         <span className="num-display">{formatEuros(priceBreakdown(budget).fees)}</span>
                       </div>
                       <div className="flex justify-between text-[14px] font-semibold text-ink-900 pt-1.5 border-t border-ink-100">
-                        <span>{locale === 'en' ? 'You pay' : 'Vous payez'}</span>
+                        <span>{t.send_you_pay}</span>
                         <span className="num-display">{formatEuros(priceBreakdown(budget).total)}</span>
                       </div>
                     </div>

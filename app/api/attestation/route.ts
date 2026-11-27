@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 import {
   attestationStatement,
+  attestationLocale,
   prohibitedPolicyDigest,
   PROHIBITED_POLICY_VERSION,
   type AttestationKind,
@@ -10,7 +11,7 @@ import {
 
 /**
  * POST /api/attestation
- * Body: { bookingIntentId: uuid, kind: 'sender_certification' | 'traveler_inspection', locale: 'fr' | 'en' }
+ * Body: { bookingIntentId: uuid, kind: 'sender_certification' | 'traveler_inspection', locale: 'fr' | 'en' | 'es' | 'de' | 'nl' }
  *
  * Record what one party declared about a parcel.
  *
@@ -33,7 +34,8 @@ const schema = z.object({
     'traveler_inspection',
     'sender_immediate_performance',
   ]),
-  locale: z.enum(['fr', 'en']),
+  // Any UI locale; the declaration itself is rendered in fr or en.
+  locale: z.enum(['fr', 'en', 'es', 'de', 'nl']),
 });
 
 export const runtime = 'nodejs';
@@ -116,7 +118,7 @@ export async function POST(req: NextRequest) {
       role,
       kind,
       statement_text: statement,
-      statement_locale: body.locale,
+      statement_locale: attestationLocale(body.locale),
       policy_version: PROHIBITED_POLICY_VERSION,
       policy_digest: prohibitedPolicyDigest(),
       // The parcel as it stands right now. Snapshotted rather than joined —

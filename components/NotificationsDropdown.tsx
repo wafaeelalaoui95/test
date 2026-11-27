@@ -8,6 +8,7 @@ import { Bell, Check, Inbox, Loader2, X, ArrowRight } from 'lucide-react';
 import { browser, type Notification } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { useI18n } from '@/lib/i18n/context';
+import { intlLocale } from '@/lib/i18n/translations';
 
 /**
  * Bell icon in the navbar that opens a small dropdown panel with the 5
@@ -214,7 +215,7 @@ export function NotificationsDropdown() {
     if (hr < 24) return t.notif_time_hour.replace('{n}', String(hr));
     const days = Math.floor(hr / 24);
     if (days < 7) return t.notif_time_day.replace('{n}', String(days));
-    return new Date(iso).toLocaleDateString(locale === 'en' ? 'en-GB' : 'fr-FR', {
+    return new Date(iso).toLocaleDateString(intlLocale(locale), {
       day: 'numeric',
       month: 'short',
     });

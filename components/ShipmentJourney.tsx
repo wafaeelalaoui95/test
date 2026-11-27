@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { Check, Package, Plane, Flag } from 'lucide-react';
 import { formatShortDate } from '@/lib/utils';
-import type { Translations } from '@/lib/i18n/translations';
+import { intlLocale, type Translations } from '@/lib/i18n/translations';
 import { useI18n } from '@/lib/i18n/context';
 
 type Role = 'sender' | 'traveler';
@@ -54,7 +54,7 @@ export function ShipmentJourney({
   // "28 novembre" / "28 November" — written out in the trip sentence.
   const longDate = departureDate
     ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(departureDate) ? `${departureDate}T12:00:00` : departureDate)
-        .toLocaleDateString(locale === 'en' ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'long' })
+        .toLocaleDateString(intlLocale(locale), { day: 'numeric', month: 'long' })
     : '';
   // While the trip is the current step, it says who carries the parcel and
   // when, in place of the generic "à faire" (and of the "Départ le…" line).

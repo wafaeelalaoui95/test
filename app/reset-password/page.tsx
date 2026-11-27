@@ -52,9 +52,7 @@ export default function ResetPasswordPage() {
             {/* Same reason as the signup screen: spam is where it usually is,
                 and saying so costs nothing. */}
             <p className="text-[14px] text-ink-400 leading-relaxed mb-8">
-              {locale === 'en'
-                ? 'Nothing after a minute or two? Check your spam or junk folder.'
-                : 'Rien au bout d’une minute ou deux ? Regardez dans vos spams.'}
+              {t.reset_spam_hint}
             </p>
             <Link href="/login">
               <Button variant="secondary" fullWidth>{t.reset_back_login}</Button>

@@ -9,10 +9,11 @@
 import Link from 'next/link';
 import { ArrowLeft, ShieldCheck, Eye, PackageX, Ban, AlertTriangle, Flag } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/context';
+import type { Locale } from '@/lib/i18n/translations';
 
 type Block = { icon: any; title: string; body: string; list?: string[]; tone?: 'plain' | 'warn' | 'good' };
 
-const CONTENT: Record<'fr' | 'en', {
+const CONTENT: Record<Locale, {
   badge: string;
   title: string;
   intro: string;
@@ -168,11 +169,218 @@ const CONTENT: Record<'fr' | 'en', {
       },
     ],
   },
+  es: {
+    badge: 'Normas de seguridad',
+    title: 'Viajar y enviar con total confianza',
+    intro:
+      'Jibly pone en contacto a quienes envían y a quienes viajan. Para que todo el mundo viaje con tranquilidad, unas pocas normas sencillas protegen sobre todo a quien viaja.',
+    backHome: 'Volver al inicio',
+    doubtTitle: 'Ante la duda, rechace.',
+    doubtBody:
+      'Nunca tiene que justificarse. Si algo no le da confianza, rechácelo: es su derecho, sin penalización.',
+    blocks: [
+      {
+        icon: Eye,
+        tone: 'plain',
+        title: 'Quien viaja debe saber siempre lo que transporta',
+        body: 'El objeto debe estar descrito con precisión y corresponder exactamente a lo anunciado. Siempre puede verlo y hacer preguntas antes de aceptar.',
+      },
+      {
+        icon: PackageX,
+        tone: 'warn',
+        title: 'Nada de paquetes cerrados o imposibles de inspeccionar',
+        body: 'No acepte nunca un objeto embalado, sellado o cerrado que no pueda abrir y comprobar. Si quien lo envía se niega a la inspección, rechace el transporte.',
+      },
+      {
+        icon: Ban,
+        tone: 'warn',
+        title: 'Objetos prohibidos',
+        body: 'Estos objetos nunca pueden transportarse a través de Jibly:',
+        list: [
+          'Dinero en efectivo',
+          'Medicamentos con receta',
+          'Drogas y estupefacientes',
+          'Armas',
+          'Productos peligrosos (inflamables, explosivos…)',
+          'Alcohol y tabaco',
+          'Joyas, relojes y artículos de lujo de más de 500 €',
+          'Animales',
+          'Objetos robados',
+          'Productos falsificados',
+          'Sustancias desconocidas',
+          'Paquetes cerrados o sellados que no se pueden abrir',
+        ],
+      },
+      {
+        icon: AlertTriangle,
+        tone: 'plain',
+        title: 'Objetos permitidos, pero que hay que comprobar',
+        body: 'Estos objetos están permitidos, pero pueden estar regulados según el país, la aerolínea o la aduana. Quien viaja debe poder ver el contenido y rechazarlo sin penalización:',
+        list: [
+          'Medicamentos sin receta, en su embalaje original (máx. 2 unidades)',
+          'Pasaportes y documentos de identidad',
+          'Aparatos electrónicos con batería',
+          'Complementos alimenticios',
+          'Cosméticos en grandes cantidades',
+        ],
+      },
+      {
+        icon: ShieldCheck,
+        tone: 'good',
+        title: 'Derecho a rechazar sin penalización',
+        body: 'Quien viaja puede rechazar o cancelar sin penalización si el objeto no corresponde a la descripción, si está cerrado o sellado, si se niega la inspección, si el objeto parece prohibido o arriesgado, o simplemente si no se siente a gusto.',
+      },
+      {
+        icon: Flag,
+        tone: 'plain',
+        title: 'Señalar un objeto sospechoso',
+        body: 'En cada reserva hay un botón «Informar de un problema». Úselo si el objeto es distinto de la descripción, no se puede inspeccionar o si el comportamiento de la otra persona le parece sospechoso.',
+      },
+    ],
+  },
+  de: {
+    badge: 'Sicherheitsregeln',
+    title: 'Mit Vertrauen reisen und versenden',
+    intro:
+      'Jibly bringt Menschen, die etwas versenden möchten, mit Reisenden zusammen. Damit alle entspannt reisen können, schützen einige einfache Regeln vor allem die Reisenden.',
+    backHome: 'Zurück zur Startseite',
+    doubtTitle: 'Im Zweifel ablehnen.',
+    doubtBody:
+      'Sie müssen sich nie rechtfertigen. Wenn Ihnen etwas unangenehm ist, lehnen Sie ab: Das ist Ihr Recht, ohne Nachteile.',
+    blocks: [
+      {
+        icon: Eye,
+        tone: 'plain',
+        title: 'Reisende müssen immer wissen, was sie transportieren',
+        body: 'Der Gegenstand muss genau beschrieben sein und exakt dem Angekündigten entsprechen. Sie können ihn sich immer ansehen und Fragen stellen, bevor Sie zusagen.',
+      },
+      {
+        icon: PackageX,
+        tone: 'warn',
+        title: 'Keine verschlossenen oder nicht prüfbaren Pakete',
+        body: 'Nehmen Sie niemals einen verpackten, versiegelten oder verschlossenen Gegenstand an, den Sie nicht öffnen und prüfen können. Verweigert die absendende Person die Kontrolle, lehnen Sie den Transport ab.',
+      },
+      {
+        icon: Ban,
+        tone: 'warn',
+        title: 'Verbotene Gegenstände',
+        body: 'Diese Gegenstände dürfen niemals über Jibly transportiert werden:',
+        list: [
+          'Bargeld',
+          'Verschreibungspflichtige Medikamente',
+          'Drogen und Betäubungsmittel',
+          'Waffen',
+          'Gefährliche Güter (entzündlich, explosiv…)',
+          'Alkohol und Tabak',
+          'Schmuck, Uhren und Luxusartikel im Wert von über 500 €',
+          'Tiere',
+          'Gestohlene Gegenstände',
+          'Gefälschte Produkte',
+          'Unbekannte Substanzen',
+          'Verschlossene oder versiegelte Pakete, die sich nicht öffnen lassen',
+        ],
+      },
+      {
+        icon: AlertTriangle,
+        tone: 'plain',
+        title: 'Erlaubt, aber zu prüfen',
+        body: 'Diese Gegenstände sind erlaubt, können aber je nach Land, Fluggesellschaft oder Zoll reguliert sein. Reisende müssen den Inhalt sehen und ohne Nachteile ablehnen können:',
+        list: [
+          'Rezeptfreie Medikamente in Originalverpackung (max. 2 Einheiten)',
+          'Reisepässe und Ausweise',
+          'Elektronische Geräte mit Akku',
+          'Nahrungsergänzungsmittel',
+          'Kosmetik in großen Mengen',
+        ],
+      },
+      {
+        icon: ShieldCheck,
+        tone: 'good',
+        title: 'Recht auf Ablehnung ohne Nachteile',
+        body: 'Reisende können ohne Nachteile ablehnen oder stornieren, wenn der Gegenstand nicht der Beschreibung entspricht, verschlossen oder versiegelt ist, die Kontrolle verweigert wird, er verboten oder riskant wirkt oder wenn sie sich einfach nicht wohlfühlen.',
+      },
+      {
+        icon: Flag,
+        tone: 'plain',
+        title: 'Verdächtigen Gegenstand melden',
+        body: 'Bei jeder Buchung gibt es die Schaltfläche „Problem melden“. Nutzen Sie sie, wenn der Gegenstand von der Beschreibung abweicht, nicht geprüft werden kann oder wenn Ihnen das Verhalten der anderen Person verdächtig vorkommt.',
+      },
+    ],
+  },
+  nl: {
+    badge: 'Veiligheidsregels',
+    title: 'Met vertrouwen reizen en versturen',
+    intro:
+      'Jibly brengt verzenders en reizigers met elkaar in contact. Zodat iedereen met een gerust hart reist, beschermen een paar eenvoudige regels vooral de reiziger.',
+    backHome: 'Terug naar de startpagina',
+    doubtTitle: 'Twijfel je? Weiger dan.',
+    doubtBody:
+      'Je hoeft je nooit te verantwoorden. Voelt iets niet goed, weiger dan: dat is je recht, zonder gevolgen.',
+    blocks: [
+      {
+        icon: Eye,
+        tone: 'plain',
+        title: 'De reiziger moet altijd weten wat hij / zij vervoert',
+        body: 'Het voorwerp moet nauwkeurig beschreven zijn en precies overeenkomen met wat is aangekondigd. Je kunt het altijd bekijken en vragen stellen voordat je accepteert.',
+      },
+      {
+        icon: PackageX,
+        tone: 'warn',
+        title: 'Geen gesloten of niet te controleren pakketten',
+        body: 'Accepteer nooit een verpakt, verzegeld of gesloten voorwerp dat je niet kunt openen en controleren. Weigert de verzender een controle, weiger dan het transport.',
+      },
+      {
+        icon: Ban,
+        tone: 'warn',
+        title: 'Verboden voorwerpen',
+        body: 'Deze voorwerpen mogen nooit via Jibly worden vervoerd:',
+        list: [
+          'Contant geld',
+          'Geneesmiddelen op voorschrift',
+          'Drugs en verdovende middelen',
+          'Wapens',
+          'Gevaarlijke stoffen (brandbaar, explosief…)',
+          'Alcohol en tabak',
+          'Sieraden, horloges en luxeartikelen van meer dan € 500',
+          'Dieren',
+          'Gestolen goederen',
+          'Namaakproducten',
+          'Onbekende stoffen',
+          'Gesloten of verzegelde pakketten die niet open kunnen',
+        ],
+      },
+      {
+        icon: AlertTriangle,
+        tone: 'plain',
+        title: 'Toegestaan, maar wel controleren',
+        body: 'Deze voorwerpen zijn toegestaan, maar kunnen gereguleerd zijn afhankelijk van het land, de luchtvaartmaatschappij of de douane. De reiziger moet de inhoud kunnen zien en zonder gevolgen kunnen weigeren:',
+        list: [
+          'Geneesmiddelen zonder voorschrift, in de originele verpakking (max. 2 stuks)',
+          'Paspoorten en identiteitskaarten',
+          'Elektronische apparaten met batterij',
+          'Voedingssupplementen',
+          'Cosmetica in grote hoeveelheden',
+        ],
+      },
+      {
+        icon: ShieldCheck,
+        tone: 'good',
+        title: 'Recht om te weigeren zonder gevolgen',
+        body: 'De reiziger kan zonder gevolgen weigeren of annuleren als het voorwerp niet overeenkomt met de beschrijving, gesloten of verzegeld is, als de controle wordt geweigerd, als het voorwerp verboden of riskant lijkt, of als hij / zij zich er gewoon niet prettig bij voelt.',
+      },
+      {
+        icon: Flag,
+        tone: 'plain',
+        title: 'Een verdacht voorwerp melden',
+        body: 'Bij elke boeking staat een knop ‘Probleem melden’. Gebruik die als het voorwerp afwijkt van de beschrijving, niet te controleren is, of als het gedrag van de andere persoon je verdacht lijkt.',
+      },
+    ],
+  },
 };
 
 export default function SecurityRulesPage() {
   const { locale } = useI18n();
-  const c = CONTENT[locale === 'en' ? 'en' : 'fr'];
+  const c = CONTENT[locale];
 
   const toneClass = (tone?: string) =>
     tone === 'warn'

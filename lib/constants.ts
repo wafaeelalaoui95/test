@@ -1,5 +1,5 @@
 import type { ItemCategory, Urgency, AvailableSpace } from '@/lib/types';
-import type { Translations } from '@/lib/i18n/translations'; 
+import type { Translations, Locale } from '@/lib/i18n/translations';
 // Note: 'medicaments' category removed. See lib/types/index.ts for rationale.
 // The i18n keys cat_medication and cat_medication_desc are kept in
 // translations.ts for now (they don't bloat anything) — they'll be cleaned
@@ -210,7 +210,7 @@ export const ITEM_CATEGORIES: {
  * "Espèces · Médicaments sur ordonnance" — a list of what will get them stopped
  * at customs, in a language they might not read.
  */
-export const FORBIDDEN_CATEGORIES: Record<'fr' | 'en', string[]> = {
+export const FORBIDDEN_CATEGORIES: Record<Locale, string[]> = {
   fr: [
     'Espèces',
     'Médicaments sur ordonnance',
@@ -230,6 +230,36 @@ export const FORBIDDEN_CATEGORIES: Record<'fr' | 'en', string[]> = {
     'High-value jewellery',
     'Hazardous goods',
     'Alcohol, tobacco and regulated products',
+  ],
+  es: [
+    'Dinero en efectivo',
+    'Medicamentos con receta',
+    'Drogas y estupefacientes',
+    'Armas',
+    'Falsificaciones',
+    'Joyas de gran valor',
+    'Productos peligrosos',
+    'Alcohol, tabaco y productos regulados',
+  ],
+  de: [
+    'Bargeld',
+    'Verschreibungspflichtige Medikamente',
+    'Drogen und Betäubungsmittel',
+    'Waffen',
+    'Fälschungen',
+    'Wertvoller Schmuck',
+    'Gefährliche Güter',
+    'Alkohol, Tabak und regulierte Produkte',
+  ],
+  nl: [
+    'Contant geld',
+    'Geneesmiddelen op voorschrift',
+    'Drugs en verdovende middelen',
+    'Wapens',
+    'Namaakproducten',
+    'Waardevolle sieraden',
+    'Gevaarlijke stoffen',
+    'Alcohol, tabak en gereguleerde producten',
   ],
 };
 export const URGENCY_LEVELS: {

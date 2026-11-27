@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Camera, Loader2, X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/context';
+import type { Locale } from '@/lib/i18n/translations';
 import { useSignedUrl } from '@/components/ImageLightbox';
 
 // =============================================================================
@@ -50,7 +51,51 @@ const COPY = {
       generic: 'The upload failed. Please try again.',
     },
   },
-} as const;
+  es: {
+    label: 'Foto del paquete',
+    optional: 'opcional',
+    hint: 'Se invita a quienes viajan a revisar el objeto antes de transportarlo.',
+    add: 'Añadir una foto',
+    change: 'Cambiar',
+    remove: 'Quitar',
+    uploading: 'Subiendo…',
+    errors: {
+      too_large: 'La foto pesa demasiado. El máximo es de 8 MB.',
+      bad_format: 'Formato no compatible. Use JPG, PNG o HEIC.',
+      generic: 'No se ha podido subir. Inténtelo de nuevo.',
+    },
+  },
+  de: {
+    label: 'Foto des Pakets',
+    optional: 'optional',
+    hint: 'Reisende werden gebeten, den Gegenstand vor dem Transport zu prüfen.',
+    add: 'Foto hinzufügen',
+    change: 'Ändern',
+    remove: 'Entfernen',
+    uploading: 'Wird hochgeladen…',
+    errors: {
+      too_large: 'Das Foto ist zu groß. Das Maximum beträgt 8 MB.',
+      bad_format: 'Format nicht unterstützt. Verwenden Sie JPG, PNG oder HEIC.',
+      generic: 'Das Hochladen ist fehlgeschlagen. Versuchen Sie es erneut.',
+    },
+  },
+  nl: {
+    label: 'Foto van het pakket',
+    optional: 'optioneel',
+    hint: 'Reizigers wordt gevraagd het voorwerp te controleren voordat ze het vervoeren.',
+    add: 'Foto toevoegen',
+    change: 'Wijzigen',
+    remove: 'Verwijderen',
+    uploading: 'Uploaden…',
+    errors: {
+      too_large: 'Deze foto is te groot. Het maximum is 8 MB.',
+      bad_format: 'Formaat niet ondersteund. Gebruik JPG, PNG of HEIC.',
+      generic: 'Het uploaden is mislukt. Probeer het opnieuw.',
+    },
+  },
+};
+// Every locale must carry every key the French copy has.
+COPY satisfies Record<Locale, typeof COPY.fr>;
 
 export function ParcelPhotoInput({
   value,
@@ -60,7 +105,7 @@ export function ParcelPhotoInput({
   onChange: (url: string | null) => void;
 }) {
   const { locale } = useI18n();
-  const c = COPY[locale === 'en' ? 'en' : 'fr'];
+  const c = COPY[locale];
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);

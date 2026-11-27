@@ -217,7 +217,22 @@ export function findCountryByName(name: string): Country | undefined {
 export function countryDisplayName(value: string, locale: string): string {
   const c = findCountryByName(value);
   if (!c) return value;
-  return locale === 'en' ? c.name_en : c.name_fr;
+  if (locale === 'fr') return c.name_fr;
+  if (locale === 'en') return c.name_en;
+  // Other UI languages: the browser's own country names, keyed by ISO code.
+  return regionName(c.code, locale) ?? c.name_en;
+}
+
+const regionNames = new Map<string, Intl.DisplayNames | null>();
+function regionName(code: string, locale: string): string | undefined {
+  if (!regionNames.has(locale)) {
+    try {
+      regionNames.set(locale, new Intl.DisplayNames([locale], { type: 'region' }));
+    } catch {
+      regionNames.set(locale, null);
+    }
+  }
+  return regionNames.get(locale)?.of(code) ?? undefined;
 }
 
 /**
@@ -264,9 +279,68 @@ const CITY_EN: Record<string, string> = {
  * returns the English spelling when locale is 'en', otherwise the value as-is.
  */
 export function cityDisplayName(value: string, locale: string): string {
-  if (locale !== 'en') return value;
-  return CITY_EN[value] ?? value;
+  if (locale === 'fr') return value;
+  if (locale === 'en') return CITY_EN[value] ?? value;
+  return CITY_L10N[locale]?.[value] ?? CITY_EN[value] ?? value;
 }
+
+/**
+ * Spanish, German and Dutch spellings, same rule as CITY_EN: keyed by the
+ * stored French name, only where the spelling differs. Anything missing
+ * falls back to the English spelling, then to the stored name.
+ */
+const CITY_L10N: Record<string, Record<string, string>> = {
+  es: {
+    Paris: 'París', Marseille: 'Marsella', Nice: 'Niza', Bordeaux: 'Burdeos', Strasbourg: 'Estrasburgo',
+    Marrakech: 'Marrakech', Tanger: 'Tánger', 'Fès': 'Fez', Oujda: 'Uchda',
+    Bruxelles: 'Bruselas', Anvers: 'Amberes', 'Liège': 'Lieja',
+    Barcelone: 'Barcelona', Valence: 'Valencia', 'Séville': 'Sevilla', 'Málaga': 'Málaga',
+    Amsterdam: 'Ámsterdam', Rotterdam: 'Róterdam',
+    Rome: 'Roma', Milan: 'Milán', Naples: 'Nápoles', Venise: 'Venecia', Florence: 'Florencia', Bologne: 'Bolonia', 'Vérone': 'Verona',
+    Munich: 'Múnich', Hambourg: 'Hamburgo', Francfort: 'Fráncfort', Cologne: 'Colonia',
+    Londres: 'Londres', 'Édimbourg': 'Edimburgo',
+    Lisbonne: 'Lisboa', Dublin: 'Dublín', 'Athènes': 'Atenas', Vienne: 'Viena', Copenhague: 'Copenhague',
+    Stockholm: 'Estocolmo', Varsovie: 'Varsovia', Bucarest: 'Bucarest', Prague: 'Praga', Sofia: 'Sofía',
+    Luxembourg: 'Luxemburgo', 'Genève': 'Ginebra', Zurich: 'Zúrich', 'Bâle': 'Basilea',
+    'Montréal': 'Montreal', 'New York': 'Nueva York',
+    Alger: 'Argel', Oran: 'Orán', Constantine: 'Constantina', Tunis: 'Túnez', Djerba: 'Yerba',
+    'Le Caire': 'El Cairo', Alexandrie: 'Alejandría', 'Charm el-Cheikh': 'Sharm el-Sheij',
+    Beyrouth: 'Beirut', 'Dubaï': 'Dubái', 'Abu Dhabi': 'Abu Dabi',
+    Riyad: 'Riad', Djeddah: 'Yeda', 'Médine': 'Medina',
+  },
+  de: {
+    Nice: 'Nizza', Strasbourg: 'Straßburg',
+    Marrakech: 'Marrakesch', Tanger: 'Tanger', 'Fès': 'Fès',
+    Bruxelles: 'Brüssel', Anvers: 'Antwerpen', 'Liège': 'Lüttich',
+    Barcelone: 'Barcelona', Valence: 'Valencia', 'Séville': 'Sevilla', 'Málaga': 'Málaga',
+    Rome: 'Rom', Milan: 'Mailand', Naples: 'Neapel', Venise: 'Venedig', Florence: 'Florenz', Bologne: 'Bologna', 'Vérone': 'Verona',
+    Munich: 'München', Hambourg: 'Hamburg', Francfort: 'Frankfurt', Cologne: 'Köln',
+    Londres: 'London', 'Édimbourg': 'Edinburgh',
+    Lisbonne: 'Lissabon', 'Athènes': 'Athen', Vienne: 'Wien', Copenhague: 'Kopenhagen',
+    Varsovie: 'Warschau', Bucarest: 'Bukarest', Prague: 'Prag',
+    Luxembourg: 'Luxemburg', 'Genève': 'Genf', Zurich: 'Zürich', 'Bâle': 'Basel',
+    'Montréal': 'Montreal',
+    Alger: 'Algier', 'Le Caire': 'Kairo', Alexandrie: 'Alexandria', 'Charm el-Cheikh': 'Scharm el-Scheich',
+    Beyrouth: 'Beirut', 'Dubaï': 'Dubai',
+    Riyad: 'Riad', Djeddah: 'Dschidda', 'Médine': 'Medina',
+  },
+  nl: {
+    Strasbourg: 'Straatsburg',
+    Marrakech: 'Marrakesh', Tanger: 'Tanger', 'Fès': 'Fez',
+    Bruxelles: 'Brussel', Anvers: 'Antwerpen', 'Liège': 'Luik',
+    Barcelone: 'Barcelona', Valence: 'Valencia', 'Séville': 'Sevilla', 'Málaga': 'Málaga',
+    Rome: 'Rome', Milan: 'Milaan', Naples: 'Napels', Venise: 'Venetië', Florence: 'Florence', Bologne: 'Bologna', 'Vérone': 'Verona',
+    Munich: 'München', Hambourg: 'Hamburg', Francfort: 'Frankfurt', Cologne: 'Keulen',
+    Londres: 'Londen', 'Édimbourg': 'Edinburgh',
+    Lisbonne: 'Lissabon', 'Athènes': 'Athene', Vienne: 'Wenen', Copenhague: 'Kopenhagen',
+    Varsovie: 'Warschau', Bucarest: 'Boekarest', Prague: 'Praag',
+    Luxembourg: 'Luxemburg', 'Genève': 'Genève', Zurich: 'Zürich', 'Bâle': 'Bazel',
+    'Montréal': 'Montreal',
+    Alger: 'Algiers', 'Le Caire': 'Caïro', Alexandrie: 'Alexandrië', 'Charm el-Cheikh': 'Sharm-el-Sheikh',
+    Beyrouth: 'Beiroet', 'Dubaï': 'Dubai',
+    Riyad: 'Riyad', Djeddah: 'Djedda', 'Médine': 'Medina',
+  },
+};
 
 /** Cities of a country, looked up by French name. Empty if unknown. */
 export function getCitiesForCountry(name: string): string[] {

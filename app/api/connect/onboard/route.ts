@@ -56,13 +56,16 @@ const schema = z.object({
   country: z.string().length(2).toUpperCase().optional(),
   // UI language, so Stripe's hosted onboarding renders in the language the
   // traveler was already reading. BCP-47-ish; anything unrecognised falls back.
-  locale: z.enum(['fr', 'en']).optional(),
+  locale: z.enum(['fr', 'en', 'es', 'de', 'nl']).optional(),
 });
 
 // Stripe wants a full locale tag, not the bare language code the app uses.
 const STRIPE_LOCALES: Record<string, string> = {
   fr: 'fr-FR',
   en: 'en-GB',
+  es: 'es-ES',
+  de: 'de-DE',
+  nl: 'nl-NL',
 };
 
 export async function POST(req: NextRequest) {
