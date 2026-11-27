@@ -19,7 +19,7 @@ export const nl: Translations = {
   hero_badge: "Community van geverifieerde reizigers",
   hero_title_1: "Iemand reist al",
   hero_title_2: "jouw kant op.",
-  hero_title_keyword: "Verstuur een document of klein pakket naar het buitenland, met een geverifieerde reiziger",
+  hero_title_keyword: "Veilig pakketten versturen tussen particulieren",
   hero_subtitle: "Moet je een document, sleutels of een klein pakket versturen? Vind een reiziger die de reis al maakt, kies je prijs en boek veilig met Jibly.",
   hero_search_from: "Vertrekstad",
   hero_search_to: "Aankomststad",

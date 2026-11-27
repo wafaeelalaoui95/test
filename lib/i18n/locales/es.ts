@@ -19,7 +19,7 @@ export const es: Translations = {
   hero_badge: "Comunidad de viajeros verificados",
   hero_title_1: "Alguien ya viaja",
   hero_title_2: "en su dirección.",
-  hero_title_keyword: "Enviar un documento o un paquete pequeño al extranjero con una persona viajera verificada",
+  hero_title_keyword: "Envío seguro de paquetes entre particulares",
   hero_subtitle: "¿Necesita enviar un documento, unas llaves o un paquete pequeño? Encuentre a alguien que ya hace el trayecto, elija su precio y reserve con total seguridad con Jibly.",
   hero_search_from: "Ciudad de salida",
   hero_search_to: "Ciudad de llegada",

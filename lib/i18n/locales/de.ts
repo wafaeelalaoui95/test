@@ -19,7 +19,7 @@ export const de: Translations = {
   hero_badge: "Community verifizierter Reisender",
   hero_title_1: "Jemand reist bereits",
   hero_title_2: "in Ihre Richtung.",
-  hero_title_keyword: "Ein Dokument oder kleines Paket ins Ausland senden – mit verifizierten Reisenden",
+  hero_title_keyword: "Sicherer Paketversand zwischen Privatpersonen",
   hero_subtitle: "Sie möchten ein Dokument, Schlüssel oder ein kleines Paket verschicken? Finden Sie Reisende, die die Strecke ohnehin fliegen, legen Sie Ihren Preis fest und buchen Sie sicher mit Jibly.",
   hero_search_from: "Abflugort",
   hero_search_to: "Zielort",
