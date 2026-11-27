@@ -9,6 +9,7 @@ import { VerificationBadge } from '@/components/ui/Badge';
 import { cityDisplayName } from '@/lib/countries';
 import { nameInitial, displayName, priceBreakdown, formatEuros } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
+import { intlLocale } from '@/lib/i18n/translations';
 import type { TravelerTripRow, Profile } from '@/lib/supabase/types';
 
 export type TripWithProfile = TravelerTripRow & {
@@ -123,7 +124,7 @@ export function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: num
 function formatTripDate(date: string, locale: string): string {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00`) : new Date(date);
   if (isNaN(d.getTime())) return date;
-  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',

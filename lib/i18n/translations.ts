@@ -1,15 +1,51 @@
 /**
- * Jibly i18n - French / English
+ * Jibly i18n - French / English / Spanish / German / Dutch
  *
- * Translations are hand-crafted, not Google-translated.
+ * French is the source text. English is hand-written; Spanish, German and
+ * Dutch live in ./locales and are typed against `Translations`, so a missing
+ * key fails the build.
  */
 
-export type Locale = 'fr' | 'en';
+import { es } from './locales/es';
+import { de } from './locales/de';
+import { nl } from './locales/nl';
+
+export type Locale = 'fr' | 'en' | 'es' | 'de' | 'nl';
 
 export const LOCALES: { code: Locale; label: string; flag: string; rtl: boolean }[] = [
   { code: 'fr', label: 'Français', flag: '🇫🇷', rtl: false },
   { code: 'en', label: 'English', flag: '🇬🇧', rtl: false },
+  { code: 'es', label: 'Español', flag: '🇪🇸', rtl: false },
+  { code: 'de', label: 'Deutsch', flag: '🇩🇪', rtl: false },
+  { code: 'nl', label: 'Nederlands', flag: '🇳🇱', rtl: false },
 ];
+
+export function isLocale(v: unknown): v is Locale {
+  return typeof v === 'string' && LOCALES.some((l) => l.code === v);
+}
+
+/** BCP 47 tag for Intl date/number formatting in each locale. */
+export const INTL_LOCALE: Record<Locale, string> = {
+  fr: 'fr-FR',
+  en: 'en-GB',
+  es: 'es-ES',
+  de: 'de-DE',
+  nl: 'nl-NL',
+};
+
+export function intlLocale(locale: string): string {
+  return INTL_LOCALE[locale as Locale] ?? 'fr-FR';
+}
+
+/**
+ * Some content exists only in French and English: the legal documents (a
+ * translation is a legal text and needs the solicitor's sign-off), the SEO
+ * guides, the attestation statements and the emails. Visitors reading in
+ * another language get the English version of those.
+ */
+export function frOrEn(locale: string): 'fr' | 'en' {
+  return locale === 'fr' ? 'fr' : 'en';
+}
 
 export type Translations = {
   // Navbar
@@ -1420,10 +1456,45 @@ export type Translations = {
   sec_wallet_status_captured: string;
   sec_wallet_status_pending: string;
   sec_wallet_status_cancelled: string;
+  // Formerly inline fr/en ternaries
+  me_name_locked_hint: string;
+  me_all_parcels_delivered: string;
+  me_see_earnings: string;
+  me_edit: string;
+  me_delete: string;
+  me_edit_trip: string;
+  me_pill_paid: string;
+  me_pill_payout_on_way: string;
+  signup_already_title: string;
+  signup_already_text: string;
+  signup_spam_hint: string;
+  reset_spam_hint: string;
+  send_traveller_receives: string;
+  send_you_pay: string;
+  home_guides_title: string;
+  home_guides_all: string;
+  signup_forgot_hint: string;
 };
 
 export const translations: Record<Locale, Translations> = {
   fr: {
+    signup_forgot_hint: "Mot de passe oublié ? Le lien est sur la page de connexion.",
+    me_name_locked_hint: "Correspond à votre pièce d’identité vérifiée et ne peut pas être modifié.",
+    me_all_parcels_delivered: "Tous les colis de ce vol ont été livrés.",
+    me_see_earnings: "Voir mes gains",
+    me_edit: "Modifier",
+    me_delete: "Supprimer",
+    me_edit_trip: "Modifier ce voyage",
+    me_pill_paid: "✓ Payé",
+    me_pill_payout_on_way: "⏳ Paiement en route",
+    signup_already_title: "Vous avez déjà un compte",
+    signup_already_text: "Cette adresse est déjà inscrite. Connectez-vous plutôt que de créer un nouveau compte.",
+    signup_spam_hint: "Rien au bout d’une minute ou deux ? Regardez dans vos spams ou courriers indésirables, c’est presque toujours là qu’il se trouve.",
+    reset_spam_hint: "Rien au bout d’une minute ou deux ? Regardez dans vos spams.",
+    send_traveller_receives: "Le voyageur reçoit",
+    send_you_pay: "Vous payez",
+    home_guides_title: "Que voulez-vous envoyer ?",
+    home_guides_all: "Tous nos guides →",
     nav_send: 'Je cherche un voyageur',
     nav_travel: 'Je peux transporter',
     nav_discover: 'Découvrir',
@@ -2825,6 +2896,23 @@ export const translations: Record<Locale, Translations> = {
   },
 
   en: {
+    signup_forgot_hint: "Forgotten your password? The link is on the sign-in page.",
+    me_name_locked_hint: "Matches your verified ID and cannot be changed.",
+    me_all_parcels_delivered: "Every parcel on this flight has been delivered.",
+    me_see_earnings: "See my earnings",
+    me_edit: "Edit",
+    me_delete: "Delete",
+    me_edit_trip: "Edit this trip",
+    me_pill_paid: "✓ Paid",
+    me_pill_payout_on_way: "⏳ Payment on the way",
+    signup_already_title: "You already have an account",
+    signup_already_text: "This address is already registered. Sign in instead of creating a new account.",
+    signup_spam_hint: "Nothing after a minute or two? Check your spam or junk folder — that is where it usually is.",
+    reset_spam_hint: "Nothing after a minute or two? Check your spam or junk folder.",
+    send_traveller_receives: "The traveller receives",
+    send_you_pay: "You pay",
+    home_guides_title: "What do you need to send?",
+    home_guides_all: "All our guides →",
     nav_send: 'I need a traveler',
     nav_travel: 'I can carry',
     nav_discover: 'Discover',
@@ -4223,4 +4311,7 @@ export const translations: Record<Locale, Translations> = {
     sec_wallet_status_pending: 'Pending',
     sec_wallet_status_cancelled: 'Cancelled',
   },
+  es,
+  de,
+  nl,
 };

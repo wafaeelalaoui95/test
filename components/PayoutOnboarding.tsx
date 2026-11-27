@@ -6,6 +6,7 @@ import { Loader2, Check, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { getStripeClient } from '@/lib/stripe/client';
 import { useI18n } from '@/lib/i18n/context';
+import type { Locale } from '@/lib/i18n/translations';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { findCountryByName } from '@/lib/countries';
 import { payoutCountryOptions } from '@/lib/stripe/payout-countries';
@@ -129,7 +130,159 @@ const COPY = {
     routing_number_invalid: 'This sort code isn’t valid.',
     invalid_dob: 'This date of birth isn’t valid.',
   },
-} as const;
+  es: {
+    country: '¿En qué país está tu cuenta bancaria?',
+    countryHint: 'Definitivo. Stripe no permite cambiarlo después.',
+    countryPlaceholder: 'Elige un país',
+    start: 'Empezar',
+    who: '¿Quién eres?',
+    whoSub: 'Tal como aparecen estos datos en tu cuenta bancaria.',
+    firstName: 'Nombre',
+    lastName: 'Apellidos',
+    dob: 'Fecha de nacimiento',
+    day: 'Día',
+    month: 'Mes',
+    year: 'Año',
+    address: 'Dirección',
+    line1: 'Calle y número',
+    line2: 'Información adicional (opcional)',
+    city: 'Ciudad',
+    postalCode: 'Código postal',
+    bank: 'Dónde enviarte tu dinero',
+    bankSub: 'Tu número de cuenta va directamente a Stripe. Jibly nunca lo ve.',
+    holder: 'Nombre del titular de la cuenta',
+    sortCode: 'Sort code',
+    accountNumber: 'Número de cuenta',
+    review: 'Último paso',
+    reviewSub: 'Revisa los datos y acepta las condiciones de Stripe para cobrar.',
+    accept: 'Acepto',
+    acceptBody:
+      'Al continuar, aceptas el Acuerdo de cuenta conectada de Stripe.',
+    agreementLink: 'Leer el acuerdo',
+    finish: 'Terminar',
+    next: 'Continuar',
+    back: 'Volver',
+    done: 'Listo',
+    doneSub: 'Tus cobros están configurados. Recibirás el pago después de cada entrega confirmada.',
+    pending: 'Stripe está verificando tus datos. Suele tardar unos minutos.',
+    fallbackTitle: 'Se necesita una verificación adicional',
+    fallbackBody:
+      'Stripe necesita un documento que no recogemos aquí. Te llevaremos a su página segura para este paso.',
+    fallbackCta: 'Continuar en Stripe',
+    error: 'Se ha producido un error. Inténtalo de nuevo.',
+    incomplete_iban: 'Este IBAN está incompleto.',
+    invalid_iban: 'Este IBAN no es válido.',
+    invalid_iban_country_code: 'Este IBAN no pertenece a una zona aceptada.',
+    invalid_bank_account_iban: 'Tu banco ha rechazado este IBAN.',
+    bank_already_used:
+      'Esta cuenta bancaria ya la usa otra persona que viaja con Jibly. Cada persona debe recibir sus pagos en su propia cuenta.',
+    account_number_invalid: 'Este número de cuenta no es válido.',
+    routing_number_invalid: 'Este sort code no es válido.',
+    invalid_dob: 'Esta fecha de nacimiento no es válida.',
+  },
+  de: {
+    country: 'In welchem Land ist dein Bankkonto?',
+    countryHint: 'Endgültig. Stripe erlaubt keine spätere Änderung.',
+    countryPlaceholder: 'Wähle ein Land',
+    start: 'Los geht’s',
+    who: 'Wer bist du?',
+    whoSub: 'So, wie diese Angaben auf deinem Bankkonto stehen.',
+    firstName: 'Vorname',
+    lastName: 'Nachname',
+    dob: 'Geburtsdatum',
+    day: 'Tag',
+    month: 'Monat',
+    year: 'Jahr',
+    address: 'Adresse',
+    line1: 'Straße und Hausnummer',
+    line2: 'Adresszusatz (optional)',
+    city: 'Stadt',
+    postalCode: 'Postleitzahl',
+    bank: 'Wohin wir dein Geld senden',
+    bankSub: 'Deine Kontonummer geht direkt an Stripe. Jibly sieht sie nie.',
+    holder: 'Name des Kontoinhabers / der Kontoinhaberin',
+    sortCode: 'Sort code',
+    accountNumber: 'Kontonummer',
+    review: 'Letzter Schritt',
+    reviewSub: 'Prüfe alles und akzeptiere dann die Bedingungen von Stripe, um bezahlt zu werden.',
+    accept: 'Ich stimme zu',
+    acceptBody:
+      'Wenn du fortfährst, stimmst du der Vereinbarung für verbundene Stripe-Konten zu.',
+    agreementLink: 'Vereinbarung lesen',
+    finish: 'Abschließen',
+    next: 'Weiter',
+    back: 'Zurück',
+    done: 'Erledigt',
+    doneSub: 'Deine Auszahlungen sind eingerichtet. Du wirst nach jeder bestätigten Zustellung bezahlt.',
+    pending: 'Stripe prüft deine Angaben. Das dauert meist nur ein paar Minuten.',
+    fallbackTitle: 'Eine zusätzliche Prüfung ist nötig',
+    fallbackBody:
+      'Stripe benötigt ein Dokument, das wir hier nicht erfassen. Du wirst für diesen Schritt auf die sichere Seite von Stripe weitergeleitet.',
+    fallbackCta: 'Weiter bei Stripe',
+    error: 'Etwas ist schiefgelaufen. Versuch es noch einmal.',
+    incomplete_iban: 'Diese IBAN ist unvollständig.',
+    invalid_iban: 'Diese IBAN ist ungültig.',
+    invalid_iban_country_code: 'Diese IBAN stammt nicht aus einem unterstützten Land.',
+    invalid_bank_account_iban: 'Deine Bank hat diese IBAN abgelehnt.',
+    bank_already_used:
+      'Dieses Bankkonto wird bereits von einer anderen reisenden Person verwendet. Alle müssen ihre Zahlungen auf ein eigenes Konto erhalten.',
+    account_number_invalid: 'Diese Kontonummer ist ungültig.',
+    routing_number_invalid: 'Dieser Sort code ist ungültig.',
+    invalid_dob: 'Dieses Geburtsdatum ist ungültig.',
+  },
+  nl: {
+    country: 'In welk land staat je bankrekening?',
+    countryHint: 'Definitief. Stripe staat niet toe dit later te wijzigen.',
+    countryPlaceholder: 'Kies een land',
+    start: 'Beginnen',
+    who: 'Wie ben je?',
+    whoSub: 'Zoals deze gegevens op je bankrekening staan.',
+    firstName: 'Voornaam',
+    lastName: 'Achternaam',
+    dob: 'Geboortedatum',
+    day: 'Dag',
+    month: 'Maand',
+    year: 'Jaar',
+    address: 'Adres',
+    line1: 'Straat en huisnummer',
+    line2: 'Toevoeging (optioneel)',
+    city: 'Plaats',
+    postalCode: 'Postcode',
+    bank: 'Waar we je geld naartoe sturen',
+    bankSub: 'Je rekeningnummer gaat rechtstreeks naar Stripe. Jibly ziet het nooit.',
+    holder: 'Naam van de rekeninghouder',
+    sortCode: 'Sort code',
+    accountNumber: 'Rekeningnummer',
+    review: 'Laatste stap',
+    reviewSub: 'Controleer alles en accepteer daarna de voorwaarden van Stripe om betaald te worden.',
+    accept: 'Ik ga akkoord',
+    acceptBody:
+      'Door verder te gaan, ga je akkoord met de Stripe-overeenkomst voor gekoppelde accounts.',
+    agreementLink: 'Overeenkomst lezen',
+    finish: 'Afronden',
+    next: 'Doorgaan',
+    back: 'Terug',
+    done: 'Klaar',
+    doneSub: 'Je uitbetalingen zijn ingesteld. Je wordt betaald na elke bevestigde levering.',
+    pending: 'Stripe controleert je gegevens. Dat duurt meestal een paar minuten.',
+    fallbackTitle: 'Er is een extra controle nodig',
+    fallbackBody:
+      'Stripe heeft een document nodig dat wij hier niet verzamelen. Je wordt voor deze stap doorgestuurd naar hun beveiligde pagina.',
+    fallbackCta: 'Doorgaan bij Stripe',
+    error: 'Er is iets misgegaan. Probeer het opnieuw.',
+    incomplete_iban: 'Deze IBAN is onvolledig.',
+    invalid_iban: 'Deze IBAN is niet geldig.',
+    invalid_iban_country_code: 'Deze IBAN komt niet uit een ondersteund land.',
+    invalid_bank_account_iban: 'Je bank heeft deze IBAN geweigerd.',
+    bank_already_used:
+      'Deze bankrekening wordt al gebruikt door een andere reiziger. Iedereen moet op een eigen rekening worden betaald.',
+    account_number_invalid: 'Dit rekeningnummer is niet geldig.',
+    routing_number_invalid: 'Deze sort code is niet geldig.',
+    invalid_dob: 'Deze geboortedatum is niet geldig.',
+  },
+};
+// Every locale must carry every key the French copy has.
+COPY satisfies Record<Locale, typeof COPY.fr>;
 
 /** SEPA countries take an IBAN; GB and Gibraltar take sort code + number. */
 function usesIban(country: string): boolean {
@@ -198,7 +351,7 @@ function Flow({
 }) {
   const { locale } = useI18n();
   const { profile } = useAuth();
-  const c = COPY[locale === 'en' ? 'en' : 'fr'];
+  const c = COPY[locale];
   const stripe = useStripe();
   const elements = useElements();
 

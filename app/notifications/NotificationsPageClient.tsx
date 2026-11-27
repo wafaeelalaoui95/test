@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { browser, type Notification } from '@/lib/supabase/queries';
 import { useI18n } from '@/lib/i18n/context';
+import { intlLocale } from '@/lib/i18n/translations';
 
 const PAGE_SIZE = 30;
 
@@ -114,7 +115,7 @@ export default function NotificationsPageClient({
   // "il y a 4 j".
   function formatTime(iso: string): string {
     const d = new Date(iso);
-    return d.toLocaleString(locale === 'en' ? 'en-GB' : 'fr-FR', {
+    return d.toLocaleString(intlLocale(locale), {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',

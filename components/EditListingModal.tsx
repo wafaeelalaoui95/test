@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
+import type { Locale } from '@/lib/i18n/translations';
 import { MIN_COMPENSATION_EUR, MAX_COMPENSATION_EUR, ITEM_CATEGORIES } from '@/lib/constants';
 import { openPickerOnClick } from '@/components/ui/Form';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
@@ -88,7 +89,102 @@ const COPY = {
       generic: 'The change could not be saved. Please try again.',
     },
   },
-} as const;
+  es: {
+    titleTrip: 'Editar este viaje',
+    titleRequest: 'Editar esta solicitud',
+    sub: 'Nadie se ha ofrecido todavía, así que puede ajustarlo todo.',
+    price: 'Lo que pide',
+    budget: 'Lo que ofrece a quien viaja',
+    date: 'Fecha de salida',
+    dateWanted: 'Entrega deseada antes del',
+    arrival: 'Fecha de llegada (opcional)',
+    title: 'Nombre del objeto',
+    description: 'Descripción',
+    weight: 'Peso aproximado (kg, opcional)',
+    flight: 'Número de vuelo (opcional)',
+    categories: 'Lo que acepta transportar',
+    categoriesHint: 'Al menos una categoría.',
+    notes: 'Detalles (opcional)',
+    save: 'Guardar',
+    cancel: 'Cancelar',
+    nothing: 'No ha cambiado nada.',
+    minPrice: `El mínimo es de ${MIN_COMPENSATION_EUR} €.`,
+    maxPrice: `El máximo es de ${MAX_COMPENSATION_EUR} €.`,
+    errors: {
+      has_bookings:
+        'Alguien se ha ofrecido mientras tanto. Abra la reserva para hablarlo con esa persona.',
+      not_owner: 'Este anuncio no es suyo.',
+      not_found: 'Este anuncio ya no existe.',
+      already_cancelled: 'Este anuncio ya se ha eliminado.',
+      bad_photo: 'No se ha podido verificar esta foto. Intente añadirla de nuevo.',
+      generic: 'No se ha podido guardar el cambio. Inténtelo de nuevo.',
+    },
+  },
+  de: {
+    titleTrip: 'Diese Reise bearbeiten',
+    titleRequest: 'Diese Anfrage bearbeiten',
+    sub: 'Noch hat sich niemand gemeldet, Sie können also alles anpassen.',
+    price: 'Was Sie verlangen',
+    budget: 'Was Sie für den Transport anbieten',
+    date: 'Abreisedatum',
+    dateWanted: 'Gewünschte Zustellung bis',
+    arrival: 'Ankunftsdatum (optional)',
+    title: 'Bezeichnung des Gegenstands',
+    description: 'Beschreibung',
+    weight: 'Ungefähres Gewicht (kg, optional)',
+    flight: 'Flugnummer (optional)',
+    categories: 'Was Sie zu transportieren bereit sind',
+    categoriesHint: 'Mindestens eine Kategorie.',
+    notes: 'Weitere Angaben (optional)',
+    save: 'Speichern',
+    cancel: 'Abbrechen',
+    nothing: 'Es hat sich nichts geändert.',
+    minPrice: `Das Minimum beträgt ${MIN_COMPENSATION_EUR} €.`,
+    maxPrice: `Das Maximum beträgt ${MAX_COMPENSATION_EUR} €.`,
+    errors: {
+      has_bookings:
+        'Inzwischen hat sich jemand gemeldet. Öffnen Sie die Buchung, um es mit dieser Person zu besprechen.',
+      not_owner: 'Diese Anzeige gehört nicht Ihnen.',
+      not_found: 'Diese Anzeige existiert nicht mehr.',
+      already_cancelled: 'Diese Anzeige wurde bereits gelöscht.',
+      bad_photo: 'Dieses Foto konnte nicht überprüft werden. Versuchen Sie, es erneut hinzuzufügen.',
+      generic: 'Die Änderung konnte nicht gespeichert werden. Versuchen Sie es erneut.',
+    },
+  },
+  nl: {
+    titleTrip: 'Deze reis bewerken',
+    titleRequest: 'Deze aanvraag bewerken',
+    sub: 'Nog niemand heeft zich gemeld, dus je kunt alles aanpassen.',
+    price: 'Wat je vraagt',
+    budget: 'Wat je de reiziger biedt',
+    date: 'Vertrekdatum',
+    dateWanted: 'Gewenste levering vóór',
+    arrival: 'Aankomstdatum (optioneel)',
+    title: 'Naam van het voorwerp',
+    description: 'Beschrijving',
+    weight: 'Geschat gewicht (kg, optioneel)',
+    flight: 'Vluchtnummer (optioneel)',
+    categories: 'Wat je wilt vervoeren',
+    categoriesHint: 'Minstens één categorie.',
+    notes: 'Extra informatie (optioneel)',
+    save: 'Opslaan',
+    cancel: 'Annuleren',
+    nothing: 'Er is niets veranderd.',
+    minPrice: `Het minimum is € ${MIN_COMPENSATION_EUR}.`,
+    maxPrice: `Het maximum is € ${MAX_COMPENSATION_EUR}.`,
+    errors: {
+      has_bookings:
+        'Iemand heeft zich intussen gemeld. Open de boeking om het met die persoon te bespreken.',
+      not_owner: 'Deze advertentie is niet van jou.',
+      not_found: 'Deze advertentie bestaat niet meer.',
+      already_cancelled: 'Deze advertentie is al verwijderd.',
+      bad_photo: 'Deze foto kon niet worden gecontroleerd. Probeer hem opnieuw toe te voegen.',
+      generic: 'De wijziging kon niet worden opgeslagen. Probeer het opnieuw.',
+    },
+  },
+};
+// Every locale must carry every key the French copy has.
+COPY satisfies Record<Locale, typeof COPY.fr>;
 
 export type EditableTrip = {
   id: string;
@@ -129,7 +225,7 @@ export function EditListingModal({
   onSaved: (patch: Record<string, any>) => void;
 }) {
   const { t, locale } = useI18n();
-  const c = COPY[locale === 'en' ? 'en' : 'fr'];
+  const c = COPY[locale];
   const isTrip = !!trip;
 
   const [saving, setSaving] = useState(false);

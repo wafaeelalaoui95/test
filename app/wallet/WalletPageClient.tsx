@@ -14,6 +14,7 @@ import {
 import type { WalletTransaction } from '@/lib/supabase/queries';
 import { formatEuros, formatShortDate, displayName, nameInitial, travelerNetFromTotal } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
+import type { Locale } from '@/lib/i18n/translations';
 import { cityDisplayName } from '@/lib/countries';
 
 // Copy for the parts this page rewrote. Kept local rather than added to
@@ -31,7 +32,24 @@ const COPY = {
     earnedLabel: 'Paid out',
     heldLabel: 'Pending',
   },
-} as const;
+  es: {
+    heroTitle: 'Tus ganancias',
+    earnedLabel: 'Pagado',
+    heldLabel: 'Pendiente',
+  },
+  de: {
+    heroTitle: 'Deine Einnahmen',
+    earnedLabel: 'Ausgezahlt',
+    heldLabel: 'Ausstehend',
+  },
+  nl: {
+    heroTitle: 'Je verdiensten',
+    earnedLabel: 'Uitbetaald',
+    heldLabel: 'In afwachting',
+  },
+};
+// Every locale must carry every key the French copy has.
+COPY satisfies Record<Locale, typeof COPY.fr>;
 
 // Props now come pre-filled from the Server Component, so no useEffect/loading
 // dance on mount — the page renders fully on first paint.
@@ -44,7 +62,7 @@ export default function WalletPageClient({
 }) {
   const user = initialUser;
   const { t, locale } = useI18n();
-  const w = COPY[locale === 'en' ? 'en' : 'fr'];
+  const w = COPY[locale];
   const [transactions] = useState<WalletTransaction[]>(initialTransactions);
   const [error] = useState<string | null>(null);
 

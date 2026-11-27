@@ -930,7 +930,7 @@ export default function MyPage(
                     className="mt-4 inline-flex items-center gap-2 text-[13px] text-ink-600 underline underline-offset-2"
                   >
                     <Wallet className="w-3.5 h-3.5" />
-                    {locale === 'en' ? 'See my earnings' : 'Voir mes gains'}
+                    {t.me_see_earnings}
                   </Link>
                 </div>
               )}
@@ -2392,9 +2392,7 @@ function ProfileTab({
                 {titleCaseName(fullName)}
               </div>
               <p className="mt-1.5 text-[12px] text-ink-400">
-                {locale === 'en'
-                  ? 'Matches your verified ID and cannot be changed.'
-                  : 'Correspond à votre pièce d’identité vérifiée et ne peut pas être modifié.'}
+                {t.me_name_locked_hint}
               </p>
             </div>
           ) : (
@@ -3531,7 +3529,7 @@ function RequestDetailCard({
             onClick={() => setEditing(true)}
             className="text-ink-600 underline underline-offset-2 font-medium"
           >
-            {locale === 'en' ? 'Edit' : 'Modifier'}
+            {t.me_edit}
           </button>
           <button
             onClick={() => {
@@ -3542,7 +3540,7 @@ function RequestDetailCard({
             }}
             className="text-ink-400 underline underline-offset-2"
           >
-            {locale === 'en' ? 'Delete' : 'Supprimer'}
+            {t.me_delete}
           </button>
         </div>
       )}
@@ -4224,8 +4222,8 @@ function TripDetailCard({
               <button
                 onClick={() => setEditingTrip(true)}
                 className="absolute top-1 left-1 p-1.5 rounded-full text-lavender-400/70 hover:text-lavender-700 hover:bg-white/60 transition-colors"
-                aria-label={locale === 'en' ? 'Edit this trip' : 'Modifier ce voyage'}
-                title={locale === 'en' ? 'Edit this trip' : 'Modifier ce voyage'}
+                aria-label={t.me_edit_trip}
+                title={t.me_edit_trip}
               >
                 <Pencil className="w-3 h-3" />
               </button>
@@ -4274,9 +4272,7 @@ function TripDetailCard({
         <div className="px-4 py-6 text-center space-y-3">
           <p className="text-[13px] text-ink-400 leading-relaxed">
             {allDone
-              ? locale === 'en'
-                ? 'Every parcel on this flight has been delivered.'
-                : 'Tous les colis de ce vol ont été livrés.'
+              ? t.me_all_parcels_delivered
               : t.me2_no_packages_on_flight}
           </p>
           <Link
@@ -4639,14 +4635,14 @@ function IntentCardInline({
     // Delivered AND paid. "Livraison confirmée" alone left the traveler
     // wondering where their money was; this is the state they actually want
     // to see, and transfer_id is proof it left.
-    statusText = locale === 'en' ? '✓ Paid' : '✓ Payé';
+    statusText = t.me_pill_paid;
     statusClass = 'text-mint-700 bg-mint-50';
   } else if (intent.status === 'confirmed' && intent.received_confirmed_at) {
     // Delivered, no transfer. Almost always because the traveler hasn't
     // finished their payout setup — transferToTraveler skips with
     // 'not_onboarded' and the money waits on the platform balance until the
     // account.updated webhook retries. Say so rather than showing a bare tick.
-    statusText = locale === 'en' ? '⏳ Payment on the way' : '⏳ Paiement en route';
+    statusText = t.me_pill_payout_on_way;
     statusClass = 'text-butter-700 bg-butter-50';
   } else if (intent.status === 'confirmed' && intent.delivery_proof_url) {
     statusText = `📸 ${t.me2_pill_delivered_give_code}`;

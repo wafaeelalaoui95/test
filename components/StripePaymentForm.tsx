@@ -109,7 +109,7 @@ export function StripePaymentForm({
   const options: StripeElementsOptions = {
     clientSecret,
     // Stripe's own card messages ("Votre carte a été refusée") in the page's language.
-    locale: locale === 'en' ? 'en' : 'fr',
+    locale,
     appearance: {
       theme: 'flat',
       variables: {

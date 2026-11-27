@@ -81,7 +81,6 @@ export default function SignupPage() {
   }
 
   if (alreadyRegistered) {
-    const fr = locale !== 'en';
     return (
       <div className="min-h-screen flex items-center justify-center px-5 py-16">
         <div className="max-w-md w-full text-center">
@@ -89,24 +88,20 @@ export default function SignupPage() {
             <ArrowRight className="w-7 h-7 text-lavender-700" strokeWidth={2.5} />
           </div>
           <h1 className="text-3xl font-extrabold text-ink-600 mb-3 tracking-[-0.025em]">
-            {fr ? 'Vous avez déjà un compte' : 'You already have an account'}
+            {t.signup_already_title}
           </h1>
           <p className="text-[16px] text-ink-400 leading-relaxed mb-8">
-            {fr
-              ? 'Cette adresse est déjà inscrite. Connectez-vous plutôt que de créer un nouveau compte.'
-              : 'This address is already registered. Sign in instead of creating a new account.'}{' '}
+            {t.signup_already_text}{' '}
             <span className="font-semibold text-ink-600">{email}</span>
           </p>
           <Link href="/login">
             <Button fullWidth>
-              {fr ? 'Se connecter' : 'Sign in'}
+              {t.login_submit}
               <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
           <p className="mt-4 text-[13px] text-ink-400">
-            {fr
-              ? "Mot de passe oublié ? Le lien est sur la page de connexion."
-              : "Forgotten your password? The link is on the sign-in page."}
+            {t.signup_forgot_hint}
           </p>
         </div>
       </div>
@@ -130,9 +125,7 @@ export default function SignupPage() {
               missing confirmation find it in spam. Cheaper here than in a
               reply. */}
           <p className="mt-5 text-[14px] text-ink-400 leading-relaxed">
-            {locale === 'en'
-              ? 'Nothing after a minute or two? Check your spam or junk folder — that is where it usually is.'
-              : 'Rien au bout d’une minute ou deux ? Regardez dans vos spams ou courriers indésirables, c’est presque toujours là qu’il se trouve.'}
+            {t.signup_spam_hint}
           </p>
         </div>
       </div>
