@@ -98,7 +98,7 @@ export async function GuideLanding({ path }: { path: string }) {
   const L = 'underline underline-offset-2 hover:text-ink-600';
 
   return (
-    <div lang={lang}>
+    <div lang={lang} dir="ltr">
       <JsonLd
         data={breadcrumbJsonLd([
           { name: s.home, path: '/' },
@@ -176,7 +176,7 @@ export async function GuideLanding({ path }: { path: string }) {
           <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-600 tracking-[-0.025em] mb-6">{g.optionsHeading}</h2>
 
           <div className="hidden md:block bg-white rounded-3xl border border-ink-50 overflow-hidden">
-            <table className="w-full text-left text-[14px]">
+            <table className="w-full text-start text-[14px]">
               <thead className="bg-cream-100 text-ink-600">
                 <tr>
                   {s.cols.map((c) => (

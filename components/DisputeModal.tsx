@@ -170,7 +170,7 @@ export function DisputeModal({
                     type="button"
                     onClick={() => { setCategory(c.value); setError(null); }}
                     className={`
-                      w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3
+                      w-full text-start p-3 rounded-2xl border-2 transition-all flex items-start gap-3
                       ${category === c.value
                         ? 'border-blush-400 bg-blush-50/40'
                         : 'border-ink-100 bg-white hover:border-ink-200'}

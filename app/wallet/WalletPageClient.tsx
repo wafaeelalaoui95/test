@@ -47,6 +47,21 @@ const COPY = {
     earnedLabel: 'Uitbetaald',
     heldLabel: 'In afwachting',
   },
+  it: {
+    heroTitle: 'I tuoi guadagni',
+    earnedLabel: 'Versati',
+    heldLabel: 'In attesa',
+  },
+  pt: {
+    heroTitle: 'Os teus ganhos',
+    earnedLabel: 'Pagos',
+    heldLabel: 'Pendentes',
+  },
+  ar: {
+    heroTitle: 'أرباحك',
+    earnedLabel: 'تم دفعها',
+    heldLabel: 'قيد الانتظار',
+  },
 };
 // Every locale must carry every key the French copy has.
 COPY satisfies Record<Locale, typeof COPY.fr>;
@@ -115,7 +130,7 @@ export default function WalletPageClient({
           href="/me"
           className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-6"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="rtl:-scale-x-100 w-3.5 h-3.5" />
           {t.sec_back_to_space}
         </Link>
 
@@ -145,8 +160,8 @@ export default function WalletPageClient({
               {w.heroTitle}
             </h2>
             <div className="bg-gradient-to-br from-ink-500 to-ink-600 rounded-3xl p-7 lg:p-9 text-cream-50 relative overflow-hidden">
-              <div className="pointer-events-none absolute -top-12 -right-12 w-48 h-48 rounded-full bg-mint-500/20 blur-2xl" />
-              <div className="pointer-events-none absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-butter-500/15 blur-2xl" />
+              <div className="pointer-events-none absolute -top-12 -end-12 w-48 h-48 rounded-full bg-mint-500/20 blur-2xl" />
+              <div className="pointer-events-none absolute -bottom-12 -start-12 w-48 h-48 rounded-full bg-butter-500/15 blur-2xl" />
 
               {/* Two numbers, nothing else. Every explanation that used to sit
                   here — the counts, how payouts reach the bank, where to set

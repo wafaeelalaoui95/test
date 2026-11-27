@@ -379,7 +379,7 @@ export function HomeClient({
                     {t.search_label_before}
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
+                    <Calendar className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
                     <input
                       type="date"
                       value={searchDate}
@@ -399,7 +399,7 @@ export function HomeClient({
                     <span className="normal-case tracking-normal font-normal text-ink-300 lowercase">({t.common_optional})</span>
                   </label>
                   <div className="relative">
-                    <Wallet className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
+                    <Wallet className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
                     <input
                       type="number"
                       min={0}
@@ -445,7 +445,7 @@ export function HomeClient({
                     {t.hero_traveler_cta}
                   </span>
                 </span>
-                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="rtl:-scale-x-100 w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>
 
@@ -510,7 +510,7 @@ export function HomeClient({
             <Link href={user ? (mode === 'travelers' ? '/envoyer' : '/voyager') : '/login'}>
               <Button size="sm">
                 {mode === 'travelers' ? t.disc_publish_request : t.disc_publish_trip}
-                <ArrowRight className="w-3 h-3" />
+                <ArrowRight className="rtl:-scale-x-100 w-3 h-3" />
               </Button>
             </Link>
           </div>
@@ -601,7 +601,7 @@ export function HomeClient({
                   {t.search_label_before}
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
+                  <Calendar className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
                   <input
                     type="date"
                     value={searchDate}
@@ -786,7 +786,7 @@ export function HomeClient({
                 <Link href={user ? href : '/login'}>
                   <Button>
                     {cta}
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="rtl:-scale-x-100 w-4 h-4" />
                   </Button>
                 </Link>
               </div>
@@ -979,8 +979,8 @@ function RequestCard({
 
       {/* Boarding-pass stub — perforation + notches + price + respond CTA */}
       <div className="relative border-t-2 border-dashed border-ink-100 bg-lavender-50 px-4 pt-3 pb-3">
-        <div className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-cream-50" />
-        <div className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-cream-50" />
+        <div className="absolute -top-2 -start-2 w-4 h-4 rounded-full bg-cream-50" />
+        <div className="absolute -top-2 -end-2 w-4 h-4 rounded-full bg-cream-50" />
         <div className="flex items-baseline justify-between mb-2.5">
           <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-lavender-600">
             {t.disc_you_receive}
@@ -994,7 +994,7 @@ function RequestCard({
           className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
         >
           {t.disc_i_can_do_it}
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="rtl:-scale-x-100 w-3.5 h-3.5" />
         </button>
       </div>
     </motion.article>

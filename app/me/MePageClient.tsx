@@ -1220,8 +1220,8 @@ function OverviewTab({
       {/* WALLET — total received from Stripe-captured payments */}
       <div className="bg-gradient-to-br from-ink-500 to-ink-600 rounded-3xl p-7 lg:p-9 text-cream-50 relative overflow-hidden">
         {/* Decorative halo */}
-        <div className="pointer-events-none absolute -top-12 -right-12 w-48 h-48 rounded-full bg-lavender-500/20 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-butter-500/15 blur-2xl" />
+        <div className="pointer-events-none absolute -top-12 -end-12 w-48 h-48 rounded-full bg-lavender-500/20 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-12 -start-12 w-48 h-48 rounded-full bg-butter-500/15 blur-2xl" />
 
         <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div>
@@ -1268,7 +1268,7 @@ function OverviewTab({
             <div className="font-semibold text-ink-600 text-[15px]">{t.me_new_request}</div>
             <div className="text-[13px] text-ink-400 mt-0.5">{t.send_subtitle}</div>
           </div>
-          <ArrowRight className="w-4 h-4 text-ink-300 group-hover:text-ink-500 transition-colors" />
+          <ArrowRight className="rtl:-scale-x-100 w-4 h-4 text-ink-300 group-hover:text-ink-500 transition-colors" />
         </Link>
 
         <Link
@@ -1282,7 +1282,7 @@ function OverviewTab({
             <div className="font-semibold text-ink-600 text-[15px]">{t.me_new_trip}</div>
             <div className="text-[13px] text-ink-400 mt-0.5">{t.trip_subtitle}</div>
           </div>
-          <ArrowRight className="w-4 h-4 text-ink-300 group-hover:text-ink-500 transition-colors" />
+          <ArrowRight className="rtl:-scale-x-100 w-4 h-4 text-ink-300 group-hover:text-ink-500 transition-colors" />
         </Link>
       </div>
 
@@ -1897,15 +1897,15 @@ function BookingCard({
           <span className="text-ink-300">·</span>
           <span className="text-ink-400 truncate">{travelerName}</span>
           {isTravelerProposal && (
-            <span className="text-[11px] text-lavender-600 ml-1">
+            <span className="text-[11px] text-lavender-600 ms-1">
               {isCounter ? `↔ ${t.neg_pill_counter}` : `✨ ${t.me2_status_new}`}
             </span>
           )}
           {myPriceWaiting && (
-            <span className="text-[11px] text-ink-400 ml-1">⏳ {t.neg_pill_price_proposed} · {t.neg_waiting_traveler}</span>
+            <span className="text-[11px] text-ink-400 ms-1">⏳ {t.neg_pill_price_proposed} · {t.neg_waiting_traveler}</span>
           )}
           {booking.status === 'pending' && !isTravelerProposal && !myPriceWaiting && (
-            <span className="text-[11px] text-ink-300 ml-1">⏳ {t.me2_status_pending}</span>
+            <span className="text-[11px] text-ink-300 ms-1">⏳ {t.me2_status_pending}</span>
           )}
         </div>
 
@@ -1938,7 +1938,7 @@ function BookingCard({
 
       {/* Where the price came from, while it is being discussed. */}
       {isCounter && (
-        <p className="mt-2 ml-11 text-[12px] text-ink-500 leading-snug">
+        <p className="mt-2 ms-11 text-[12px] text-ink-500 leading-snug">
           {booking.original_price != null && Number(booking.original_price) !== Number(booking.proposed_price) && (
             <span className="text-ink-400">
               {t.neg_listed_price} {formatEuros(Number(booking.original_price))} ·{' '}
@@ -1950,7 +1950,7 @@ function BookingCard({
 
       {/* Traveler's message — only when there's one and it's a proposal */}
       {isTravelerProposal && booking.traveler_message && (
-        <p className="mt-2 ml-11 text-[12px] text-ink-400 leading-snug line-clamp-2">
+        <p className="mt-2 ms-11 text-[12px] text-ink-400 leading-snug line-clamp-2">
           « {booking.traveler_message} »
         </p>
       )}
@@ -1981,7 +1981,7 @@ function RequestCard({ request, t }: { request: ShippingRequestRow; t: Translati
           <div className="flex items-start justify-between gap-3 mb-1.5">
             <div className="font-semibold text-ink-600 flex items-center gap-2 flex-wrap text-[15px]">
               <span>{cityDisplayName(request.pickup_city, locale)}</span>
-              <ArrowRight className="w-3.5 h-3.5 text-ink-300" />
+              <ArrowRight className="rtl:-scale-x-100 w-3.5 h-3.5 text-ink-300" />
               <span>{cityDisplayName(request.destination_city, locale)}</span>
             </div>
             <StatusBadge status={request.status} t={t} />
@@ -2159,19 +2159,19 @@ function IntentCard({
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-mint-600 num-display">{formatEuros(travelerNetFromTotal(intent.proposed_price))}</span>
           {intent.payment_status === 'authorized' && !historic && (
-            <span className="text-[11px] text-mint-600 ml-1">💳</span>
+            <span className="text-[11px] text-mint-600 ms-1">💳</span>
           )}
           {intent.payment_status === 'captured' && historic && (
-            <span className="text-[11px] text-mint-600 ml-1">✓ {t.me2_status_cashed_in}</span>
+            <span className="text-[11px] text-mint-600 ms-1">✓ {t.me2_status_cashed_in}</span>
           )}
           {historic && intent.delivery_proof_url && (
-            <span className="text-[11px] text-mint-600 ml-1">📸 {t.me2_status_delivered}</span>
+            <span className="text-[11px] text-mint-600 ms-1">📸 {t.me2_status_delivered}</span>
           )}
           {historic && !intent.delivery_proof_url && intent.status === 'confirmed' && (
-            <span className="text-[11px] text-mint-500 ml-1">✓ {t.me2_status_accepted}</span>
+            <span className="text-[11px] text-mint-500 ms-1">✓ {t.me2_status_accepted}</span>
           )}
           {historic && !intent.delivery_proof_url && intent.status === 'cancelled' && (
-            <span className="text-[11px] text-ink-300 ml-1">✕ {t.me2_status_declined}</span>
+            <span className="text-[11px] text-ink-300 ms-1">✕ {t.me2_status_declined}</span>
           )}
         </div>
 
@@ -2521,7 +2521,7 @@ function ProfileTab({
                 </div>
                 <button
                   onClick={() => !deleting && setShowDeleteModal(false)}
-                  className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400"
+                  className="p-1.5 -me-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400"
                   disabled={deleting}
                 >
                   <X className="w-4 h-4" />
@@ -2757,7 +2757,7 @@ function ProposalPaymentModal({
               <button
                 onClick={onClose}
                 disabled={busy}
-                className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+                className="p-1.5 -me-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2843,9 +2843,9 @@ function ProposalCard({
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-mint-600 num-display">{formatEuros(netTraveler)}</span>
           {accepted ? (
-            <span className="text-[11px] text-mint-600 ml-1">✓ {t.me2_status_accepted}</span>
+            <span className="text-[11px] text-mint-600 ms-1">✓ {t.me2_status_accepted}</span>
           ) : (
-            <span className="text-[11px] text-ink-300 ml-1">⏳ {t.me2_status_pending}</span>
+            <span className="text-[11px] text-ink-300 ms-1">⏳ {t.me2_status_pending}</span>
           )}
         </div>
 
@@ -2932,7 +2932,7 @@ function ListRow({
       type="button"
       onClick={onClick}
       className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition-colors ${
-        selected ? 'bg-lavender-50/80 border-l-2 border-lavender-500' : 'hover:bg-cream-50 border-l-2 border-transparent'
+        selected ? 'bg-lavender-50/80 border-s-2 border-lavender-500' : 'hover:bg-cream-50 border-s-2 border-transparent'
       }`}
     >
       <span className="flex-shrink-0 text-[18px]">{emoji}</span>
@@ -2998,7 +2998,7 @@ function MasterDetailLayout({
             onClick={onCloseDetail}
             className="inline-flex items-center gap-1.5 text-[14px] font-medium text-ink-500 hover:text-ink-600"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="rtl:-scale-x-100 w-4 h-4" />
             {t.me2_back}
           </button>
         </div>
@@ -3594,7 +3594,7 @@ function RequestDetailCard({
                     type="button"
                     onClick={() => setWithdrawReason(r.value)}
                     disabled={withdrawing}
-                    className={`w-full text-left px-4 py-2.5 rounded-xl text-[13.5px] border transition-colors ${
+                    className={`w-full text-start px-4 py-2.5 rounded-xl text-[13.5px] border transition-colors ${
                       withdrawReason === r.value
                         ? 'bg-ink-500 text-cream-50 border-ink-500 font-semibold'
                         : 'bg-white text-ink-600 border-ink-50 hover:border-ink-200'
@@ -4036,8 +4036,8 @@ function TripListRow({
       onClick={onClick}
       className={`w-full text-start px-3 py-2.5 flex items-center gap-3 transition-colors ${
         selected
-          ? 'bg-lavender-50/80 border-l-2 border-lavender-500'
-          : 'hover:bg-cream-50 border-l-2 border-transparent'
+          ? 'bg-lavender-50/80 border-s-2 border-lavender-500'
+          : 'hover:bg-cream-50 border-s-2 border-transparent'
       } ${isPast ? 'opacity-60' : ''}`}
     >
       <span className="flex-shrink-0 text-[18px]">{isCancelled ? '🚫' : '✈️'}</span>
@@ -4051,9 +4051,9 @@ function TripListRow({
         </div>
         <div className="text-[12px] text-ink-400 truncate num-display">
           {formatShortDate(trip.departure_date)}
-          {trip.flight_number && <span className="ml-1.5 text-ink-300">· {trip.flight_number}</span>}
+          {trip.flight_number && <span className="ms-1.5 text-ink-300">· {trip.flight_number}</span>}
           {isCancelled && (
-            <span className="ml-1.5 text-blush-500 font-medium">· {t.me2_cancelled_label}</span>
+            <span className="ms-1.5 text-blush-500 font-medium">· {t.me2_cancelled_label}</span>
           )}
         </div>
       </div>
@@ -4168,7 +4168,7 @@ function TripDetailCard({
             {trip.flight_number && (
               <div className="text-[10px] text-ink-400 font-bold tracking-[0.14em] uppercase mb-1.5 num-display">
                 {t.me2_flight.replace('{number}', trip.flight_number)}
-                {trip.flight_time && <span className="ml-2 text-ink-300">· {trip.flight_time}</span>}
+                {trip.flight_time && <span className="ms-2 text-ink-300">· {trip.flight_time}</span>}
               </div>
             )}
             <div className="flex items-center gap-3 mb-1">
@@ -4186,7 +4186,7 @@ function TripDetailCard({
             </div>
             <div className="flex items-center justify-between text-[11px] text-ink-400 mb-3">
               <span className="truncate max-w-[40%]">{cityDisplayName(trip.departure_city, locale)}</span>
-              <span className="truncate max-w-[40%] text-right">{cityDisplayName(trip.arrival_city, locale)}</span>
+              <span className="truncate max-w-[40%] text-end">{cityDisplayName(trip.arrival_city, locale)}</span>
             </div>
             <div className="flex items-center gap-4 text-[11px]">
               <div>
@@ -4201,7 +4201,7 @@ function TripDetailCard({
             </div>
           </div>
 
-          <div className="w-[35%] flex-shrink-0 border-l border-dashed border-lavender-300/50 px-3 py-4 flex flex-col justify-center items-center text-center relative bg-gradient-to-br from-lavender-50 to-lavender-100/70">
+          <div className="w-[35%] flex-shrink-0 border-s border-dashed border-lavender-300/50 px-3 py-4 flex flex-col justify-center items-center text-center relative bg-gradient-to-br from-lavender-50 to-lavender-100/70">
             {earning.length > 0 ? (
               <>
                 <div className="text-[28px] sm:text-[32px] font-extrabold text-lavender-700 num-display leading-none">
@@ -4221,7 +4221,7 @@ function TripDetailCard({
             {isEditable && (
               <button
                 onClick={() => setEditingTrip(true)}
-                className="absolute top-1 left-1 p-1.5 rounded-full text-lavender-400/70 hover:text-lavender-700 hover:bg-white/60 transition-colors"
+                className="absolute top-1 start-1 p-1.5 rounded-full text-lavender-400/70 hover:text-lavender-700 hover:bg-white/60 transition-colors"
                 aria-label={t.me_edit_trip}
                 title={t.me_edit_trip}
               >
@@ -4230,7 +4230,7 @@ function TripDetailCard({
             )}
             {trip.status !== 'cancelled' && (
               <button
-                className="absolute top-0.5 right-0.5 p-2.5 rounded-full text-lavender-400/70 hover:text-blush-500 hover:bg-white/60 transition-colors"
+                className="absolute top-0.5 end-0.5 p-2.5 rounded-full text-lavender-400/70 hover:text-blush-500 hover:bg-white/60 transition-colors"
                 onClick={() => setCancellingTrip(true)}
                 aria-label={t.me2_cancel_trip}
                 title={t.me2_cancel_trip}
@@ -4804,7 +4804,7 @@ function IntentCardInline({
       {/* Progress journey — role-aware reminders (traveler side). Shown once
           the booking is accepted (not on a pending request). */}
       {intent.status === 'confirmed' && (
-        <div className="mt-3 ml-1">
+        <div className="mt-3 ms-1">
           <ShipmentJourney
             booking={intent}
             role="traveler"
@@ -4837,7 +4837,7 @@ function IntentCardInline({
       {/* When the other party has already posted their review, show it
           inline below the card so the user sees how they were rated. */}
       {otherReview && (
-        <div className="mt-2 ml-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
+        <div className="mt-2 ms-11 text-[12px] text-ink-400 flex items-center gap-1.5 flex-wrap">
           <span>{t.me2_x_rated_you.replace('{name}', senderName.split(' ')[0])}</span>
           <span className="inline-flex items-center gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => (

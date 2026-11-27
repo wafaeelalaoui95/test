@@ -328,7 +328,7 @@ export function PayoutCountriesNotice({ className }: { className?: string }) {
       <button
         onClick={close}
         aria-label={t.common_close}
-        className="-mr-1 -mt-0.5 p-1.5 rounded-full text-ink-400 hover:bg-ink-50 hover:text-ink-600 transition-colors shrink-0"
+        className="-me-1 -mt-0.5 p-1.5 rounded-full text-ink-400 hover:bg-ink-50 hover:text-ink-600 transition-colors shrink-0"
       >
         <X className="w-3.5 h-3.5" />
       </button>

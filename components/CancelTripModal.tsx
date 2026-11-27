@@ -182,7 +182,7 @@ export function CancelTripModal({
                       <span className="text-ink-300">·</span>
                       <span className="text-ink-500 truncate">{senderName}</span>
                       <span className="text-ink-300">·</span>
-                      <span className="text-ink-500 num-display flex-shrink-0 ml-auto">
+                      <span className="text-ink-500 num-display flex-shrink-0 ms-auto">
                         {formatEuros(p.proposed_price)}
                       </span>
                     </div>
@@ -211,7 +211,7 @@ export function CancelTripModal({
                 type="button"
                 onClick={() => setReason(r.value)}
                 disabled={submitting}
-                className={`w-full text-left px-4 py-2.5 rounded-xl text-[13.5px] border transition-colors ${
+                className={`w-full text-start px-4 py-2.5 rounded-xl text-[13.5px] border transition-colors ${
                   reason === r.value
                     ? 'bg-ink-500 text-cream-50 border-ink-500 font-semibold'
                     : 'bg-white text-ink-600 border-ink-50 hover:border-ink-200'

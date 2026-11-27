@@ -92,13 +92,13 @@ function MessagingPanel({ onClose }: { onClose: () => void }) {
           exit={{ x: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className="fixed inset-y-0 right-0 w-full sm:w-[440px] bg-cream-50 shadow-2xl flex flex-col overflow-hidden"
+          className="fixed inset-y-0 end-0 w-full sm:w-[440px] bg-cream-50 shadow-2xl flex flex-col overflow-hidden"
         >
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-ink-100">
             <h2 className="text-[17px] font-extrabold text-ink-600 tracking-[-0.01em]">{t.sec_msg_title}</h2>
             <button
               onClick={onClose}
-              className="p-1.5 -mr-1.5 rounded-full hover:bg-ink-50 text-ink-400 transition-colors"
+              className="p-1.5 -me-1.5 rounded-full hover:bg-ink-50 text-ink-400 transition-colors"
               aria-label={t.chat_close}
             >
               <X className="w-4 h-4" />
@@ -145,14 +145,14 @@ function MessagingPanel({ onClose }: { onClose: () => void }) {
                   <button
                     key={conv.id}
                     onClick={() => setOpenConv(conv)}
-                    className={`w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-cream-100/60 transition-colors ${
+                    className={`w-full text-start px-4 py-3.5 flex items-center gap-3 hover:bg-cream-100/60 transition-colors ${
                       i !== conversations.length - 1 ? 'border-b border-ink-50' : ''
                     }`}
                   >
                     <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[14px] text-ink-500 relative">
                       {initial}
                       {isUnread && (
-                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-blush-500 border-2 border-cream-50" />
+                        <span className="absolute -top-0.5 -end-0.5 w-3 h-3 rounded-full bg-blush-500 border-2 border-cream-50" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">

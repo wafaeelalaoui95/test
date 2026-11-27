@@ -261,6 +261,36 @@ export const FORBIDDEN_CATEGORIES: Record<Locale, string[]> = {
     'Gevaarlijke stoffen',
     'Alcohol, tabak en gereguleerde producten',
   ],
+  it: [
+    'Denaro contante',
+    'Farmaci con obbligo di prescrizione',
+    'Droghe e stupefacenti',
+    'Armi',
+    'Contraffazioni',
+    'Gioielli di grande valore',
+    'Prodotti pericolosi',
+    'Alcol, tabacco e prodotti regolamentati',
+  ],
+  pt: [
+    'Dinheiro em numerário',
+    'Medicamentos sujeitos a receita médica',
+    'Drogas e estupefacientes',
+    'Armas',
+    'Contrafações',
+    'Joias de grande valor',
+    'Produtos perigosos',
+    'Álcool, tabaco e produtos regulamentados',
+  ],
+  ar: [
+    'النقود',
+    'الأدوية التي تُصرف بوصفة طبية',
+    'المخدرات والمواد المخدّرة',
+    'الأسلحة',
+    'المنتجات المقلّدة',
+    'المجوهرات الثمينة',
+    'المواد الخطرة',
+    'الكحول والتبغ والمنتجات الخاضعة للتنظيم',
+  ],
 };
 export const URGENCY_LEVELS: {
   value: Urgency;

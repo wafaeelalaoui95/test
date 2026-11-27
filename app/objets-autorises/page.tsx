@@ -182,7 +182,7 @@ export default function ObjetsAutorisesPage() {
                 transition={{ delay: i * 0.04, duration: 0.3 }}
                 className="bg-white rounded-2xl p-5 border border-blush-100/80 relative overflow-hidden"
               >
-                <div className="absolute top-2 right-2 text-[9px] font-bold tracking-wider text-blush-400 uppercase">
+                <div className="absolute top-2 end-2 text-[9px] font-bold tracking-wider text-blush-400 uppercase">
                   {t.oa_forbidden_tag}
                 </div>
                 <div className="text-4xl mb-3 grayscale-[20%]">{item.emoji}</div>
@@ -285,7 +285,7 @@ export default function ObjetsAutorisesPage() {
             className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-cream-50 hover:bg-cream-100 text-ink-600 text-[14px] font-bold transition-colors"
           >
             {t.oa_cta_button}
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="rtl:-scale-x-100 w-4 h-4" />
           </Link>
         </div>
       </section>

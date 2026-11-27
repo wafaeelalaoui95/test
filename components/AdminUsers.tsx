@@ -119,12 +119,12 @@ export function AdminUsers() {
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <label className="relative flex-1">
-          <Search className="w-4 h-4 text-ink-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-ink-300 absolute start-3.5 top-1/2 -translate-y-1/2" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Nom, e-mail, téléphone, ville…"
-            className="w-full pl-10 pr-4 py-2.5 rounded-full border border-ink-100 bg-white text-[14px] text-ink-600 outline-none focus:border-ink-300"
+            className="w-full ps-10 pe-4 py-2.5 rounded-full border border-ink-100 bg-white text-[14px] text-ink-600 outline-none focus:border-ink-300"
           />
         </label>
         <div className="flex gap-1.5 flex-wrap">

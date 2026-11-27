@@ -179,7 +179,7 @@ function IdentityGateModal({ onClose, message }: { onClose: () => void; message?
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400"
+            className="p-1.5 -me-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400"
             aria-label={t.common_close}
           >
             <X className="w-4 h-4" />

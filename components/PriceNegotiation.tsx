@@ -313,7 +313,7 @@ export function TravelerPriceDecisionModal({
               {booking.item_title ? ` · ${booking.item_title}` : ''}
             </div>
           </div>
-          <button onClick={onClose} aria-label={t.common_close} className="p-1.5 -mr-1 rounded-full hover:bg-ink-50 text-ink-400">
+          <button onClick={onClose} aria-label={t.common_close} className="p-1.5 -me-1 rounded-full hover:bg-ink-50 text-ink-400">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -429,7 +429,7 @@ export function SenderCounterModal({
                 onClick={onClose}
                 disabled={busy}
                 aria-label={t.common_close}
-                className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+                className="p-1.5 -me-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
               >
                 <X className="w-4 h-4" />
               </button>

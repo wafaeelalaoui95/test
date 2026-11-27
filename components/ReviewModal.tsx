@@ -139,7 +139,7 @@ export function ReviewModal({
           <button
             onClick={onClose}
             disabled={busy}
-            className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+            className="p-1.5 -me-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
             aria-label={t.rev_close}
           >
             <X className="w-4 h-4" />

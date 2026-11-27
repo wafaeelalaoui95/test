@@ -49,7 +49,7 @@ export function guidesIndexMetadata(lang: GuideLang): Metadata {
 export function GuidesIndex({ lang }: { lang: GuideLang }) {
   const t = T[lang];
   return (
-    <div lang={lang}>
+    <div lang={lang} dir="ltr">
       <JsonLd data={breadcrumbJsonLd([{ name: t.home, path: '/' }, { name: 'Guides', path: t.path }])} />
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-cream-100 via-cream-50 to-lavender-50/40" />

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Manrope } from 'next/font/google';
+import { Manrope, Noto_Sans_Arabic } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
@@ -15,6 +15,15 @@ const siteUrl = getSiteUrl();
 
 // Self-hosted by Next at build time: no render-blocking Google Fonts @import.
 const manrope = Manrope({ subsets: ['latin'], display: 'swap', variable: '--font-manrope' });
+// Manrope has no Arabic letters. Not preloaded: only the Arabic interface
+// uses it (see html[lang="ar"] in globals.css), so other visitors never
+// download it.
+const notoArabic = Noto_Sans_Arabic({
+  subsets: ['arabic'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-arabic',
+});
 
 // Leads with the need (send something abroad), not the mechanism, so Jibly
 // shows up for generic shipping searches too.
@@ -55,7 +64,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={manrope.variable} suppressHydrationWarning>
+    <html lang="fr" className={`${manrope.variable} ${notoArabic.variable}`} suppressHydrationWarning>
       <body className="min-h-screen bg-cream-50 text-ink-500">
         <I18nProvider>
           <AuthProvider>

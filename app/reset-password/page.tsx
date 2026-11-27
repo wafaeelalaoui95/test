@@ -94,7 +94,7 @@ export default function ResetPasswordPage() {
                 href="/login"
                 className="inline-flex items-center gap-1.5 text-[14px] text-ink-400 hover:text-ink-600 transition-colors"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
+                <ArrowLeft className="rtl:-scale-x-100 w-3.5 h-3.5" />
                 {t.reset_back_login}
               </Link>
             </p>

@@ -83,7 +83,7 @@ export default function MessagesPage() {
           href="/me"
           className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-6"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="rtl:-scale-x-100 w-3.5 h-3.5" />
           {t.sec_back_to_space}
         </Link>
 
@@ -183,14 +183,14 @@ function ConversationRow({
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-cream-50 transition-colors ${
+      className={`w-full text-start px-4 py-3.5 flex items-center gap-3 hover:bg-cream-50 transition-colors ${
         !isLast ? 'border-b border-ink-50' : ''
       }`}
     >
       <div className="flex-shrink-0 w-11 h-11 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[14px] text-ink-500 relative">
         {initial}
         {isUnread && (
-          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-blush-500 border-2 border-white" />
+          <span className="absolute -top-0.5 -end-0.5 w-3 h-3 rounded-full bg-blush-500 border-2 border-white" />
         )}
       </div>
       <div className="flex-1 min-w-0">

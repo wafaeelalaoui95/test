@@ -100,8 +100,8 @@ export function AdminUnfinishedPayments() {
               <div className="min-w-0">
                 <div className="text-[14px] text-ink-600 font-semibold">
                   {it.name ?? 'Sans nom'}
-                  {it.verified && <span className="ml-2 text-[11px] font-medium text-mint-500">identité vérifiée</span>}
-                  {it.optedOut && <span className="ml-2 text-[11px] font-medium text-blush-500">désabonné des e-mails</span>}
+                  {it.verified && <span className="ms-2 text-[11px] font-medium text-mint-500">identité vérifiée</span>}
+                  {it.optedOut && <span className="ms-2 text-[11px] font-medium text-blush-500">désabonné des e-mails</span>}
                 </div>
                 <div className="text-[13px] text-ink-400">
                   {it.route ?? 'Trajet inconnu'}

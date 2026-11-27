@@ -1,16 +1,20 @@
 /**
- * Jibly i18n - French / English / Spanish / German / Dutch
+ * Jibly i18n - French / English / Spanish / German / Dutch / Italian /
+ * Portuguese / Arabic (right-to-left)
  *
- * French is the source text. English is hand-written; Spanish, German and
- * Dutch live in ./locales and are typed against `Translations`, so a missing
+ * French is the source text. English is hand-written; the other languages
+ * live in ./locales and are typed against `Translations`, so a missing
  * key fails the build.
  */
 
 import { es } from './locales/es';
 import { de } from './locales/de';
 import { nl } from './locales/nl';
+import { it } from './locales/it';
+import { pt } from './locales/pt';
+import { ar } from './locales/ar';
 
-export type Locale = 'fr' | 'en' | 'es' | 'de' | 'nl';
+export type Locale = 'fr' | 'en' | 'es' | 'de' | 'nl' | 'it' | 'pt' | 'ar';
 
 export const LOCALES: { code: Locale; label: string; flag: string; rtl: boolean }[] = [
   { code: 'fr', label: 'Français', flag: '🇫🇷', rtl: false },
@@ -18,6 +22,9 @@ export const LOCALES: { code: Locale; label: string; flag: string; rtl: boolean 
   { code: 'es', label: 'Español', flag: '🇪🇸', rtl: false },
   { code: 'de', label: 'Deutsch', flag: '🇩🇪', rtl: false },
   { code: 'nl', label: 'Nederlands', flag: '🇳🇱', rtl: false },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹', rtl: false },
+  { code: 'pt', label: 'Português', flag: '🇵🇹', rtl: false },
+  { code: 'ar', label: 'العربية', flag: '🇲🇦', rtl: true },
 ];
 
 export function isLocale(v: unknown): v is Locale {
@@ -31,6 +38,10 @@ export const INTL_LOCALE: Record<Locale, string> = {
   es: 'es-ES',
   de: 'de-DE',
   nl: 'nl-NL',
+  it: 'it-IT',
+  pt: 'pt-PT',
+  // Moroccan Arabic conventions; Intl keeps Latin digits for ar-MA.
+  ar: 'ar-MA',
 };
 
 export function intlLocale(locale: string): string {
@@ -41,10 +52,12 @@ export function intlLocale(locale: string): string {
  * Some content exists only in French and English: the legal documents (a
  * translation is a legal text and needs the solicitor's sign-off), the SEO
  * guides, the attestation statements and the emails. Visitors reading in
- * another language get the English version of those.
+ * another language get the English version of those, except Arabic: our
+ * Arabic-reading public is mostly Moroccan, and reads French far more
+ * often than English.
  */
 export function frOrEn(locale: string): 'fr' | 'en' {
-  return locale === 'fr' ? 'fr' : 'en';
+  return locale === 'fr' || locale === 'ar' ? 'fr' : 'en';
 }
 
 export type Translations = {
@@ -4314,4 +4327,7 @@ export const translations: Record<Locale, Translations> = {
   es,
   de,
   nl,
+  it,
+  pt,
+  ar,
 };

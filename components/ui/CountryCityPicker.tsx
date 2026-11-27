@@ -176,24 +176,24 @@ export function CountryCityPicker({
         onClick={() => (open ? setOpen(false) : openPanel())}
         className="w-full flex items-center gap-2 ps-5 pe-1 relative text-start"
       >
-        <MapPin className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
+        <MapPin className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
         <span className={`flex-1 min-w-0 truncate text-[15px] ${city ? 'text-ink-600' : 'text-ink-300'}`}>
           {label}
         </span>
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-3 bg-white rounded-2xl border border-ink-100 shadow-[0_8px_30px_-12px_rgba(24,20,16,0.18)] max-h-[340px] overflow-y-auto z-50 min-w-[240px]">
+        <div className="absolute start-0 end-0 top-full mt-3 bg-white rounded-2xl border border-ink-100 shadow-[0_8px_30px_-12px_rgba(24,20,16,0.18)] max-h-[340px] overflow-y-auto z-50 min-w-[240px]">
           <div className="p-2 border-b border-ink-50 sticky top-0 bg-white">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-300" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-300" />
               <input
                 ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t.picker_place_placeholder}
-                className="w-full pl-8 pr-3 py-2 bg-cream-100 rounded-lg text-[14px] text-ink-600 placeholder:text-ink-300 focus:outline-none focus:bg-white focus:ring-1 focus:ring-ink-200"
+                className="w-full ps-8 pe-3 py-2 bg-cream-100 rounded-lg text-[14px] text-ink-600 placeholder:text-ink-300 focus:outline-none focus:bg-white focus:ring-1 focus:ring-ink-200"
               />
             </div>
             {enableNearby && (

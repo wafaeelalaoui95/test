@@ -131,7 +131,7 @@ export default function NotificationsPageClient({
           href="/me"
           className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-6"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="rtl:-scale-x-100 w-3.5 h-3.5" />
           {t.sec_back_to_space}
         </Link>
 

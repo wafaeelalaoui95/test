@@ -138,7 +138,7 @@ export function CancelledBookingPanel({
           </div>
         </div>
         {booking.cancellation_note && (
-          <p className="mt-3 ml-12 text-[13px] text-ink-500 italic leading-relaxed">
+          <p className="mt-3 ms-12 text-[13px] text-ink-500 italic leading-relaxed">
             &ldquo;{booking.cancellation_note}&rdquo;
           </p>
         )}
@@ -187,7 +187,7 @@ export function CancelledBookingPanel({
                   <span className="text-ink-500 num-display">
                     {formatShortDate(alt.departure_date)}
                   </span>
-                  <span className="text-ink-500 num-display ml-auto flex-shrink-0">
+                  <span className="text-ink-500 num-display ms-auto flex-shrink-0">
                     {t.me2_from_price.replace('{amount}', String(alt.compensation_min))}
                   </span>
                 </div>
@@ -204,7 +204,7 @@ export function CancelledBookingPanel({
             className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13.5px] font-semibold transition-colors"
           >
             {t.me2_cancelled_find_another}
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="rtl:-scale-x-100 w-3.5 h-3.5" />
           </Link>
         </div>
       </div>
