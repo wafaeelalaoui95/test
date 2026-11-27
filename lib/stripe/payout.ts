@@ -2,6 +2,7 @@ import { getStripe } from './server';
 import { splitAmount, ensurePayoutDescriptorById } from './connect';
 import { getAdminClient } from '@/lib/supabase/server';
 import { DISPUTE_SETTLED_FILTER } from '@/lib/disputes';
+import { purchaseCentsOf } from './purchase';
 
 export type PayoutResult =
   | { status: 'sent'; transferId: string; travelerCents: number; feeCents: number }
@@ -26,9 +27,16 @@ export async function transferToTraveler(params: {
   existingTransferId: string | null;
   amountCents: number;
   chargeId: string | null;
+  /**
+   * The part of amountCents that paid for an item the traveller bought for the
+   * sender (purchaseCentsOf(pi)). Reimbursed in full: the commission is taken
+   * on the rest only. 0 for an ordinary booking.
+   */
+  purchaseCents?: number;
 }): Promise<PayoutResult> {
   const { bookingIntentId, travelerUserId, existingTransferId, amountCents, chargeId } =
     params;
+  const purchaseCents = Math.min(Math.max(0, params.purchaseCents ?? 0), amountCents);
 
   // Idempotency: never pay the same booking twice. This is the single most
   // expensive bug available in this file, so it is the first check.
@@ -103,7 +111,11 @@ export async function transferToTraveler(params: {
     return { status: 'skipped', reason: 'not_onboarded' };
   }
 
-  const { feeCents, travelerCents } = splitAmount(amountCents);
+  // Commission on the service only; the item's price goes to the traveller
+  // whole, since they paid the shop with their own money.
+  const service = splitAmount(amountCents - purchaseCents);
+  const feeCents = service.feeCents;
+  const travelerCents = service.travelerCents + purchaseCents;
 
   // Make sure the payout this transfer leads to reads "JIBLY" on the
   // traveler's bank statement, even on an account no webhook has touched since
@@ -234,6 +246,7 @@ export async function retryPendingPayouts(
       travelerUserId,
       existingTransferId: booking.transfer_id,
       amountCents: booking.payment_amount,
+      purchaseCents: purchaseCentsOf(pi),
       chargeId:
         typeof pi.latest_charge === 'string'
           ? pi.latest_charge

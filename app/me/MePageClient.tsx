@@ -52,7 +52,8 @@ import type {
   TripCancellationReason,
 } from '@/lib/supabase/queries';
 import { ITEM_CATEGORIES, SPACE_OPTIONS, AUTO_RELEASE_DAYS } from '@/lib/constants';
-import { formatShortDate, nameInitial, formatEuros, travelerNetFromTotal, acceptedCategories } from '@/lib/utils';
+import { formatShortDate, nameInitial, formatEuros, travelerNetFromTotal, travelerEarnings, acceptedCategories } from '@/lib/utils';
+import { PurchaseSummary } from '@/components/PurchaseOption';
 import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
 import { useAuth } from '@/lib/supabase/auth-provider';
@@ -136,6 +137,8 @@ type IncomingIntent = {
   // that is the only moment it can change their mind.
   photo_url?: string | null;
   proposed_price: number;
+  purchase_price?: number | null;
+  purchase_url?: string | null;
   pickup_city: string;
   destination_city: string;
   status: 'pending' | 'confirmed' | 'cancelled';
@@ -1383,6 +1386,8 @@ type TravelerProposal = {
   item_title: string | null;
   item_description: string | null;
   proposed_price: number;
+  purchase_price?: number | null;
+  purchase_url?: string | null;
   pickup_city: string;
   destination_city: string;
   status: 'pending' | 'confirmed' | 'cancelled';
@@ -1422,6 +1427,8 @@ type MyBooking = {
   item_title: string | null;
   item_description: string | null;
   proposed_price: number;
+  purchase_price?: number | null;
+  purchase_url?: string | null;
   pickup_city: string;
   destination_city: string;
   status: 'pending' | 'confirmed' | 'cancelled';
@@ -2157,7 +2164,7 @@ function IntentCard({
           <span className="text-ink-300">·</span>
           <span className="text-ink-500 truncate">{cityDisplayName(intent.pickup_city, locale)} → {cityDisplayName(intent.destination_city, locale)}</span>
           <span className="text-ink-300">·</span>
-          <span className="font-semibold text-mint-600 num-display">{formatEuros(travelerNetFromTotal(intent.proposed_price))}</span>
+          <span className="font-semibold text-mint-600 num-display">{formatEuros(travelerEarnings(intent))}</span>
           {intent.payment_status === 'authorized' && !historic && (
             <span className="text-[11px] text-mint-600 ml-1">💳</span>
           )}
@@ -4129,8 +4136,7 @@ function TripDetailCard({
   // first place.
   const earning = allPackages.filter((p) => p.row.status === 'confirmed');
   const totalNet = earning.reduce((sum, p) => {
-    const ttc = p.row.proposed_price ?? 0;
-    return sum + travelerNetFromTotal(ttc);
+    return sum + travelerEarnings(p.row);
   }, 0);
   const count = allPackages.length;
   // Everything on this flight is delivered and closed — different from never
@@ -4450,9 +4456,10 @@ function RequestDetailsModal({
           <div className="flex justify-between gap-3 pt-2 border-t border-ink-100">
             <span className="text-ink-400">{t.disc_you_receive}</span>
             <span className="font-bold text-mint-600 num-display">
-              {formatEuros(travelerNetFromTotal(intent.proposed_price))}
+              {formatEuros(travelerEarnings(intent))}
             </span>
           </div>
+          <PurchaseSummary price={intent.purchase_price} url={intent.purchase_url} />
         </div>
 
         {/* Unverified traveller: no Accept / Refuse, only the identity check
@@ -4683,7 +4690,7 @@ function IntentCardInline({
           <span className="font-semibold text-ink-600">{senderName}</span>
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-mint-600 num-display">
-            {formatEuros(travelerNetFromTotal(intent.proposed_price))}
+            {formatEuros(travelerEarnings(intent))}
           </span>
           {statusText && (
             <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${statusClass}`}>
@@ -4954,9 +4961,10 @@ function IntentCardInline({
                 <div className="flex justify-between gap-3 pt-2 border-t border-ink-100">
                   <span className="text-ink-400">{t.disc_you_receive}</span>
                   <span className="font-bold text-mint-600 num-display">
-                    {formatEuros(travelerNetFromTotal(intent.proposed_price))}
+                    {formatEuros(travelerEarnings(intent))}
                   </span>
                 </div>
+                <PurchaseSummary price={intent.purchase_price} url={intent.purchase_url} />
               </div>
 
               {/* Unverified traveller: only the identity check, no buttons. */}

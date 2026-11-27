@@ -160,6 +160,33 @@ export function travelerNetFromTotal(totalEuros: number): number {
 }
 
 /**
+ * What a traveller earns on a booking: their share of the service, plus the
+ * item they bought for the sender when there is one (reimbursed in full, no
+ * commission — see lib/stripe/purchase.ts). proposed_price holds the service
+ * total only; the item is never folded into it.
+ */
+export function travelerEarnings(row: {
+  proposed_price?: number | null;
+  purchase_price?: number | null;
+}): number {
+  const service = travelerNetFromTotal(Number(row.proposed_price ?? 0));
+  return Math.round((service + Number(row.purchase_price ?? 0)) * 100) / 100;
+}
+
+/**
+ * The traveller's share of a payment, in euros, from what was charged (cents)
+ * and the item they bought, if any (euros, commission-free).
+ */
+export function travelerShareOfPayment(
+  paymentCents: number | null | undefined,
+  purchaseEuros: number | null | undefined
+): number {
+  const purchase = Number(purchaseEuros ?? 0);
+  const service = Math.max(0, (paymentCents ?? 0) / 100 - purchase);
+  return Math.round((travelerNetFromTotal(service) + purchase) * 100) / 100;
+}
+
+/**
  * Format euro amount with French decimal separator.
  */
 export function formatEuros(amount: number): string {

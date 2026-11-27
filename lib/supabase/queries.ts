@@ -1012,6 +1012,11 @@ export type BookingIntentInput = {
   // request behind it, and these are the two facts a dispute turns on.
   weight_kg?: number | null;
   declared_value_eur?: number | null;
+  // The traveller buys the item. Display only: the money reads the
+  // PaymentIntent metadata, never these. See 2026-11-27-buy-for-me.sql.
+  purchase_requested?: boolean;
+  purchase_price?: number | null;
+  purchase_url?: string | null;
 };
 
 export async function createBookingIntent(
@@ -1042,6 +1047,15 @@ export async function createBookingIntent(
           photo_url: input.photo_url ?? null,
           weight_kg: input.weight_kg ?? null,
           declared_value_eur: input.declared_value_eur ?? null,
+          // Only sent when set, so a database without the migration still
+          // accepts every ordinary booking.
+          ...(input.purchase_requested
+            ? {
+                purchase_requested: true,
+                purchase_price: input.purchase_price ?? null,
+                purchase_url: input.purchase_url ?? null,
+              }
+            : {}),
           pickup_code: generateConfirmationCode(),
           delivery_code: generateConfirmationCode(),
         })
@@ -1072,6 +1086,10 @@ export async function createBookingIntent(
 }
 
 export type BookingIntentRow = {
+  // The traveller buys the item for the sender (2026-11-27-buy-for-me.sql).
+  purchase_requested?: boolean;
+  purchase_price?: number | null;
+  purchase_url?: string | null;
   id: string;
   sender_id: string;
   traveler_trip_id: string | null;

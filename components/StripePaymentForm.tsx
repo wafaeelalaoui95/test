@@ -21,7 +21,7 @@ type Props = {
    * paying a traveller's proposal.
    */
   payFor:
-    | { tripId: string; offerTotal?: number }
+    | { tripId: string; offerTotal?: number; purchasePrice?: number }
     | { bookingIntentId: string; offerTotal?: number };
   // offerTotal: the sender proposes this price instead (bargaining). The server
   // checks it against the minimum and the price on the table.
@@ -60,7 +60,10 @@ export function StripePaymentForm({
   // PaymentIntent.
   const payForKey =
     ('tripId' in payFor ? `trip:${payFor.tripId}` : `booking:${payFor.bookingIntentId}`) +
-    (payFor.offerTotal != null ? `:offer:${payFor.offerTotal}` : '');
+    (payFor.offerTotal != null ? `:offer:${payFor.offerTotal}` : '') +
+    ('purchasePrice' in payFor && payFor.purchasePrice != null
+      ? `:buy:${payFor.purchasePrice}`
+      : '');
 
   useEffect(() => {
     let cancelled = false;

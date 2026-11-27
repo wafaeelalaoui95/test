@@ -25,6 +25,13 @@ import { useIdentityGate } from '@/components/IdentityGate';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
 import { ParcelSizeValue } from '@/components/ParcelSizeValue';
 import {
+  PurchaseOption,
+  EMPTY_PURCHASE,
+  isPurchaseComplete,
+  purchasePriceOf,
+  type PurchaseState,
+} from '@/components/PurchaseOption';
+import {
   ITEM_CATEGORIES,
   FORBIDDEN_CATEGORIES,
   MIN_COMPENSATION_EUR,
@@ -1119,6 +1126,7 @@ function InstantBookModal({
   const [recipientSelf, setRecipientSelf] = useState(true);
   const [recipientName, setRecipientName] = useState('');
   const [certified, setCertified] = useState(false);
+  const [purchase, setPurchase] = useState<PurchaseState>(EMPTY_PURCHASE);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -1129,7 +1137,12 @@ function InstantBookModal({
   // out the fee) stays consistent.
   const breakdown = priceBreakdown(trip.compensation_min);
   const price = breakdown.total;
+  // The item the traveller buys, on top of the service. FIXED and
+  // commission-free; the server re-prices it (see lib/stripe/purchase.ts).
+  const purchasePrice = purchasePriceOf(purchase);
+  const grandTotal = Math.round((price + (purchasePrice ?? 0)) * 100) / 100;
  const canPay =
+    isPurchaseComplete(purchase) &&
     !!category &&
     itemTitle.trim().length > 0 &&
     !isVagueDescription(itemTitle) &&
@@ -1180,7 +1193,14 @@ function InstantBookModal({
         destination_city: destinationCity,
         payment_intent_id: paymentIntentId,
         payment_status: 'authorized',
-        payment_amount: Math.round(price * 100),
+        payment_amount: Math.round(grandTotal * 100),
+        ...(purchasePrice != null
+          ? {
+              purchase_requested: true,
+              purchase_price: purchasePrice,
+              purchase_url: purchase.url.trim() || null,
+            }
+          : {}),
         shipping_request_id: req.id || null,
         photo_url: photoUrl,
         weight_kg: PARCEL_SIZES.find((s) => s.value === size)?.maxKg ?? null,
@@ -1254,11 +1274,14 @@ function InstantBookModal({
                   <div className="inline-flex items-baseline gap-1.5">
                     <span className="text-[11px] text-ink-300 uppercase tracking-[0.08em]">{t.prof_total}</span>
                     <span className="text-xl font-extrabold text-ink-600 num-display">
-                      {formatEuros(breakdown.total)}
+                      {formatEuros(grandTotal)}
                     </span>
                   </div>
                   <div className="text-[11px] text-ink-400 mt-0.5 num-display">
                     {t.prof_traveler_compensation}: {formatEuros(breakdown.traveler)} · {t.prof_jibly_protection_fee}: {formatEuros(breakdown.fees)}
+                    {purchasePrice != null && (
+                      <> · {locale === 'en' ? 'Item' : 'Objet'}: {formatEuros(purchasePrice)}</>
+                    )}
                   </div>
                 </div>
               </>
@@ -1361,6 +1384,8 @@ function InstantBookModal({
                 onNameChange={setRecipientName}
               />
 
+              <PurchaseOption value={purchase} onChange={setPurchase} />
+
               {category === 'otc' && (
                 <div className="bg-butter-50 border border-butter-200 rounded-xl px-4 py-3">
                   <p className="text-[12px] text-ink-600 leading-relaxed flex items-start gap-2">
@@ -1421,7 +1446,11 @@ function InstantBookModal({
                 </div>
               )}
               <StripePaymentForm
-                payFor={{ tripId: trip.id }}
+                payFor={
+                  purchasePrice != null
+                    ? { tripId: trip.id, purchasePrice }
+                    : { tripId: trip.id }
+                }
                 description={`Jibly · ${cityDisplayName(pickupCity, locale)} → ${cityDisplayName(destinationCity, locale)}`}
                 onAuthorized={handleAuthorized}
                 onCancel={() => setPhase('describe')}

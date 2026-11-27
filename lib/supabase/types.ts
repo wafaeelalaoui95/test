@@ -122,6 +122,11 @@ export interface ShippingRequestRow {
   created_at: string;
   // Timestamp proving the sender ticked the terms box when posting the request.
   terms_agreed_at?: string | null;
+  // The traveller buys the item for the sender. purchase_price is FIXED: the
+  // traveller is reimbursed exactly this. See 2026-11-27-buy-for-me.sql.
+  purchase_requested?: boolean;
+  purchase_price?: number | null;
+  purchase_url?: string | null;
 }
 
 export interface MatchRow {

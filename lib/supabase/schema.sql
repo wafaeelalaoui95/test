@@ -229,6 +229,13 @@ alter table public.booking_intents add column if not exists delivery_proof_url  
 alter table public.booking_intents add column if not exists delivery_proof_uploaded_at   timestamptz;
 alter table public.booking_intents add column if not exists delivery_proof_receiver_name text;
 alter table public.booking_intents add column if not exists delivery_proof_notes         text;
+-- The traveller buys the item for the sender (2026-11-27-buy-for-me.sql).
+alter table public.booking_intents   add column if not exists purchase_requested boolean not null default false;
+alter table public.booking_intents   add column if not exists purchase_price     numeric(10,2);
+alter table public.booking_intents   add column if not exists purchase_url       text;
+alter table public.shipping_requests add column if not exists purchase_requested boolean not null default false;
+alter table public.shipping_requests add column if not exists purchase_price     numeric(10,2);
+alter table public.shipping_requests add column if not exists purchase_url       text;
 
 create index if not exists idx_booking_intents_sender   on public.booking_intents(sender_id);
 create index if not exists idx_booking_intents_traveler on public.booking_intents(traveler_user_id);

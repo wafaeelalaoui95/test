@@ -12,7 +12,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import type { WalletTransaction } from '@/lib/supabase/queries';
-import { formatEuros, formatShortDate, displayName, nameInitial, travelerNetFromTotal } from '@/lib/utils';
+import { formatEuros, formatShortDate, displayName, nameInitial, travelerShareOfPayment } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
 import { cityDisplayName } from '@/lib/countries';
 
@@ -78,7 +78,7 @@ export default function WalletPageClient({
 
   const netEuros = (rows: WalletTransaction[]) =>
     rows.reduce(
-      (s, r) => s + travelerNetFromTotal((r.payment_amount ?? 0) / 100),
+      (s, r) => s + travelerShareOfPayment(r.payment_amount, r.purchase_price),
       0
     );
 
@@ -252,7 +252,7 @@ function TxRow({
   const netEuros =
     tx.transfer_amount != null
       ? tx.transfer_amount / 100
-      : travelerNetFromTotal((tx.payment_amount ?? 0) / 100);
+      : travelerShareOfPayment(tx.payment_amount, tx.purchase_price);
 
   const statusStyle =
     kind === 'captured'

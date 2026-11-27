@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
 import { transferToTraveler } from '@/lib/stripe/payout';
 import { paymentIntentMismatch } from '@/lib/stripe/verify-intent';
+import { purchaseCentsOf } from '@/lib/stripe/purchase';
 import { getServerClient, getAdminClient } from '@/lib/supabase/server';
 import { closeTripAfterDelivery } from '@/lib/trip-close';
 
@@ -135,13 +136,18 @@ export async function POST(req: NextRequest) {
   // money has been sitting in the Jibly balance since the traveler accepted,
   // and only a confirmed delivery lets it go. /api/stripe/capture deliberately
   // does not do this — paying at acceptance would fund an undelivered parcel.
-  const releaseToTraveler = (amountCents: number, chargeId: string | null) =>
+  const releaseToTraveler = (
+    amountCents: number,
+    chargeId: string | null,
+    purchaseCents: number
+  ) =>
     transferToTraveler({
       bookingIntentId: intent.id,
       travelerUserId: travelerId,
       existingTransferId: intent.transfer_id,
       amountCents,
       chargeId,
+      purchaseCents,
     });
 
   // Already captured — the normal case, since capture happens at acceptance.
@@ -153,7 +159,8 @@ export async function POST(req: NextRequest) {
       pi.amount_received || intent.payment_amount || pi.amount,
       typeof pi.latest_charge === 'string'
         ? pi.latest_charge
-        : pi.latest_charge?.id ?? null
+        : pi.latest_charge?.id ?? null,
+      purchaseCentsOf(pi)
     );
     return NextResponse.json({
       ok: true,
@@ -206,7 +213,8 @@ export async function POST(req: NextRequest) {
       captured.amount,
       typeof captured.latest_charge === 'string'
         ? captured.latest_charge
-        : captured.latest_charge?.id ?? null
+        : captured.latest_charge?.id ?? null,
+      purchaseCentsOf(captured)
     );
 
     return NextResponse.json({

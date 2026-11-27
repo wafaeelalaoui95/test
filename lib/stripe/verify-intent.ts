@@ -1,5 +1,6 @@
 import type Stripe from 'stripe';
 import { priceBreakdown } from '@/lib/utils';
+import { purchaseCentsOf } from '@/lib/stripe/purchase';
 
 /**
  * Does this PaymentIntent belong to this booking, at the right price?
@@ -39,7 +40,10 @@ export async function paymentIntentMismatch(
         .select('proposed_price')
         .eq('id', booking.id)
         .maybeSingle();
-      if (!row || Math.round(Number(row.proposed_price) * 100) !== pi.amount) {
+      if (
+        !row ||
+        Math.round(Number(row.proposed_price) * 100) !== pi.amount - purchaseCentsOf(pi)
+      ) {
         return 'offer amount does not match the booking price';
       }
     }

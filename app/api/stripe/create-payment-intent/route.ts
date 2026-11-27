@@ -5,6 +5,7 @@ import { getServerClient } from '@/lib/supabase/server';
 import { ensureCustomer, forgetCustomer } from '@/lib/stripe/customer';
 import { priceBreakdown } from '@/lib/utils';
 import { canSenderCounter, checkSenderOffer, roundEuros } from '@/lib/negotiation';
+import { MAX_PURCHASE_EUR } from '@/lib/stripe/purchase';
 
 /**
  * POST /api/stripe/create-payment-intent
@@ -35,6 +36,9 @@ const schema = z.union([
     tripId: z.string().uuid(),
     // A lower price than the listing: the sender's offer, total incl. fee.
     offerTotal: z.number().positive().max(10_000).optional(),
+    // The traveller buys the item: its fixed price in euros, charged on top
+    // of the service and paid out to the traveller with no commission.
+    purchasePrice: z.number().positive().max(MAX_PURCHASE_EUR).optional(),
     description: z.string().max(500).optional(),
   }),
   z.object({
@@ -118,6 +122,18 @@ export async function POST(req: NextRequest) {
       amountCents = toCents(listed);
     }
     pricedFor.tripId = trip.id;
+
+    if (body.purchasePrice != null) {
+      // Bargaining is on the service; mixing it with a purchase would make
+      // the offer checks compare against the wrong number. Not offered in the
+      // UI either.
+      if (body.offerTotal != null) {
+        return NextResponse.json({ error: 'not_allowed' }, { status: 400 });
+      }
+      const purchaseCents = toCents(roundEuros(body.purchasePrice));
+      amountCents += purchaseCents;
+      pricedFor.purchaseCents = String(purchaseCents);
+    }
   } else {
     const { data: booking } = await supabase
       .from('booking_intents')
@@ -193,6 +209,9 @@ export async function POST(req: NextRequest) {
         // intent; record-authorization refuses it (its amount is below the
         // price on the table) and the capture check requires an exact match.
         offer: pricedFor.offer ?? '',
+        // The item the traveller buys, in cents — paid out to them in full on
+        // delivery, outside the commission. See lib/stripe/purchase.ts.
+        purchaseCents: pricedFor.purchaseCents ?? '',
       },
     });
 
