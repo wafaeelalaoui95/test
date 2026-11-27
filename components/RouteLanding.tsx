@@ -62,7 +62,7 @@ export async function RouteLanding({ path }: { path: string }) {
   const others = ROUTE_PAGES.filter((p) => p.path !== page.path);
 
   return (
-    <div>
+    <div lang="fr" dir="ltr">
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Accueil', path: '/' },

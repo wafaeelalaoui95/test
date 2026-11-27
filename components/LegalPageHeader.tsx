@@ -17,7 +17,7 @@ export function LegalPageHeader({ title }: { title: string }) {
         href="/"
         className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-8"
       >
-        <ArrowLeft className="w-3.5 h-3.5" />
+        <ArrowLeft className="rtl:-scale-x-100 w-3.5 h-3.5" />
         {t.cgu_back_home}
       </Link>
       <div className="mb-10">

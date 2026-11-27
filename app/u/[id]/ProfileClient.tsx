@@ -275,7 +275,7 @@ export function ProfileClient({
           href="/"
           className="inline-flex items-center gap-1.5 text-[14px] text-ink-400 hover:text-ink-600 mb-6 transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="rtl:-scale-x-100 w-3.5 h-3.5" />
           {t.prof_back_to_travelers}
         </Link>
 
@@ -307,7 +307,7 @@ export function ProfileClient({
                   visual signature of a verified profile, like the Airbnb
                   superhost ribbon. */}
               {isIdentityVerified && (
-                <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-mint-500 border-[3px] border-white flex items-center justify-center" title={t.prof_identity_verified}>
+                <div className="absolute -bottom-1 -end-1 w-8 h-8 rounded-full bg-mint-500 border-[3px] border-white flex items-center justify-center" title={t.prof_identity_verified}>
                   <BadgeCheck className="w-4 h-4 text-white" strokeWidth={2.5} />
                 </div>
               )}
@@ -449,7 +449,7 @@ export function ProfileClient({
                     size="sm"
                     fullWidth
                   >
-                    <CreditCard className="w-4 h-4 mr-1.5" />
+                    <CreditCard className="w-4 h-4 me-1.5" />
                     {t.prof_book_this_trip}
                   </Button>
                 </motion.div>
@@ -497,7 +497,7 @@ export function ProfileClient({
                     </div>
                     <button
                       onClick={() => setBookingTrip(null)}
-                      className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400"
+                      className="p-1.5 -me-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -525,7 +525,7 @@ export function ProfileClient({
                               {t[c.labelKey]}
                             </span>
                             {active && (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-lavender-500 ml-auto" strokeWidth={2.5} />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-lavender-500 ms-auto" strokeWidth={2.5} />
                             )}
                           </button>
                         );
@@ -671,7 +671,7 @@ export function ProfileClient({
                   />
                   {submitting && (
                     <div className="mt-4 text-center text-[13px] text-ink-400">
-                      <Loader2 className="w-4 h-4 animate-spin inline mr-1.5" />
+                      <Loader2 className="w-4 h-4 animate-spin inline me-1.5" />
                       {t.prof_saving_booking}
                     </div>
                   )}

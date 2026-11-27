@@ -122,7 +122,7 @@ function LoginInner() {
           {t.auth_no_account}{' '}
           <Link href="/signup" className="font-semibold text-ink-600 hover:text-lavender-700">
             {t.auth_signup_link}
-            <ArrowRight className="w-3 h-3 inline ms-1" />
+            <ArrowRight className="rtl:-scale-x-100 w-3 h-3 inline ms-1" />
           </Link>
         </p>
 

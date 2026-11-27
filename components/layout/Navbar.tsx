@@ -79,7 +79,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 backdrop-blur-md bg-cream-50/85 border-b border-ink-50">
       <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
         <nav className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center -ml-1">
+          <Link href="/" className="flex items-center -ms-1">
             <Logo size="sm" />
           </Link>
 
@@ -170,7 +170,7 @@ export function Navbar() {
                 </Link>
                 <Link
                   href="/signup"
-                  className="ml-1 inline-flex items-center px-4 py-2 text-[15px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
+                  className="ms-1 inline-flex items-center px-4 py-2 text-[15px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 rounded-full transition-colors"
                 >
                   {t.nav_start}
                 </Link>
@@ -191,7 +191,7 @@ export function Navbar() {
               >
                 <Bell className="h-5 w-5" />
                 {mobileUnread > 0 && (
-                  <span className="absolute top-1.5 right-1.5 min-w-[14px] h-3.5 px-1 rounded-full bg-blush-500 text-white text-[9px] font-bold flex items-center justify-center num-display border border-cream-50">
+                  <span className="absolute top-1.5 end-1.5 min-w-[14px] h-3.5 px-1 rounded-full bg-blush-500 text-white text-[9px] font-bold flex items-center justify-center num-display border border-cream-50">
                     {mobileUnread > 9 ? '9+' : mobileUnread}
                   </span>
                 )}
@@ -272,7 +272,7 @@ export function Navbar() {
                     <Bell className="w-4 h-4" />
                     <span>{t.nav_notifications}</span>
                     {mobileUnread > 0 && (
-                      <span className="ml-auto min-w-[18px] h-5 px-1.5 rounded-full bg-blush-500 text-white text-[11px] font-bold flex items-center justify-center num-display">
+                      <span className="ms-auto min-w-[18px] h-5 px-1.5 rounded-full bg-blush-500 text-white text-[11px] font-bold flex items-center justify-center num-display">
                         {mobileUnread > 9 ? '9+' : mobileUnread}
                       </span>
                     )}
@@ -282,13 +282,13 @@ export function Navbar() {
                       notifications dropdown. */}
                   <button
                     type="button"
-                    className="w-full text-left py-3 text-base font-medium text-ink-500 flex items-center gap-2"
+                    className="w-full text-start py-3 text-base font-medium text-ink-500 flex items-center gap-2"
                     onClick={() => { setOpen(false); openMessaging(); }}
                   >
                     <MessageSquare className="w-4 h-4" />
                     <span>{t.notif_my_messages}</span>
                     {unreadMessages > 0 && (
-                      <span className="ml-auto min-w-[18px] h-5 px-1.5 rounded-full bg-blush-500 text-white text-[11px] font-bold flex items-center justify-center num-display">
+                      <span className="ms-auto min-w-[18px] h-5 px-1.5 rounded-full bg-blush-500 text-white text-[11px] font-bold flex items-center justify-center num-display">
                         {unreadMessages > 9 ? '9+' : unreadMessages}
                       </span>
                     )}
@@ -351,8 +351,8 @@ function UnreadBadge({
   if (count <= 0) return null;
   const pos =
     variant === 'desktop'
-      ? 'absolute -top-0.5 -right-0.5 min-w-[16px] h-4 text-[10px]'
-      : 'absolute top-1.5 right-1.5 min-w-[14px] h-3.5 text-[9px] border border-cream-50';
+      ? 'absolute -top-0.5 -end-0.5 min-w-[16px] h-4 text-[10px]'
+      : 'absolute top-1.5 end-1.5 min-w-[14px] h-3.5 text-[9px] border border-cream-50';
   return (
     <span
       className={`${pos} px-1 rounded-full bg-blush-500 text-white font-bold flex items-center justify-center num-display`}

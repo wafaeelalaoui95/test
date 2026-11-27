@@ -68,7 +68,7 @@ export function ParcelSizeValue({
           {t.send_value_label}
         </label>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[15px] text-ink-400">
+          <span className="absolute start-4 top-1/2 -translate-y-1/2 text-[15px] text-ink-400">
             €
           </span>
           <input

@@ -67,7 +67,7 @@ export function LegalDocument({ blocks }: { blocks: LegalBlock[] }) {
       <div className="mx-auto max-w-3xl px-5 sm:px-8 py-10 sm:py-14">
         <LegalPageHeader title={title.r.map((r) => r.t).join('')} />
 
-        <article lang="en" className="text-[15px] leading-relaxed text-ink-500">
+        <article lang="en" dir="ltr" className="text-[15px] leading-relaxed text-ink-500">
           {body.map((b, i) => {
             const id = `b${i}`;
             if (b.h === 1) {
@@ -78,7 +78,7 @@ export function LegalDocument({ blocks }: { blocks: LegalBlock[] }) {
                   id={num ? `section-${num}` : undefined}
                   className="mt-10 mb-4 text-[17px] font-extrabold text-ink-600 tracking-[-0.01em] scroll-mt-24"
                 >
-                  {b.n && <span className="mr-2">{b.n}</span>}
+                  {b.n && <span className="me-2">{b.n}</span>}
                   <Runs runs={b.r} id={id} />
                 </h2>
               );

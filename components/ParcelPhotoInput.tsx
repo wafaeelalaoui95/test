@@ -93,6 +93,48 @@ const COPY = {
       generic: 'Het uploaden is mislukt. Probeer het opnieuw.',
     },
   },
+  it: {
+    label: 'Foto del pacco',
+    optional: 'facoltativa',
+    hint: 'Chi viaggia è invitato a controllare l’oggetto prima di trasportarlo.',
+    add: 'Aggiungi una foto',
+    change: 'Cambia',
+    remove: 'Rimuovi',
+    uploading: 'Caricamento…',
+    errors: {
+      too_large: 'La foto è troppo pesante. Il massimo è 8 MB.',
+      bad_format: 'Formato non supportato. Usi JPG, PNG o HEIC.',
+      generic: 'Il caricamento non è riuscito. Riprovi.',
+    },
+  },
+  pt: {
+    label: 'Fotografia da encomenda',
+    optional: 'opcional',
+    hint: 'Quem viaja é convidado a verificar o objeto antes de o transportar.',
+    add: 'Adicionar uma fotografia',
+    change: 'Alterar',
+    remove: 'Remover',
+    uploading: 'A enviar…',
+    errors: {
+      too_large: 'A fotografia é demasiado pesada. O máximo é 8 MB.',
+      bad_format: 'Formato não suportado. Utilize JPG, PNG ou HEIC.',
+      generic: 'O envio falhou. Tente novamente.',
+    },
+  },
+  ar: {
+    label: 'صورة الطرد',
+    optional: 'اختياري',
+    hint: 'يُدعى المسافرون إلى التحقق من الغرض قبل نقله.',
+    add: 'إضافة صورة',
+    change: 'تغيير',
+    remove: 'إزالة',
+    uploading: 'جارٍ الإرسال…',
+    errors: {
+      too_large: 'حجم الصورة كبير جدًا. الحد الأقصى هو 8 ميغابايت.',
+      bad_format: 'صيغة غير مدعومة. استخدموا JPG أو PNG أو HEIC.',
+      generic: 'فشل الإرسال. حاولوا مرة أخرى.',
+    },
+  },
 };
 // Every locale must carry every key the French copy has.
 COPY satisfies Record<Locale, typeof COPY.fr>;

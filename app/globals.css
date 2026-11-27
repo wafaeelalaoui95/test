@@ -54,6 +54,16 @@ h1, h2, h3, h4, h5, h6 {
 h1 { letter-spacing: -0.032em; }
 h2 { letter-spacing: -0.028em; }
 
+/* Arabic: its own typeface first (Latin characters fall through to
+   Manrope), and no letter-spacing anywhere — tracking pulls joined Arabic
+   letters apart, and the tracking-* utilities are all over the UI. */
+html[lang="ar"] {
+  --font-body: var(--font-arabic), var(--font-manrope), 'Manrope', system-ui, sans-serif;
+}
+html[lang="ar"] body * {
+  letter-spacing: 0 !important;
+}
+
 html[lang="ar"] h1,
 html[lang="ar"] h2,
 html[lang="ar"] h3,
@@ -61,9 +71,9 @@ html[lang="ar"] h4 {
   letter-spacing: 0;
 }
 
-/* RTL helpers */
-html[dir="rtl"] .lg\:order-1 { order: 2; }
-html[dir="rtl"] .lg\:order-2 { order: 1; }
+/* RTL helpers. Flex and grid rows already mirror under dir="rtl" and layout
+   classes are logical (ms-/ps-/start-), so no order swapping here: it would
+   un-mirror the layout. */
 html[dir="rtl"] .rtl-flip { transform: scaleX(-1); }
 
 ::selection {

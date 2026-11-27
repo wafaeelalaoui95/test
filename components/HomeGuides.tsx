@@ -1,16 +1,17 @@
 'use client';
 
 // "Que voulez-vous envoyer ?" on the home page: one card per featured guide
-// (lib/guides.ts). The guides exist in French and English only, so every
-// language other than French opens the English version.
+// (lib/guides.ts). The guides exist in French and English only; frOrEn picks
+// which one each interface language opens.
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { GUIDES } from '@/lib/guides';
 import { useI18n } from '@/lib/i18n/context';
+import { frOrEn } from '@/lib/i18n/translations';
 
 export function HomeGuides() {
   const { locale, t } = useI18n();
-  const en = locale !== 'fr';
+  const en = frOrEn(locale) === 'en';
   return (
     <section className="border-t border-ink-50">
       <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-12 sm:py-16">
@@ -28,7 +29,7 @@ export function HomeGuides() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-bold text-ink-600 text-[15px]">{c.title}</span>
-                  <ArrowRight className="w-4 h-4 text-ink-300 group-hover:text-ink-600 transition-colors flex-shrink-0" />
+                  <ArrowRight className="rtl:-scale-x-100 w-4 h-4 text-ink-300 group-hover:text-ink-600 transition-colors flex-shrink-0" />
                 </div>
                 <p className="mt-1 text-[14px] text-ink-500 leading-snug">{c.text}</p>
               </Link>

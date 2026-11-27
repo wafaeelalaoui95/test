@@ -265,16 +265,16 @@ export function ChatModal({
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
         onClick={(e) => e.stopPropagation()}
-        className="fixed inset-y-0 right-0 w-full sm:w-[440px] bg-cream-50 shadow-2xl flex flex-col overflow-hidden"
+        className="fixed inset-y-0 end-0 w-full sm:w-[440px] bg-cream-50 shadow-2xl flex flex-col overflow-hidden"
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-ink-100">
           <button
             onClick={onClose}
-            className="p-1.5 -ml-1.5 rounded-full hover:bg-ink-50 text-ink-400 transition-colors sm:hidden"
+            className="p-1.5 -ms-1.5 rounded-full hover:bg-ink-50 text-ink-400 transition-colors sm:hidden"
             aria-label={t.chat_close}
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="rtl:-scale-x-100 w-4 h-4" />
           </button>
           <div className="w-9 h-9 rounded-full bg-cream-100 flex items-center justify-center font-bold text-[13px] text-ink-500">
             {otherInitial}
@@ -287,7 +287,7 @@ export function ChatModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 -mr-1.5 rounded-full hover:bg-ink-50 text-ink-400 transition-colors hidden sm:block"
+            className="p-1.5 -me-1.5 rounded-full hover:bg-ink-50 text-ink-400 transition-colors hidden sm:block"
             aria-label={t.chat_close}
           >
             <X className="w-4 h-4" />
@@ -332,8 +332,8 @@ export function ChatModal({
                     <div
                       className={`px-3.5 py-2 rounded-2xl text-[14px] leading-relaxed whitespace-pre-wrap break-words ${
                         isMine
-                          ? 'bg-ink-500 text-cream-50 rounded-br-md'
-                          : 'bg-white border border-ink-100 text-ink-600 rounded-bl-md'
+                          ? 'bg-ink-500 text-cream-50 rounded-ee-md'
+                          : 'bg-white border border-ink-100 text-ink-600 rounded-es-md'
                       }`}
                     >
                       {m.body}

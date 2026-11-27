@@ -162,7 +162,7 @@ function HistoriqueContent() {
           href="/me"
           className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-6"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="rtl:-scale-x-100 w-3.5 h-3.5" />
           {t.sec_back_to_space}
         </Link>
 
@@ -259,7 +259,7 @@ function HistoryRow({
           <span className="text-ink-400 num-display">
             {formatShortDate(row.departure_date)}
           </span>
-          <span className="text-[11px] text-ink-300 ml-auto">{t.sec_hist_status_cancelled_trip}</span>
+          <span className="text-[11px] text-ink-300 ms-auto">{t.sec_hist_status_cancelled_trip}</span>
         </div>
       </div>
     );
@@ -303,7 +303,7 @@ function HistoryRow({
           </span>
           <span className="text-ink-300">·</span>
           <span className="font-semibold text-ink-600 num-display">{priceLabel}</span>
-          <span className={`text-[11px] ml-1 ${statusLabel.tone}`}>{statusLabel.text}</span>
+          <span className={`text-[11px] ms-1 ${statusLabel.tone}`}>{statusLabel.text}</span>
         </div>
         {row.delivery_proof_url && (
           <ViewProofButton url={row.delivery_proof_url} label={t.sec_hist_view_proof} />

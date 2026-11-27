@@ -56,7 +56,7 @@ const schema = z.object({
   country: z.string().length(2).toUpperCase().optional(),
   // UI language, so Stripe's hosted onboarding renders in the language the
   // traveler was already reading. BCP-47-ish; anything unrecognised falls back.
-  locale: z.enum(['fr', 'en', 'es', 'de', 'nl']).optional(),
+  locale: z.enum(['fr', 'en', 'es', 'de', 'nl', 'it', 'pt', 'ar']).optional(),
 });
 
 // Stripe wants a full locale tag, not the bare language code the app uses.
@@ -66,6 +66,11 @@ const STRIPE_LOCALES: Record<string, string> = {
   es: 'es-ES',
   de: 'de-DE',
   nl: 'nl-NL',
+  it: 'it-IT',
+  pt: 'pt-PT',
+  // Stripe's hosted pages have no Arabic; French is what our Moroccan
+  // travellers read best after it.
+  ar: 'fr-FR',
 };
 
 export async function POST(req: NextRequest) {

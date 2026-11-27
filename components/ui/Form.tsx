@@ -148,7 +148,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select
           ref={ref}
           id={selectId}
-          className={cn(baseField, 'appearance-none bg-no-repeat pr-10', error && 'border-blush-400', className)}
+          className={cn(baseField, 'appearance-none bg-no-repeat pe-10', error && 'border-blush-400', className)}
           style={{
             backgroundImage:
               'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\' viewBox=\'0 0 12 8\'%3e%3cpath d=\'M1 1l5 5 5-5\' stroke=\'%238B8074\' stroke-width=\'1.75\' fill=\'none\' stroke-linecap=\'round\'/%3e%3c/svg%3e")',

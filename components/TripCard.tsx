@@ -102,8 +102,8 @@ export function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: num
         {/* Boarding-pass stub — dashed perforation + notches + price + CTA.
             Always the last row, so price and button line up across a grid row. */}
         <div className="relative border-t-2 border-dashed border-ink-100 bg-lavender-50/60 px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-cream-50" />
-          <div className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-cream-50" />
+          <div className="absolute -top-2 -start-2 w-4 h-4 rounded-full bg-cream-50" />
+          <div className="absolute -top-2 -end-2 w-4 h-4 rounded-full bg-cream-50" />
           <div className="min-w-0 leading-tight">
             <div className="font-extrabold text-ink-600 text-[18px] num-display tracking-[-0.02em]">
               {formatEuros(priceBreakdown(trip.compensation_min).total)}
@@ -112,7 +112,7 @@ export function TripCard({ trip, delay, t }: { trip: TripWithProfile; delay: num
           </div>
           <span className="flex-shrink-0 inline-flex items-center gap-1 px-3 sm:px-3.5 py-2 rounded-full bg-lavender-600 group-hover:bg-lavender-700 text-cream-50 text-[12px] sm:text-[13px] font-semibold transition-colors">
             {t.disc_book_trip}
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="rtl:-scale-x-100 w-3.5 h-3.5" />
           </span>
         </div>
       </motion.article>

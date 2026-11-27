@@ -122,7 +122,7 @@ export function CancelBookingModal({
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="p-1.5 -mr-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+              className="p-1.5 -me-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
               aria-label={t.me2_bcancel_keep}
             >
               <X className="w-4 h-4" />
@@ -140,7 +140,7 @@ export function CancelBookingModal({
                   key={r.value}
                   type="button"
                   onClick={() => setReason(r.value)}
-                  className={`w-full text-left px-4 py-3 rounded-2xl border text-[14px] transition-colors ${
+                  className={`w-full text-start px-4 py-3 rounded-2xl border text-[14px] transition-colors ${
                     reason === r.value
                       ? 'bg-white border-ink-300 text-ink-600 font-semibold'
                       : 'bg-white/60 border-ink-100 text-ink-500 hover:border-ink-200'

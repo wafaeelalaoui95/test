@@ -90,9 +90,9 @@ export function AdminMatchAlerts() {
                 <div className="text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-300 mb-1">
                   {a.tier === 'exact' ? 'Même trajet' : 'Ville proche'}
                   {a.daysLate > 0 && (
-                    <span className="ml-2 text-butter-600">· {a.daysLate} j après sa date</span>
+                    <span className="ms-2 text-butter-600">· {a.daysLate} j après sa date</span>
                   )}
-                  {a.stale && <span className="ml-2 text-blush-500">· plus d&apos;actualité</span>}
+                  {a.stale && <span className="ms-2 text-blush-500">· plus d&apos;actualité</span>}
                 </div>
                 <div className="text-[14px] text-ink-600">
                   <span className="font-semibold">Trajet :</span> {a.trip}

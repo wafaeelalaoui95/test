@@ -206,7 +206,7 @@ export default function TrustPage() {
                     <div key={i} className="flex items-center gap-4 relative">
                       {/* Vertical line connector */}
                       {i < PAYMENT_STEPS.length - 1 && (
-                        <div className="absolute left-5 top-10 bottom-[-20px] w-px bg-ink-100" />
+                        <div className="absolute start-5 top-10 bottom-[-20px] w-px bg-ink-100" />
                       )}
                       <div
                         className={`relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-[16px] ${accentClass}`}
@@ -369,7 +369,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full px-5 py-4 flex items-center justify-between text-left gap-4"
+        className="w-full px-5 py-4 flex items-center justify-between text-start gap-4"
       >
         <span className="text-[14px] sm:text-[15px] font-bold text-ink-600 leading-snug">
           {question}

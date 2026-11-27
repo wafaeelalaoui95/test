@@ -83,7 +83,8 @@ export type AttestationLocale = 'fr' | 'en';
 
 /** The language a declaration is shown and stored in for a given UI locale. */
 export function attestationLocale(uiLocale: string): AttestationLocale {
-  return uiLocale === 'fr' ? 'fr' : 'en';
+  // Same rule as frOrEn in lib/i18n/translations.ts: Arabic reads French.
+  return uiLocale === 'fr' || uiLocale === 'ar' ? 'fr' : 'en';
 }
 
 /**
@@ -189,7 +190,8 @@ export function attestationStatement(
   itemLabel?: string | null
 ): string {
   // The declarations exist in French and English only: a translated sworn
-  // statement needs legal review first. Other UI languages read the English.
+  // statement needs legal review first. Other UI languages read the English
+  // (Arabic reads the French).
   const locale = attestationLocale(uiLocale);
   const template = STATEMENTS[kind][locale] ?? STATEMENTS[kind].en;
   const item = (itemLabel ?? '').trim();

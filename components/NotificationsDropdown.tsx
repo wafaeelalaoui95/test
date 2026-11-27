@@ -233,7 +233,7 @@ export function NotificationsDropdown() {
         <Bell className="w-[18px] h-[18px]" />
         {unread > 0 && (
           // Numeric badge for low counts, "9+" cap to keep the bubble tight
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-blush-500 text-white text-[10px] font-bold flex items-center justify-center num-display">
+          <span className="absolute -top-0.5 -end-0.5 min-w-[16px] h-4 px-1 rounded-full bg-blush-500 text-white text-[10px] font-bold flex items-center justify-center num-display">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -248,7 +248,7 @@ export function NotificationsDropdown() {
             transition={{ duration: 0.15 }}
             // Anchored under the bell. Width fixed so it doesn't snap to
             // ridiculous sizes; on phones it sits flush to the right edge.
-            className="absolute right-0 mt-2 w-[340px] max-w-[calc(100vw-2rem)] bg-white border border-ink-100 rounded-2xl shadow-xl overflow-hidden z-50"
+            className="absolute end-0 mt-2 w-[340px] max-w-[calc(100vw-2rem)] bg-white border border-ink-100 rounded-2xl shadow-xl overflow-hidden z-50"
           >
             {/* Header */}
             <div className="px-4 py-3 flex items-center justify-between border-b border-ink-50">
@@ -387,7 +387,7 @@ export function NotificationsDropdown() {
                 <button
                   type="button"
                   onClick={() => setDetailNotif(null)}
-                  className="flex-shrink-0 p-1.5 -mr-1 rounded-full hover:bg-ink-50 text-ink-400 transition-colors"
+                  className="flex-shrink-0 p-1.5 -me-1 rounded-full hover:bg-ink-50 text-ink-400 transition-colors"
                   aria-label={t.common_close}
                 >
                   <X className="w-4 h-4" />
@@ -418,7 +418,7 @@ export function NotificationsDropdown() {
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-ink-500 hover:bg-ink-600 text-cream-50 text-[13px] font-semibold transition-colors"
                 >
                   {t.notif_view_details}
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="rtl:-scale-x-100 w-3.5 h-3.5" />
                 </button>
               </div>
             </motion.div>

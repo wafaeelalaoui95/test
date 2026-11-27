@@ -213,7 +213,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
           <button
             onClick={onClose}
             disabled={submitting}
-            className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+            className="p-1.5 -me-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -266,7 +266,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
         {/* Trip selection */}
         <div className="mb-5">
           <label className="block text-[13px] font-semibold text-ink-500 mb-2">
-            <Plane className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
+            <Plane className="inline w-3.5 h-3.5 me-1 -mt-0.5" />
             {t.rev_respond_which_flight}
           </label>
           {tripsLoading ? (
@@ -281,7 +281,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
                   key={tr.id}
                   type="button"
                   onClick={() => setSelectedTripId(tr.id)}
-                  className={`w-full text-left rounded-xl px-3.5 py-2.5 border transition-colors ${
+                  className={`w-full text-start rounded-xl px-3.5 py-2.5 border transition-colors ${
                     selectedTripId === tr.id
                       ? 'border-ink-500 bg-cream-100'
                       : 'border-ink-100 bg-white hover:border-ink-300'
@@ -298,7 +298,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
               <button
                 type="button"
                 onClick={() => setSelectedTripId('new')}
-                className={`w-full text-left rounded-xl px-3.5 py-2.5 border-2 border-dashed transition-colors ${
+                className={`w-full text-start rounded-xl px-3.5 py-2.5 border-2 border-dashed transition-colors ${
                   selectedTripId === 'new'
                     ? 'border-ink-500 bg-cream-100'
                     : 'border-ink-200 bg-white hover:border-ink-300'
@@ -319,7 +319,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="ml-1 mt-2 space-y-2.5 overflow-hidden"
+                  className="ms-1 mt-2 space-y-2.5 overflow-hidden"
                 >
                   <div>
                     <label className="block text-[11px] font-semibold text-ink-400 tracking-[0.06em] uppercase mb-1">
@@ -378,7 +378,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
 
         {/* Reassurance */}
         <div className="rounded-xl bg-cream-100 px-4 py-3 mb-5 text-[12px] text-ink-500 leading-relaxed">
-          <ShieldCheck className="w-3.5 h-3.5 inline mr-1 text-ink-400" />
+          <ShieldCheck className="w-3.5 h-3.5 inline me-1 text-ink-400" />
           {t.rev_respond_reassurance}
         </div>
 
@@ -402,7 +402,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
             disabled={submitting || !isValid()}
             className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 text-[14px] font-semibold text-cream-50 bg-ink-500 hover:bg-ink-600 disabled:bg-ink-200 disabled:cursor-not-allowed rounded-full transition-colors"
           >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="rtl:-scale-x-100 w-4 h-4" />}
             {submitting ? t.rev_sending : t.rev_respond_submit}
           </button>
         </div>

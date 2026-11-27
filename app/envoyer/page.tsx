@@ -450,7 +450,7 @@ export default function EnvoyerPage() {
                   {t.search_label_before}
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
+                  <Calendar className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
                   <input
                     type="date"
                     value={date}
@@ -556,7 +556,7 @@ export default function EnvoyerPage() {
                     <span className="font-semibold underline underline-offset-2 group-hover:text-lavender-600">
                       {t.env_publish_public_request}
                     </span>{' '}
-                    <ArrowRight className="inline w-3.5 h-3.5 -mt-0.5 transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRight className="rtl:-scale-x-100 inline w-3.5 h-3.5 -mt-0.5 transition-transform group-hover:translate-x-0.5" />
                   </button>
                 </div>
               </div>
@@ -588,7 +588,7 @@ export default function EnvoyerPage() {
                 </p>
                 <Button onClick={switchToPublic}>
                   {t.env_publish_free_cta}
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="rtl:-scale-x-100 w-4 h-4" />
                 </Button>
               </div>
             )}
@@ -629,7 +629,7 @@ export default function EnvoyerPage() {
             onClick={() => setMode('choose')}
             className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="rtl:-scale-x-100 w-3.5 h-3.5" />
             {t.env_back_to_travelers}
           </button>
         </div>
@@ -908,7 +908,7 @@ export default function EnvoyerPage() {
           <div className="flex gap-3 mt-8 pt-6 border-t border-ink-50">
             {step > 0 && (
               <Button variant="ghost" onClick={() => setStep(step - 1)} disabled={submitting}>
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="rtl:-scale-x-100 w-4 h-4" />
                 {t.common_back}
               </Button>
             )}
@@ -916,7 +916,7 @@ export default function EnvoyerPage() {
             {step < STEPS.length - 1 ? (
               <Button disabled={!canNext()} onClick={() => setStep(step + 1)}>
                 {t.common_next}
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="rtl:-scale-x-100 w-4 h-4" />
               </Button>
             ) : (
               <Button disabled={!canNext() || submitting || authLoading} onClick={handlePublicSubmit}>
@@ -1267,7 +1267,7 @@ function InstantBookModal({
           <button
             onClick={onClose}
             disabled={busy}
-            className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+            className="p-1.5 -me-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
             aria-label={t.env_close}
           >
             <X className="w-4 h-4" />
@@ -1403,7 +1403,7 @@ function InstantBookModal({
               <div className="flex justify-end">
                 <Button disabled={!canPay} onClick={() => setPhase('pay')}>
                   {t.env_continue_to_payment}
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="rtl:-scale-x-100 w-4 h-4" />
                 </Button>
               </div>
             </motion.div>

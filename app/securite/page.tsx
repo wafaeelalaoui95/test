@@ -376,6 +376,213 @@ const CONTENT: Record<Locale, {
       },
     ],
   },
+  it: {
+    badge: 'Regole di sicurezza',
+    title: 'Viaggiare e spedire in tutta fiducia',
+    intro:
+      'Jibly mette in contatto chi spedisce e chi viaggia. Perché tutti viaggino sereni, alcune semplici regole proteggono soprattutto chi viaggia.',
+    backHome: 'Torna alla home',
+    doubtTitle: 'Nel dubbio, rifiuti.',
+    doubtBody:
+      'Non deve mai giustificarsi. Se qualcosa la mette a disagio, rifiuti: è un Suo diritto, senza penalità.',
+    blocks: [
+      {
+        icon: Eye,
+        tone: 'plain',
+        title: 'Chi viaggia deve sempre sapere cosa trasporta',
+        body: 'L’oggetto deve essere descritto con precisione e corrispondere esattamente a quanto annunciato. Può sempre vederlo e fare domande prima di accettare.',
+      },
+      {
+        icon: PackageX,
+        tone: 'warn',
+        title: 'Niente pacchi chiusi o impossibili da ispezionare',
+        body: 'Non accetti mai un oggetto imballato, sigillato o chiuso che non può aprire e controllare. Se chi spedisce rifiuta l’ispezione, rifiuti il trasporto.',
+      },
+      {
+        icon: Ban,
+        tone: 'warn',
+        title: 'Oggetti vietati',
+        body: 'Questi oggetti non possono mai essere trasportati tramite Jibly:',
+        list: [
+          'Denaro contante',
+          'Farmaci con obbligo di prescrizione',
+          'Droghe e stupefacenti',
+          'Armi',
+          'Prodotti pericolosi (infiammabili, esplosivi…)',
+          'Alcol e tabacco',
+          'Gioielli, orologi e articoli di lusso di valore superiore a 500 €',
+          'Animali',
+          'Oggetti rubati',
+          'Prodotti contraffatti',
+          'Sostanze sconosciute',
+          'Pacchi chiusi o sigillati impossibili da aprire',
+        ],
+      },
+      {
+        icon: AlertTriangle,
+        tone: 'plain',
+        title: 'Oggetti consentiti ma da controllare',
+        body: 'Questi oggetti sono consentiti, ma possono essere regolamentati a seconda del paese, della compagnia aerea o della dogana. Chi viaggia deve poter vedere il contenuto e rifiutare senza penalità:',
+        list: [
+          'Farmaci da banco, nella confezione originale (max 2 unità)',
+          'Passaporti e carte d’identità',
+          'Dispositivi elettronici con batteria',
+          'Integratori alimentari',
+          'Cosmetici in grandi quantità',
+        ],
+      },
+      {
+        icon: ShieldCheck,
+        tone: 'good',
+        title: 'Diritto di rifiuto senza penalità',
+        body: 'Chi viaggia può rifiutare o annullare senza penalità se l’oggetto non corrisponde alla descrizione, se è chiuso o sigillato, se l’ispezione viene rifiutata, se l’oggetto sembra vietato o rischioso, o semplicemente se non si sente a proprio agio.',
+      },
+      {
+        icon: Flag,
+        tone: 'plain',
+        title: 'Segnalare un oggetto sospetto',
+        body: 'Su ogni prenotazione è disponibile il pulsante «Segnala un problema». Lo usi se l’oggetto è diverso dalla descrizione, impossibile da ispezionare, o se il comportamento dell’altra persona le sembra sospetto.',
+      },
+    ],
+  },
+  pt: {
+    badge: 'Regras de segurança',
+    title: 'Viajar e enviar com toda a confiança',
+    intro:
+      'A Jibly põe em contacto quem envia e quem viaja. Para que todos viajem tranquilos, algumas regras simples protegem sobretudo quem viaja.',
+    backHome: 'Voltar à página inicial',
+    doubtTitle: 'Em caso de dúvida, recuse.',
+    doubtBody:
+      'Nunca tem de se justificar. Se algo o/a deixar desconfortável, recuse: é um direito seu, sem penalização.',
+    blocks: [
+      {
+        icon: Eye,
+        tone: 'plain',
+        title: 'Quem viaja deve saber sempre o que transporta',
+        body: 'O objeto deve ser descrito com precisão e corresponder exatamente ao que foi anunciado. Pode sempre vê-lo e fazer perguntas antes de aceitar.',
+      },
+      {
+        icon: PackageX,
+        tone: 'warn',
+        title: 'Nada de encomendas fechadas ou impossíveis de inspecionar',
+        body: 'Nunca aceite um objeto embalado, selado ou fechado que não possa abrir e verificar. Se quem envia recusar a inspeção, recuse o transporte.',
+      },
+      {
+        icon: Ban,
+        tone: 'warn',
+        title: 'Objetos proibidos',
+        body: 'Estes objetos nunca podem ser transportados através da Jibly:',
+        list: [
+          'Dinheiro em numerário',
+          'Medicamentos sujeitos a receita médica',
+          'Drogas e estupefacientes',
+          'Armas',
+          'Produtos perigosos (inflamáveis, explosivos…)',
+          'Álcool e tabaco',
+          'Joias, relógios e artigos de luxo de valor superior a 500 €',
+          'Animais',
+          'Objetos roubados',
+          'Produtos contrafeitos',
+          'Substâncias desconhecidas',
+          'Encomendas fechadas ou seladas impossíveis de abrir',
+        ],
+      },
+      {
+        icon: AlertTriangle,
+        tone: 'plain',
+        title: 'Objetos permitidos, mas a verificar',
+        body: 'Estes objetos são permitidos, mas podem estar regulamentados consoante o país, a companhia aérea ou a alfândega. Quem viaja deve poder ver o conteúdo e recusar sem penalização:',
+        list: [
+          'Medicamentos não sujeitos a receita, na embalagem original (máx. 2 unidades)',
+          'Passaportes e cartões de identificação',
+          'Aparelhos eletrónicos com bateria',
+          'Suplementos alimentares',
+          'Cosméticos em grande quantidade',
+        ],
+      },
+      {
+        icon: ShieldCheck,
+        tone: 'good',
+        title: 'Direito de recusa sem penalização',
+        body: 'Quem viaja pode recusar ou cancelar sem penalização se o objeto não corresponder à descrição, se estiver fechado ou selado, se a inspeção for recusada, se o objeto parecer proibido ou arriscado, ou simplesmente se não se sentir à vontade.',
+      },
+      {
+        icon: Flag,
+        tone: 'plain',
+        title: 'Comunicar um objeto suspeito',
+        body: 'Em cada reserva está disponível o botão «Comunicar um problema». Utilize-o se o objeto for diferente da descrição, impossível de inspecionar, ou se o comportamento da outra pessoa lhe parecer suspeito.',
+      },
+    ],
+  },
+  ar: {
+    badge: 'قواعد السلامة',
+    title: 'سافروا وأرسلوا بكل ثقة',
+    intro:
+      'يربط Jibly بين المرسلين والمسافرين. ولكي يسافر الجميع براحة بال، تحمي بعض القواعد البسيطة المسافر/ة قبل كل شيء.',
+    backHome: 'العودة إلى الصفحة الرئيسية',
+    doubtTitle: 'عند الشك، ارفضوا.',
+    doubtBody:
+      'لستم مضطرين أبدًا لتبرير موقفكم. إذا شعرتم بعدم الارتياح تجاه أي شيء، فارفضوا: هذا حقكم، دون أي غرامة.',
+    blocks: [
+      {
+        icon: Eye,
+        tone: 'plain',
+        title: 'يجب أن يعرف المسافر/ة دائمًا ما ينقله',
+        body: 'يجب أن يكون الغرض موصوفًا بدقة ومطابقًا تمامًا لما تم الإعلان عنه. يمكنكم دائمًا رؤيته وطرح الأسئلة قبل القبول.',
+      },
+      {
+        icon: PackageX,
+        tone: 'warn',
+        title: 'لا طرود مغلقة أو يتعذّر فحصها',
+        body: 'لا تقبلوا أبدًا غرضًا مغلّفًا أو مختومًا أو مغلقًا لا يمكنكم فتحه والتحقق منه. إذا رفض المرسل/ة الفحص، فارفضوا النقل.',
+      },
+      {
+        icon: Ban,
+        tone: 'warn',
+        title: 'الأغراض الممنوعة',
+        body: 'لا يمكن أبدًا نقل هذه الأغراض عبر Jibly:',
+        list: [
+          'النقود والأموال السائلة',
+          'الأدوية التي تُصرف بوصفة طبية',
+          'المخدرات والمواد المخدّرة',
+          'الأسلحة',
+          'المواد الخطرة (القابلة للاشتعال، المتفجرة…)',
+          'الكحول والتبغ',
+          'المجوهرات والساعات والسلع الفاخرة التي تتجاوز قيمتها 500 €',
+          'الحيوانات',
+          'الأغراض المسروقة',
+          'المنتجات المقلّدة',
+          'المواد المجهولة',
+          'الطرود المغلقة أو المختومة التي يتعذّر فتحها',
+        ],
+      },
+      {
+        icon: AlertTriangle,
+        tone: 'plain',
+        title: 'أغراض مسموح بها لكن يجب التحقق منها',
+        body: 'هذه الأغراض مسموح بها، لكنها قد تخضع لقيود حسب البلد أو شركة الطيران أو الجمارك. يجب أن يتمكّن المسافر/ة من رؤية المحتوى والرفض دون غرامة:',
+        list: [
+          'الأدوية التي لا تحتاج إلى وصفة طبية، في عبوتها الأصلية (2 وحدات كحد أقصى)',
+          'جوازات السفر وبطاقات التعريف',
+          'الأجهزة الإلكترونية المزوّدة ببطارية',
+          'المكمّلات الغذائية',
+          'مستحضرات التجميل بكميات كبيرة',
+        ],
+      },
+      {
+        icon: ShieldCheck,
+        tone: 'good',
+        title: 'الحق في الرفض دون غرامة',
+        body: 'يمكن للمسافر/ة الرفض أو الإلغاء دون غرامة إذا كان الغرض لا يطابق الوصف، أو كان مغلقًا أو مختومًا، أو إذا رُفض الفحص، أو إذا بدا الغرض ممنوعًا أو محفوفًا بالمخاطر، أو ببساطة إذا لم يشعر/تشعر بالارتياح.',
+      },
+      {
+        icon: Flag,
+        tone: 'plain',
+        title: 'الإبلاغ عن غرض مشبوه',
+        body: 'يتوفر زر «الإبلاغ عن مشكلة» في كل حجز. استخدموه إذا كان الغرض مختلفًا عن الوصف، أو يتعذّر فحصه، أو إذا بدا لكم سلوك الشخص الآخر مشبوهًا.',
+      },
+    ],
+  },
 };
 
 export default function SecurityRulesPage() {
@@ -396,7 +603,7 @@ export default function SecurityRulesPage() {
           href="/"
           className="inline-flex items-center gap-1.5 text-[13px] text-ink-400 hover:text-ink-600 transition-colors mb-8"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="rtl:-scale-x-100 w-3.5 h-3.5" />
           {c.backHome}
         </Link>
 

@@ -85,7 +85,7 @@ export default function SignupPage() {
       <div className="min-h-screen flex items-center justify-center px-5 py-16">
         <div className="max-w-md w-full text-center">
           <div className="w-14 h-14 rounded-full bg-lavender-100 mx-auto flex items-center justify-center mb-7">
-            <ArrowRight className="w-7 h-7 text-lavender-700" strokeWidth={2.5} />
+            <ArrowRight className="rtl:-scale-x-100 w-7 h-7 text-lavender-700" strokeWidth={2.5} />
           </div>
           <h1 className="text-3xl font-extrabold text-ink-600 mb-3 tracking-[-0.025em]">
             {t.signup_already_title}
@@ -97,7 +97,7 @@ export default function SignupPage() {
           <Link href="/login">
             <Button fullWidth>
               {t.login_submit}
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="rtl:-scale-x-100 w-4 h-4" />
             </Button>
           </Link>
           <p className="mt-4 text-[13px] text-ink-400">
@@ -187,7 +187,7 @@ export default function SignupPage() {
           {t.auth_has_account}{' '}
           <Link href="/login" className="font-semibold text-ink-600 hover:text-lavender-700">
             {t.auth_login_link}
-            <ArrowRight className="w-3 h-3 inline ms-1" />
+            <ArrowRight className="rtl:-scale-x-100 w-3 h-3 inline ms-1" />
           </Link>
         </p>
       </div>

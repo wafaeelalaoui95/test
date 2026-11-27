@@ -11,7 +11,7 @@ import {
 
 /**
  * POST /api/attestation
- * Body: { bookingIntentId: uuid, kind: 'sender_certification' | 'traveler_inspection', locale: 'fr' | 'en' | 'es' | 'de' | 'nl' }
+ * Body: { bookingIntentId: uuid, kind: 'sender_certification' | 'traveler_inspection', locale: 'fr' | 'en' | 'es' | 'de' | 'nl' | 'it' | 'pt' | 'ar' }
  *
  * Record what one party declared about a parcel.
  *
@@ -35,7 +35,7 @@ const schema = z.object({
     'sender_immediate_performance',
   ]),
   // Any UI locale; the declaration itself is rendered in fr or en.
-  locale: z.enum(['fr', 'en', 'es', 'de', 'nl']),
+  locale: z.enum(['fr', 'en', 'es', 'de', 'nl', 'it', 'pt', 'ar']),
 });
 
 export const runtime = 'nodejs';

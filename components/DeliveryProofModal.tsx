@@ -190,7 +190,7 @@ export function DeliveryProofModal({
           <button
             onClick={onClose}
             disabled={submitting}
-            className="p-1.5 -mr-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
+            className="p-1.5 -me-1 -mt-1 rounded-full hover:bg-ink-50 text-ink-400 disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -220,7 +220,7 @@ export function DeliveryProofModal({
                   if (fileInputRef.current) fileInputRef.current.value = '';
                 }}
                 disabled={submitting}
-                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-ink-600/70 text-white flex items-center justify-center hover:bg-ink-600 disabled:opacity-50"
+                className="absolute top-2 end-2 w-8 h-8 rounded-full bg-ink-600/70 text-white flex items-center justify-center hover:bg-ink-600 disabled:opacity-50"
                 aria-label={t.pickup_proof_remove_photo}
               >
                 <X className="w-4 h-4" />
