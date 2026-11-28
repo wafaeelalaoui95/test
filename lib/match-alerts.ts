@@ -1,3 +1,4 @@
+import { hasTripDeparted } from '@/lib/trip-departure';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { findCountryByName } from '@/lib/countries';
 import { formatName } from '@/lib/utils';
@@ -52,10 +53,10 @@ export async function queueMatchAlertsForTrip(
 ): Promise<{ queued: number }> {
   const { data: trip } = await admin
     .from('traveler_trips')
-    .select('id, user_id, departure_country, departure_city, arrival_city, departure_date, accepted_categories, status')
+    .select('id, user_id, departure_country, departure_city, arrival_city, departure_date, flight_time, accepted_categories, status')
     .eq('id', tripId)
     .maybeSingle();
-  if (!trip || trip.status !== 'open') return { queued: 0 };
+  if (!trip || trip.status !== 'open' || hasTripDeparted(trip)) return { queued: 0 };
 
   const nearbyAllowed = NEARBY_COUNTRY_CODES.has(
     findCountryByName(trip.departure_country)?.code ?? ''

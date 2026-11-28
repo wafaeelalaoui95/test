@@ -12,6 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getBrowserClient } from './client';
 import { withTimeout } from './timeout';
 import { travelerNetFromTotal } from '@/lib/utils';
+import { earliestListableDate, withoutDepartedTrips } from '@/lib/trip-departure';
 import type {
   Database,
   Profile,
@@ -72,7 +73,7 @@ export async function listOpenTrips(
     limit?: number;
   }
 ): Promise<(TravelerTripRow & { profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'verification_level' | 'rating' | 'trips_completed'> | null })[]> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = earliestListableDate();
 
   // Single round-trip: embed the author's public profile via the
   // traveler_trips.user_id -> profiles.id foreign key (PostgREST auto-detects
@@ -92,8 +93,9 @@ export async function listOpenTrips(
   if (filters?.maxDate) q = q.lte('departure_date', filters.maxDate);
   if (filters?.maxBudget != null) q = q.lte('compensation_min', filters.maxBudget);
 
-  const { data: trips, error: tripsError } = await withTimeout(Promise.resolve(q), 8000, 'List trips');
+  const { data: rawTrips, error: tripsError } = await withTimeout(Promise.resolve(q), 8000, 'List trips');
   if (tripsError) throw tripsError;
+  const trips = withoutDepartedTrips(rawTrips ?? []);
   if (!trips || trips.length === 0) return [];
 
   return trips.map((t: any) => ({ ...t, profile: t.profile ?? null }));
@@ -265,12 +267,12 @@ export async function listMatchingTripsForRequest(
   excludeUserId?: string | null
 ): Promise<MatchingTrip[]> {
   // Never surface trips whose departure date has already passed.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = earliestListableDate();
 
   let query = supabase
     .from('traveler_trips')
     .select(
-      'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
+      'id, user_id, departure_country, departure_city, arrival_city, departure_date, flight_time, compensation_min, flight_number, available_space'
     )
     .eq('departure_city', pickupCity)
     .eq('arrival_city', destinationCity)
@@ -282,12 +284,13 @@ export async function listMatchingTripsForRequest(
   if (excludeUserId) {
     query = query.neq('user_id', excludeUserId);
   }
-  const { data: trips, error } = await withTimeout(
+  const { data: rawTrips, error } = await withTimeout(
     Promise.resolve(query),
     6000,
     'Matching trips'
   );
   if (error) throw error;
+  const trips = withoutDepartedTrips(rawTrips ?? []);
   if (!trips || trips.length === 0) return [];
 
   const userIds = Array.from(new Set(trips.map((t: any) => t.user_id)));
@@ -329,7 +332,7 @@ export async function listMatchingTripsTiered(
   desiredDeliveryDate: string,
   excludeUserId?: string | null
 ): Promise<TieredMatchingTrip[]> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = earliestListableDate();
 
   let query = supabase
     .from('traveler_trips')
@@ -347,12 +350,13 @@ export async function listMatchingTripsTiered(
     query = query.neq('user_id', excludeUserId);
   }
 
-  const { data: trips, error } = await withTimeout(
+  const { data: rawTrips, error } = await withTimeout(
     Promise.resolve(query),
     6000,
     'Tiered matching trips'
   );
   if (error) throw error;
+  const trips = withoutDepartedTrips(rawTrips ?? []);
   if (!trips || trips.length === 0) return [];
 
   const userIds = Array.from(new Set(trips.map((t: any) => t.user_id)));
@@ -407,12 +411,12 @@ export async function listMatchingTripsForRequestBroadened(
   desiredDeliveryDate: string,
   excludeUserId?: string | null
 ): Promise<MatchingTrip[]> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = earliestListableDate();
 
   let query = supabase
     .from('traveler_trips')
     .select(
-      'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
+      'id, user_id, departure_country, departure_city, arrival_city, departure_date, flight_time, compensation_min, flight_number, available_space'
     )
     .eq('departure_country', pickupCountry)
     .eq('arrival_country', destinationCountry)
@@ -431,12 +435,13 @@ export async function listMatchingTripsForRequestBroadened(
     query = query.neq('user_id', excludeUserId);
   }
 
-  const { data: trips, error } = await withTimeout(
+  const { data: rawTrips, error } = await withTimeout(
     Promise.resolve(query),
     6000,
     'Broadened matching trips'
   );
   if (error) throw error;
+  const trips = withoutDepartedTrips(rawTrips ?? []);
   if (!trips || trips.length === 0) return [];
 
   const userIds = Array.from(new Set(trips.map((t: any) => t.user_id)));
@@ -960,7 +965,7 @@ export async function listTripsByUser(
   supabase: SB,
   userId: string
 ): Promise<TravelerTripRow[]> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = earliestListableDate();
   const { data, error } = await withTimeout(
     Promise.resolve(
       supabase
@@ -975,7 +980,7 @@ export async function listTripsByUser(
     'Trips by user'
   );
   if (error) throw error;
-  return data ?? [];
+  return withoutDepartedTrips(data ?? []);
 }
 
 // ============================================================================
@@ -1498,12 +1503,12 @@ export async function listAlternativeTrips(
   destinationCity: string,
   excludeUserId?: string | null
 ): Promise<MatchingTrip[]> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = earliestListableDate();
 
   let q = supabase
     .from('traveler_trips')
     .select(
-      'id, user_id, departure_city, arrival_city, departure_date, compensation_min, flight_number, available_space'
+      'id, user_id, departure_country, departure_city, arrival_city, departure_date, flight_time, compensation_min, flight_number, available_space'
     )
     .eq('departure_city', pickupCity)
     .eq('arrival_city', destinationCity)
@@ -1513,12 +1518,13 @@ export async function listAlternativeTrips(
     .limit(3);
   if (excludeUserId) q = q.neq('user_id', excludeUserId);
 
-  const { data: trips, error } = await withTimeout(
+  const { data: rawTrips, error } = await withTimeout(
     Promise.resolve(q),
     6000,
     'Alternative trips'
   );
   if (error) throw error;
+  const trips = withoutDepartedTrips(rawTrips ?? []);
   if (!trips?.length) return [];
 
   const { data: profiles } = await withTimeout(

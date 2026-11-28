@@ -1,3 +1,4 @@
+import { withoutDepartedTrips } from '@/lib/trip-departure';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/server';
 
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
   const [tripsRes, requestsRes] = await Promise.all([
     supabase
       .from('traveler_trips')
-      .select('departure_city, departure_country, arrival_city, arrival_country, departure_date, available_space, compensation_min')
+      .select('departure_city, departure_country, arrival_city, arrival_country, departure_date, flight_time, available_space, compensation_min')
       .eq('status', 'open')
       .gte('departure_date', today)
       .lte('departure_date', horizon),
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
   }
 
   const trips = new Map<RouteKey, { count: number; dates: string[]; spaces: string[]; min_price_eur: number }>();
-  for (const t of tripsRes.data ?? []) {
+  for (const t of withoutDepartedTrips(tripsRes.data ?? [])) {
     const key = routeKey(t.departure_city, t.departure_country, t.arrival_city, t.arrival_country);
     const row = trips.get(key) ?? { count: 0, dates: [], spaces: [], min_price_eur: Infinity };
     row.count += 1;

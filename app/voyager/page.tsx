@@ -293,8 +293,8 @@ export default function VoyagerPage() {
   const canNext = () => {
     if (step === 0)
       return (
-        fromCity && toCity && date && isValidFlightNumber(flightNumber) &&
-        (!roundTrip || (!!returnDate && returnDate >= date && isValidFlightNumber(returnFlightNumber)))
+        fromCity && toCity && date && !!time && isValidFlightNumber(flightNumber) &&
+        (!roundTrip || (!!returnDate && returnDate >= date && !!returnTime && isValidFlightNumber(returnFlightNumber)))
       );
     if (step === 1) return acceptedCategories.length > 0 && minComp >= MIN_COMPENSATION_EUR;
     if (step === 2) return terms;
@@ -367,7 +367,7 @@ export default function VoyagerPage() {
     // If they already have a valid flight number, skip the route step
     // (they've filled everything we need there). Otherwise stay on step 0
     // to collect it.
-    setStep(isValidFlightNumber(flightNumber) && (!roundTrip || (!!returnDate && isValidFlightNumber(returnFlightNumber))) ? 1 : 0);
+    setStep(isValidFlightNumber(flightNumber) && !!time && (!roundTrip || (!!returnDate && !!returnTime && isValidFlightNumber(returnFlightNumber))) ? 1 : 0);
   }
 
   // =========================================================================
@@ -735,7 +735,7 @@ export default function VoyagerPage() {
                           setRequestToHelp(req);
                         }
                       }}
-                      flightNumberRequired={!isValidFlightNumber(leg === 'ret' ? returnFlightNumber : flightNumber)}
+                      flightNumberRequired={!isValidFlightNumber(leg === 'ret' ? returnFlightNumber : flightNumber) || !(leg === 'ret' ? returnTime : time)}
                       alreadyProposed={proposedRequestIds.includes(req.id)}
                     />
                   ))}

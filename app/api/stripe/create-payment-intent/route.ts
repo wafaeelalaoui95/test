@@ -1,3 +1,4 @@
+import { hasTripDeparted } from '@/lib/trip-departure';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/server';
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
   if ('tripId' in body) {
     const { data: trip } = await supabase
       .from('traveler_trips')
-      .select('id, user_id, status, compensation_min')
+      .select('id, user_id, status, compensation_min, departure_date, flight_time, departure_country, departure_city')
       .eq('id', body.tripId)
       .maybeSingle();
     if (!trip) {
@@ -100,7 +101,8 @@ export async function POST(req: NextRequest) {
     }
     // A trip can carry several parcels, so 'matched' still takes bookings;
     // only a finished or withdrawn trip cannot be paid for.
-    if (trip.status === 'cancelled' || trip.status === 'completed') {
+    // Once the plane has left, the listing is gone: nobody can book it.
+    if (trip.status === 'cancelled' || trip.status === 'completed' || hasTripDeparted(trip)) {
       return NextResponse.json({ error: 'trip_not_open' }, { status: 409 });
     }
     if (trip.user_id === user.id) {

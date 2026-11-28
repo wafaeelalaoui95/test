@@ -49,6 +49,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
   const [tripsLoading, setTripsLoading] = useState(true);
   const [selectedTripId, setSelectedTripId] = useState<string | 'new' | ''>('');
   const [newTripDate, setNewTripDate] = useState('');
+  const [newTripTime, setNewTripTime] = useState('');
   const newTripCompensation = 50;
 
   const senderName = displayName(request.profile?.full_name) || t.rev_respond_sender_fallback;
@@ -111,7 +112,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
 
   function isValid(): boolean {
     if (!selectedTripId) return false;
-    if (selectedTripId === 'new' && !newTripDate) return false;
+    if (selectedTripId === 'new' && (!newTripDate || !newTripTime)) return false;
     return true;
   }
 
@@ -139,7 +140,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
           compensation_max: null,
           available_weight_kg: null,
           available_space: 'enveloppe',
-          flight_time: null,
+          flight_time: newTripTime,
           flight_number: null,
           departure_airport: null,
           arrival_airport: null,
@@ -331,6 +332,18 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
                       onChange={(e) => setNewTripDate(e.target.value)}
                       onClick={openPickerOnClick}
                       min={new Date().toISOString().slice(0, 10)}
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-ink-100 text-[13px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-ink-400 tracking-[0.06em] uppercase mb-1">
+                      {t.trip_label_time}
+                    </label>
+                    <input
+                      type="time"
+                      value={newTripTime}
+                      onChange={(e) => setNewTripTime(e.target.value)}
+                      onClick={openPickerOnClick}
                       className="w-full px-3 py-2 rounded-lg bg-white border border-ink-100 text-[13px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300"
                     />
                   </div>
