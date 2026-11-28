@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useState, type InputHTMLAttributes, type MouseEvent, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react';
+import { forwardRef, useState, type InputHTMLAttributes, type MouseEvent, type ChangeEvent, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/context';
@@ -31,6 +31,27 @@ export function openPickerOnClick(e: MouseEvent<HTMLInputElement>): void {
   } catch {
     /* older browser, or no user activation — the native glyph still works */
   }
+}
+
+/** Today as YYYY-MM-DD in the person's own time zone (not UTC). */
+export function todayLocal(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * The value of a date field, never earlier than its `min`. Phone pickers
+ * (iOS Safari, some Android keyboards) grey out past days but still let you
+ * pick them, so `min` alone is not enough: a past day snaps to the minimum.
+ */
+export function dateNotBefore(e: ChangeEvent<HTMLInputElement>): string {
+  const { value, min } = e.currentTarget;
+  if (value && min && value < min) {
+    e.currentTarget.value = min;
+    return min;
+  }
+  return value;
 }
 
 const baseField =

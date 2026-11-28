@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import type { Locale } from '@/lib/i18n/translations';
 import { MIN_COMPENSATION_EUR, MAX_COMPENSATION_EUR, ITEM_CATEGORIES } from '@/lib/constants';
-import { openPickerOnClick } from '@/components/ui/Form';
+import { openPickerOnClick, dateNotBefore, todayLocal } from '@/components/ui/Form';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
 
 // =============================================================================
@@ -527,7 +527,8 @@ export function EditListingModal({
               type="date"
               className={field}
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              min={todayLocal()}
+              onChange={(e) => setDate(dateNotBefore(e))}
               onClick={openPickerOnClick}
             />
           </label>
@@ -540,7 +541,8 @@ export function EditListingModal({
                   type="date"
                   className={field}
                   value={arrival}
-                  onChange={(e) => setArrival(e.target.value)}
+                  min={date || todayLocal()}
+                  onChange={(e) => setArrival(dateNotBefore(e))}
                   onClick={openPickerOnClick}
                 />
               </label>

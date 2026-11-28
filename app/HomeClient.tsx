@@ -15,7 +15,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { openPickerOnClick } from '@/components/ui/Form';
+import { openPickerOnClick, dateNotBefore, todayLocal } from '@/components/ui/Form';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
@@ -383,9 +383,9 @@ export function HomeClient({
                     <input
                       type="date"
                       value={searchDate}
-                      onChange={(e) => setSearchDate(e.target.value)}
+                      onChange={(e) => setSearchDate(dateNotBefore(e))}
                       onClick={openPickerOnClick}
-                      min={new Date().toISOString().slice(0, 10)}
+                      min={todayLocal()}
                       className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
                     />
                   </div>
@@ -605,9 +605,9 @@ export function HomeClient({
                   <input
                     type="date"
                     value={searchDate}
-                    onChange={(e) => applyDate(e.target.value)}
+                    onChange={(e) => applyDate(dateNotBefore(e))}
                     onClick={openPickerOnClick}
-                    min={new Date().toISOString().slice(0, 10)}
+                    min={todayLocal()}
                     className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
                   />
                 </div>

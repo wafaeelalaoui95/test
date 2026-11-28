@@ -17,7 +17,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Textarea, Checkbox, Input, openPickerOnClick } from '@/components/ui/Form';
+import { Textarea, Checkbox, Input, openPickerOnClick, dateNotBefore, todayLocal } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
@@ -454,9 +454,9 @@ export default function EnvoyerPage() {
                   <input
                     type="date"
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    onChange={(e) => setDate(dateNotBefore(e))}
                     onClick={openPickerOnClick}
-                    min={new Date().toISOString().slice(0, 10)}
+                    min={todayLocal()}
                     className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
                   />
                 </div>
@@ -689,8 +689,8 @@ export default function EnvoyerPage() {
                     type="date"
                     label={t.send_label_date}
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setDate(dateNotBefore(e))}
+                    min={todayLocal()}
                   />
                 </div>
               )}

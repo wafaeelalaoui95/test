@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Textarea, Checkbox, Input, openPickerOnClick } from '@/components/ui/Form';
+import { Textarea, Checkbox, Input, openPickerOnClick, dateNotBefore, todayLocal } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate, IdentityReminder } from '@/components/IdentityGate';
@@ -518,9 +518,9 @@ export default function VoyagerPage() {
                   <input
                     type="date"
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    onChange={(e) => setDate(dateNotBefore(e))}
                     onClick={openPickerOnClick}
-                    min={new Date().toISOString().slice(0, 10)}
+                    min={todayLocal()}
                     className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
                   />
                 </div>
@@ -538,9 +538,9 @@ export default function VoyagerPage() {
                       <input
                         type="date"
                         value={returnDate}
-                        onChange={(e) => setReturnDate(e.target.value)}
+                        onChange={(e) => setReturnDate(dateNotBefore(e))}
                         onClick={openPickerOnClick}
-                        min={date || new Date().toISOString().slice(0, 10)}
+                        min={date || todayLocal()}
                         className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
                       />
                     </div>
@@ -904,8 +904,8 @@ export default function VoyagerPage() {
                       type="date"
                       label={t.voy_flight_date_label}
                       value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setDate(dateNotBefore(e))}
+                      min={todayLocal()}
                     />
                     <Input
                       type="time"
@@ -920,8 +920,8 @@ export default function VoyagerPage() {
                         type="date"
                         label={t.voy_return_date_label}
                         value={returnDate}
-                        onChange={(e) => setReturnDate(e.target.value)}
-                        min={date || new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setReturnDate(dateNotBefore(e))}
+                        min={date || todayLocal()}
                       />
                       <Input
                         type="time"
