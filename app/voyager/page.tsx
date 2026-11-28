@@ -1,5 +1,6 @@
 'use client';
 
+import { DateField } from '@/components/ui/DateField';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Textarea, Checkbox, Input, openPickerOnClick, dateNotBefore, todayLocal } from '@/components/ui/Form';
+import { Textarea, Checkbox, Input, todayLocal } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { useIdentityGate, IdentityReminder } from '@/components/IdentityGate';
@@ -515,13 +516,11 @@ export default function VoyagerPage() {
                 </label>
                 <div className="relative">
                   <Calendar className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
-                  <input
-                    type="date"
+                  <DateField
                     value={date}
-                    onChange={(e) => setDate(dateNotBefore(e))}
-                    onClick={openPickerOnClick}
+                    onChange={setDate}
                     min={todayLocal()}
-                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
+                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 focus:outline-none num-display"
                   />
                 </div>
               </div>
@@ -535,13 +534,11 @@ export default function VoyagerPage() {
                     </label>
                     <div className="relative">
                       <Calendar className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
-                      <input
-                        type="date"
+                      <DateField
                         value={returnDate}
-                        onChange={(e) => setReturnDate(dateNotBefore(e))}
-                        onClick={openPickerOnClick}
+                        onChange={setReturnDate}
                         min={date || todayLocal()}
-                        className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
+                        className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 focus:outline-none num-display"
                       />
                     </div>
                   </div>
@@ -900,12 +897,12 @@ export default function VoyagerPage() {
               roundTrip={roundTrip}
                   />
                   <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      type="date"
+                    <DateField
                       label={t.voy_flight_date_label}
                       value={date}
-                      onChange={(e) => setDate(dateNotBefore(e))}
+                      onChange={setDate}
                       min={todayLocal()}
+                      className="w-full rounded-xl border border-ink-100 bg-white px-4 py-3 text-[15px] text-ink-600 transition-colors focus:border-ink-500 focus:outline-none focus:ring-2 focus:ring-ink-100"
                     />
                     <Input
                       type="time"
@@ -916,12 +913,12 @@ export default function VoyagerPage() {
                   </div>
                   {roundTrip && (
                     <div className="grid grid-cols-2 gap-3">
-                      <Input
-                        type="date"
+                      <DateField
                         label={t.voy_return_date_label}
                         value={returnDate}
-                        onChange={(e) => setReturnDate(dateNotBefore(e))}
+                        onChange={setReturnDate}
                         min={date || todayLocal()}
+                        className="w-full rounded-xl border border-ink-100 bg-white px-4 py-3 text-[15px] text-ink-600 transition-colors focus:border-ink-500 focus:outline-none focus:ring-2 focus:ring-ink-100"
                       />
                       <Input
                         type="time"

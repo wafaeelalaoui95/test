@@ -1,5 +1,6 @@
 'use client';
 
+import { DateField } from '@/components/ui/DateField';
 import Link from 'next/link';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,7 +16,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { openPickerOnClick, dateNotBefore, todayLocal } from '@/components/ui/Form';
+import { todayLocal } from '@/components/ui/Form';
 import { HeroScene } from '@/components/illustrations/HeroScene';
 import { VerificationBadge } from '@/components/ui/Badge';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
@@ -380,13 +381,11 @@ export function HomeClient({
                   </label>
                   <div className="relative">
                     <Calendar className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
-                    <input
-                      type="date"
+                    <DateField
                       value={searchDate}
-                      onChange={(e) => setSearchDate(dateNotBefore(e))}
-                      onClick={openPickerOnClick}
+                      onChange={setSearchDate}
                       min={todayLocal()}
-                      className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
+                      className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 focus:outline-none num-display"
                     />
                   </div>
                 </div>
@@ -602,13 +601,11 @@ export function HomeClient({
                 </label>
                 <div className="relative">
                   <Calendar className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
-                  <input
-                    type="date"
+                  <DateField
                     value={searchDate}
-                    onChange={(e) => applyDate(dateNotBefore(e))}
-                    onClick={openPickerOnClick}
+                    onChange={applyDate}
                     min={todayLocal()}
-                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
+                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 focus:outline-none num-display"
                   />
                 </div>
               </div>

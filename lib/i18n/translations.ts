@@ -1407,6 +1407,9 @@ export type Translations = {
   rev_respond_new_flight: string;
   rev_respond_flight_date: string;
   rev_respond_flight_saved_note: string;
+  date_pick: string;
+  date_prev_month: string;
+  date_next_month: string;
   rev_respond_publish_label: string;
   rev_respond_publish_hint: string;
   rev_respond_publish_price: string;
@@ -2848,6 +2851,9 @@ export const translations: Record<Locale, Translations> = {
     rev_respond_new_flight: 'Nouveau vol',
     rev_respond_flight_date: 'Date du vol',
     rev_respond_flight_saved_note: 'Votre vol sera enregistré et visible dans "Mes transports".',
+    date_pick: "Choisir une date",
+    date_prev_month: "Mois précédent",
+    date_next_month: "Mois suivant",
     rev_respond_publish_label: "Publier aussi ce voyage pour d'autres expéditeurs",
     rev_respond_publish_hint: "Il sera visible par tous, au prix que vous fixez.",
     rev_respond_publish_price: "Votre prix par colis",
@@ -4269,6 +4275,9 @@ export const translations: Record<Locale, Translations> = {
     rev_respond_new_flight: 'New flight',
     rev_respond_flight_date: 'Flight date',
     rev_respond_flight_saved_note: 'Your flight will be saved and shown in "My trips".',
+    date_pick: "Pick a date",
+    date_prev_month: "Previous month",
+    date_next_month: "Next month",
     rev_respond_publish_label: "Also publish this trip for other senders",
     rev_respond_publish_hint: "Everyone will see it, at the price you set.",
     rev_respond_publish_price: "Your price per parcel",

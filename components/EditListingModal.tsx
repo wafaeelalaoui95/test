@@ -1,5 +1,6 @@
 'use client';
 
+import { DateField } from '@/components/ui/DateField';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/lib/i18n/context';
 import type { Locale } from '@/lib/i18n/translations';
 import { MIN_COMPENSATION_EUR, MAX_COMPENSATION_EUR, ITEM_CATEGORIES } from '@/lib/constants';
-import { openPickerOnClick, dateNotBefore, todayLocal } from '@/components/ui/Form';
+import { todayLocal } from '@/components/ui/Form';
 import { ParcelPhotoInput } from '@/components/ParcelPhotoInput';
 
 // =============================================================================
@@ -523,13 +524,11 @@ export function EditListingModal({
 
           <label className="block">
             <span className={label}>{isTrip ? c.date : c.dateWanted}</span>
-            <input
-              type="date"
-              className={field}
+            <DateField
               value={date}
+              onChange={setDate}
               min={todayLocal()}
-              onChange={(e) => setDate(dateNotBefore(e))}
-              onClick={openPickerOnClick}
+              className={field}
             />
           </label>
 
@@ -537,13 +536,11 @@ export function EditListingModal({
             <>
               <label className="block">
                 <span className={label}>{c.arrival}</span>
-                <input
-                  type="date"
-                  className={field}
+                <DateField
                   value={arrival}
+                  onChange={setArrival}
                   min={date || todayLocal()}
-                  onChange={(e) => setArrival(dateNotBefore(e))}
-                  onClick={openPickerOnClick}
+                  className={field}
                 />
               </label>
               <label className="block">

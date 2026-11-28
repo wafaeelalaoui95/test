@@ -1,5 +1,6 @@
 'use client';
 
+import { DateField } from '@/components/ui/DateField';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,7 +18,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Textarea, Checkbox, Input, openPickerOnClick, dateNotBefore, todayLocal } from '@/components/ui/Form';
+import { Textarea, Checkbox, Input, todayLocal } from '@/components/ui/Form';
 import { Stepper } from '@/components/ui/Stepper';
 import { CountryCityPicker } from '@/components/ui/CountryCityPicker';
 import { StripePaymentForm } from '@/components/StripePaymentForm';
@@ -451,13 +452,11 @@ export default function EnvoyerPage() {
                 </label>
                 <div className="relative">
                   <Calendar className="absolute start-0 top-1 w-3.5 h-3.5 text-ink-300 pointer-events-none" />
-                  <input
-                    type="date"
+                  <DateField
                     value={date}
-                    onChange={(e) => setDate(dateNotBefore(e))}
-                    onClick={openPickerOnClick}
+                    onChange={setDate}
                     min={todayLocal()}
-                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 placeholder:text-ink-300 focus:outline-none num-display"
+                    className="w-full ps-5 pe-2 bg-transparent text-[15px] text-ink-600 focus:outline-none num-display"
                   />
                 </div>
               </div>
@@ -685,12 +684,12 @@ export default function EnvoyerPage() {
                       />
                     </div>
                   </div>
-                  <Input
-                    type="date"
+                  <DateField
                     label={t.send_label_date}
                     value={date}
-                    onChange={(e) => setDate(dateNotBefore(e))}
+                    onChange={setDate}
                     min={todayLocal()}
+                    className="w-full rounded-xl border border-ink-100 bg-white px-4 py-3 text-[15px] text-ink-600 transition-colors focus:border-ink-500 focus:outline-none focus:ring-2 focus:ring-ink-100"
                   />
                 </div>
               )}

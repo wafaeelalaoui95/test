@@ -1,5 +1,6 @@
 'use client';
 
+import { DateField } from '@/components/ui/DateField';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -12,7 +13,7 @@ import { useAuth } from '@/lib/supabase/auth-provider';
 import { ITEM_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { userMessage } from '@/lib/user-error';
-import { openPickerOnClick, dateNotBefore, todayLocal } from '@/components/ui/Form';
+import { openPickerOnClick, todayLocal } from '@/components/ui/Form';
 import type { ShippingRequestRow, Profile, TravelerTripRow } from '@/lib/supabase/types';
 
 type RequestWithProfile = ShippingRequestRow & {
@@ -338,11 +339,9 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
                     <label className="block text-[11px] font-semibold text-ink-400 tracking-[0.06em] uppercase mb-1">
                       {t.rev_respond_flight_date}
                     </label>
-                    <input
-                      type="date"
+                    <DateField
                       value={newTripDate}
-                      onChange={(e) => setNewTripDate(dateNotBefore(e))}
-                      onClick={openPickerOnClick}
+                      onChange={setNewTripDate}
                       min={todayLocal()}
                       className="w-full px-3 py-2 rounded-lg bg-white border border-ink-100 text-[13px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300"
                     />
