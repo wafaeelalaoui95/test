@@ -1407,6 +1407,10 @@ export type Translations = {
   rev_respond_new_flight: string;
   rev_respond_flight_date: string;
   rev_respond_flight_saved_note: string;
+  rev_respond_publish_label: string;
+  rev_respond_publish_hint: string;
+  rev_respond_publish_price: string;
+  rev_respond_publish_price_min: string;
   rev_respond_if_accepted: string;
   rev_respond_you_receive: string;
   rev_respond_jibly_protection: string;
@@ -2844,6 +2848,10 @@ export const translations: Record<Locale, Translations> = {
     rev_respond_new_flight: 'Nouveau vol',
     rev_respond_flight_date: 'Date du vol',
     rev_respond_flight_saved_note: 'Votre vol sera enregistré et visible dans "Mes transports".',
+    rev_respond_publish_label: "Publier aussi ce voyage pour d'autres expéditeurs",
+    rev_respond_publish_hint: "Il sera visible par tous, au prix que vous fixez.",
+    rev_respond_publish_price: "Votre prix par colis",
+    rev_respond_publish_price_min: "Minimum {min} €",
     rev_respond_if_accepted: 'Si l\'expéditeur accepte',
     rev_respond_you_receive: 'Vous recevrez',
     rev_respond_jibly_protection: 'Frais de service Jibly',
@@ -4261,6 +4269,10 @@ export const translations: Record<Locale, Translations> = {
     rev_respond_new_flight: 'New flight',
     rev_respond_flight_date: 'Flight date',
     rev_respond_flight_saved_note: 'Your flight will be saved and shown in "My trips".',
+    rev_respond_publish_label: "Also publish this trip for other senders",
+    rev_respond_publish_hint: "Everyone will see it, at the price you set.",
+    rev_respond_publish_price: "Your price per parcel",
+    rev_respond_publish_price_min: "Minimum €{min}",
     rev_respond_if_accepted: 'If the sender accepts',
     rev_respond_you_receive: 'You\'ll receive',
     rev_respond_jibly_protection: 'Jibly service fee',

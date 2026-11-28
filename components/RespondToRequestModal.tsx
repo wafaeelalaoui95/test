@@ -9,7 +9,7 @@ import {
 import { formatShortDate, formatEuros, nameInitial, displayName, priceBreakdown } from '@/lib/utils';
 import { browser } from '@/lib/supabase/queries';
 import { useAuth } from '@/lib/supabase/auth-provider';
-import { ITEM_CATEGORIES } from '@/lib/constants';
+import { ITEM_CATEGORIES, MIN_COMPENSATION_EUR } from '@/lib/constants';
 import { useI18n } from '@/lib/i18n/context';
 import { userMessage } from '@/lib/user-error';
 import { openPickerOnClick } from '@/components/ui/Form';
@@ -50,7 +50,14 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
   const [selectedTripId, setSelectedTripId] = useState<string | 'new' | ''>('');
   const [newTripDate, setNewTripDate] = useState('');
   const [newTripTime, setNewTripTime] = useState('');
-  const newTripCompensation = 50;
+  // A trip created here is private by default: it exists to carry THIS
+  // parcel. The traveller may tick a box to also list it for other senders,
+  // and then sets their own price — never a figure we pick for them.
+  const [publishNewTrip, setPublishNewTrip] = useState(false);
+  const [newTripPrice, setNewTripPrice] = useState('');
+  const newTripPriceValue = Number(newTripPrice);
+  const newTripPriceOk =
+    !!newTripPrice && Number.isFinite(newTripPriceValue) && newTripPriceValue >= MIN_COMPENSATION_EUR;
 
   const senderName = displayName(request.profile?.full_name) || t.rev_respond_sender_fallback;
   const initial = nameInitial(request.profile?.full_name);
@@ -113,6 +120,7 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
   function isValid(): boolean {
     if (!selectedTripId) return false;
     if (selectedTripId === 'new' && (!newTripDate || !newTripTime)) return false;
+    if (selectedTripId === 'new' && publishNewTrip && !newTripPriceOk) return false;
     return true;
   }
 
@@ -136,7 +144,9 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
           arrival_city: request.destination_city,
           departure_date: newTripDate,
           arrival_date: null,
-          compensation_min: newTripCompensation,
+          // Unpublished: the price is the one this parcel's sender offered,
+          // and nobody else ever sees the trip.
+          compensation_min: publishNewTrip ? newTripPriceValue : Math.round(request.budget),
           compensation_max: null,
           available_weight_kg: null,
           available_space: 'enveloppe',
@@ -145,7 +155,9 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
           departure_airport: null,
           arrival_airport: null,
           notes: null,
-          status: 'open',
+          // 'draft' keeps it out of every public list, like the trips the
+          // instant-propose flow creates on /voyager.
+          status: publishNewTrip ? 'open' : 'draft',
         });
         tripId = newTrip.id;
       } else {
@@ -350,6 +362,44 @@ export function RespondToRequestModal({ request, onClose, onSuccess }: Props) {
                   <p className="text-[11px] text-ink-400 leading-relaxed">
                     {t.rev_respond_flight_saved_note}
                   </p>
+                  <label className="flex items-start gap-2.5 cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      checked={publishNewTrip}
+                      onChange={(e) => setPublishNewTrip(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-ink-500 flex-shrink-0"
+                    />
+                    <span className="text-[13px] text-ink-600 leading-snug">
+                      {t.rev_respond_publish_label}
+                      <span className="block text-[11px] text-ink-400 mt-0.5">{t.rev_respond_publish_hint}</span>
+                    </span>
+                  </label>
+                  {publishNewTrip && (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-ink-400 tracking-[0.06em] uppercase mb-1">
+                        {t.rev_respond_publish_price}
+                      </label>
+                      <div className="relative">
+                        <span className="absolute start-3 top-1/2 -translate-y-1/2 text-[13px] text-ink-400">€</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={newTripPrice}
+                          placeholder={String(MIN_COMPENSATION_EUR)}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/[^0-9]/g, '');
+                            setNewTripPrice(digits === '' ? '' : String(Math.min(Number(digits), 20000)));
+                          }}
+                          className="w-full ps-7 pe-3 py-2 rounded-lg bg-white border border-ink-100 text-[13px] focus:outline-none focus:ring-2 focus:ring-lavender-200 focus:border-lavender-300"
+                        />
+                      </div>
+                      {newTripPrice && !newTripPriceOk && (
+                        <p className="mt-1 text-[11px] text-blush-500">
+                          {t.rev_respond_publish_price_min.replace('{min}', String(MIN_COMPENSATION_EUR))}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
               )}
             </div>
