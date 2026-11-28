@@ -245,7 +245,7 @@ export default function EnvoyerPage() {
       // of both.
       if (!size) return false;
       const v = Number(declaredValue);
-      if (!declaredValue || !Number.isFinite(v) || v < 1 || v > MAX_DECLARED_VALUE_EUR) {
+      if (!declaredValue || !Number.isFinite(v) || v < 0 || v > MAX_DECLARED_VALUE_EUR) {
         return false;
       }
       // The item name must be specific — the traveler needs to know exactly
@@ -1139,7 +1139,7 @@ function InstantBookModal({
     // wrong about whichever one does not.
     !!size &&
     !!declaredValue &&
-    Number(declaredValue) >= 1 &&
+    Number(declaredValue) >= 0 &&
     Number(declaredValue) <= MAX_DECLARED_VALUE_EUR &&
     certified;
 

@@ -74,7 +74,7 @@ export function ParcelSizeValue({
           <input
             type="number"
             inputMode="numeric"
-            min={1}
+            min={0}
             max={MAX_DECLARED_VALUE_EUR}
             value={value}
             placeholder={t.send_value_ph}
